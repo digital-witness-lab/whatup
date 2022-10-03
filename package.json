@@ -1,0 +1,14 @@
+{
+  "devDependencies": {
+    "typescript": "^4.8.4"
+  },
+  "dependencies": {
+    "@adiwajshing/baileys": "^4.4.0",
+    "socket.io": "^4.5.2",
+    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.10.0"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.6",
+    "utf-8-validate": "^5.0.9"
+  }
+}
