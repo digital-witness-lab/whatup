@@ -10,8 +10,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const whatsappsession_1 = require("./whatsappsession");
-const session = new whatsappsession_1.WhatsAppSession({});
 module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () {
+    const session = new whatsappsession_1.WhatsAppSession({});
     yield session.init();
     const authenticateSession = (payload) => {
         const { sessionInfo, sharedConnection } = payload;

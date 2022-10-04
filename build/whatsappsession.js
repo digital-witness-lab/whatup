@@ -34,31 +34,105 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppSession = void 0;
 const baileys_1 = __importStar(require("@adiwajshing/baileys"));
-class WhatsAppSession {
+const events_1 = require("events");
+function sleep(ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+}
+class WhatsAppSession extends events_1.EventEmitter {
     constructor(config) {
+        super();
         this.sock = undefined;
         this.config = {};
         this.msgRetryCounterMap = {};
         this.lastConnectionState = {};
+        this._messages = [];
         this.config = config;
+        this.store = (0, baileys_1.makeInMemoryStore)({});
     }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
             const { state, saveCreds } = yield (0, baileys_1.useMultiFileAuthState)('auth_info_baileys');
             this.sock = (0, baileys_1.default)({
+                browser: baileys_1.Browsers.macOS('Desktop'),
                 auth: state
             });
-            this.sock.ev.on("connection.update", this._updateConnectionState);
+            this.store.bind(this.sock.ev);
+            this.sock.ev.on('creds.update', saveCreds);
+            this.sock.ev.on("connection.update", this._updateConnectionState.bind(this));
+            this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this));
+        });
+    }
+    _messageUpsert(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { messages, type } = data;
+            for (let message of messages) {
+                if (!message.key.fromMe) {
+                    this.emit('message', { message, type });
+                    console.log(`Got message: ${JSON.stringify(message)}`);
+                    this._messages.push(message);
+                    if (message.key.remoteJid) {
+                        yield this.sendMessage(message.key.remoteJid, "hello?");
+                    }
+                }
+            }
         });
     }
     _updateConnectionState(data) {
+        var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
+            if (data.qr && data.qr !== this.lastConnectionState.qr) {
+                this.emit('qrCode', data);
+            }
+            if (data.connection === 'open') {
+                this.emit('ready', data);
+            }
+            else if (data.connection) {
+                this.emit('closed', data);
+                const { lastDisconnect } = data;
+                if (lastDisconnect) {
+                    const shouldReconnect = ((_b = (_a = lastDisconnect.error) === null || _a === void 0 ? void 0 : _a.output) === null || _b === void 0 ? void 0 : _b.statusCode) !== baileys_1.DisconnectReason.loggedOut;
+                    if (shouldReconnect) {
+                        yield this.init();
+                    }
+                }
+            }
             this.lastConnectionState = Object.assign(Object.assign({}, this.lastConnectionState), data);
-            console.log(`Updated State: ${JSON.stringify(this.lastConnectionState)}`);
+            console.log(`State: ${JSON.stringify(this.lastConnectionState)}`);
         });
+    }
+    messages() {
+        return this._messages;
     }
     qrCode() {
         return this.lastConnectionState.qr;
+    }
+    sendMessage(chatId, message, clearChatStatus = true, vampMaxSeconds = 10) {
+        var _a, _b, _c;
+        return __awaiter(this, void 0, void 0, function* () {
+            if (clearChatStatus === true) {
+                yield this.markChatRead(chatId);
+            }
+            if (vampMaxSeconds > 0) {
+                const nComposing = Math.floor(Math.random() * vampMaxSeconds);
+                for (let i = 0; i < nComposing; i += 1) {
+                    yield ((_a = this.sock) === null || _a === void 0 ? void 0 : _a.sendPresenceUpdate('composing', chatId));
+                    yield sleep(Math.random() * 1000);
+                }
+                yield ((_b = this.sock) === null || _b === void 0 ? void 0 : _b.sendPresenceUpdate('available', chatId));
+            }
+            yield ((_c = this.sock) === null || _c === void 0 ? void 0 : _c.sendMessage(chatId, { text: message }));
+        });
+    }
+    markChatRead(chatId) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function* () {
+            const msg = yield this.store.mostRecentMessage(chatId, undefined);
+            if (msg === null || msg === void 0 ? void 0 : msg.key) {
+                yield ((_a = this.sock) === null || _a === void 0 ? void 0 : _a.chatModify({ markRead: false, lastMessages: [msg] }, chatId));
+            }
+        });
     }
 }
 exports.WhatsAppSession = WhatsAppSession;
