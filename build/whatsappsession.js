@@ -35,11 +35,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppSession = void 0;
 const baileys_1 = __importStar(require("@adiwajshing/baileys"));
 const events_1 = require("events");
-function sleep(ms) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
-    });
-}
+const whatsappacl_1 = require("./whatsappacl");
+const utils_1 = require("./utils");
 class WhatsAppSession extends events_1.EventEmitter {
     constructor(config) {
         super();
@@ -49,6 +46,7 @@ class WhatsAppSession extends events_1.EventEmitter {
         this.lastConnectionState = {};
         this._messages = [];
         this.config = config;
+        this.acl = new whatsappacl_1.WhatsAppACL(config.acl);
         this.store = (0, baileys_1.makeInMemoryStore)({});
     }
     init() {
@@ -60,20 +58,21 @@ class WhatsAppSession extends events_1.EventEmitter {
             });
             this.store.bind(this.sock.ev);
             this.sock.ev.on('creds.update', saveCreds);
-            this.sock.ev.on("connection.update", this._updateConnectionState.bind(this));
+            this.sock.ev.on('connection.update', this._updateConnectionState.bind(this));
             this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this));
         });
     }
     _messageUpsert(data) {
+        var _a, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
             const { messages, type } = data;
-            for (let message of messages) {
-                if (!message.key.fromMe) {
+            for (const message of messages) {
+                if (((_a = message.key) === null || _a === void 0 ? void 0 : _a.fromMe) === false) {
                     this.emit('message', { message, type });
                     console.log(`Got message: ${JSON.stringify(message)}`);
                     this._messages.push(message);
-                    if (message.key.remoteJid) {
-                        yield this.sendMessage(message.key.remoteJid, "hello?");
+                    if (((_b = message.key) === null || _b === void 0 ? void 0 : _b.remoteJid) != null) {
+                        yield this.sendMessage((_c = message.key) === null || _c === void 0 ? void 0 : _c.remoteJid, 'hello?');
                     }
                 }
             }
@@ -82,16 +81,16 @@ class WhatsAppSession extends events_1.EventEmitter {
     _updateConnectionState(data) {
         var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
-            if (data.qr && data.qr !== this.lastConnectionState.qr) {
+            if (data.qr !== this.lastConnectionState.qr) {
                 this.emit('qrCode', data);
             }
             if (data.connection === 'open') {
                 this.emit('ready', data);
             }
-            else if (data.connection) {
+            else if (data.connection !== undefined) {
                 this.emit('closed', data);
                 const { lastDisconnect } = data;
-                if (lastDisconnect) {
+                if (lastDisconnect != null) {
                     const shouldReconnect = ((_b = (_a = lastDisconnect.error) === null || _a === void 0 ? void 0 : _a.output) === null || _b === void 0 ? void 0 : _b.statusCode) !== baileys_1.DisconnectReason.loggedOut;
                     if (shouldReconnect) {
                         yield this.init();
@@ -111,14 +110,14 @@ class WhatsAppSession extends events_1.EventEmitter {
     sendMessage(chatId, message, clearChatStatus = true, vampMaxSeconds = 10) {
         var _a, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
-            if (clearChatStatus === true) {
+            if (clearChatStatus) {
                 yield this.markChatRead(chatId);
             }
             if (vampMaxSeconds > 0) {
                 const nComposing = Math.floor(Math.random() * vampMaxSeconds);
                 for (let i = 0; i < nComposing; i += 1) {
                     yield ((_a = this.sock) === null || _a === void 0 ? void 0 : _a.sendPresenceUpdate('composing', chatId));
-                    yield sleep(Math.random() * 1000);
+                    yield (0, utils_1.sleep)(Math.random() * 1000);
                 }
                 yield ((_b = this.sock) === null || _b === void 0 ? void 0 : _b.sendPresenceUpdate('available', chatId));
             }
@@ -129,7 +128,7 @@ class WhatsAppSession extends events_1.EventEmitter {
         var _a;
         return __awaiter(this, void 0, void 0, function* () {
             const msg = yield this.store.mostRecentMessage(chatId, undefined);
-            if (msg === null || msg === void 0 ? void 0 : msg.key) {
+            if ((msg === null || msg === void 0 ? void 0 : msg.key) != null) {
                 yield ((_a = this.sock) === null || _a === void 0 ? void 0 : _a.chatModify({ markRead: false, lastMessages: [msg] }, chatId));
             }
         });

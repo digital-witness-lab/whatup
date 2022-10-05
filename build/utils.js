@@ -9,21 +9,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const uWebSockets_js_1 = require("uWebSockets.js");
-const socket_io_1 = require("socket.io");
-const registerAuthHandlers = require('./authHandlers');
-// @ts-expect-error: TS7009
-const app = new uWebSockets_js_1.App();
-const io = new socket_io_1.Server();
-const port = 3000;
-io.attachApp(app);
-io.on('connection', (socket) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log(socket.id);
-    yield registerAuthHandlers(io, socket);
-}));
-app.listen(3000, (token) => {
-    if (!token) {
-        console.warn('port already in use');
-    }
-    console.log(`Listening on port: ${port}`);
-});
+exports.sleep = void 0;
+function sleep(ms) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield new Promise((resolve) => {
+            setTimeout(resolve, ms);
+        });
+    });
+}
+exports.sleep = sleep;

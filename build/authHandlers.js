@@ -21,6 +21,6 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
     const getQR = () => {
         console.log(session.qrCode());
     };
-    socket.once("auth", authenticateSession);
-    socket.on("auth:qr", getQR);
+    socket.once('auth', authenticateSession);
+    socket.on('auth:qr', getQR);
 });
