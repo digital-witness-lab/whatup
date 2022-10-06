@@ -1,4 +1,4 @@
-import makeWASocket, { Browsers, ConnectionState, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, useMultiFileAuthState, WAMessage, WASocket } from '@adiwajshing/baileys'
+import makeWASocket, { Browsers, ConnectionState, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, useSingleFileAuthState, WAMessage, WASocket } from '@adiwajshing/baileys'
 import { Boom } from '@hapi/boom'
 import { EventEmitter } from 'events'
 
@@ -10,7 +10,8 @@ export interface GroupJoinResponse {metadata: GroupMetadata, response?: string }
 export interface WhatsAppSessionInterface {
   init: () => Promise<void>
   qrCode: () => string | undefined
-  sendMessage: (chatId: string, message: string, clearChatStatus: boolean, vampMaxSeconds: number | undefined) => Promise<void>
+  connection: () => string | undefined
+  sendMessage: (chatId: string, message: string, clearChatStatus: boolean, vampMaxSeconds: number | undefined) => Promise<WAMessage | undefined>
   markChatRead: (chatId: string) => Promise<void>
   joinGroup: (inviteCode: string) => Promise<GroupJoinResponse | null>
   groupMetadata: (chatId: string) => Promise<GroupMetadata | null>
@@ -37,13 +38,13 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
   }
 
   async init (): Promise<void> {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys')
+    const { state, saveState } = await useSingleFileAuthState('single_auth')
     this.sock = makeWASocket({
       browser: Browsers.macOS('Desktop'),
       auth: state
     })
 
-    this.sock.ev.on('creds.update', saveCreds)
+    this.sock.ev.on('creds.update', saveState)
     this.sock.ev.on('connection.update', this._updateConnectionState.bind(this))
     this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this))
   }
@@ -88,11 +89,15 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     this.lastConnectionState = { ...this.lastConnectionState, ...data }
   }
 
+  connection (): string | undefined {
+    return this.lastConnectionState.connection
+  }
+
   qrCode (): string | undefined {
     return this.lastConnectionState.qr
   }
 
-  async sendMessage (chatId: string, message: string, clearChatStatus: boolean = true, vampMaxSeconds: number | undefined = 10): Promise<void> {
+  async sendMessage (chatId: string, message: string, clearChatStatus: boolean = true, vampMaxSeconds: number | undefined = 10): Promise<WAMessage | undefined> {
     if (!this.acl.canWrite(chatId)) {
       throw new NoAccessError('write', chatId)
     }
@@ -107,7 +112,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
       }
       await this.sock?.sendPresenceUpdate('available', chatId)
     }
-    await this.sock?.sendMessage(chatId, { text: message })
+    return await this.sock?.sendMessage(chatId, { text: message })
   }
 
   async markChatRead (chatId: string): Promise<void> {

@@ -50,12 +50,12 @@ class WhatsAppSession extends events_1.EventEmitter {
     }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
-            const { state, saveCreds } = yield (0, baileys_1.useMultiFileAuthState)('auth_info_baileys');
+            const { state, saveState } = yield (0, baileys_1.useSingleFileAuthState)('single_auth');
             this.sock = (0, baileys_1.default)({
                 browser: baileys_1.Browsers.macOS('Desktop'),
                 auth: state
             });
-            this.sock.ev.on('creds.update', saveCreds);
+            this.sock.ev.on('creds.update', saveState);
             this.sock.ev.on('connection.update', this._updateConnectionState.bind(this));
             this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this));
         });
@@ -104,6 +104,9 @@ class WhatsAppSession extends events_1.EventEmitter {
             this.lastConnectionState = Object.assign(Object.assign({}, this.lastConnectionState), data);
         });
     }
+    connection() {
+        return this.lastConnectionState.connection;
+    }
     qrCode() {
         return this.lastConnectionState.qr;
     }
@@ -124,7 +127,7 @@ class WhatsAppSession extends events_1.EventEmitter {
                 }
                 yield ((_b = this.sock) === null || _b === void 0 ? void 0 : _b.sendPresenceUpdate('available', chatId));
             }
-            yield ((_c = this.sock) === null || _c === void 0 ? void 0 : _c.sendMessage(chatId, { text: message }));
+            return yield ((_c = this.sock) === null || _c === void 0 ? void 0 : _c.sendMessage(chatId, { text: message }));
         });
     }
     markChatRead(chatId) {

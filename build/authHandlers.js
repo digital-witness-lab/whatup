@@ -17,10 +17,50 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
         const { sessionInfo, sharedConnection } = payload;
         console.log(`sessionInfo: ${sessionInfo}`);
         console.log(`sharedConnection: ${sharedConnection}`);
+        socket.on('write:sendMessage', (...args) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                const sendMessage = yield session.sendMessage(...args);
+                socket.emit('write:sendMessage', sendMessage);
+            }
+            catch (e) {
+                socket.emit('write:sendMessage', { error: e });
+            }
+        }));
+        socket.on('write:markChatRead', (chatId) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                const markChatRead = yield session.markChatRead(chatId);
+                socket.emit('write:markChatRead', { error: null });
+            }
+            catch (e) {
+                socket.emit('write:markChatRead', { error: e });
+            }
+        }));
+        socket.on('read:joinGroup', (chatId) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                const groupMetadata = yield session.joinGroup(chatId);
+                socket.emit('read:joinGroup', groupMetadata);
+            }
+            catch (e) {
+                socket.emit('read:joinGroup', { error: e });
+            }
+        }));
+        socket.on('read:groupMetadata', (chatId) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                const groupMetadata = yield session.groupMetadata(chatId);
+                socket.emit('read:groupMetadata', groupMetadata);
+            }
+            catch (e) {
+                socket.emit('read:groupMetadata', { error: e });
+            }
+        }));
     };
-    const getQR = () => {
-        console.log(session.qrCode());
-    };
-    socket.once('auth', authenticateSession);
-    socket.on('auth:qr', getQR);
+    socket.on('connection:qr', () => {
+        const qrCode = session.qrCode();
+        socket.emit('connection:qr', { qrCode });
+    });
+    socket.on('connection:status', () => {
+        const connection = session.connection();
+        socket.emit('connection:status', { connection });
+    });
+    socket.on('connection:auth', authenticateSession);
 });
