@@ -1,11 +1,15 @@
-import { BaileysEventData, BaileysEventMap, BaileysEvent, WAMessageKey } from '@adiwajshing/baileys'
-import { EventEmitter } from 'events'
-
 export interface WhatsAppACLConfig {
   allowAll: boolean
   canWrite: string[]
   canRead: string[]
   canReadWrite: string[]
+}
+
+export class NoAccessError extends Error {
+  constructor (mode: string, chatId: string) {
+    super(`No access to ${mode}: ${chatId}`)
+    Object.setPrototypeOf(this, NoAccessError.prototype)
+  }
 }
 
 const WhatsAppACLConfigDefault: WhatsAppACLConfig = {
@@ -15,11 +19,10 @@ const WhatsAppACLConfigDefault: WhatsAppACLConfig = {
   canReadWrite: []
 }
 
-export class WhatsAppACL extends EventEmitter {
+export class WhatsAppACL {
   acl: WhatsAppACLConfig
 
-  constructor (acl: Partial<WhatsAppACLConfig>) {
-    super()
+  constructor (acl: Partial<WhatsAppACLConfig> = WhatsAppACLConfigDefault) {
     this.acl = { ...WhatsAppACLConfigDefault, ...acl }
   }
 
@@ -33,18 +36,5 @@ export class WhatsAppACL extends EventEmitter {
     if (this.acl.allowAll) return true
     if (chatId == null) return false
     return (chatId in this.acl.canWrite) || (chatId in this.acl.canReadWrite)
-  }
-
-  protected async _process (events: BaileysEventData): Promise<void> {
-    for (const event in events) {
-      const data = events[event]
-      const canRead: boolean = [data?.jid, data?.key?.jid, data?.key?.remoteJid, data?.key?.id, data?.id].map((id: string | null): boolean => {
-        if (id === null) return false
-        return this.canRead(id)
-      }).some((b: boolean) => b)
-      if (canRead) {
-        this.emit(event, data)
-      }
-    }
   }
 }

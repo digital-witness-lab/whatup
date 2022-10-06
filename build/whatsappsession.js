@@ -44,10 +44,9 @@ class WhatsAppSession extends events_1.EventEmitter {
         this.config = {};
         this.msgRetryCounterMap = {};
         this.lastConnectionState = {};
-        this._messages = [];
+        this._lastMessage = {};
         this.config = config;
         this.acl = new whatsappacl_1.WhatsAppACL(config.acl);
-        this.store = (0, baileys_1.makeInMemoryStore)({});
     }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -56,23 +55,28 @@ class WhatsAppSession extends events_1.EventEmitter {
                 browser: baileys_1.Browsers.macOS('Desktop'),
                 auth: state
             });
-            this.store.bind(this.sock.ev);
             this.sock.ev.on('creds.update', saveCreds);
             this.sock.ev.on('connection.update', this._updateConnectionState.bind(this));
             this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this));
         });
     }
     _messageUpsert(data) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d, _e, _f;
         return __awaiter(this, void 0, void 0, function* () {
             const { messages, type } = data;
             for (const message of messages) {
-                if (((_a = message.key) === null || _a === void 0 ? void 0 : _a.fromMe) === false) {
+                const chatId = (_a = message.key) === null || _a === void 0 ? void 0 : _a.remoteJid;
+                if (chatId == null || !this.acl.canRead(chatId)) {
+                    continue;
+                }
+                if (this._lastMessage[chatId] == null || ((_b = this._lastMessage[chatId].key) === null || _b === void 0 ? void 0 : _b.id) < ((_c = message.key) === null || _c === void 0 ? void 0 : _c.id)) {
+                    this._lastMessage[chatId] = message;
+                }
+                if (((_d = message.key) === null || _d === void 0 ? void 0 : _d.fromMe) === false) {
                     this.emit('message', { message, type });
                     console.log(`Got message: ${JSON.stringify(message)}`);
-                    this._messages.push(message);
-                    if (((_b = message.key) === null || _b === void 0 ? void 0 : _b.remoteJid) != null) {
-                        yield this.sendMessage((_c = message.key) === null || _c === void 0 ? void 0 : _c.remoteJid, 'hello?');
+                    if (((_e = message.key) === null || _e === void 0 ? void 0 : _e.remoteJid) != null) {
+                        yield this.sendMessage((_f = message.key) === null || _f === void 0 ? void 0 : _f.remoteJid, 'hello?');
                     }
                 }
             }
@@ -98,11 +102,7 @@ class WhatsAppSession extends events_1.EventEmitter {
                 }
             }
             this.lastConnectionState = Object.assign(Object.assign({}, this.lastConnectionState), data);
-            console.log(`State: ${JSON.stringify(this.lastConnectionState)}`);
         });
-    }
-    messages() {
-        return this._messages;
     }
     qrCode() {
         return this.lastConnectionState.qr;
@@ -110,6 +110,9 @@ class WhatsAppSession extends events_1.EventEmitter {
     sendMessage(chatId, message, clearChatStatus = true, vampMaxSeconds = 10) {
         var _a, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
+            if (!this.acl.canWrite(chatId)) {
+                throw new whatsappacl_1.NoAccessError('write', chatId);
+            }
             if (clearChatStatus) {
                 yield this.markChatRead(chatId);
             }
@@ -127,10 +130,35 @@ class WhatsAppSession extends events_1.EventEmitter {
     markChatRead(chatId) {
         var _a;
         return __awaiter(this, void 0, void 0, function* () {
-            const msg = yield this.store.mostRecentMessage(chatId, undefined);
+            if (!this.acl.canWrite(chatId)) {
+                throw new whatsappacl_1.NoAccessError('write', chatId);
+            }
+            const msg = this._lastMessage[chatId];
             if ((msg === null || msg === void 0 ? void 0 : msg.key) != null) {
                 yield ((_a = this.sock) === null || _a === void 0 ? void 0 : _a.chatModify({ markRead: false, lastMessages: [msg] }, chatId));
             }
+        });
+    }
+    joinGroup(inviteCode) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.sock == null)
+                return null;
+            const metadata = yield this.sock.groupGetInviteInfo(inviteCode);
+            if (!this.acl.canRead(metadata.id)) {
+                throw new whatsappacl_1.NoAccessError('read', metadata.id);
+            }
+            const response = yield this.sock.groupAcceptInvite(inviteCode);
+            return { metadata, response };
+        });
+    }
+    groupMetadata(chatId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.sock == null)
+                return null;
+            if (!this.acl.canRead(chatId)) {
+                throw new whatsappacl_1.NoAccessError('read', chatId);
+            }
+            return yield this.sock.groupMetadata(chatId);
         });
     }
 }
