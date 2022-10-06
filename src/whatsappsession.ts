@@ -28,6 +28,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
   protected msgRetryCounterMap: MessageRetryMap = { }
   protected lastConnectionState: Partial<ConnectionState> = {}
   protected _lastMessage: { [_: string]: WAMessage } = {}
+  protected _groupMetadata: { [_: string]: GroupMetadata} = {}
 
   protected acl: WhatsAppACL
 
@@ -127,19 +128,23 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
 
   async joinGroup (inviteCode: string): Promise<GroupJoinResponse | null> {
     if (this.sock == null) return null
-    const metadata = await this.sock.groupGetInviteInfo(inviteCode)
+    const metadata: GroupMetadata = await this.sock.groupGetInviteInfo(inviteCode)
     if (!this.acl.canRead(metadata.id)) {
       throw new NoAccessError('read', metadata.id)
     }
+    this._groupMetadata[metadata.id] = metadata
     const response = await this.sock.groupAcceptInvite(inviteCode)
     return { metadata, response }
   }
 
   async groupMetadata (chatId: string): Promise<GroupMetadata | null> {
-    if (this.sock == null) return null
     if (!this.acl.canRead(chatId)) {
       throw new NoAccessError('read', chatId)
     }
+    if (this._groupMetadata[chatId] != null) {
+      return this._groupMetadata[chatId]
+    }
+    if (this.sock == null) return null
     return await this.sock.groupMetadata(chatId)
   }
 }

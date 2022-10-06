@@ -45,6 +45,7 @@ class WhatsAppSession extends events_1.EventEmitter {
         this.msgRetryCounterMap = {};
         this.lastConnectionState = {};
         this._lastMessage = {};
+        this._groupMetadata = {};
         this.config = config;
         this.acl = new whatsappacl_1.WhatsAppACL(config.acl);
     }
@@ -150,17 +151,21 @@ class WhatsAppSession extends events_1.EventEmitter {
             if (!this.acl.canRead(metadata.id)) {
                 throw new whatsappacl_1.NoAccessError('read', metadata.id);
             }
+            this._groupMetadata[metadata.id] = metadata;
             const response = yield this.sock.groupAcceptInvite(inviteCode);
             return { metadata, response };
         });
     }
     groupMetadata(chatId) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (this.sock == null)
-                return null;
             if (!this.acl.canRead(chatId)) {
                 throw new whatsappacl_1.NoAccessError('read', chatId);
             }
+            if (this._groupMetadata[chatId] != null) {
+                return this._groupMetadata[chatId];
+            }
+            if (this.sock == null)
+                return null;
             return yield this.sock.groupMetadata(chatId);
         });
     }

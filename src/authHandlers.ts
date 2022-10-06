@@ -51,8 +51,10 @@ module.exports = async (io: Server, socket: Socket) => {
     })
   }
 
-  socket.on('connection:qr', () => {
+  socket.on('connection:qr', async () => {
     const qrCode = session.qrCode()
+    const QR = await import('qrcode-terminal')
+    QR?.generate(qrCode, { small: true })
     socket.emit('connection:qr', { qrCode })
   })
   socket.on('connection:status', () => {
