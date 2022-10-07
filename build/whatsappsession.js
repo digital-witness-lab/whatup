@@ -54,12 +54,35 @@ class WhatsAppSession extends events_1.EventEmitter {
             const { state, saveState } = yield (0, baileys_1.useSingleFileAuthState)('single_auth');
             this.sock = (0, baileys_1.default)({
                 browser: baileys_1.Browsers.macOS('Desktop'),
-                auth: state
+                markOnlineOnConnect: false,
+                auth: state,
+                downloadHistory: true,
+                syncFullHistory: true
             });
             this.sock.ev.on('creds.update', saveState);
             this.sock.ev.on('connection.update', this._updateConnectionState.bind(this));
             this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this));
+            this.sock.ev.on('messages.set', this._updateHistory.bind(this));
         });
+    }
+    close() {
+        var _a;
+        return __awaiter(this, void 0, void 0, function* () {
+            (_a = this.sock) === null || _a === void 0 ? void 0 : _a.end(undefined);
+        });
+    }
+    _setMessageHistory(data) {
+        var _a, _b, _c;
+        const { messages } = data;
+        for (const message of messages) {
+            const chatId = (_a = message.key) === null || _a === void 0 ? void 0 : _a.remoteJid;
+            if (chatId == null || !this.acl.canRead(chatId)) {
+                continue;
+            }
+            if (this._lastMessage[chatId] == null || ((_b = this._lastMessage[chatId].key) === null || _b === void 0 ? void 0 : _b.id) < ((_c = message.key) === null || _c === void 0 ? void 0 : _c.id)) {
+                this._lastMessage[chatId] = message;
+            }
+        }
     }
     _messageUpsert(data) {
         var _a, _b, _c, _d, _e, _f;
@@ -147,13 +170,23 @@ class WhatsAppSession extends events_1.EventEmitter {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.sock == null)
                 return null;
-            const metadata = yield this.sock.groupGetInviteInfo(inviteCode);
-            if (!this.acl.canRead(metadata.id)) {
-                throw new whatsappacl_1.NoAccessError('read', metadata.id);
+            const metadata = yield this.groupInviteMetadata(inviteCode);
+            if (metadata == null)
+                return null;
+            if (!this.acl.canRead(metadata === null || metadata === void 0 ? void 0 : metadata.id)) {
+                throw new whatsappacl_1.NoAccessError('read', metadata === null || metadata === void 0 ? void 0 : metadata.id);
             }
             this._groupMetadata[metadata.id] = metadata;
             const response = yield this.sock.groupAcceptInvite(inviteCode);
             return { metadata, response };
+        });
+    }
+    groupInviteMetadata(inviteCode) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.sock == null)
+                return null;
+            const metadata = yield this.sock.groupGetInviteInfo(inviteCode);
+            return metadata;
         });
     }
     groupMetadata(chatId) {

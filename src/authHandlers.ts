@@ -7,12 +7,42 @@ interface AuthenticateSessionParams {
   sharedConnection?: boolean
 }
 
-module.exports = async (io: Server, socket: Socket) => {
-  const session: WhatsAppSession = new WhatsAppSession({})
-  await session.init()
+interface SharedSession {
+  session: WhatsAppACLConfig
+  name: string
+  numListeners: number
+}
 
-  const authenticateSession = (payload: AuthenticateSessionParams) => {
+const globalSessions: { [_: string]: SharedSession }
+
+module.exports = async (io: Server, socket: Socket) => {
+  let session: WhatsAppSession = new WhatsAppSession({})
+  let sharedSession: SharedSession
+
+  const authenticateSession = async (payload: AuthenticateSessionParams) => {
     const { sessionInfo, sharedConnection } = payload
+    const authData = JSON.parse(sessionInfo)
+    if (authData.me?.id == null) {
+      socket.emit('connection:auth', { error: 'Invalid Credentials: No self ID' })
+      return
+    }
+    if (sharedConnection === true) {
+      sharedSession = { name: authData.creds.me, numListeners: 1, session }
+      if (sharedSession.name in globalSessions) {
+        await session.close()
+        sharedSession = globalSessions[sharedSession.name]
+        session = sharedSession.session
+        sharedSession.numListeners += 1
+      } else {
+        globalSessions[sharedSession.name] = sharedSession
+      }
+    } else {
+      const r = Math.floor(Math.random() * 100000)
+      sharedSession.name = `${authData.creds.me}-${r}`
+      globalSessions[sharedSession.name] = sharedSession
+    }
+
+    await session.init()
     console.log(`sessionInfo: ${sessionInfo}`)
     console.log(`sharedConnection: ${sharedConnection}`)
 
@@ -26,7 +56,7 @@ module.exports = async (io: Server, socket: Socket) => {
     })
     socket.on('write:markChatRead', async (chatId: string) => {
       try {
-        const markChatRead = await session.markChatRead(chatId)
+        await session.markChatRead(chatId)
         socket.emit('write:markChatRead', { error: null })
       } catch (e) {
         socket.emit('write:markChatRead', { error: e })
@@ -49,12 +79,30 @@ module.exports = async (io: Server, socket: Socket) => {
         socket.emit('read:groupMetadata', { error: e })
       }
     })
+    socket.on('read:groupInviteMetadata', async (inviteCode: string) => {
+      try {
+        const groupInviteMetadata = await session.groupInviteMetadata(inviteCode)
+        socket.emit('read:groupInviteMetadata', groupInviteMetadata)
+      } catch (e) {
+        socket.emit('read:groupInviteMetadata', { error: e })
+      }
+    })
   }
 
+  socket.on('disconnect', async () => {
+    if (sessionName !== null) {
+      sessions[sessionName].numListeners -= 1
+      if (sessions[sessionName].numListeners === 0) {
+        await sessions[sessionName].session.close()
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete sessions[sessionName]
+      }
+    } else {
+      await session.close()
+    }
+  })
   socket.on('connection:qr', async () => {
     const qrCode = session.qrCode()
-    const QR = await import('qrcode-terminal')
-    QR?.generate(qrCode, { small: true })
     socket.emit('connection:qr', { qrCode })
   })
   socket.on('connection:status', () => {

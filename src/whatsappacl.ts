@@ -6,7 +6,7 @@ export interface WhatsAppACLConfig {
 }
 
 export class NoAccessError extends Error {
-  constructor (mode: string, chatId: string) {
+  constructor (mode: string, chatId: string | undefined) {
     super(`No access to ${mode}: ${chatId}`)
     Object.setPrototypeOf(this, NoAccessError.prototype)
   }
@@ -36,5 +36,13 @@ export class WhatsAppACL {
     if (this.acl.allowAll) return true
     if (chatId == null) return false
     return (chatId in this.acl.canWrite) || (chatId in this.acl.canReadWrite)
+  }
+
+  canReadWrite (chatId: string | null | undefined): boolean {
+    return this.canRead(chatId) && this.canWrite(chatId)
+  }
+
+  canAccess (chatId: string | null | undefined): boolean {
+    return this.canRead(chatId) || this.canWrite(chatId)
   }
 }

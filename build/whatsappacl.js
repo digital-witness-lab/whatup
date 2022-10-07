@@ -32,5 +32,11 @@ class WhatsAppACL {
             return false;
         return (chatId in this.acl.canWrite) || (chatId in this.acl.canReadWrite);
     }
+    canReadWrite(chatId) {
+        return this.canRead(chatId) && this.canWrite(chatId);
+    }
+    canAccess(chatId) {
+        return this.canRead(chatId) || this.canWrite(chatId);
+    }
 }
 exports.WhatsAppACL = WhatsAppACL;

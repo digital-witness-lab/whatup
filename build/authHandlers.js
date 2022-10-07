@@ -1,27 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -33,11 +10,36 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const whatsappsession_1 = require("./whatsappsession");
+const globalSessions;
 module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () {
-    const session = new whatsappsession_1.WhatsAppSession({});
-    yield session.init();
-    const authenticateSession = (payload) => {
+    let session = new whatsappsession_1.WhatsAppSession({});
+    let sharedSession;
+    const authenticateSession = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+        var _a;
         const { sessionInfo, sharedConnection } = payload;
+        const authData = JSON.parse(sessionInfo);
+        if (((_a = authData.me) === null || _a === void 0 ? void 0 : _a.id) == null) {
+            socket.emit('connection:auth', { error: 'Invalid Credentials: No self ID' });
+            return;
+        }
+        if (sharedConnection === true) {
+            sharedSession = { name: authData.creds.me, numListeners: 1, session };
+            if (sharedSession.name in globalSessions) {
+                yield session.close();
+                sharedSession = globalSessions[sharedSession.name];
+                session = sharedSession.session;
+                sharedSession.numListeners += 1;
+            }
+            else {
+                globalSessions[sharedSession.name] = sharedSession;
+            }
+        }
+        else {
+            const r = Math.floor(Math.random() * 100000);
+            sharedSession.name = `${authData.creds.me}-${r}`;
+            globalSessions[sharedSession.name] = sharedSession;
+        }
+        yield session.init();
         console.log(`sessionInfo: ${sessionInfo}`);
         console.log(`sharedConnection: ${sharedConnection}`);
         socket.on('write:sendMessage', (...args) => __awaiter(void 0, void 0, void 0, function* () {
@@ -51,7 +53,7 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
         }));
         socket.on('write:markChatRead', (chatId) => __awaiter(void 0, void 0, void 0, function* () {
             try {
-                const markChatRead = yield session.markChatRead(chatId);
+                yield session.markChatRead(chatId);
                 socket.emit('write:markChatRead', { error: null });
             }
             catch (e) {
@@ -76,11 +78,31 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
                 socket.emit('read:groupMetadata', { error: e });
             }
         }));
-    };
+        socket.on('read:groupInviteMetadata', (inviteCode) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                const groupInviteMetadata = yield session.groupInviteMetadata(inviteCode);
+                socket.emit('read:groupInviteMetadata', groupInviteMetadata);
+            }
+            catch (e) {
+                socket.emit('read:groupInviteMetadata', { error: e });
+            }
+        }));
+    });
+    socket.on('disconnect', () => __awaiter(void 0, void 0, void 0, function* () {
+        if (sessionName !== null) {
+            sessions[sessionName].numListeners -= 1;
+            if (sessions[sessionName].numListeners === 0) {
+                yield sessions[sessionName].session.close();
+                // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+                delete sessions[sessionName];
+            }
+        }
+        else {
+            yield session.close();
+        }
+    }));
     socket.on('connection:qr', () => __awaiter(void 0, void 0, void 0, function* () {
         const qrCode = session.qrCode();
-        const QR = yield Promise.resolve().then(() => __importStar(require('qrcode-terminal')));
-        QR === null || QR === void 0 ? void 0 : QR.generate(qrCode, { small: true });
         socket.emit('connection:qr', { qrCode });
     }));
     socket.on('connection:status', () => {

@@ -15,6 +15,7 @@ export interface WhatsAppSessionInterface {
   markChatRead: (chatId: string) => Promise<void>
   joinGroup: (inviteCode: string) => Promise<GroupJoinResponse | null>
   groupMetadata: (chatId: string) => Promise<GroupMetadata | null>
+  groupInviteMetadata: (inviteCode: string) => Promise<GroupMetadata | null>
 }
 
 export interface WhatsAppSessionConfig {
@@ -42,12 +43,34 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     const { state, saveState } = await useSingleFileAuthState('single_auth')
     this.sock = makeWASocket({
       browser: Browsers.macOS('Desktop'),
-      auth: state
+      markOnlineOnConnect: false,
+      auth: state,
+
+      downloadHistory: true,
+      syncFullHistory: true
     })
 
     this.sock.ev.on('creds.update', saveState)
     this.sock.ev.on('connection.update', this._updateConnectionState.bind(this))
     this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this))
+    this.sock.ev.on('messages.set', this._updateHistory.bind(this))
+  }
+
+  async close (): Promise<void> {
+    this.sock?.end(undefined)
+  }
+
+  private _setMessageHistory (data: { messages: WAMessage[], isLatest: boolean}): void {
+    const { messages } = data;
+    for (const message of messages) {
+      const chatId: string | null | undefined = message.key?.remoteJid
+      if (chatId == null || !this.acl.canRead(chatId)) {
+        continue
+      }
+      if (this._lastMessage[chatId] == null || this._lastMessage[chatId].key?.id < message.key?.id) {
+        this._lastMessage[chatId] = message
+      }
+    }
   }
 
   private async _messageUpsert (data: { messages: WAMessage[], type: MessageUpsertType }): Promise<void> {
@@ -128,13 +151,20 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
 
   async joinGroup (inviteCode: string): Promise<GroupJoinResponse | null> {
     if (this.sock == null) return null
-    const metadata: GroupMetadata = await this.sock.groupGetInviteInfo(inviteCode)
-    if (!this.acl.canRead(metadata.id)) {
-      throw new NoAccessError('read', metadata.id)
+    const metadata: GroupMetadata | null = await this.groupInviteMetadata(inviteCode)
+    if (metadata == null) return null
+    if (!this.acl.canRead(metadata?.id)) {
+      throw new NoAccessError('read', metadata?.id)
     }
     this._groupMetadata[metadata.id] = metadata
     const response = await this.sock.groupAcceptInvite(inviteCode)
     return { metadata, response }
+  }
+
+  async groupInviteMetadata (inviteCode: string): Promise<GroupMetadata | null> {
+    if (this.sock == null) return null
+    const metadata: GroupMetadata = await this.sock.groupGetInviteInfo(inviteCode)
+    return metadata
   }
 
   async groupMetadata (chatId: string): Promise<GroupMetadata | null> {
