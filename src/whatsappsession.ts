@@ -1,4 +1,4 @@
-import makeWASocket, { Browsers, ConnectionState, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, useSingleFileAuthState, WAMessage, WASocket } from '@adiwajshing/baileys'
+import makeWASocket, { fetchLatestBaileysVersion, Browsers, ConnectionState, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, useSingleFileAuthState, WAMessage, WASocket } from '@adiwajshing/baileys'
 import { Boom } from '@hapi/boom'
 import { EventEmitter } from 'events'
 
@@ -19,7 +19,7 @@ export interface WhatsAppSessionInterface {
 }
 
 export interface WhatsAppSessionConfig {
-  acl?: WhatsAppACLConfig
+  acl?: Partial<WhatsAppACLConfig>
   authString?: string
 }
 
@@ -29,7 +29,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
   protected msgRetryCounterMap: MessageRetryMap = { }
   protected lastConnectionState: Partial<ConnectionState> = {}
   protected _lastMessage: { [_: string]: WAMessage } = {}
-  protected _groupMetadata: { [_: string]: GroupMetadata} = {}
+  protected _groupMetadata: { [_: string]: GroupMetadata } = {}
 
   protected acl: WhatsAppACL
 
@@ -40,28 +40,30 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
   }
 
   async init (): Promise<void> {
-    const { state, saveState } = await useSingleFileAuthState('single_auth')
+    const { version, isLatest } = await fetchLatestBaileysVersion()
+    const { state, saveState } = useSingleFileAuthState('single_auth')
     this.sock = makeWASocket({
+      version,
       browser: Browsers.macOS('Desktop'),
       markOnlineOnConnect: false,
-      auth: state,
+      auth: state
 
-      downloadHistory: true,
-      syncFullHistory: true
+      // downloadHistory: true,
+      // syncFullHistory: true
     })
 
     this.sock.ev.on('creds.update', saveState)
     this.sock.ev.on('connection.update', this._updateConnectionState.bind(this))
     this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this))
-    this.sock.ev.on('messages.set', this._updateHistory.bind(this))
+    // this.sock.ev.on('messages.set', this._updateHistory.bind(this))
   }
 
   async close (): Promise<void> {
     this.sock?.end(undefined)
   }
 
-  private _setMessageHistory (data: { messages: WAMessage[], isLatest: boolean}): void {
-    const { messages } = data;
+  private _setMessageHistory (data: { messages: WAMessage[], isLatest: boolean }): void {
+    const { messages } = data
     for (const message of messages) {
       const chatId: string | null | undefined = message.key?.remoteJid
       if (chatId == null || !this.acl.canRead(chatId)) {
@@ -76,20 +78,18 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
   private async _messageUpsert (data: { messages: WAMessage[], type: MessageUpsertType }): Promise<void> {
     const { messages, type } = data
     for (const message of messages) {
+      console.log('got message')
       const chatId: string | null | undefined = message.key?.remoteJid
       if (chatId == null || !this.acl.canRead(chatId)) {
+        console.log('not can read')
         continue
       }
       if (this._lastMessage[chatId] == null || this._lastMessage[chatId].key?.id < message.key?.id) {
         this._lastMessage[chatId] = message
       }
       if (message.key?.fromMe === false) {
+        console.log('emitting')
         this.emit('message', { message, type })
-        console.log(`Got message: ${JSON.stringify(message)}`)
-
-        if (message.key?.remoteJid != null) {
-          await this.sendMessage(message.key?.remoteJid, 'hello?')
-        }
       }
     }
   }
@@ -159,6 +159,13 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     this._groupMetadata[metadata.id] = metadata
     const response = await this.sock.groupAcceptInvite(inviteCode)
     return { metadata, response }
+  }
+
+  async leaveGroup (chatId: string): Promise<GroupMetadata | null> {
+    if (this.sock == null) return null
+    const groupMetadata: GroupMetadata | null = await this.groupMetadata(chatId)
+    await this.sock.groupLeave(chatId)
+    return groupMetadata
   }
 
   async groupInviteMetadata (inviteCode: string): Promise<GroupMetadata | null> {

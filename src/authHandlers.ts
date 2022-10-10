@@ -3,7 +3,7 @@ import { Server, Socket } from 'socket.io'
 import { WhatsAppSession } from './whatsappsession'
 
 interface AuthenticateSessionParams {
-  sessionInfo: string
+  sessionAuth: string
   sharedConnection?: boolean
 }
 
@@ -13,38 +13,37 @@ interface SharedSession {
   numListeners: number
 }
 
-const globalSessions: { [_: string]: SharedSession }
+const globalSessions: { [_: string]: SharedSession } = {}
 
 module.exports = async (io: Server, socket: Socket) => {
-  let session: WhatsAppSession = new WhatsAppSession({})
-  let sharedSession: SharedSession
+  let session: WhatsAppSession = new WhatsAppSession({ acl: { allowAll: true } })
+  let sharedSession: SharedSession | undefined
 
-  const authenticateSession = async (payload: AuthenticateSessionParams) => {
-    const { sessionInfo, sharedConnection } = payload
-    const authData = JSON.parse(sessionInfo)
-    if (authData.me?.id == null) {
+  const authenticateSession = async (payload: AuthenticateSessionParams): Promise<void> => {
+    const { sessionAuth, sharedConnection } = payload
+    const authData = JSON.parse(sessionAuth)
+    if (authData.creds?.me?.id == null) {
       socket.emit('connection:auth', { error: 'Invalid Credentials: No self ID' })
       return
     }
+
     if (sharedConnection === true) {
-      sharedSession = { name: authData.creds.me, numListeners: 1, session }
+      sharedSession = { name: authData.creds.me.id, numListeners: 1, session }
       if (sharedSession.name in globalSessions) {
+        console.log('Using shared session')
         await session.close()
         sharedSession = globalSessions[sharedSession.name]
-        session = sharedSession.session
         sharedSession.numListeners += 1
+        session = sharedSession.session
       } else {
+        console.log('Creating new sharable session')
         globalSessions[sharedSession.name] = sharedSession
       }
-    } else {
-      const r = Math.floor(Math.random() * 100000)
-      sharedSession.name = `${authData.creds.me}-${r}`
-      globalSessions[sharedSession.name] = sharedSession
     }
 
+    session.once('ready', (data) => socket.emit('connection:ready', data))
     await session.init()
-    console.log(`sessionInfo: ${sessionInfo}`)
-    console.log(`sharedConnection: ${sharedConnection}`)
+    socket.emit('connection:auth', { error: null })
 
     socket.on('write:sendMessage', async (...args: any[]) => {
       try {
@@ -62,7 +61,24 @@ module.exports = async (io: Server, socket: Socket) => {
         socket.emit('write:markChatRead', { error: e })
       }
     })
+    socket.on('read:messages:subscribe', async () => {
+      const emitMessage = (data: any): void => {
+        socket.emit('read:messages', data)
+      }
+      session.on('message', emitMessage)
+      socket.on('read:messages:unsubscribe', async () => {
+        session.off('message', emitMessage)
+      })
+    })
 
+    socket.on('write:leaveGroup', async (chatId: string) => {
+      try {
+        const groupMetadata = await session.leaveGroup(chatId)
+        socket.emit('write:leaveGroup', groupMetadata)
+      } catch (e) {
+        socket.emit('write:leaveGroup', { error: e })
+      }
+    })
     socket.on('read:joinGroup', async (chatId: string) => {
       try {
         const groupMetadata = await session.joinGroup(chatId)
@@ -90,12 +106,13 @@ module.exports = async (io: Server, socket: Socket) => {
   }
 
   socket.on('disconnect', async () => {
-    if (sessionName !== null) {
-      sessions[sessionName].numListeners -= 1
-      if (sessions[sessionName].numListeners === 0) {
-        await sessions[sessionName].session.close()
+    console.log('Disconnecting')
+    if (sharedSession !== undefined) {
+      sharedSession.numListeners -= 1
+      if (sharedSession.numListeners === 0) {
+        await sharedSession.session.close()
         // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-        delete sessions[sessionName]
+        delete globalSessions[sharedSession.name]
       }
     } else {
       await session.close()

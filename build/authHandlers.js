@@ -10,38 +10,35 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const whatsappsession_1 = require("./whatsappsession");
-const globalSessions;
+const globalSessions = {};
 module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () {
-    let session = new whatsappsession_1.WhatsAppSession({});
+    let session = new whatsappsession_1.WhatsAppSession({ acl: { allowAll: true } });
     let sharedSession;
     const authenticateSession = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a;
-        const { sessionInfo, sharedConnection } = payload;
-        const authData = JSON.parse(sessionInfo);
-        if (((_a = authData.me) === null || _a === void 0 ? void 0 : _a.id) == null) {
+        var _a, _b;
+        const { sessionAuth, sharedConnection } = payload;
+        const authData = JSON.parse(sessionAuth);
+        if (((_b = (_a = authData.creds) === null || _a === void 0 ? void 0 : _a.me) === null || _b === void 0 ? void 0 : _b.id) == null) {
             socket.emit('connection:auth', { error: 'Invalid Credentials: No self ID' });
             return;
         }
         if (sharedConnection === true) {
-            sharedSession = { name: authData.creds.me, numListeners: 1, session };
+            sharedSession = { name: authData.creds.me.id, numListeners: 1, session };
             if (sharedSession.name in globalSessions) {
+                console.log('Using shared session');
                 yield session.close();
                 sharedSession = globalSessions[sharedSession.name];
-                session = sharedSession.session;
                 sharedSession.numListeners += 1;
+                session = sharedSession.session;
             }
             else {
+                console.log('Creating new sharable session');
                 globalSessions[sharedSession.name] = sharedSession;
             }
         }
-        else {
-            const r = Math.floor(Math.random() * 100000);
-            sharedSession.name = `${authData.creds.me}-${r}`;
-            globalSessions[sharedSession.name] = sharedSession;
-        }
+        session.once('ready', (data) => socket.emit('connection:ready', data));
         yield session.init();
-        console.log(`sessionInfo: ${sessionInfo}`);
-        console.log(`sharedConnection: ${sharedConnection}`);
+        socket.emit('connection:auth', { error: null });
         socket.on('write:sendMessage', (...args) => __awaiter(void 0, void 0, void 0, function* () {
             try {
                 const sendMessage = yield session.sendMessage(...args);
@@ -58,6 +55,24 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
             }
             catch (e) {
                 socket.emit('write:markChatRead', { error: e });
+            }
+        }));
+        socket.on('read:messages:subscribe', () => __awaiter(void 0, void 0, void 0, function* () {
+            const emitMessage = (data) => {
+                socket.emit('read:messages', data);
+            };
+            session.on('message', emitMessage);
+            socket.on('read:messages:unsubscribe', () => __awaiter(void 0, void 0, void 0, function* () {
+                session.off('message', emitMessage);
+            }));
+        }));
+        socket.on('write:leaveGroup', (chatId) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                const groupMetadata = yield session.leaveGroup(chatId);
+                socket.emit('write:leaveGroup', groupMetadata);
+            }
+            catch (e) {
+                socket.emit('write:leaveGroup', { error: e });
             }
         }));
         socket.on('read:joinGroup', (chatId) => __awaiter(void 0, void 0, void 0, function* () {
@@ -89,12 +104,13 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
         }));
     });
     socket.on('disconnect', () => __awaiter(void 0, void 0, void 0, function* () {
-        if (sessionName !== null) {
-            sessions[sessionName].numListeners -= 1;
-            if (sessions[sessionName].numListeners === 0) {
-                yield sessions[sessionName].session.close();
+        console.log('Disconnecting');
+        if (sharedSession !== undefined) {
+            sharedSession.numListeners -= 1;
+            if (sharedSession.numListeners === 0) {
+                yield sharedSession.session.close();
                 // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-                delete sessions[sessionName];
+                delete globalSessions[sharedSession.name];
             }
         }
         else {

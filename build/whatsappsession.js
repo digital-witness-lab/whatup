@@ -51,18 +51,20 @@ class WhatsAppSession extends events_1.EventEmitter {
     }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
-            const { state, saveState } = yield (0, baileys_1.useSingleFileAuthState)('single_auth');
+            const { version, isLatest } = yield (0, baileys_1.fetchLatestBaileysVersion)();
+            const { state, saveState } = (0, baileys_1.useSingleFileAuthState)('single_auth');
             this.sock = (0, baileys_1.default)({
+                version,
                 browser: baileys_1.Browsers.macOS('Desktop'),
                 markOnlineOnConnect: false,
-                auth: state,
-                downloadHistory: true,
-                syncFullHistory: true
+                auth: state
+                // downloadHistory: true,
+                // syncFullHistory: true
             });
             this.sock.ev.on('creds.update', saveState);
             this.sock.ev.on('connection.update', this._updateConnectionState.bind(this));
             this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this));
-            this.sock.ev.on('messages.set', this._updateHistory.bind(this));
+            // this.sock.ev.on('messages.set', this._updateHistory.bind(this))
         });
     }
     close() {
@@ -85,23 +87,22 @@ class WhatsAppSession extends events_1.EventEmitter {
         }
     }
     _messageUpsert(data) {
-        var _a, _b, _c, _d, _e, _f;
+        var _a, _b, _c, _d;
         return __awaiter(this, void 0, void 0, function* () {
             const { messages, type } = data;
             for (const message of messages) {
+                console.log('got message');
                 const chatId = (_a = message.key) === null || _a === void 0 ? void 0 : _a.remoteJid;
                 if (chatId == null || !this.acl.canRead(chatId)) {
+                    console.log('not can read');
                     continue;
                 }
                 if (this._lastMessage[chatId] == null || ((_b = this._lastMessage[chatId].key) === null || _b === void 0 ? void 0 : _b.id) < ((_c = message.key) === null || _c === void 0 ? void 0 : _c.id)) {
                     this._lastMessage[chatId] = message;
                 }
                 if (((_d = message.key) === null || _d === void 0 ? void 0 : _d.fromMe) === false) {
+                    console.log('emitting');
                     this.emit('message', { message, type });
-                    console.log(`Got message: ${JSON.stringify(message)}`);
-                    if (((_e = message.key) === null || _e === void 0 ? void 0 : _e.remoteJid) != null) {
-                        yield this.sendMessage((_f = message.key) === null || _f === void 0 ? void 0 : _f.remoteJid, 'hello?');
-                    }
                 }
             }
         });
@@ -179,6 +180,15 @@ class WhatsAppSession extends events_1.EventEmitter {
             this._groupMetadata[metadata.id] = metadata;
             const response = yield this.sock.groupAcceptInvite(inviteCode);
             return { metadata, response };
+        });
+    }
+    leaveGroup(chatId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.sock == null)
+                return null;
+            const groupMetadata = yield this.groupMetadata(chatId);
+            yield this.sock.groupLeave(chatId);
+            return groupMetadata;
         });
     }
     groupInviteMetadata(inviteCode) {
