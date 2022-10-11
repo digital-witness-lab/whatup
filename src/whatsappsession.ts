@@ -3,6 +3,7 @@ import { Boom } from '@hapi/boom'
 import { EventEmitter } from 'events'
 
 import { WhatsAppACLConfig, WhatsAppACL, NoAccessError } from './whatsappacl'
+import { WhatsAppAuth, AuthenticationData } from './whatsappauth'
 import { sleep } from './utils'
 
 export interface GroupJoinResponse {metadata: GroupMetadata, response?: string }
@@ -20,7 +21,7 @@ export interface WhatsAppSessionInterface {
 
 export interface WhatsAppSessionConfig {
   acl?: Partial<WhatsAppACLConfig>
-  authString?: string
+  authData?: AuthenticationData
 }
 
 export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInterface {
@@ -32,27 +33,34 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
   protected _groupMetadata: { [_: string]: GroupMetadata } = {}
 
   protected acl: WhatsAppACL
+  protected auth: WhatsAppAuth
 
   constructor (config: Partial<WhatsAppSessionConfig>) {
     super()
     this.config = config
     this.acl = new WhatsAppACL(config.acl)
+    this.auth = new WhatsAppAuth(this.config.authData)
   }
 
   async init (): Promise<void> {
-    const { version, isLatest } = await fetchLatestBaileysVersion()
+    const { version } = await fetchLatestBaileysVersion()
     const { state, saveState } = useSingleFileAuthState('single_auth')
     this.sock = makeWASocket({
       version,
       browser: Browsers.macOS('Desktop'),
       markOnlineOnConnect: false,
-      auth: state
+      auth: this.auth.getAuth()
 
       // downloadHistory: true,
       // syncFullHistory: true
     })
 
-    this.sock.ev.on('creds.update', saveState)
+    this.sock.ev.on('creds.update', (creds) => {
+      if (creds !== undefined) {
+        this.auth.setCreds(creds)
+      }
+      this.emit('auth.state', this.auth)
+    })
     this.sock.ev.on('connection.update', this._updateConnectionState.bind(this))
     this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this))
     // this.sock.ev.on('messages.set', this._updateHistory.bind(this))

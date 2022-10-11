@@ -1,4 +1,6 @@
 import socketio
+import json
+import qrcode
 
 sio = socketio.Client()
 SESSION_AUTH = open("sessionauth.json").read().strip()
@@ -12,9 +14,22 @@ def connect():
     )
 
 
+@sio.on("connection:qr")
+def qr(code):
+    q = qrcode.QRCode(version=None)
+    q.add_data(code)
+    q.make(fit=True)
+    q.print_ascii()
+
+
 @sio.on("connection:auth")
 def connection_auth(data):
     print(f"connection:auth: {data=}")
+    if "sessionAuth" in data:
+        print("Got new auth... storing")
+        SESSION_AUTH = data["sessionAuth"]
+        with open("sessionauth.json", "w") as fd:
+            json.dump(SESSION_AUTH, fd)
 
 
 @sio.on("connection:ready")

@@ -36,6 +36,7 @@ exports.WhatsAppSession = void 0;
 const baileys_1 = __importStar(require("@adiwajshing/baileys"));
 const events_1 = require("events");
 const whatsappacl_1 = require("./whatsappacl");
+const whatsappauth_1 = require("./whatsappauth");
 const utils_1 = require("./utils");
 class WhatsAppSession extends events_1.EventEmitter {
     constructor(config) {
@@ -48,20 +49,26 @@ class WhatsAppSession extends events_1.EventEmitter {
         this._groupMetadata = {};
         this.config = config;
         this.acl = new whatsappacl_1.WhatsAppACL(config.acl);
+        this.auth = new whatsappauth_1.WhatsAppAuth(this.config.authData);
     }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
-            const { version, isLatest } = yield (0, baileys_1.fetchLatestBaileysVersion)();
+            const { version } = yield (0, baileys_1.fetchLatestBaileysVersion)();
             const { state, saveState } = (0, baileys_1.useSingleFileAuthState)('single_auth');
             this.sock = (0, baileys_1.default)({
                 version,
                 browser: baileys_1.Browsers.macOS('Desktop'),
                 markOnlineOnConnect: false,
-                auth: state
+                auth: this.auth.getAuth()
                 // downloadHistory: true,
                 // syncFullHistory: true
             });
-            this.sock.ev.on('creds.update', saveState);
+            this.sock.ev.on('creds.update', (creds) => {
+                if (creds !== undefined) {
+                    this.auth.setCreds(creds);
+                }
+                this.emit('auth.state', this.auth);
+            });
             this.sock.ev.on('connection.update', this._updateConnectionState.bind(this));
             this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this));
             // this.sock.ev.on('messages.set', this._updateHistory.bind(this))

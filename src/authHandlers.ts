@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io'
 
-import { WhatsAppSession } from './whatsappsession'
+import { WhatsAppSessionConfig, WhatsAppSession } from './whatsappsession'
 
 interface AuthenticateSessionParams {
   sessionAuth: string
@@ -8,7 +8,7 @@ interface AuthenticateSessionParams {
 }
 
 interface SharedSession {
-  session: WhatsAppACLConfig
+  session: WhatsAppSession
   name: string
   numListeners: number
 }
@@ -18,6 +18,13 @@ const globalSessions: { [_: string]: SharedSession } = {}
 module.exports = async (io: Server, socket: Socket) => {
   let session: WhatsAppSession = new WhatsAppSession({ acl: { allowAll: true } })
   let sharedSession: SharedSession | undefined
+
+  session.on('auth.state', (auth) => {
+    socket.emit('connection:auth', { sessionAuth: auth.state, error: null })
+  })
+  session.on('qrCode', (qrCode) => {
+    socket.emit('connection:qr', { qrCode })
+  })
 
   const authenticateSession = async (payload: AuthenticateSessionParams): Promise<void> => {
     const { sessionAuth, sharedConnection } = payload
