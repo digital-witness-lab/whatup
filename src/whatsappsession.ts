@@ -40,6 +40,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     this.config = config
     this.acl = new WhatsAppACL(config.acl)
     this.auth = new WhatsAppAuth(this.config.authData)
+    this.auth.on('state:update', (auth) => this.emit('connection:auth', auth))
   }
 
   async init (): Promise<void> {
@@ -59,7 +60,6 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
       if (creds !== undefined) {
         this.auth.setCreds(creds)
       }
-      this.emit('auth.state', this.auth)
     })
     this.sock.ev.on('connection.update', this._updateConnectionState.bind(this))
     this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this))
@@ -96,7 +96,6 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
         this._lastMessage[chatId] = message
       }
       if (message.key?.fromMe === false) {
-        console.log('emitting')
         this.emit('message', { message, type })
       }
     }
@@ -104,12 +103,12 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
 
   private async _updateConnectionState (data: Partial<ConnectionState>): Promise<void> {
     if (data.qr !== this.lastConnectionState.qr) {
-      this.emit('qrCode', data)
+      this.emit('connection:qr', data)
     }
     if (data.connection === 'open') {
-      this.emit('ready', data)
+      this.emit('connection:ready', data)
     } else if (data.connection !== undefined) {
-      this.emit('closed', data)
+      this.emit('connection:closed', data)
       const { lastDisconnect } = data
       if (lastDisconnect != null) {
         const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut

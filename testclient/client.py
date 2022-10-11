@@ -1,6 +1,7 @@
 import socketio
 import json
-import qrcode
+
+from util import qrcode_gen
 
 sio = socketio.Client()
 SESSION_AUTH = open("sessionauth.json").read().strip()
@@ -16,10 +17,8 @@ def connect():
 
 @sio.on("connection:qr")
 def qr(code):
-    q = qrcode.QRCode(version=None)
-    q.add_data(code)
-    q.make(fit=True)
-    q.print_ascii()
+    print(code)
+    print(qrcode_gen(code))
 
 
 @sio.on("connection:auth")
@@ -54,5 +53,6 @@ def disconnect():
     print("disconnected from server")
 
 
-sio.connect("ws://localhost:3000")
-sio.wait()
+if __name__ == "__main__":
+    sio.connect("ws://localhost:3000")
+    sio.wait()

@@ -50,6 +50,7 @@ class WhatsAppSession extends events_1.EventEmitter {
         this.config = config;
         this.acl = new whatsappacl_1.WhatsAppACL(config.acl);
         this.auth = new whatsappauth_1.WhatsAppAuth(this.config.authData);
+        this.auth.on('state:update', (auth) => this.emit('connection:auth', auth));
     }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -67,7 +68,6 @@ class WhatsAppSession extends events_1.EventEmitter {
                 if (creds !== undefined) {
                     this.auth.setCreds(creds);
                 }
-                this.emit('auth.state', this.auth);
             });
             this.sock.ev.on('connection.update', this._updateConnectionState.bind(this));
             this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this));
@@ -108,7 +108,6 @@ class WhatsAppSession extends events_1.EventEmitter {
                     this._lastMessage[chatId] = message;
                 }
                 if (((_d = message.key) === null || _d === void 0 ? void 0 : _d.fromMe) === false) {
-                    console.log('emitting');
                     this.emit('message', { message, type });
                 }
             }
@@ -118,13 +117,13 @@ class WhatsAppSession extends events_1.EventEmitter {
         var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
             if (data.qr !== this.lastConnectionState.qr) {
-                this.emit('qrCode', data);
+                this.emit('connection:qr', data);
             }
             if (data.connection === 'open') {
-                this.emit('ready', data);
+                this.emit('connection:ready', data);
             }
             else if (data.connection !== undefined) {
-                this.emit('closed', data);
+                this.emit('connection:closed', data);
                 const { lastDisconnect } = data;
                 if (lastDisconnect != null) {
                     const shouldReconnect = ((_b = (_a = lastDisconnect.error) === null || _a === void 0 ? void 0 : _a.output) === null || _b === void 0 ? void 0 : _b.statusCode) !== baileys_1.DisconnectReason.loggedOut;

@@ -19,10 +19,10 @@ module.exports = async (io: Server, socket: Socket) => {
   let session: WhatsAppSession = new WhatsAppSession({ acl: { allowAll: true } })
   let sharedSession: SharedSession | undefined
 
-  session.on('auth.state', (auth) => {
-    socket.emit('connection:auth', { sessionAuth: auth.state, error: null })
+  session.on('connection:auth', (state) => {
+    socket.emit('connection:auth', { sessionAuth: state, error: null })
   })
-  session.on('qrCode', (qrCode) => {
+  session.on('connection:qr', (qrCode) => {
     socket.emit('connection:qr', { qrCode })
   })
 
@@ -48,7 +48,7 @@ module.exports = async (io: Server, socket: Socket) => {
       }
     }
 
-    session.once('ready', (data) => socket.emit('connection:ready', data))
+    session.once('connection:ready', (data) => socket.emit('connection:ready', data))
     await session.init()
     socket.emit('connection:auth', { error: null })
 

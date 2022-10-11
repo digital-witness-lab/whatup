@@ -14,10 +14,10 @@ const globalSessions = {};
 module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () {
     let session = new whatsappsession_1.WhatsAppSession({ acl: { allowAll: true } });
     let sharedSession;
-    session.on('auth.state', (auth) => {
-        socket.emit('connection:auth', { sessionAuth: auth.state, error: null });
+    session.on('connection:auth', (state) => {
+        socket.emit('connection:auth', { sessionAuth: state, error: null });
     });
-    session.on('qrCode', (qrCode) => {
+    session.on('connection:qr', (qrCode) => {
         socket.emit('connection:qr', { qrCode });
     });
     const authenticateSession = (payload) => __awaiter(void 0, void 0, void 0, function* () {
@@ -42,7 +42,7 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
                 globalSessions[sharedSession.name] = sharedSession;
             }
         }
-        session.once('ready', (data) => socket.emit('connection:ready', data));
+        session.once('connection:ready', (data) => socket.emit('connection:ready', data));
         yield session.init();
         socket.emit('connection:auth', { error: null });
         socket.on('write:sendMessage', (...args) => __awaiter(void 0, void 0, void 0, function* () {
