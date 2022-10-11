@@ -49,25 +49,28 @@ class WhatsAppSession extends events_1.EventEmitter {
         this._groupMetadata = {};
         this.config = config;
         this.acl = new whatsappacl_1.WhatsAppACL(config.acl);
-        this.auth = new whatsappauth_1.WhatsAppAuth(this.config.authData);
+        this.setAuth(new whatsappauth_1.WhatsAppAuth(this.config.authData));
+    }
+    setAuth(auth) {
+        this.auth = auth;
         this.auth.on('state:update', (auth) => this.emit('connection:auth', auth));
     }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
             const { version } = yield (0, baileys_1.fetchLatestBaileysVersion)();
-            const { state, saveState } = (0, baileys_1.useSingleFileAuthState)('single_auth');
             this.sock = (0, baileys_1.default)({
                 version,
+                msgRetryCounterMap: this.msgRetryCounterMap,
                 browser: baileys_1.Browsers.macOS('Desktop'),
                 markOnlineOnConnect: false,
-                auth: this.auth.getAuth()
+                auth: this.auth.getAuth(),
+                printQRInTerminal: true
                 // downloadHistory: true,
                 // syncFullHistory: true
             });
             this.sock.ev.on('creds.update', (creds) => {
-                if (creds !== undefined) {
-                    this.auth.setCreds(creds);
-                }
+                console.log("creds updated");
+                this.auth.update();
             });
             this.sock.ev.on('connection.update', this._updateConnectionState.bind(this));
             this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this));

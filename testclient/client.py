@@ -1,18 +1,25 @@
 import socketio
-import json
 
-from util import qrcode_gen
+from util import qrcode_gen, forcestr
 
 sio = socketio.Client()
-SESSION_AUTH = open("sessionauth.json").read().strip()
+
+try:
+    SESSION_AUTH = open("sessionauth.dat").read().strip()
+except FileNotFoundError:
+    SESSION_AUTH = None
 
 
 @sio.event
 def connect():
     print("connection established")
-    sio.emit(
-        "connection:auth", data={"sessionAuth": SESSION_AUTH, "sharedConnection": True}
-    )
+    if SESSION_AUTH:
+        sio.emit(
+            "connection:auth",
+            data={"sessionAuth": SESSION_AUTH, "sharedConnection": True},
+        )
+    else:
+        sio.emit("connection:auth:anonymous")
 
 
 @sio.on("connection:qr")
@@ -27,8 +34,8 @@ def connection_auth(data):
     if "sessionAuth" in data:
         print("Got new auth... storing")
         SESSION_AUTH = data["sessionAuth"]
-        with open("sessionauth.json", "w") as fd:
-            json.dump(SESSION_AUTH, fd)
+        with open("sessionauth.dat", "w") as fd:
+            fd.write(SESSION_AUTH)
 
 
 @sio.on("connection:ready")

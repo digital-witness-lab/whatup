@@ -23,9 +23,27 @@ class WhatsAppAuth extends events_1.EventEmitter {
             keys: this
         };
     }
+    id() {
+        var _a, _b;
+        return (_b = (_a = this.state.creds) === null || _a === void 0 ? void 0 : _a.me) === null || _b === void 0 ? void 0 : _b.id;
+    }
+    static fromString(data) {
+        try {
+            const state = JSON.parse(data, baileys_1.BufferJSON.reviver);
+            return new WhatsAppAuth(state);
+        }
+        catch (e) {
+            return undefined;
+        }
+    }
+    toString() {
+        return JSON.stringify(this.state, baileys_1.BufferJSON.replacer);
+    }
+    update() {
+        this.emit('state:update', this.toString());
+    }
     get(type, ids) {
         return __awaiter(this, void 0, void 0, function* () {
-            console.log("Auth get:", type, ids);
             return ids.reduce((dict, id) => {
                 var _a;
                 let value = (_a = this.state.keys[type]) === null || _a === void 0 ? void 0 : _a[id];
@@ -39,21 +57,18 @@ class WhatsAppAuth extends events_1.EventEmitter {
             }, {});
         });
     }
-    setCreds(creds) {
-        console.log("set creds", creds);
-        this.state.creds = creds;
-        this.emit('state:update', this.state);
-    }
     set(data) {
         return __awaiter(this, void 0, void 0, function* () {
-            console.log("auth set:", data);
             for (const key in data) {
+                if (key === 'app-state-sync-key' && data[key] != null) {
+                    data[key] = data[key].toObject();
+                }
                 if (this.state.keys[key] === undefined) {
                     this.state.keys[key] = {};
                 }
                 Object.assign(this.state.keys[key], data[key]);
             }
-            this.emit('state:update', this.state);
+            this.update();
         });
     }
 }

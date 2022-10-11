@@ -39,27 +39,30 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     super()
     this.config = config
     this.acl = new WhatsAppACL(config.acl)
-    this.auth = new WhatsAppAuth(this.config.authData)
+    this.setAuth(new WhatsAppAuth(this.config.authData))
+  }
+
+  setAuth (auth: WhatsAppAuth): void {
+    this.auth = auth
     this.auth.on('state:update', (auth) => this.emit('connection:auth', auth))
   }
 
   async init (): Promise<void> {
     const { version } = await fetchLatestBaileysVersion()
-    const { state, saveState } = useSingleFileAuthState('single_auth')
     this.sock = makeWASocket({
       version,
+      msgRetryCounterMap: this.msgRetryCounterMap,
       browser: Browsers.macOS('Desktop'),
       markOnlineOnConnect: false,
-      auth: this.auth.getAuth()
-
+      auth: this.auth.getAuth(),
+      printQRInTerminal: true
       // downloadHistory: true,
       // syncFullHistory: true
     })
 
     this.sock.ev.on('creds.update', (creds) => {
-      if (creds !== undefined) {
-        this.auth.setCreds(creds)
-      }
+      console.log("creds updated")
+      this.auth.update()
     })
     this.sock.ev.on('connection.update', this._updateConnectionState.bind(this))
     this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this))

@@ -10,42 +10,22 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const whatsappsession_1 = require("./whatsappsession");
+const whatsappauth_1 = require("./whatsappauth");
 const globalSessions = {};
-module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () {
-    let session = new whatsappsession_1.WhatsAppSession({ acl: { allowAll: true } });
-    let sharedSession;
-    session.on('connection:auth', (state) => {
-        socket.emit('connection:auth', { sessionAuth: state, error: null });
+function assignSocket(session, socket) {
+    return __awaiter(this, void 0, void 0, function* () {
+        session.on('connection:auth', (state) => {
+            socket.emit('connection:auth', { sessionAuth: state, error: null });
+        });
+        session.on('connection:qr', (qrCode) => {
+            socket.emit('connection:qr', { qrCode });
+        });
+        session.on('connection:ready', (data) => socket.emit('connection:ready', data));
     });
-    session.on('connection:qr', (qrCode) => {
-        socket.emit('connection:qr', { qrCode });
-    });
-    const authenticateSession = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a, _b;
-        const { sessionAuth, sharedConnection } = payload;
-        const authData = JSON.parse(sessionAuth);
-        if (((_b = (_a = authData.creds) === null || _a === void 0 ? void 0 : _a.me) === null || _b === void 0 ? void 0 : _b.id) == null) {
-            socket.emit('connection:auth', { error: 'Invalid Credentials: No self ID' });
-            return;
-        }
-        if (sharedConnection === true) {
-            sharedSession = { name: authData.creds.me.id, numListeners: 1, session };
-            if (sharedSession.name in globalSessions) {
-                console.log('Using shared session');
-                yield session.close();
-                sharedSession = globalSessions[sharedSession.name];
-                sharedSession.numListeners += 1;
-                session = sharedSession.session;
-            }
-            else {
-                console.log('Creating new sharable session');
-                globalSessions[sharedSession.name] = sharedSession;
-            }
-        }
-        session.once('connection:ready', (data) => socket.emit('connection:ready', data));
-        yield session.init();
-        socket.emit('connection:auth', { error: null });
-        socket.on('write:sendMessage', (...args) => __awaiter(void 0, void 0, void 0, function* () {
+}
+function assignAuthenticatedEvents(session, socket) {
+    return __awaiter(this, void 0, void 0, function* () {
+        socket.on('write:sendMessage', (...args) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const sendMessage = yield session.sendMessage(...args);
                 socket.emit('write:sendMessage', sendMessage);
@@ -54,7 +34,7 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
                 socket.emit('write:sendMessage', { error: e });
             }
         }));
-        socket.on('write:markChatRead', (chatId) => __awaiter(void 0, void 0, void 0, function* () {
+        socket.on('write:markChatRead', (chatId) => __awaiter(this, void 0, void 0, function* () {
             try {
                 yield session.markChatRead(chatId);
                 socket.emit('write:markChatRead', { error: null });
@@ -63,16 +43,16 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
                 socket.emit('write:markChatRead', { error: e });
             }
         }));
-        socket.on('read:messages:subscribe', () => __awaiter(void 0, void 0, void 0, function* () {
+        socket.on('read:messages:subscribe', () => __awaiter(this, void 0, void 0, function* () {
             const emitMessage = (data) => {
                 socket.emit('read:messages', data);
             };
             session.on('message', emitMessage);
-            socket.on('read:messages:unsubscribe', () => __awaiter(void 0, void 0, void 0, function* () {
+            socket.on('read:messages:unsubscribe', () => __awaiter(this, void 0, void 0, function* () {
                 session.off('message', emitMessage);
             }));
         }));
-        socket.on('write:leaveGroup', (chatId) => __awaiter(void 0, void 0, void 0, function* () {
+        socket.on('write:leaveGroup', (chatId) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const groupMetadata = yield session.leaveGroup(chatId);
                 socket.emit('write:leaveGroup', groupMetadata);
@@ -81,7 +61,7 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
                 socket.emit('write:leaveGroup', { error: e });
             }
         }));
-        socket.on('read:joinGroup', (chatId) => __awaiter(void 0, void 0, void 0, function* () {
+        socket.on('read:joinGroup', (chatId) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const groupMetadata = yield session.joinGroup(chatId);
                 socket.emit('read:joinGroup', groupMetadata);
@@ -90,7 +70,7 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
                 socket.emit('read:joinGroup', { error: e });
             }
         }));
-        socket.on('read:groupMetadata', (chatId) => __awaiter(void 0, void 0, void 0, function* () {
+        socket.on('read:groupMetadata', (chatId) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const groupMetadata = yield session.groupMetadata(chatId);
                 socket.emit('read:groupMetadata', groupMetadata);
@@ -99,7 +79,7 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
                 socket.emit('read:groupMetadata', { error: e });
             }
         }));
-        socket.on('read:groupInviteMetadata', (inviteCode) => __awaiter(void 0, void 0, void 0, function* () {
+        socket.on('read:groupInviteMetadata', (inviteCode) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const groupInviteMetadata = yield session.groupInviteMetadata(inviteCode);
                 socket.emit('read:groupInviteMetadata', groupInviteMetadata);
@@ -108,6 +88,46 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
                 socket.emit('read:groupInviteMetadata', { error: e });
             }
         }));
+    });
+}
+module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () {
+    let session = new whatsappsession_1.WhatsAppSession({ acl: { allowAll: true } });
+    let sharedSession;
+    yield assignSocket(session, socket);
+    const authenticateSession = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+        const { sessionAuth, sharedConnection } = payload;
+        const auth = whatsappauth_1.WhatsAppAuth.fromString(sessionAuth);
+        if (auth === undefined) {
+            socket.emit('connection:auth', { error: 'Unparsable Session Auth' });
+            return;
+        }
+        const name = auth.id();
+        if (name === undefined) {
+            socket.emit('connection:auth', { error: 'Invalid Auth: not authenticated' });
+            return;
+        }
+        if (sharedConnection === true || sharedSession === undefined) {
+            sharedSession = { name, numListeners: 1, session };
+            if (sharedSession.name in globalSessions) {
+                console.log('Using shared session');
+                yield session.close();
+                sharedSession = globalSessions[sharedSession.name];
+                sharedSession.numListeners += 1;
+                session = sharedSession.session;
+                yield assignSocket(session, socket);
+            }
+            else {
+                console.log('Creating new sharable session');
+                globalSessions[sharedSession.name] = sharedSession;
+                session.setAuth(auth);
+                yield session.init();
+            }
+        }
+        else {
+            session.setAuth(auth);
+            yield session.init();
+        }
+        yield assignAuthenticatedEvents(session, socket);
     });
     socket.on('disconnect', () => __awaiter(void 0, void 0, void 0, function* () {
         console.log('Disconnecting');
@@ -132,4 +152,11 @@ module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () 
         socket.emit('connection:status', { connection });
     });
     socket.on('connection:auth', authenticateSession);
+    socket.on('connection:auth:anonymous', () => __awaiter(void 0, void 0, void 0, function* () {
+        console.log('Initializing empty session');
+        yield session.init();
+        session.once('connection:ready', () => __awaiter(void 0, void 0, void 0, function* () {
+            yield assignAuthenticatedEvents(session, socket);
+        }));
+    }));
 });

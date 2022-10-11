@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io'
 
 import { WhatsAppSessionConfig, WhatsAppSession } from './whatsappsession'
+import { WhatsAppAuth } from './whatsappauth'
 
 interface AuthenticateSessionParams {
   sessionAuth: string
@@ -15,101 +16,115 @@ interface SharedSession {
 
 const globalSessions: { [_: string]: SharedSession } = {}
 
-module.exports = async (io: Server, socket: Socket) => {
-  let session: WhatsAppSession = new WhatsAppSession({ acl: { allowAll: true } })
-  let sharedSession: SharedSession | undefined
-
+async function assignSocket (session: WhatsAppSession, socket: Socket): Promise<void> {
   session.on('connection:auth', (state) => {
     socket.emit('connection:auth', { sessionAuth: state, error: null })
   })
   session.on('connection:qr', (qrCode) => {
     socket.emit('connection:qr', { qrCode })
   })
+  session.on('connection:ready', (data) => socket.emit('connection:ready', data))
+}
+
+async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Socket): Promise<void> {
+  socket.on('write:sendMessage', async (...args: any[]) => {
+    try {
+      const sendMessage = await session.sendMessage(...args)
+      socket.emit('write:sendMessage', sendMessage)
+    } catch (e) {
+      socket.emit('write:sendMessage', { error: e })
+    }
+  })
+  socket.on('write:markChatRead', async (chatId: string) => {
+    try {
+      await session.markChatRead(chatId)
+      socket.emit('write:markChatRead', { error: null })
+    } catch (e) {
+      socket.emit('write:markChatRead', { error: e })
+    }
+  })
+  socket.on('read:messages:subscribe', async () => {
+    const emitMessage = (data: any): void => {
+      socket.emit('read:messages', data)
+    }
+    session.on('message', emitMessage)
+    socket.on('read:messages:unsubscribe', async () => {
+      session.off('message', emitMessage)
+    })
+  })
+
+  socket.on('write:leaveGroup', async (chatId: string) => {
+    try {
+      const groupMetadata = await session.leaveGroup(chatId)
+      socket.emit('write:leaveGroup', groupMetadata)
+    } catch (e) {
+      socket.emit('write:leaveGroup', { error: e })
+    }
+  })
+  socket.on('read:joinGroup', async (chatId: string) => {
+    try {
+      const groupMetadata = await session.joinGroup(chatId)
+      socket.emit('read:joinGroup', groupMetadata)
+    } catch (e) {
+      socket.emit('read:joinGroup', { error: e })
+    }
+  })
+  socket.on('read:groupMetadata', async (chatId: string) => {
+    try {
+      const groupMetadata = await session.groupMetadata(chatId)
+      socket.emit('read:groupMetadata', groupMetadata)
+    } catch (e) {
+      socket.emit('read:groupMetadata', { error: e })
+    }
+  })
+  socket.on('read:groupInviteMetadata', async (inviteCode: string) => {
+    try {
+      const groupInviteMetadata = await session.groupInviteMetadata(inviteCode)
+      socket.emit('read:groupInviteMetadata', groupInviteMetadata)
+    } catch (e) {
+      socket.emit('read:groupInviteMetadata', { error: e })
+    }
+  })
+}
+
+module.exports = async (io: Server, socket: Socket) => {
+  let session: WhatsAppSession = new WhatsAppSession({ acl: { allowAll: true } })
+  let sharedSession: SharedSession | undefined
+  await assignSocket(session, socket)
 
   const authenticateSession = async (payload: AuthenticateSessionParams): Promise<void> => {
     const { sessionAuth, sharedConnection } = payload
-    const authData = JSON.parse(sessionAuth)
-    if (authData.creds?.me?.id == null) {
-      socket.emit('connection:auth', { error: 'Invalid Credentials: No self ID' })
+    const auth: WhatsAppAuth | undefined = WhatsAppAuth.fromString(sessionAuth)
+    if (auth === undefined) {
+      socket.emit('connection:auth', { error: 'Unparsable Session Auth' })
+      return
+    }
+    const name = auth.id()
+    if (name === undefined) {
+      socket.emit('connection:auth', { error: 'Invalid Auth: not authenticated' })
       return
     }
 
-    if (sharedConnection === true) {
-      sharedSession = { name: authData.creds.me.id, numListeners: 1, session }
+    if (sharedConnection === true || sharedSession === undefined) {
+      sharedSession = { name, numListeners: 1, session }
       if (sharedSession.name in globalSessions) {
         console.log('Using shared session')
         await session.close()
         sharedSession = globalSessions[sharedSession.name]
         sharedSession.numListeners += 1
         session = sharedSession.session
+        await assignSocket(session, socket)
       } else {
         console.log('Creating new sharable session')
         globalSessions[sharedSession.name] = sharedSession
+        session.setAuth(auth)
+        await session.init()
       }
+    } else {
+      session.setAuth(auth)
+      await session.init()
     }
-
-    session.once('connection:ready', (data) => socket.emit('connection:ready', data))
-    await session.init()
-    socket.emit('connection:auth', { error: null })
-
-    socket.on('write:sendMessage', async (...args: any[]) => {
-      try {
-        const sendMessage = await session.sendMessage(...args)
-        socket.emit('write:sendMessage', sendMessage)
-      } catch (e) {
-        socket.emit('write:sendMessage', { error: e })
-      }
-    })
-    socket.on('write:markChatRead', async (chatId: string) => {
-      try {
-        await session.markChatRead(chatId)
-        socket.emit('write:markChatRead', { error: null })
-      } catch (e) {
-        socket.emit('write:markChatRead', { error: e })
-      }
-    })
-    socket.on('read:messages:subscribe', async () => {
-      const emitMessage = (data: any): void => {
-        socket.emit('read:messages', data)
-      }
-      session.on('message', emitMessage)
-      socket.on('read:messages:unsubscribe', async () => {
-        session.off('message', emitMessage)
-      })
-    })
-
-    socket.on('write:leaveGroup', async (chatId: string) => {
-      try {
-        const groupMetadata = await session.leaveGroup(chatId)
-        socket.emit('write:leaveGroup', groupMetadata)
-      } catch (e) {
-        socket.emit('write:leaveGroup', { error: e })
-      }
-    })
-    socket.on('read:joinGroup', async (chatId: string) => {
-      try {
-        const groupMetadata = await session.joinGroup(chatId)
-        socket.emit('read:joinGroup', groupMetadata)
-      } catch (e) {
-        socket.emit('read:joinGroup', { error: e })
-      }
-    })
-    socket.on('read:groupMetadata', async (chatId: string) => {
-      try {
-        const groupMetadata = await session.groupMetadata(chatId)
-        socket.emit('read:groupMetadata', groupMetadata)
-      } catch (e) {
-        socket.emit('read:groupMetadata', { error: e })
-      }
-    })
-    socket.on('read:groupInviteMetadata', async (inviteCode: string) => {
-      try {
-        const groupInviteMetadata = await session.groupInviteMetadata(inviteCode)
-        socket.emit('read:groupInviteMetadata', groupInviteMetadata)
-      } catch (e) {
-        socket.emit('read:groupInviteMetadata', { error: e })
-      }
-    })
+    await assignAuthenticatedEvents(session, socket)
   }
 
   socket.on('disconnect', async () => {
@@ -134,4 +149,11 @@ module.exports = async (io: Server, socket: Socket) => {
     socket.emit('connection:status', { connection })
   })
   socket.on('connection:auth', authenticateSession)
+  socket.on('connection:auth:anonymous', async () => {
+    console.log('Initializing empty session')
+    await session.init()
+    session.once('connection:ready', async () => {
+      await assignAuthenticatedEvents(session, socket)
+    })
+  })
 }
