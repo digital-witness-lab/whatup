@@ -33,6 +33,8 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
   protected _groupMetadata: { [_: string]: GroupMetadata } = {}
 
   protected acl: WhatsAppACL
+  // @ts-expect-error: TS2564: this.auth is definitly initialized in
+  //                   `constructor()` through the call to `this.setAuth`
   protected auth: WhatsAppAuth
 
   constructor (config: Partial<WhatsAppSessionConfig>) {
@@ -60,8 +62,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
       // syncFullHistory: true
     })
 
-    this.sock.ev.on('creds.update', (creds) => {
-      console.log("creds updated")
+    this.sock.ev.on('creds.update', () => {
       this.auth.update()
     })
     this.sock.ev.on('connection.update', this._updateConnectionState.bind(this))
@@ -80,7 +81,8 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
       if (chatId == null || !this.acl.canRead(chatId)) {
         continue
       }
-      if (this._lastMessage[chatId] == null || this._lastMessage[chatId].key?.id < message.key?.id) {
+      const lastMessage: WAMessage | undefined = this._lastMessage[chatId]
+      if (lastMessage == null || lastMessage.key.id == null || (message.key.id != null && lastMessage.key.id < message.key.id)) {
         this._lastMessage[chatId] = message
       }
     }
@@ -95,7 +97,8 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
         console.log('not can read')
         continue
       }
-      if (this._lastMessage[chatId] == null || this._lastMessage[chatId].key?.id < message.key?.id) {
+      const lastMessage: WAMessage | undefined = this._lastMessage[chatId]
+      if (lastMessage == null || lastMessage.key.id == null || (message.key.id != null && lastMessage.key.id < message.key.id)) {
         this._lastMessage[chatId] = message
       }
       if (message.key?.fromMe === false) {

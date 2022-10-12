@@ -59,9 +59,11 @@ class WhatsAppAuth extends events_1.EventEmitter {
     }
     set(data) {
         return __awaiter(this, void 0, void 0, function* () {
-            for (const key in data) {
-                if (key === 'app-state-sync-key' && data[key] != null) {
-                    data[key] = data[key].toObject();
+            let key;
+            for (key in data) {
+                let value = data[key];
+                if (value != null && key === 'app-state-sync-key') {
+                    value = value.toObject();
                 }
                 if (this.state.keys[key] === undefined) {
                     this.state.keys[key] = {};

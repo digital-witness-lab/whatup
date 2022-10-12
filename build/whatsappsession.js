@@ -68,8 +68,7 @@ class WhatsAppSession extends events_1.EventEmitter {
                 // downloadHistory: true,
                 // syncFullHistory: true
             });
-            this.sock.ev.on('creds.update', (creds) => {
-                console.log("creds updated");
+            this.sock.ev.on('creds.update', () => {
                 this.auth.update();
             });
             this.sock.ev.on('connection.update', this._updateConnectionState.bind(this));
@@ -84,20 +83,21 @@ class WhatsAppSession extends events_1.EventEmitter {
         });
     }
     _setMessageHistory(data) {
-        var _a, _b, _c;
+        var _a;
         const { messages } = data;
         for (const message of messages) {
             const chatId = (_a = message.key) === null || _a === void 0 ? void 0 : _a.remoteJid;
             if (chatId == null || !this.acl.canRead(chatId)) {
                 continue;
             }
-            if (this._lastMessage[chatId] == null || ((_b = this._lastMessage[chatId].key) === null || _b === void 0 ? void 0 : _b.id) < ((_c = message.key) === null || _c === void 0 ? void 0 : _c.id)) {
+            const lastMessage = this._lastMessage[chatId];
+            if (lastMessage == null || lastMessage.key.id == null || (message.key.id != null && lastMessage.key.id < message.key.id)) {
                 this._lastMessage[chatId] = message;
             }
         }
     }
     _messageUpsert(data) {
-        var _a, _b, _c, _d;
+        var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
             const { messages, type } = data;
             for (const message of messages) {
@@ -107,10 +107,11 @@ class WhatsAppSession extends events_1.EventEmitter {
                     console.log('not can read');
                     continue;
                 }
-                if (this._lastMessage[chatId] == null || ((_b = this._lastMessage[chatId].key) === null || _b === void 0 ? void 0 : _b.id) < ((_c = message.key) === null || _c === void 0 ? void 0 : _c.id)) {
+                const lastMessage = this._lastMessage[chatId];
+                if (lastMessage == null || lastMessage.key.id == null || (message.key.id != null && lastMessage.key.id < message.key.id)) {
                     this._lastMessage[chatId] = message;
                 }
-                if (((_d = message.key) === null || _d === void 0 ? void 0 : _d.fromMe) === false) {
+                if (((_b = message.key) === null || _b === void 0 ? void 0 : _b.fromMe) === false) {
                     this.emit('message', { message, type });
                 }
             }

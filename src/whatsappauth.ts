@@ -1,14 +1,12 @@
 import { proto, BufferJSON, initAuthCreds, AuthenticationState, AuthenticationCreds, SignalKeyStore, SignalDataSet, SignalDataTypeMap } from '@adiwajshing/baileys'
 import { EventEmitter } from 'events'
 
-type Awaitable<T> = T | PromiseLike<T>
-
 export interface AuthenticationData {
   creds: AuthenticationCreds
   keys: { [_: string]: any }
 }
 
-export class WhatsAppAuth implements SignalKeyStore extends EventEmitter {
+export class WhatsAppAuth extends EventEmitter implements SignalKeyStore {
   protected state: AuthenticationData
 
   constructor (state: AuthenticationData | null = null) {
@@ -44,7 +42,7 @@ export class WhatsAppAuth implements SignalKeyStore extends EventEmitter {
     this.emit('state:update', this.toString())
   }
 
-  async get<T extends keyof SignalDataTypeMap>(type: T, ids: string[]): Awaitable<{ [id: string]: SignalDataTypeMap[T] }> {
+  async get<T extends keyof SignalDataTypeMap>(type: T, ids: string[]): Promise<{ [id: string]: SignalDataTypeMap[T] }> {
     return ids.reduce((dict: { [_: string]: any }, id: string): { [id: string]: SignalDataTypeMap[T] } => {
       let value = this.state.keys[type]?.[id]
       if (value != null) {
@@ -57,10 +55,12 @@ export class WhatsAppAuth implements SignalKeyStore extends EventEmitter {
     }, { })
   }
 
-  async set (data: SignalDataSet): Awaitable<void> {
-    for (const key in data) {
-      if (key === 'app-state-sync-key' && data[key] != null) {
-        data[key] = data[key].toObject()
+  async set (data: SignalDataSet): Promise<void> {
+    let key: keyof SignalDataTypeMap
+    for (key in data) {
+      let value: SignalDataTypeMap[typeof key] = data[key]
+      if (value != null && key === 'app-state-sync-key') {
+        value = value.toObject()
       }
       if (this.state.keys[key] === undefined) {
         this.state.keys[key] = {}

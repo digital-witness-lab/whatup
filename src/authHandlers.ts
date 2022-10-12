@@ -29,6 +29,7 @@ async function assignSocket (session: WhatsAppSession, socket: Socket): Promise<
 async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Socket): Promise<void> {
   socket.on('write:sendMessage', async (...args: any[]) => {
     try {
+      // @ts-expect-error: TS2556: just let me use `...args` here pls.
       const sendMessage = await session.sendMessage(...args)
       socket.emit('write:sendMessage', sendMessage)
     } catch (e) {
@@ -87,7 +88,7 @@ async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Sock
   })
 }
 
-module.exports = async (io: Server, socket: Socket) => {
+export async function registerAuthHandlers (io: Server, socket: Socket): Promise<void> {
   let session: WhatsAppSession = new WhatsAppSession({ acl: { allowAll: true } })
   let sharedSession: SharedSession | undefined
   await assignSocket(session, socket)
@@ -152,7 +153,7 @@ module.exports = async (io: Server, socket: Socket) => {
   socket.on('connection:auth:anonymous', async () => {
     console.log('Initializing empty session')
     await session.init()
-    session.once('connection:ready', async () => {
+    session.once('connection:ready', async (): Promise<void> => {
       await assignAuthenticatedEvents(session, socket)
     })
   })

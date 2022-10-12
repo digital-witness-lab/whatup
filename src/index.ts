@@ -1,7 +1,6 @@
 import { App } from 'uWebSockets.js'
 import { Server } from 'socket.io'
-
-const registerAuthHandlers = require('./authHandlers')
+import { registerAuthHandlers } from './authHandlers'
 
 // @ts-expect-error: TS7009
 const app = new App()
@@ -16,7 +15,7 @@ io.on('connection', async (socket) => {
 })
 
 app.listen(3000, (token: any) => {
-  if (!token) {
+  if (token == null) {
     console.warn('port already in use')
   }
   console.log(`Listening on port: ${port}`)

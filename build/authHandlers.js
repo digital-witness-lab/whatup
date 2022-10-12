@@ -9,6 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.registerAuthHandlers = void 0;
 const whatsappsession_1 = require("./whatsappsession");
 const whatsappauth_1 = require("./whatsappauth");
 const globalSessions = {};
@@ -27,6 +28,7 @@ function assignAuthenticatedEvents(session, socket) {
     return __awaiter(this, void 0, void 0, function* () {
         socket.on('write:sendMessage', (...args) => __awaiter(this, void 0, void 0, function* () {
             try {
+                // @ts-expect-error: TS2556: just let me use `...args` here pls.
                 const sendMessage = yield session.sendMessage(...args);
                 socket.emit('write:sendMessage', sendMessage);
             }
@@ -90,73 +92,76 @@ function assignAuthenticatedEvents(session, socket) {
         }));
     });
 }
-module.exports = (io, socket) => __awaiter(void 0, void 0, void 0, function* () {
-    let session = new whatsappsession_1.WhatsAppSession({ acl: { allowAll: true } });
-    let sharedSession;
-    yield assignSocket(session, socket);
-    const authenticateSession = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-        const { sessionAuth, sharedConnection } = payload;
-        const auth = whatsappauth_1.WhatsAppAuth.fromString(sessionAuth);
-        if (auth === undefined) {
-            socket.emit('connection:auth', { error: 'Unparsable Session Auth' });
-            return;
-        }
-        const name = auth.id();
-        if (name === undefined) {
-            socket.emit('connection:auth', { error: 'Invalid Auth: not authenticated' });
-            return;
-        }
-        if (sharedConnection === true || sharedSession === undefined) {
-            sharedSession = { name, numListeners: 1, session };
-            if (sharedSession.name in globalSessions) {
-                console.log('Using shared session');
-                yield session.close();
-                sharedSession = globalSessions[sharedSession.name];
-                sharedSession.numListeners += 1;
-                session = sharedSession.session;
-                yield assignSocket(session, socket);
+function registerAuthHandlers(io, socket) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let session = new whatsappsession_1.WhatsAppSession({ acl: { allowAll: true } });
+        let sharedSession;
+        yield assignSocket(session, socket);
+        const authenticateSession = (payload) => __awaiter(this, void 0, void 0, function* () {
+            const { sessionAuth, sharedConnection } = payload;
+            const auth = whatsappauth_1.WhatsAppAuth.fromString(sessionAuth);
+            if (auth === undefined) {
+                socket.emit('connection:auth', { error: 'Unparsable Session Auth' });
+                return;
+            }
+            const name = auth.id();
+            if (name === undefined) {
+                socket.emit('connection:auth', { error: 'Invalid Auth: not authenticated' });
+                return;
+            }
+            if (sharedConnection === true || sharedSession === undefined) {
+                sharedSession = { name, numListeners: 1, session };
+                if (sharedSession.name in globalSessions) {
+                    console.log('Using shared session');
+                    yield session.close();
+                    sharedSession = globalSessions[sharedSession.name];
+                    sharedSession.numListeners += 1;
+                    session = sharedSession.session;
+                    yield assignSocket(session, socket);
+                }
+                else {
+                    console.log('Creating new sharable session');
+                    globalSessions[sharedSession.name] = sharedSession;
+                    session.setAuth(auth);
+                    yield session.init();
+                }
             }
             else {
-                console.log('Creating new sharable session');
-                globalSessions[sharedSession.name] = sharedSession;
                 session.setAuth(auth);
                 yield session.init();
             }
-        }
-        else {
-            session.setAuth(auth);
-            yield session.init();
-        }
-        yield assignAuthenticatedEvents(session, socket);
-    });
-    socket.on('disconnect', () => __awaiter(void 0, void 0, void 0, function* () {
-        console.log('Disconnecting');
-        if (sharedSession !== undefined) {
-            sharedSession.numListeners -= 1;
-            if (sharedSession.numListeners === 0) {
-                yield sharedSession.session.close();
-                // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-                delete globalSessions[sharedSession.name];
-            }
-        }
-        else {
-            yield session.close();
-        }
-    }));
-    socket.on('connection:qr', () => __awaiter(void 0, void 0, void 0, function* () {
-        const qrCode = session.qrCode();
-        socket.emit('connection:qr', { qrCode });
-    }));
-    socket.on('connection:status', () => {
-        const connection = session.connection();
-        socket.emit('connection:status', { connection });
-    });
-    socket.on('connection:auth', authenticateSession);
-    socket.on('connection:auth:anonymous', () => __awaiter(void 0, void 0, void 0, function* () {
-        console.log('Initializing empty session');
-        yield session.init();
-        session.once('connection:ready', () => __awaiter(void 0, void 0, void 0, function* () {
             yield assignAuthenticatedEvents(session, socket);
+        });
+        socket.on('disconnect', () => __awaiter(this, void 0, void 0, function* () {
+            console.log('Disconnecting');
+            if (sharedSession !== undefined) {
+                sharedSession.numListeners -= 1;
+                if (sharedSession.numListeners === 0) {
+                    yield sharedSession.session.close();
+                    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+                    delete globalSessions[sharedSession.name];
+                }
+            }
+            else {
+                yield session.close();
+            }
         }));
-    }));
-});
+        socket.on('connection:qr', () => __awaiter(this, void 0, void 0, function* () {
+            const qrCode = session.qrCode();
+            socket.emit('connection:qr', { qrCode });
+        }));
+        socket.on('connection:status', () => {
+            const connection = session.connection();
+            socket.emit('connection:status', { connection });
+        });
+        socket.on('connection:auth', authenticateSession);
+        socket.on('connection:auth:anonymous', () => __awaiter(this, void 0, void 0, function* () {
+            console.log('Initializing empty session');
+            yield session.init();
+            session.once('connection:ready', () => __awaiter(this, void 0, void 0, function* () {
+                yield assignAuthenticatedEvents(session, socket);
+            }));
+        }));
+    });
+}
+exports.registerAuthHandlers = registerAuthHandlers;
