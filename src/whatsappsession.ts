@@ -1,9 +1,10 @@
-import makeWASocket, { fetchLatestBaileysVersion, Browsers, ConnectionState, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, useSingleFileAuthState, WAMessage, WASocket } from '@adiwajshing/baileys'
+import makeWASocket, { fetchLatestBaileysVersion, Browsers, ConnectionState, Contact, Chat, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, useSingleFileAuthState, WAMessage, WASocket } from '@adiwajshing/baileys'
 import { Boom } from '@hapi/boom'
 import { EventEmitter } from 'events'
 
 import { WhatsAppACLConfig, WhatsAppACL, NoAccessError } from './whatsappacl'
 import { WhatsAppAuth, AuthenticationData } from './whatsappauth'
+import { WhatsAppStore } from './whatsappstore'
 import { sleep } from './utils'
 
 export interface GroupJoinResponse {metadata: GroupMetadata, response?: string }
@@ -12,11 +13,12 @@ export interface WhatsAppSessionInterface {
   init: () => Promise<void>
   qrCode: () => string | undefined
   connection: () => string | undefined
+
   sendMessage: (chatId: string, message: string, clearChatStatus: boolean, vampMaxSeconds: number | undefined) => Promise<WAMessage | undefined>
   markChatRead: (chatId: string) => Promise<void>
-  joinGroup: (inviteCode: string) => Promise<GroupJoinResponse | null>
-  groupMetadata: (chatId: string) => Promise<GroupMetadata | null>
-  groupInviteMetadata: (inviteCode: string) => Promise<GroupMetadata | null>
+  joinGroup: (inviteCode: string) => Promise<GroupJoinResponse | undefined | null>
+  groupMetadata: (chatId: string) => Promise<GroupMetadata | undefined>
+  groupInviteMetadata: (inviteCode: string) => Promise<GroupMetadata | undefined | null>
 }
 
 export interface WhatsAppSessionConfig {
@@ -25,23 +27,26 @@ export interface WhatsAppSessionConfig {
 }
 
 export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInterface {
+  public uid: string
   protected sock?: WASocket = undefined
   protected config: WhatsAppSessionConfig = {}
   protected msgRetryCounterMap: MessageRetryMap = { }
   protected lastConnectionState: Partial<ConnectionState> = {}
-  protected _lastMessage: { [_: string]: WAMessage } = {}
-  protected _groupMetadata: { [_: string]: GroupMetadata } = {}
 
   protected acl: WhatsAppACL
   // @ts-expect-error: TS2564: this.auth is definitly initialized in
   //                   `constructor()` through the call to `this.setAuth`
   protected auth: WhatsAppAuth
+  protected store: WhatsAppStore
 
   constructor (config: Partial<WhatsAppSessionConfig>) {
     super()
+    this.uid = `WS-${Math.floor(Math.random() * 10000000)}`
+    console.log(`${this.uid}: Constructing session`)
     this.config = config
     this.acl = new WhatsAppACL(config.acl)
     this.setAuth(new WhatsAppAuth(this.config.authData))
+    this.store = new WhatsAppStore(this.acl)
   }
 
   setAuth (auth: WhatsAppAuth): void {
@@ -54,52 +59,35 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     this.sock = makeWASocket({
       version,
       msgRetryCounterMap: this.msgRetryCounterMap,
-      browser: Browsers.macOS('Desktop'),
       markOnlineOnConnect: false,
       auth: this.auth.getAuth(),
-      printQRInTerminal: true
-      // downloadHistory: true,
-      // syncFullHistory: true
+
+      browser: Browsers.macOS('Desktop'),
+      downloadHistory: true,
+      syncFullHistory: true
     })
+    this.store.bind(this.sock)
 
     this.sock.ev.on('creds.update', () => {
       this.auth.update()
     })
     this.sock.ev.on('connection.update', this._updateConnectionState.bind(this))
     this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this))
-    // this.sock.ev.on('messages.set', this._updateHistory.bind(this))
   }
 
   async close (): Promise<void> {
+    console.log(`${this.uid}: Closing session`)
     this.sock?.end(undefined)
-  }
-
-  private _setMessageHistory (data: { messages: WAMessage[], isLatest: boolean }): void {
-    const { messages } = data
-    for (const message of messages) {
-      const chatId: string | null | undefined = message.key?.remoteJid
-      if (chatId == null || !this.acl.canRead(chatId)) {
-        continue
-      }
-      const lastMessage: WAMessage | undefined = this._lastMessage[chatId]
-      if (lastMessage == null || lastMessage.key.id == null || (message.key.id != null && lastMessage.key.id < message.key.id)) {
-        this._lastMessage[chatId] = message
-      }
-    }
   }
 
   private async _messageUpsert (data: { messages: WAMessage[], type: MessageUpsertType }): Promise<void> {
     const { messages, type } = data
     for (const message of messages) {
-      console.log('got message')
+      console.log(`${this.uid}: got message`)
       const chatId: string | null | undefined = message.key?.remoteJid
       if (chatId == null || !this.acl.canRead(chatId)) {
-        console.log('not can read')
+        console.log(`${this.uid}: not can read`)
         continue
-      }
-      const lastMessage: WAMessage | undefined = this._lastMessage[chatId]
-      if (lastMessage == null || lastMessage.key.id == null || (message.key.id != null && lastMessage.key.id < message.key.id)) {
-        this._lastMessage[chatId] = message
       }
       if (message.key?.fromMe === false) {
         this.emit('message', { message, type })
@@ -108,7 +96,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
   }
 
   private async _updateConnectionState (data: Partial<ConnectionState>): Promise<void> {
-    if (data.qr !== this.lastConnectionState.qr) {
+    if (data.qr !== this.lastConnectionState.qr && data.qr != null) {
       this.emit('connection:qr', data)
     }
     if (data.connection === 'open') {
@@ -156,45 +144,41 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     if (!this.acl.canWrite(chatId)) {
       throw new NoAccessError('write', chatId)
     }
-    const msg: WAMessage | undefined = this._lastMessage[chatId]
+    const msg: WAMessage | undefined = this.store.lastMessage(chatId)
     if ((msg?.key) != null) {
       await this.sock?.chatModify({ markRead: false, lastMessages: [msg] }, chatId)
     }
   }
 
-  async joinGroup (inviteCode: string): Promise<GroupJoinResponse | null> {
+  async joinGroup (inviteCode: string): Promise<GroupJoinResponse | undefined | null> {
     if (this.sock == null) return null
-    const metadata: GroupMetadata | null = await this.groupInviteMetadata(inviteCode)
-    if (metadata == null) return null
+    const metadata: GroupMetadata | undefined | null = await this.groupInviteMetadata(inviteCode)
+    if (metadata == null) return undefined
     if (!this.acl.canRead(metadata?.id)) {
       throw new NoAccessError('read', metadata?.id)
     }
-    this._groupMetadata[metadata.id] = metadata
+    this.store.setGroupMetadata(metadata)
     const response = await this.sock.groupAcceptInvite(inviteCode)
     return { metadata, response }
   }
 
-  async leaveGroup (chatId: string): Promise<GroupMetadata | null> {
+  async leaveGroup (chatId: string): Promise<GroupMetadata | undefined | null > {
     if (this.sock == null) return null
-    const groupMetadata: GroupMetadata | null = await this.groupMetadata(chatId)
+    const groupMetadata: GroupMetadata | undefined = await this.store.groupMetadata(chatId)
     await this.sock.groupLeave(chatId)
     return groupMetadata
   }
 
-  async groupInviteMetadata (inviteCode: string): Promise<GroupMetadata | null> {
+  async groupInviteMetadata (inviteCode: string): Promise<GroupMetadata | undefined | null> {
     if (this.sock == null) return null
     const metadata: GroupMetadata = await this.sock.groupGetInviteInfo(inviteCode)
     return metadata
   }
 
-  async groupMetadata (chatId: string): Promise<GroupMetadata | null> {
+  async groupMetadata (chatId: string): Promise<GroupMetadata | undefined> {
     if (!this.acl.canRead(chatId)) {
       throw new NoAccessError('read', chatId)
     }
-    if (this._groupMetadata[chatId] != null) {
-      return this._groupMetadata[chatId]
-    }
-    if (this.sock == null) return null
-    return await this.sock.groupMetadata(chatId)
+    return await this.store.groupMetadata(chatId)
   }
 }

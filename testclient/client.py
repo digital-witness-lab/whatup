@@ -1,6 +1,7 @@
 import socketio
 
 from util import qrcode_gen, forcestr
+import qrcode
 
 sio = socketio.Client()
 
@@ -23,14 +24,13 @@ def connect():
 
 
 @sio.on("connection:qr")
-def qr(code):
-    print(code)
-    print(qrcode_gen(code))
+def qr(data):
+    print(qrcode_gen(data["qr"]))
+    print(data)
 
 
 @sio.on("connection:auth")
 def connection_auth(data):
-    print(f"connection:auth: {data=}")
     if "sessionAuth" in data:
         print("Got new auth... storing")
         SESSION_AUTH = data["sessionAuth"]
@@ -47,6 +47,14 @@ def ready(data):
 @sio.on("read:messages")
 def message(data):
     print(f"Got Message: {data=}")
+    rjid = data["message"]["key"]["remoteJid"]
+    if "@g.us" in rjid:
+        sio.emit("read:groupMetadata", rjid)
+
+
+@sio.on("read:groupMetadata")
+def group_metadata(data):
+    print(f"Got group metadata: {data=}")
 
 
 @sio.event

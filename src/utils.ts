@@ -3,3 +3,7 @@ export async function sleep (ms: number): Promise<void> {
     setTimeout(resolve, ms)
   })
 }
+
+export function keys<T extends object> (obj: T): Array<keyof T> {
+  return Object.keys(obj) as Array<keyof T>
+}

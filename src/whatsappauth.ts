@@ -58,10 +58,6 @@ export class WhatsAppAuth extends EventEmitter implements SignalKeyStore {
   async set (data: SignalDataSet): Promise<void> {
     let key: keyof SignalDataTypeMap
     for (key in data) {
-      let value: SignalDataTypeMap[typeof key] = data[key]
-      if (value != null && key === 'app-state-sync-key') {
-        value = value.toObject()
-      }
       if (this.state.keys[key] === undefined) {
         this.state.keys[key] = {}
       }

@@ -16,12 +16,12 @@ interface SharedSession {
 
 const globalSessions: { [_: string]: SharedSession } = {}
 
-async function assignSocket (session: WhatsAppSession, socket: Socket): Promise<void> {
+async function assignBasicEvents (session: WhatsAppSession, socket: Socket): Promise<void> {
   session.on('connection:auth', (state) => {
     socket.emit('connection:auth', { sessionAuth: state, error: null })
   })
   session.on('connection:qr', (qrCode) => {
-    socket.emit('connection:qr', { qrCode })
+    socket.emit('connection:qr', { qr: qrCode.qr })
   })
   session.on('connection:ready', (data) => socket.emit('connection:ready', data))
 }
@@ -91,7 +91,7 @@ async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Sock
 export async function registerAuthHandlers (io: Server, socket: Socket): Promise<void> {
   let session: WhatsAppSession = new WhatsAppSession({ acl: { allowAll: true } })
   let sharedSession: SharedSession | undefined
-  await assignSocket(session, socket)
+  await assignBasicEvents(session, socket)
 
   const authenticateSession = async (payload: AuthenticateSessionParams): Promise<void> => {
     const { sessionAuth, sharedConnection } = payload
@@ -109,14 +109,14 @@ export async function registerAuthHandlers (io: Server, socket: Socket): Promise
     if (sharedConnection === true || sharedSession === undefined) {
       sharedSession = { name, numListeners: 1, session }
       if (sharedSession.name in globalSessions) {
-        console.log('Using shared session')
+        console.log(`${session.uid}: Switching to shared session: ${globalSessions[sharedSession.name].session.uid}`)
         await session.close()
         sharedSession = globalSessions[sharedSession.name]
         sharedSession.numListeners += 1
         session = sharedSession.session
-        await assignSocket(session, socket)
+        await assignBasicEvents(session, socket)
       } else {
-        console.log('Creating new sharable session')
+        console.log(`${session.uid}: Creating new sharable session`)
         globalSessions[sharedSession.name] = sharedSession
         session.setAuth(auth)
         await session.init()
@@ -151,10 +151,10 @@ export async function registerAuthHandlers (io: Server, socket: Socket): Promise
   })
   socket.on('connection:auth', authenticateSession)
   socket.on('connection:auth:anonymous', async () => {
-    console.log('Initializing empty session')
-    await session.init()
+    console.log(`${session.uid}: Initializing empty session`)
     session.once('connection:ready', async (): Promise<void> => {
       await assignAuthenticatedEvents(session, socket)
     })
+    await session.init()
   })
 }

@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sleep = void 0;
+exports.keys = exports.sleep = void 0;
 function sleep(ms) {
     return __awaiter(this, void 0, void 0, function* () {
         return yield new Promise((resolve) => {
@@ -18,3 +18,7 @@ function sleep(ms) {
     });
 }
 exports.sleep = sleep;
+function keys(obj) {
+    return Object.keys(obj);
+}
+exports.keys = keys;

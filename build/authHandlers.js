@@ -13,13 +13,13 @@ exports.registerAuthHandlers = void 0;
 const whatsappsession_1 = require("./whatsappsession");
 const whatsappauth_1 = require("./whatsappauth");
 const globalSessions = {};
-function assignSocket(session, socket) {
+function assignBasicEvents(session, socket) {
     return __awaiter(this, void 0, void 0, function* () {
         session.on('connection:auth', (state) => {
             socket.emit('connection:auth', { sessionAuth: state, error: null });
         });
         session.on('connection:qr', (qrCode) => {
-            socket.emit('connection:qr', { qrCode });
+            socket.emit('connection:qr', { qr: qrCode.qr });
         });
         session.on('connection:ready', (data) => socket.emit('connection:ready', data));
     });
@@ -96,7 +96,7 @@ function registerAuthHandlers(io, socket) {
     return __awaiter(this, void 0, void 0, function* () {
         let session = new whatsappsession_1.WhatsAppSession({ acl: { allowAll: true } });
         let sharedSession;
-        yield assignSocket(session, socket);
+        yield assignBasicEvents(session, socket);
         const authenticateSession = (payload) => __awaiter(this, void 0, void 0, function* () {
             const { sessionAuth, sharedConnection } = payload;
             const auth = whatsappauth_1.WhatsAppAuth.fromString(sessionAuth);
@@ -112,15 +112,15 @@ function registerAuthHandlers(io, socket) {
             if (sharedConnection === true || sharedSession === undefined) {
                 sharedSession = { name, numListeners: 1, session };
                 if (sharedSession.name in globalSessions) {
-                    console.log('Using shared session');
+                    console.log(`${session.uid}: Switching to shared session: ${globalSessions[sharedSession.name].session.uid}`);
                     yield session.close();
                     sharedSession = globalSessions[sharedSession.name];
                     sharedSession.numListeners += 1;
                     session = sharedSession.session;
-                    yield assignSocket(session, socket);
+                    yield assignBasicEvents(session, socket);
                 }
                 else {
-                    console.log('Creating new sharable session');
+                    console.log(`${session.uid}: Creating new sharable session`);
                     globalSessions[sharedSession.name] = sharedSession;
                     session.setAuth(auth);
                     yield session.init();
@@ -156,11 +156,11 @@ function registerAuthHandlers(io, socket) {
         });
         socket.on('connection:auth', authenticateSession);
         socket.on('connection:auth:anonymous', () => __awaiter(this, void 0, void 0, function* () {
-            console.log('Initializing empty session');
-            yield session.init();
+            console.log(`${session.uid}: Initializing empty session`);
             session.once('connection:ready', () => __awaiter(this, void 0, void 0, function* () {
                 yield assignAuthenticatedEvents(session, socket);
             }));
+            yield session.init();
         }));
     });
 }
