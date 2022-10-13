@@ -7,7 +7,7 @@ export interface WhatsAppACLConfig {
 
 export class NoAccessError extends Error {
   constructor (mode: string, chatId: string | undefined) {
-    super(`No access to ${mode}: ${chatId}`)
+    super(`No access to ${mode}: ${chatId ?? 'no chatId'}`)
     Object.setPrototypeOf(this, NoAccessError.prototype)
   }
 }

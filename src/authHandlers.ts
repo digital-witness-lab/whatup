@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io'
 
-import { WhatsAppSessionConfig, WhatsAppSession } from './whatsappsession'
+import { WhatsAppSession } from './whatsappsession'
 import { WhatsAppAuth } from './whatsappauth'
 
 interface AuthenticateSessionParams {

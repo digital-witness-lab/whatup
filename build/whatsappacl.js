@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppACL = exports.NoAccessError = void 0;
 class NoAccessError extends Error {
     constructor(mode, chatId) {
-        super(`No access to ${mode}: ${chatId}`);
+        super(`No access to ${mode}: ${chatId !== null && chatId !== void 0 ? chatId : 'no chatId'}`);
         Object.setPrototypeOf(this, NoAccessError.prototype);
     }
 }

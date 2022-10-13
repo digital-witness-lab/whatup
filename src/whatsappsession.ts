@@ -1,4 +1,4 @@
-import makeWASocket, { fetchLatestBaileysVersion, Browsers, ConnectionState, Contact, Chat, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, useSingleFileAuthState, WAMessage, WASocket } from '@adiwajshing/baileys'
+import makeWASocket, { fetchLatestBaileysVersion, Browsers, ConnectionState, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, WAMessage, WASocket } from '@adiwajshing/baileys'
 import { Boom } from '@hapi/boom'
 import { EventEmitter } from 'events'
 

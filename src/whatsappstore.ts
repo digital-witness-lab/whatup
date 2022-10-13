@@ -1,7 +1,6 @@
 import { WASocket, WAMessage, MessageUpsertType, GroupMetadata, Contact, Chat } from '@adiwajshing/baileys'
 
 import { WhatsAppACL } from './whatsappacl'
-import { keys } from './utils'
 
 export class WhatsAppStore {
   protected sock: WASocket | undefined
