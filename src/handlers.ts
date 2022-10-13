@@ -1,4 +1,4 @@
-import { Server, Socket } from 'socket.io'
+import { Socket } from 'socket.io'
 
 import { WhatsAppSession } from './whatsappsession'
 import { WhatsAppAuth } from './whatsappauth'
@@ -89,7 +89,7 @@ async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Sock
   })
 }
 
-export async function registerAuthHandlers (io: Server, socket: Socket): Promise<void> {
+export async function registerHandlers (socket: Socket): Promise<void> {
   let session: WhatsAppSession = new WhatsAppSession({ acl: { allowAll: true } })
   let sharedSession: SharedSession | undefined
   await assignBasicEvents(session, socket)

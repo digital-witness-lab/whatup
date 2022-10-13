@@ -1,6 +1,6 @@
 import { App } from 'uWebSockets.js'
 import { Server } from 'socket.io'
-import { registerAuthHandlers } from './authHandlers'
+import { registerHandlers } from './handlers'
 
 // @ts-expect-error: TS7009
 const app = new App()
@@ -11,7 +11,7 @@ io.attachApp(app)
 
 io.on('connection', async (socket) => {
   console.log(socket.id)
-  await registerAuthHandlers(io, socket)
+  await registerHandlers(socket)
 })
 
 app.listen(3000, (token: any) => {

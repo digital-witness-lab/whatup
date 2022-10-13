@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.registerAuthHandlers = void 0;
+exports.registerHandlers = void 0;
 const whatsappsession_1 = require("./whatsappsession");
 const whatsappauth_1 = require("./whatsappauth");
 const utils_1 = require("./utils");
@@ -93,7 +93,7 @@ function assignAuthenticatedEvents(session, socket) {
         }));
     });
 }
-function registerAuthHandlers(io, socket) {
+function registerHandlers(socket) {
     return __awaiter(this, void 0, void 0, function* () {
         let session = new whatsappsession_1.WhatsAppSession({ acl: { allowAll: true } });
         let sharedSession;
@@ -165,4 +165,4 @@ function registerAuthHandlers(io, socket) {
         }));
     });
 }
-exports.registerAuthHandlers = registerAuthHandlers;
+exports.registerHandlers = registerHandlers;
