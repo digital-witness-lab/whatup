@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.keys = exports.sleep = void 0;
+exports.resolvePromiseSync = exports.keys = exports.sleep = void 0;
 function sleep(ms) {
     return __awaiter(this, void 0, void 0, function* () {
         return yield new Promise((resolve) => {
@@ -22,3 +22,9 @@ function keys(obj) {
     return Object.keys(obj);
 }
 exports.keys = keys;
+function resolvePromiseSync(asyncFunc) {
+    return (...args) => {
+        asyncFunc(...args).then(() => { }).catch((reason) => { console.log(`Promise failed with reason: ${String(reason)}`); });
+    };
+}
+exports.resolvePromiseSync = resolvePromiseSync;

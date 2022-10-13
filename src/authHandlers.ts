@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io'
 
 import { WhatsAppSession } from './whatsappsession'
 import { WhatsAppAuth } from './whatsappauth'
+import { resolvePromiseSync } from './utils'
 
 interface AuthenticateSessionParams {
   sessionAuth: string
@@ -152,9 +153,9 @@ export async function registerAuthHandlers (io: Server, socket: Socket): Promise
   socket.on('connection:auth', authenticateSession)
   socket.on('connection:auth:anonymous', async () => {
     console.log(`${session.uid}: Initializing empty session`)
-    session.once('connection:ready', async (): Promise<void> => {
+    session.once('connection:ready', resolvePromiseSync(async (): Promise<void> => {
       await assignAuthenticatedEvents(session, socket)
-    })
+    }))
     await session.init()
   })
 }

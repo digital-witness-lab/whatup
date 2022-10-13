@@ -73,8 +73,8 @@ class WhatsAppSession extends events_1.EventEmitter {
             this.sock.ev.on('creds.update', () => {
                 this.auth.update();
             });
-            this.sock.ev.on('connection.update', this._updateConnectionState.bind(this));
-            this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this));
+            this.sock.ev.on('connection.update', (0, utils_1.resolvePromiseSync)(this._updateConnectionState.bind(this)));
+            this.sock.ev.on('messages.upsert', (0, utils_1.resolvePromiseSync)(this._messageUpsert.bind(this)));
         });
     }
     close() {

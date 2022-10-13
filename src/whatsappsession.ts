@@ -5,7 +5,7 @@ import { EventEmitter } from 'events'
 import { WhatsAppACLConfig, WhatsAppACL, NoAccessError } from './whatsappacl'
 import { WhatsAppAuth, AuthenticationData } from './whatsappauth'
 import { WhatsAppStore } from './whatsappstore'
-import { sleep } from './utils'
+import { sleep, resolvePromiseSync } from './utils'
 
 export interface GroupJoinResponse {metadata: GroupMetadata, response?: string }
 
@@ -71,8 +71,8 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     this.sock.ev.on('creds.update', () => {
       this.auth.update()
     })
-    this.sock.ev.on('connection.update', this._updateConnectionState.bind(this))
-    this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this))
+    this.sock.ev.on('connection.update', resolvePromiseSync(this._updateConnectionState.bind(this)))
+    this.sock.ev.on('messages.upsert', resolvePromiseSync(this._messageUpsert.bind(this)))
   }
 
   async close (): Promise<void> {

@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerAuthHandlers = void 0;
 const whatsappsession_1 = require("./whatsappsession");
 const whatsappauth_1 = require("./whatsappauth");
+const utils_1 = require("./utils");
 const globalSessions = {};
 function assignBasicEvents(session, socket) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -157,9 +158,9 @@ function registerAuthHandlers(io, socket) {
         socket.on('connection:auth', authenticateSession);
         socket.on('connection:auth:anonymous', () => __awaiter(this, void 0, void 0, function* () {
             console.log(`${session.uid}: Initializing empty session`);
-            session.once('connection:ready', () => __awaiter(this, void 0, void 0, function* () {
+            session.once('connection:ready', (0, utils_1.resolvePromiseSync)(() => __awaiter(this, void 0, void 0, function* () {
                 yield assignAuthenticatedEvents(session, socket);
-            }));
+            })));
             yield session.init();
         }));
     });
