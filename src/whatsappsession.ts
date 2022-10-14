@@ -5,6 +5,7 @@ import { EventEmitter } from 'events'
 import { WhatsAppACLConfig, WhatsAppACL, NoAccessError } from './whatsappacl'
 import { WhatsAppAuth, AuthenticationData } from './whatsappauth'
 import { WhatsAppStore } from './whatsappstore'
+import { ACTIONS } from './actions'
 import { sleep, resolvePromiseSync } from './utils'
 
 export interface GroupJoinResponse {metadata: GroupMetadata, response?: string }
@@ -51,7 +52,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
 
   setAuth (auth: WhatsAppAuth): void {
     this.auth = auth
-    this.auth.on('state:update', (auth) => this.emit('connection:auth', auth))
+    this.auth.on('state:update', (auth) => this.emit(ACTIONS.connectionAuth, auth))
   }
 
   async init (): Promise<void> {
@@ -90,19 +91,19 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
         continue
       }
       if (message.key?.fromMe === false) {
-        this.emit('message', { message, type })
+        this.emit(ACTIONS.readMessages, { message, type })
       }
     }
   }
 
   private async _updateConnectionState (data: Partial<ConnectionState>): Promise<void> {
     if (data.qr !== this.lastConnectionState.qr && data.qr != null) {
-      this.emit('connection:qr', data)
+      this.emit(ACTIONS.connectionQr, data)
     }
     if (data.connection === 'open') {
-      this.emit('connection:ready', data)
+      this.emit(ACTIONS.connectionReady, data)
     } else if (data.connection !== undefined) {
-      this.emit('connection:closed', data)
+      this.emit(ACTIONS.connectionClosed, data)
       const { lastDisconnect } = data
       if (lastDisconnect != null) {
         const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut

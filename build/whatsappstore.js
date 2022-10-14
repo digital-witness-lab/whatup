@@ -22,8 +22,8 @@ class WhatsAppStore {
         this.sock = sock;
         this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this));
         this.sock.ev.on('messages.set', this._updateMessageHistory.bind(this));
-        // this.sock.ev.on('groups.upsert', ...)
-        // this.sock.ev.on('groups.update', ...)
+        this.sock.ev.on('groups.upsert', this._upsertGroups.bind(this));
+        this.sock.ev.on('groups.update', this._updateGroups.bind(this));
         // this.sock.ev.on('group-participants.update', ...)
         this.sock.ev.on('chats.set', this._updateChatHistory.bind(this));
         this.sock.ev.on('chats.upsert', this._upsertChat.bind(this));
@@ -79,9 +79,9 @@ class WhatsAppStore {
             const cid = contact.id;
             if (cid == null)
                 return;
-            if (this._contacts[cid] === undefined)
-                return;
-            Object.assign(this._contacts[cid], contact);
+            if (this._contacts[cid] !== undefined) {
+                Object.assign(this._contacts[cid], contact);
+            }
         }
         console.log('update contacts:', this._contacts);
     }
@@ -125,9 +125,9 @@ class WhatsAppStore {
             const cid = chat.id;
             if (cid == null)
                 return;
-            if (this._chats[cid] === undefined)
-                return;
-            Object.assign(this._chats[cid], chat);
+            if (this._chats[cid] !== undefined) {
+                Object.assign(this._chats[cid], chat);
+            }
         }
         console.log('update contacts:', this._contacts);
     }
@@ -136,6 +136,22 @@ class WhatsAppStore {
     }
     _updateChatHistory(data) {
         data.chats.map(this.setChat);
+    }
+    //* ******** END Chat Events *************//
+    //* ******** START Contact Events *************//
+    _upsertGroups(groupMetadatas) {
+        groupMetadatas.map(this.setGroupMetadata);
+    }
+    _updateGroups(groupMetadatas) {
+        for (const groupMetadata of groupMetadatas) {
+            const gid = groupMetadata.id;
+            if (gid == null)
+                return;
+            if (this._groupMetadata[gid] !== undefined) {
+                Object.assign(this._groupMetadata[gid], groupMetadata);
+            }
+        }
+        console.log('update contacts:', this._contacts);
     }
 }
 exports.WhatsAppStore = WhatsAppStore;

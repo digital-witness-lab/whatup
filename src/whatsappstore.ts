@@ -21,8 +21,8 @@ export class WhatsAppStore {
     this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this))
     this.sock.ev.on('messages.set', this._updateMessageHistory.bind(this))
 
-    // this.sock.ev.on('groups.upsert', ...)
-    // this.sock.ev.on('groups.update', ...)
+    this.sock.ev.on('groups.upsert', this._upsertGroups.bind(this))
+    this.sock.ev.on('groups.update', this._updateGroups.bind(this))
     // this.sock.ev.on('group-participants.update', ...)
 
     this.sock.ev.on('chats.set', this._updateChatHistory.bind(this))
@@ -84,8 +84,9 @@ export class WhatsAppStore {
     for (const contact of contacts) {
       const cid: string | undefined = contact.id
       if (cid == null) return
-      if (this._contacts[cid] === undefined) return
-      Object.assign(this._contacts[cid], contact)
+      if (this._contacts[cid] !== undefined) {
+        Object.assign(this._contacts[cid], contact)
+      }
     }
     console.log('update contacts:', this._contacts)
   }
@@ -131,8 +132,9 @@ export class WhatsAppStore {
     for (const chat of chats) {
       const cid: string | undefined = chat.id
       if (cid == null) return
-      if (this._chats[cid] === undefined) return
-      Object.assign(this._chats[cid], chat)
+      if (this._chats[cid] !== undefined) {
+        Object.assign(this._chats[cid], chat)
+      }
     }
     console.log('update contacts:', this._contacts)
   }
@@ -145,4 +147,21 @@ export class WhatsAppStore {
     data.chats.map(this.setChat)
   }
   //* ******** END Chat Events *************//
+
+  //* ******** START Contact Events *************//
+  protected _upsertGroups (groupMetadatas: GroupMetadata[]): void {
+    groupMetadatas.map(this.setGroupMetadata)
+  }
+
+  protected _updateGroups (groupMetadatas: Array<Partial<GroupMetadata>>): void {
+    for (const groupMetadata of groupMetadatas) {
+      const gid: string | undefined = groupMetadata.id
+      if (gid == null) return
+      if (this._groupMetadata[gid] !== undefined) {
+        Object.assign(this._groupMetadata[gid], groupMetadata)
+      }
+    }
+    console.log('update contacts:', this._contacts)
+  }
+  //* ******** END Contact Events *************//
 }

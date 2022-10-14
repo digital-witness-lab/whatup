@@ -13,82 +13,83 @@ exports.registerHandlers = void 0;
 const whatsappsession_1 = require("./whatsappsession");
 const whatsappauth_1 = require("./whatsappauth");
 const utils_1 = require("./utils");
+const actions_1 = require("./actions");
 const globalSessions = {};
 function assignBasicEvents(session, socket) {
     return __awaiter(this, void 0, void 0, function* () {
-        session.on('connection:auth', (state) => {
-            socket.emit('connection:auth', { sessionAuth: state, error: null });
+        session.on(actions_1.ACTIONS.connectionAuth, (state) => {
+            socket.emit(actions_1.ACTIONS.connectionAuth, { sessionAuth: state, error: null });
         });
-        session.on('connection:qr', (qrCode) => {
-            socket.emit('connection:qr', { qr: qrCode.qr });
+        session.on(actions_1.ACTIONS.connectionQr, (qrCode) => {
+            socket.emit(actions_1.ACTIONS.connectionQr, { qr: qrCode.qr });
         });
-        session.on('connection:ready', (data) => socket.emit('connection:ready', data));
+        session.on(actions_1.ACTIONS.connectionReady, (data) => socket.emit(actions_1.ACTIONS.connectionReady, data));
     });
 }
 function assignAuthenticatedEvents(session, socket) {
     return __awaiter(this, void 0, void 0, function* () {
-        socket.on('write:sendMessage', (...args) => __awaiter(this, void 0, void 0, function* () {
+        socket.on(actions_1.ACTIONS.writeSendMessage, (...args) => __awaiter(this, void 0, void 0, function* () {
             try {
                 // @ts-expect-error: TS2556: just let me use `...args` here pls.
                 const sendMessage = yield session.sendMessage(...args);
-                socket.emit('write:sendMessage', sendMessage);
+                socket.emit(actions_1.ACTIONS.writeSendMessage, sendMessage);
             }
             catch (e) {
-                socket.emit('write:sendMessage', { error: e });
+                socket.emit(actions_1.ACTIONS.writeSendMessage, { error: e });
             }
         }));
-        socket.on('write:markChatRead', (chatId) => __awaiter(this, void 0, void 0, function* () {
+        socket.on(actions_1.ACTIONS.writeMarkChatRead, (chatId) => __awaiter(this, void 0, void 0, function* () {
             try {
                 yield session.markChatRead(chatId);
-                socket.emit('write:markChatRead', { error: null });
+                socket.emit(actions_1.ACTIONS.writeMarkChatRead, { error: null });
             }
             catch (e) {
-                socket.emit('write:markChatRead', { error: e });
+                socket.emit(actions_1.ACTIONS.writeMarkChatRead, { error: e });
             }
         }));
-        socket.on('read:messages:subscribe', () => __awaiter(this, void 0, void 0, function* () {
+        socket.on(actions_1.ACTIONS.readMessagesSubscribe, () => __awaiter(this, void 0, void 0, function* () {
             const emitMessage = (data) => {
-                socket.emit('read:messages', data);
+                socket.emit(actions_1.ACTIONS.readMessages, data);
             };
-            session.on('message', emitMessage);
-            socket.on('read:messages:unsubscribe', () => __awaiter(this, void 0, void 0, function* () {
-                session.off('message', emitMessage);
+            session.on(actions_1.ACTIONS.readMessages, emitMessage);
+            socket.on(actions_1.ACTIONS.readMessages, () => __awaiter(this, void 0, void 0, function* () {
+                session.off(actions_1.ACTIONS.readMessages, emitMessage);
             }));
         }));
-        socket.on('write:leaveGroup', (chatId) => __awaiter(this, void 0, void 0, function* () {
+        socket.on(actions_1.ACTIONS.writeLeaveGroup, (chatId) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const groupMetadata = yield session.leaveGroup(chatId);
-                socket.emit('write:leaveGroup', groupMetadata);
+                socket.emit(actions_1.ACTIONS.writeLeaveGroup, groupMetadata);
             }
             catch (e) {
-                socket.emit('write:leaveGroup', { error: e });
+                socket.emit(actions_1.ACTIONS.writeLeaveGroup, { error: e });
             }
         }));
-        socket.on('read:joinGroup', (chatId) => __awaiter(this, void 0, void 0, function* () {
+        socket.on(actions_1.ACTIONS.readJoinGroup, (chatId) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const groupMetadata = yield session.joinGroup(chatId);
-                socket.emit('read:joinGroup', groupMetadata);
+                socket.emit(actions_1.ACTIONS.readJoinGroup, groupMetadata);
             }
             catch (e) {
-                socket.emit('read:joinGroup', { error: e });
+                socket.emit(actions_1.ACTIONS.readJoinGroup, { error: e });
             }
         }));
-        socket.on('read:groupMetadata', (chatId) => __awaiter(this, void 0, void 0, function* () {
+        socket.on(actions_1.ACTIONS.readGroupMetadata, (chatId) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const groupMetadata = yield session.groupMetadata(chatId);
-                socket.emit('read:groupMetadata', groupMetadata);
+                socket.emit(actions_1.ACTIONS.readGroupMetadata, groupMetadata);
             }
             catch (e) {
-                socket.emit('read:groupMetadata', { error: e });
+                socket.emit(actions_1.ACTIONS.readGroupMetadata, { error: e });
             }
         }));
-        socket.on('read:groupInviteMetadata', (inviteCode) => __awaiter(this, void 0, void 0, function* () {
+        socket.on(actions_1.ACTIONS.readGroupInviteMetadata, (inviteCode) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const groupInviteMetadata = yield session.groupInviteMetadata(inviteCode);
-                socket.emit('read:groupInviteMetadata', groupInviteMetadata);
+                socket.emit(actions_1.ACTIONS.readGroupInviteMetadata, groupInviteMetadata);
             }
             catch (e) {
-                socket.emit('read:groupInviteMetadata', { error: e });
+                socket.emit(actions_1.ACTIONS.readGroupInviteMetadata, { error: e });
             }
         }));
     });
@@ -102,12 +103,12 @@ function registerHandlers(socket) {
             const { sessionAuth, sharedConnection } = payload;
             const auth = whatsappauth_1.WhatsAppAuth.fromString(sessionAuth);
             if (auth === undefined) {
-                socket.emit('connection:auth', { error: 'Unparsable Session Auth' });
+                socket.emit(actions_1.ACTIONS.connectionAuth, { error: 'Unparsable Session Auth' });
                 return;
             }
             const name = auth.id();
             if (name === undefined) {
-                socket.emit('connection:auth', { error: 'Invalid Auth: not authenticated' });
+                socket.emit(actions_1.ACTIONS.connectionAuth, { error: 'Invalid Auth: not authenticated' });
                 return;
             }
             if (sharedConnection === true || sharedSession === undefined) {
@@ -147,18 +148,18 @@ function registerHandlers(socket) {
                 yield session.close();
             }
         }));
-        socket.on('connection:qr', () => __awaiter(this, void 0, void 0, function* () {
+        socket.on(actions_1.ACTIONS.connectionQr, () => __awaiter(this, void 0, void 0, function* () {
             const qrCode = session.qrCode();
-            socket.emit('connection:qr', { qrCode });
+            socket.emit(actions_1.ACTIONS.connectionQr, { qrCode });
         }));
-        socket.on('connection:status', () => {
+        socket.on(actions_1.ACTIONS.connectionStatus, () => {
             const connection = session.connection();
-            socket.emit('connection:status', { connection });
+            socket.emit(actions_1.ACTIONS.connectionStatus, { connection });
         });
-        socket.on('connection:auth', authenticateSession);
-        socket.on('connection:auth:anonymous', () => __awaiter(this, void 0, void 0, function* () {
+        socket.on(actions_1.ACTIONS.connectionAuth, authenticateSession);
+        socket.on(actions_1.ACTIONS.connectionAuthAnonymous, () => __awaiter(this, void 0, void 0, function* () {
             console.log(`${session.uid}: Initializing empty session`);
-            session.once('connection:ready', (0, utils_1.resolvePromiseSync)(() => __awaiter(this, void 0, void 0, function* () {
+            session.once(actions_1.ACTIONS.connectionReady, (0, utils_1.resolvePromiseSync)(() => __awaiter(this, void 0, void 0, function* () {
                 yield assignAuthenticatedEvents(session, socket);
             })));
             yield session.init();

@@ -38,6 +38,7 @@ const events_1 = require("events");
 const whatsappacl_1 = require("./whatsappacl");
 const whatsappauth_1 = require("./whatsappauth");
 const whatsappstore_1 = require("./whatsappstore");
+const actions_1 = require("./actions");
 const utils_1 = require("./utils");
 class WhatsAppSession extends events_1.EventEmitter {
     constructor(config) {
@@ -55,7 +56,7 @@ class WhatsAppSession extends events_1.EventEmitter {
     }
     setAuth(auth) {
         this.auth = auth;
-        this.auth.on('state:update', (auth) => this.emit('connection:auth', auth));
+        this.auth.on('state:update', (auth) => this.emit(actions_1.ACTIONS.connectionAuth, auth));
     }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -96,7 +97,7 @@ class WhatsAppSession extends events_1.EventEmitter {
                     continue;
                 }
                 if (((_b = message.key) === null || _b === void 0 ? void 0 : _b.fromMe) === false) {
-                    this.emit('message', { message, type });
+                    this.emit(actions_1.ACTIONS.readMessages, { message, type });
                 }
             }
         });
@@ -105,13 +106,13 @@ class WhatsAppSession extends events_1.EventEmitter {
         var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
             if (data.qr !== this.lastConnectionState.qr && data.qr != null) {
-                this.emit('connection:qr', data);
+                this.emit(actions_1.ACTIONS.connectionQr, data);
             }
             if (data.connection === 'open') {
-                this.emit('connection:ready', data);
+                this.emit(actions_1.ACTIONS.connectionReady, data);
             }
             else if (data.connection !== undefined) {
-                this.emit('connection:closed', data);
+                this.emit(actions_1.ACTIONS.connectionClosed, data);
                 const { lastDisconnect } = data;
                 if (lastDisconnect != null) {
                     const shouldReconnect = ((_b = (_a = lastDisconnect.error) === null || _a === void 0 ? void 0 : _a.output) === null || _b === void 0 ? void 0 : _b.statusCode) !== baileys_1.DisconnectReason.loggedOut;
