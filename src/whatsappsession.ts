@@ -20,6 +20,7 @@ export interface WhatsAppSessionInterface {
   joinGroup: (inviteCode: string) => Promise<GroupJoinResponse | undefined | null>
   groupMetadata: (chatId: string) => Promise<GroupMetadata | undefined>
   groupInviteMetadata: (inviteCode: string) => Promise<GroupMetadata | undefined | null>
+  groups: () => GroupMetadata[]
 }
 
 export interface WhatsAppSessionConfig {
@@ -181,5 +182,9 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
       throw new NoAccessError('read', chatId)
     }
     return await this.store.groupMetadata(chatId)
+  }
+
+  groups (): GroupMetadata[] {
+    return this.store.groups()
   }
 }

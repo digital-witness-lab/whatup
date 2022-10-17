@@ -9,8 +9,9 @@ module.exports = {
   ],
   parserOptions: {
     ecmaVersion: 'latest',
-    project: ["./tsconfig.json"]
+    project: ['./tsconfig.json']
   },
   rules: {
+    'node/no-callback-literal': 'off'
   }
 }

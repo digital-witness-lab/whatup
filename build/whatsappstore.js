@@ -34,6 +34,15 @@ class WhatsAppStore {
         this.sock.ev.on('contacts.update', this._updateContact.bind(this));
     }
     //* ******** START PUBLIC METHODS ************//
+    contacts() {
+        return Object.values(this._contacts);
+    }
+    chats() {
+        return Object.values(this._chats);
+    }
+    groups() {
+        return Object.values(this._groupMetadata);
+    }
     contact(cid) {
         return this._contacts[cid];
     }

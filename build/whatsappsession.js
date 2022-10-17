@@ -202,5 +202,8 @@ class WhatsAppSession extends events_1.EventEmitter {
             return yield this.store.groupMetadata(chatId);
         });
     }
+    groups() {
+        return this.store.groups();
+    }
 }
 exports.WhatsAppSession = WhatsAppSession;

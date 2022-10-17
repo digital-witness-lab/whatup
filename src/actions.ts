@@ -8,6 +8,7 @@ export declare enum ACTIONS {
   readGroupInviteMetadata = 'read:groupInviteMetadata',
   readGroupMetadata = 'read:groupMetadata',
   readJoinGroup = 'read:joinGroup',
+  readListGroups = 'read:listGroups',
 
   connectionAuthAnonymous = 'connection:auth:anonymous',
   connectionStatus = 'connection:status',

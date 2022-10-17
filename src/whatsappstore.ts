@@ -2,7 +2,19 @@ import { WASocket, WAMessage, MessageUpsertType, GroupMetadata, Contact, Chat } 
 
 import { WhatsAppACL } from './whatsappacl'
 
-export class WhatsAppStore {
+export interface WhatsAppStoreInterface {
+  bind: (sock: WASocket) => void
+  contacts: () => Contact[]
+  chats: () => Chat[]
+  groups: () => GroupMetadata[]
+  contact: (cid: string) => Contact | undefined
+  setChat: (chat: Chat) => Chat | undefined
+  setGroupMetadata: (groupMetadata: GroupMetadata) => GroupMetadata | undefined
+  lastMessage: (chatId: string) => WAMessage | undefined
+  groupMetadata: (chatId: string) => Promise<GroupMetadata | undefined>
+}
+
+export class WhatsAppStore implements WhatsAppStoreInterface {
   protected sock: WASocket | undefined
   protected acl: WhatsAppACL
 
@@ -36,6 +48,18 @@ export class WhatsAppStore {
   }
 
   //* ******** START PUBLIC METHODS ************//
+  public contacts (): Contact[] {
+    return Object.values(this._contacts)
+  }
+
+  public chats (): Chat[] {
+    return Object.values(this._chats)
+  }
+
+  public groups (): GroupMetadata[] {
+    return Object.values(this._groupMetadata)
+  }
+
   public contact (cid: string): Contact | undefined {
     return this._contacts[cid]
   }

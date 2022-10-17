@@ -19,36 +19,36 @@ interface SharedSession {
 const globalSessions: { [_: string]: SharedSession } = {}
 
 async function assignBasicEvents (session: WhatsAppSession, socket: Socket): Promise<void> {
-  session.on(ACTIONS.connectionAuth, (state) => {
-    socket.emit(ACTIONS.connectionAuth, { sessionAuth: state, error: null })
+  session.on(ACTIONS.connectionAuth, (state, callback) => {
+    callback({ sessionAuth: state, error: null })
   })
-  session.on(ACTIONS.connectionQr, (qrCode) => {
-    socket.emit(ACTIONS.connectionQr, { qr: qrCode.qr })
+  session.on(ACTIONS.connectionQr, (qrCode, callback) => {
+    callback({ qr: qrCode.qr })
   })
-  session.on(ACTIONS.connectionReady, (data) => socket.emit(ACTIONS.connectionReady, data))
+  session.on(ACTIONS.connectionReady, (data, callback) => callback(data))
 }
 
 async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Socket): Promise<void> {
-  socket.on(ACTIONS.writeSendMessage, async (...args: any[]) => {
+  socket.on(ACTIONS.writeSendMessage, async (...args: any[], callback) => {
     try {
       // @ts-expect-error: TS2556: just let me use `...args` here pls.
       const sendMessage = await session.sendMessage(...args)
-      socket.emit(ACTIONS.writeSendMessage, sendMessage)
+      callback(sendMessage)
     } catch (e) {
-      socket.emit(ACTIONS.writeSendMessage, { error: e })
+      callback({ error: e })
     }
   })
-  socket.on(ACTIONS.writeMarkChatRead, async (chatId: string) => {
+  socket.on(ACTIONS.writeMarkChatRead, async (chatId: string, callback) => {
     try {
       await session.markChatRead(chatId)
-      socket.emit(ACTIONS.writeMarkChatRead, { error: null })
+      callback({ error: null })
     } catch (e) {
-      socket.emit(ACTIONS.writeMarkChatRead, { error: e })
+      callback({ error: e })
     }
   })
   socket.on(ACTIONS.readMessagesSubscribe, async () => {
-    const emitMessage = (data: any): void => {
-      socket.emit(ACTIONS.readMessages, data)
+    const emitMessage = (data: any, callback): void => {
+      callback(data)
     }
     session.on(ACTIONS.readMessages, emitMessage)
     socket.on(ACTIONS.readMessages, async () => {
@@ -56,37 +56,40 @@ async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Sock
     })
   })
 
-  socket.on(ACTIONS.writeLeaveGroup, async (chatId: string) => {
+  socket.on(ACTIONS.writeLeaveGroup, async (chatId: string, callback) => {
     try {
       const groupMetadata = await session.leaveGroup(chatId)
-      socket.emit(ACTIONS.writeLeaveGroup, groupMetadata)
+      callback(groupMetadata)
     } catch (e) {
-      socket.emit(ACTIONS.writeLeaveGroup, { error: e })
+      callback(e)
     }
   })
-  socket.on(ACTIONS.readJoinGroup, async (chatId: string) => {
+  socket.on(ACTIONS.readJoinGroup, async (chatId: string, callback) => {
     try {
       const groupMetadata = await session.joinGroup(chatId)
-      socket.emit(ACTIONS.readJoinGroup, groupMetadata)
+      callback(groupMetadata)
     } catch (e) {
-      socket.emit(ACTIONS.readJoinGroup, { error: e })
+      callback(e)
     }
   })
-  socket.on(ACTIONS.readGroupMetadata, async (chatId: string) => {
+  socket.on(ACTIONS.readGroupMetadata, async (chatId: string, callback) => {
     try {
       const groupMetadata = await session.groupMetadata(chatId)
-      socket.emit(ACTIONS.readGroupMetadata, groupMetadata)
+      callback(groupMetadata)
     } catch (e) {
-      socket.emit(ACTIONS.readGroupMetadata, { error: e })
+      callback(e)
     }
   })
-  socket.on(ACTIONS.readGroupInviteMetadata, async (inviteCode: string) => {
+  socket.on(ACTIONS.readGroupInviteMetadata, async (inviteCode: string, callback) => {
     try {
       const groupInviteMetadata = await session.groupInviteMetadata(inviteCode)
-      socket.emit(ACTIONS.readGroupInviteMetadata, groupInviteMetadata)
+      callback(groupInviteMetadata)
     } catch (e) {
-      socket.emit(ACTIONS.readGroupInviteMetadata, { error: e })
+      callback(e)
     }
+  })
+  socket.on(ACTIONS.readListGroups, (callback) => {
+    callback(session.groups())
   })
 }
 
@@ -95,16 +98,16 @@ export async function registerHandlers (socket: Socket): Promise<void> {
   let sharedSession: SharedSession | undefined
   await assignBasicEvents(session, socket)
 
-  const authenticateSession = async (payload: AuthenticateSessionParams): Promise<void> => {
+  const authenticateSession = async (payload: AuthenticateSessionParams, callback): Promise<void> => {
     const { sessionAuth, sharedConnection } = payload
     const auth: WhatsAppAuth | undefined = WhatsAppAuth.fromString(sessionAuth)
     if (auth === undefined) {
-      socket.emit(ACTIONS.connectionAuth, { error: 'Unparsable Session Auth' })
+      callback(new Error('Unparsable Session Auth'))
       return
     }
     const name = auth.id()
     if (name === undefined) {
-      socket.emit(ACTIONS.connectionAuth, { error: 'Invalid Auth: not authenticated' })
+      callback(new Error('Invalid Auth: not authenticated'))
       return
     }
 
@@ -143,13 +146,13 @@ export async function registerHandlers (socket: Socket): Promise<void> {
       await session.close()
     }
   })
-  socket.on(ACTIONS.connectionQr, async () => {
+  socket.on(ACTIONS.connectionQr, async (callback) => {
     const qrCode = session.qrCode()
-    socket.emit(ACTIONS.connectionQr, { qrCode })
+    callback({ qrCode })
   })
-  socket.on(ACTIONS.connectionStatus, () => {
+  socket.on(ACTIONS.connectionStatus, (callback) => {
     const connection = session.connection()
-    socket.emit(ACTIONS.connectionStatus, { connection })
+    callback({ connection })
   })
   socket.on(ACTIONS.connectionAuth, authenticateSession)
   socket.on(ACTIONS.connectionAuthAnonymous, async () => {
