@@ -17,18 +17,21 @@ const actions_1 = require("./actions");
 const globalSessions = {};
 function assignBasicEvents(session, socket) {
     return __awaiter(this, void 0, void 0, function* () {
-        session.on(actions_1.ACTIONS.connectionAuth, (state, callback) => {
-            callback({ sessionAuth: state, error: null });
+        session.on(actions_1.ACTIONS.connectionAuth, (state) => {
+            socket.emit(actions_1.ACTIONS.connectionAuth, { sessionAuth: state, error: null });
         });
-        session.on(actions_1.ACTIONS.connectionQr, (qrCode, callback) => {
-            callback({ qr: qrCode.qr });
+        session.on(actions_1.ACTIONS.connectionQr, (qrCode) => {
+            socket.emit(actions_1.ACTIONS.connectionQr, { qr: qrCode.qr });
         });
-        session.on(actions_1.ACTIONS.connectionReady, (data, callback) => callback(data));
+        session.on(actions_1.ACTIONS.connectionReady, (data) => {
+            socket.emit(actions_1.ACTIONS.connectionReady, data);
+        });
     });
 }
 function assignAuthenticatedEvents(session, socket) {
     return __awaiter(this, void 0, void 0, function* () {
-        socket.on(actions_1.ACTIONS.writeSendMessage, (...args, callback) => __awaiter(this, void 0, void 0, function* () {
+        socket.on(actions_1.ACTIONS.writeSendMessage, (...args) => __awaiter(this, void 0, void 0, function* () {
+            const callback = args.pop();
             try {
                 // @ts-expect-error: TS2556: just let me use `...args` here pls.
                 const sendMessage = yield session.sendMessage(...args);
@@ -47,8 +50,13 @@ function assignAuthenticatedEvents(session, socket) {
                 callback({ error: e });
             }
         }));
-        socket.on(actions_1.ACTIONS.readMessagesSubscribe, () => __awaiter(this, void 0, void 0, function* () {
-            const emitMessage = (data, callback) => {
+        socket.on(actions_1.ACTIONS.readMessagesSubscribe, (callback) => __awaiter(this, void 0, void 0, function* () {
+            // TODO: this unsubscribe functionality doesn't work using the callback
+            // mechanism. I think a better route may be to create a new room when
+            // message subscription happens and then put the client into it? this
+            // gives the client the opportunity to "unsubscribe" by leaving the room
+            // and the server can remove the event listener on that event.
+            const emitMessage = (data) => {
                 callback(data);
             };
             session.on(actions_1.ACTIONS.readMessages, emitMessage);
@@ -97,6 +105,35 @@ function assignAuthenticatedEvents(session, socket) {
         });
     });
 }
+function getAuthedSession(session, auth, socket, sharedConnection = true) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let sharedSession;
+        let name = auth.id();
+        if (name === undefined) {
+            throw new Error('Invalid Auth: not authenticated');
+        }
+        if (sharedConnection === false) {
+            name = `private-${Math.floor(Math.random() * 10000000)}-${name}`;
+        }
+        if (name in globalSessions) {
+            console.log(`${session.uid}: Switching to shared session: ${globalSessions[name].session.uid}`);
+            yield session.close();
+            sharedSession = globalSessions[name];
+            sharedSession.numListeners += 1;
+            session = sharedSession.session;
+            yield assignBasicEvents(session, socket);
+        }
+        else {
+            sharedSession = { name, numListeners: 1, session };
+            console.log(`${session.uid}: Creating new sharable session`);
+            globalSessions[sharedSession.name] = sharedSession;
+            session.setAuth(auth);
+            yield session.init();
+        }
+        yield assignAuthenticatedEvents(session, socket);
+        return sharedSession;
+    });
+}
 function registerHandlers(socket) {
     return __awaiter(this, void 0, void 0, function* () {
         let session = new whatsappsession_1.WhatsAppSession({ acl: { allowAll: true } });
@@ -109,33 +146,15 @@ function registerHandlers(socket) {
                 callback(new Error('Unparsable Session Auth'));
                 return;
             }
-            const name = auth.id();
-            if (name === undefined) {
-                callback(new Error('Invalid Auth: not authenticated'));
-                return;
+            try {
+                // TODO: only use sharedSession and get rid of references to bare
+                // `session` object
+                sharedSession = yield getAuthedSession(session, auth, socket, sharedConnection);
+                session = sharedSession.session;
             }
-            if (sharedConnection === true || sharedSession === undefined) {
-                sharedSession = { name, numListeners: 1, session };
-                if (sharedSession.name in globalSessions) {
-                    console.log(`${session.uid}: Switching to shared session: ${globalSessions[sharedSession.name].session.uid}`);
-                    yield session.close();
-                    sharedSession = globalSessions[sharedSession.name];
-                    sharedSession.numListeners += 1;
-                    session = sharedSession.session;
-                    yield assignBasicEvents(session, socket);
-                }
-                else {
-                    console.log(`${session.uid}: Creating new sharable session`);
-                    globalSessions[sharedSession.name] = sharedSession;
-                    session.setAuth(auth);
-                    yield session.init();
-                }
+            catch (e) {
+                callback(e);
             }
-            else {
-                session.setAuth(auth);
-                yield session.init();
-            }
-            yield assignAuthenticatedEvents(session, socket);
         });
         socket.on('disconnect', () => __awaiter(this, void 0, void 0, function* () {
             console.log('Disconnecting');

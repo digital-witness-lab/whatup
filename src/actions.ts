@@ -1,4 +1,4 @@
-export declare enum ACTIONS {
+export enum ACTIONS {
   writeMarkChatRead = 'write:markChatRead',
   writeSendMessage = 'write:sendMessage',
   writeLeaveGroup = 'write:leaveGroup',

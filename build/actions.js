@@ -1,2 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ACTIONS = void 0;
+var ACTIONS;
+(function (ACTIONS) {
+    ACTIONS["writeMarkChatRead"] = "write:markChatRead";
+    ACTIONS["writeSendMessage"] = "write:sendMessage";
+    ACTIONS["writeLeaveGroup"] = "write:leaveGroup";
+    ACTIONS["readMessagesSubscribe"] = "read:messages:subscribe";
+    ACTIONS["readMessages"] = "read:messages";
+    ACTIONS["readGroupInviteMetadata"] = "read:groupInviteMetadata";
+    ACTIONS["readGroupMetadata"] = "read:groupMetadata";
+    ACTIONS["readJoinGroup"] = "read:joinGroup";
+    ACTIONS["readListGroups"] = "read:listGroups";
+    ACTIONS["connectionAuthAnonymous"] = "connection:auth:anonymous";
+    ACTIONS["connectionStatus"] = "connection:status";
+    ACTIONS["connectionReady"] = "connection:ready";
+    ACTIONS["connectionClosed"] = "connection:closed";
+    ACTIONS["connectionQr"] = "connection:qr";
+    ACTIONS["connectionAuth"] = "connection:auth";
+})(ACTIONS = exports.ACTIONS || (exports.ACTIONS = {}));

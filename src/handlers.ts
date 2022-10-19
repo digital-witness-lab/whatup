@@ -19,17 +19,20 @@ interface SharedSession {
 const globalSessions: { [_: string]: SharedSession } = {}
 
 async function assignBasicEvents (session: WhatsAppSession, socket: Socket): Promise<void> {
-  session.on(ACTIONS.connectionAuth, (state, callback) => {
-    callback({ sessionAuth: state, error: null })
+  session.on(ACTIONS.connectionAuth, (state) => {
+    socket.emit(ACTIONS.connectionAuth, { sessionAuth: state, error: null })
   })
-  session.on(ACTIONS.connectionQr, (qrCode, callback) => {
-    callback({ qr: qrCode.qr })
+  session.on(ACTIONS.connectionQr, (qrCode) => {
+    socket.emit(ACTIONS.connectionQr, { qr: qrCode.qr })
   })
-  session.on(ACTIONS.connectionReady, (data, callback) => callback(data))
+  session.on(ACTIONS.connectionReady, (data) => {
+    socket.emit(ACTIONS.connectionReady, data)
+  })
 }
 
 async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Socket): Promise<void> {
-  socket.on(ACTIONS.writeSendMessage, async (...args: any[], callback) => {
+  socket.on(ACTIONS.writeSendMessage, async (...args: any[]) => {
+    const callback: any = args.pop()
     try {
       // @ts-expect-error: TS2556: just let me use `...args` here pls.
       const sendMessage = await session.sendMessage(...args)
@@ -38,7 +41,7 @@ async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Sock
       callback({ error: e })
     }
   })
-  socket.on(ACTIONS.writeMarkChatRead, async (chatId: string, callback) => {
+  socket.on(ACTIONS.writeMarkChatRead, async (chatId: string, callback: any) => {
     try {
       await session.markChatRead(chatId)
       callback({ error: null })
@@ -46,8 +49,13 @@ async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Sock
       callback({ error: e })
     }
   })
-  socket.on(ACTIONS.readMessagesSubscribe, async () => {
-    const emitMessage = (data: any, callback): void => {
+  socket.on(ACTIONS.readMessagesSubscribe, async (callback: any) => {
+    // TODO: this unsubscribe functionality doesn't work using the callback
+    // mechanism. I think a better route may be to create a new room when
+    // message subscription happens and then put the client into it? this
+    // gives the client the opportunity to "unsubscribe" by leaving the room
+    // and the server can remove the event listener on that event.
+    const emitMessage = (data: any): void => {
       callback(data)
     }
     session.on(ACTIONS.readMessages, emitMessage)
@@ -56,7 +64,7 @@ async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Sock
     })
   })
 
-  socket.on(ACTIONS.writeLeaveGroup, async (chatId: string, callback) => {
+  socket.on(ACTIONS.writeLeaveGroup, async (chatId: string, callback: any) => {
     try {
       const groupMetadata = await session.leaveGroup(chatId)
       callback(groupMetadata)
@@ -64,7 +72,7 @@ async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Sock
       callback(e)
     }
   })
-  socket.on(ACTIONS.readJoinGroup, async (chatId: string, callback) => {
+  socket.on(ACTIONS.readJoinGroup, async (chatId: string, callback: any) => {
     try {
       const groupMetadata = await session.joinGroup(chatId)
       callback(groupMetadata)
@@ -72,7 +80,7 @@ async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Sock
       callback(e)
     }
   })
-  socket.on(ACTIONS.readGroupMetadata, async (chatId: string, callback) => {
+  socket.on(ACTIONS.readGroupMetadata, async (chatId: string, callback: any) => {
     try {
       const groupMetadata = await session.groupMetadata(chatId)
       callback(groupMetadata)
@@ -80,7 +88,7 @@ async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Sock
       callback(e)
     }
   })
-  socket.on(ACTIONS.readGroupInviteMetadata, async (inviteCode: string, callback) => {
+  socket.on(ACTIONS.readGroupInviteMetadata, async (inviteCode: string, callback: any) => {
     try {
       const groupInviteMetadata = await session.groupInviteMetadata(inviteCode)
       callback(groupInviteMetadata)
@@ -88,9 +96,36 @@ async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Sock
       callback(e)
     }
   })
-  socket.on(ACTIONS.readListGroups, (callback) => {
+  socket.on(ACTIONS.readListGroups, (callback: any) => {
     callback(session.groups())
   })
+}
+
+async function getAuthedSession (session: WhatsAppSession, auth: WhatsAppAuth, socket: Socket, sharedConnection: Boolean = true): Promise<SharedSession> {
+  let sharedSession: SharedSession
+  let name = auth.id()
+  if (name === undefined) {
+    throw new Error('Invalid Auth: not authenticated')
+  }
+  if (sharedConnection === false) {
+    name = `private-${Math.floor(Math.random() * 10000000)}-${name}`
+  }
+  if (name in globalSessions) {
+    console.log(`${session.uid}: Switching to shared session: ${globalSessions[name].session.uid}`)
+    await session.close()
+    sharedSession = globalSessions[name]
+    sharedSession.numListeners += 1
+    session = sharedSession.session
+    await assignBasicEvents(session, socket)
+  } else {
+    sharedSession = { name, numListeners: 1, session }
+    console.log(`${session.uid}: Creating new sharable session`)
+    globalSessions[sharedSession.name] = sharedSession
+    session.setAuth(auth)
+    await session.init()
+  }
+  await assignAuthenticatedEvents(session, socket)
+  return sharedSession
 }
 
 export async function registerHandlers (socket: Socket): Promise<void> {
@@ -98,39 +133,21 @@ export async function registerHandlers (socket: Socket): Promise<void> {
   let sharedSession: SharedSession | undefined
   await assignBasicEvents(session, socket)
 
-  const authenticateSession = async (payload: AuthenticateSessionParams, callback): Promise<void> => {
+  const authenticateSession = async (payload: AuthenticateSessionParams, callback: any): Promise<void> => {
     const { sessionAuth, sharedConnection } = payload
     const auth: WhatsAppAuth | undefined = WhatsAppAuth.fromString(sessionAuth)
     if (auth === undefined) {
       callback(new Error('Unparsable Session Auth'))
       return
     }
-    const name = auth.id()
-    if (name === undefined) {
-      callback(new Error('Invalid Auth: not authenticated'))
-      return
+    try {
+      // TODO: only use sharedSession and get rid of references to bare
+      // `session` object
+      sharedSession = await getAuthedSession(session, auth, socket, sharedConnection)
+      session = sharedSession.session
+    } catch (e) {
+      callback(e)
     }
-
-    if (sharedConnection === true || sharedSession === undefined) {
-      sharedSession = { name, numListeners: 1, session }
-      if (sharedSession.name in globalSessions) {
-        console.log(`${session.uid}: Switching to shared session: ${globalSessions[sharedSession.name].session.uid}`)
-        await session.close()
-        sharedSession = globalSessions[sharedSession.name]
-        sharedSession.numListeners += 1
-        session = sharedSession.session
-        await assignBasicEvents(session, socket)
-      } else {
-        console.log(`${session.uid}: Creating new sharable session`)
-        globalSessions[sharedSession.name] = sharedSession
-        session.setAuth(auth)
-        await session.init()
-      }
-    } else {
-      session.setAuth(auth)
-      await session.init()
-    }
-    await assignAuthenticatedEvents(session, socket)
   }
 
   socket.on('disconnect', async () => {
@@ -146,11 +163,11 @@ export async function registerHandlers (socket: Socket): Promise<void> {
       await session.close()
     }
   })
-  socket.on(ACTIONS.connectionQr, async (callback) => {
+  socket.on(ACTIONS.connectionQr, async (callback: any) => {
     const qrCode = session.qrCode()
     callback({ qrCode })
   })
-  socket.on(ACTIONS.connectionStatus, (callback) => {
+  socket.on(ACTIONS.connectionStatus, (callback: any) => {
     const connection = session.connection()
     callback({ connection })
   })

@@ -1,7 +1,6 @@
 import socketio
 
-from util import qrcode_gen, forcestr
-import qrcode
+from util import qrcode_gen
 
 sio = socketio.Client()
 
@@ -41,31 +40,23 @@ def connection_auth(data):
 @sio.on("connection:ready")
 def ready(data):
     print(f"Connection ready: {data=}")
-    sio.emit("read:messages:subscribe")
-
-
-@sio.on("read:messages")
-def message(data):
-    print(f"Got Message: {data=}")
-    rjid = data["message"]["key"]["remoteJid"]
-    if "@g.us" in rjid:
-        sio.emit("read:groupMetadata", rjid)
-
-
-@sio.on("read:groupMetadata")
-def group_metadata(data):
-    print(f"Got group metadata: {data=}")
-
-
-@sio.event
-def my_message(data):
-    print("message received with ", data)
-    sio.emit("my response", {"response": "my response"})
+    sio.emit("read:messages:subscribe", callback=message)
 
 
 @sio.event
 def disconnect():
     print("disconnected from server")
+
+
+def message(data):
+    print(f"Got Message: {data=}")
+    rjid = data["message"]["key"]["remoteJid"]
+    if "@g.us" in rjid:
+        sio.emit("read:groupMetadata", rjid, callback=group_metadata)
+
+
+def group_metadata(data):
+    print(f"Got group metadata: {data=}")
 
 
 if __name__ == "__main__":
