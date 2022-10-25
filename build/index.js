@@ -19,9 +19,9 @@ const port = 3000;
 io.attachApp(app);
 io.on('connection', (socket) => __awaiter(void 0, void 0, void 0, function* () {
     console.log(socket.id);
-    yield (0, handlers_1.registerHandlers)(socket);
+    yield (0, handlers_1.registerHandlers)(io, socket);
 }));
-app.listen(3000, (token) => {
+app.listen(port, (token) => {
     if (token == null) {
         console.warn('port already in use');
     }

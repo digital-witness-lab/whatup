@@ -31,9 +31,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppSession = void 0;
 const baileys_1 = __importStar(require("@adiwajshing/baileys"));
+const axios_1 = __importDefault(require("axios"));
 const events_1 = require("events");
 const whatsappacl_1 = require("./whatsappacl");
 const whatsappauth_1 = require("./whatsappauth");
@@ -58,6 +62,10 @@ class WhatsAppSession extends events_1.EventEmitter {
         this.auth = auth;
         this.auth.on('state:update', (auth) => this.emit(actions_1.ACTIONS.connectionAuth, auth));
     }
+    id() {
+        var _a;
+        return (_a = this.auth) === null || _a === void 0 ? void 0 : _a.id();
+    }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
             const { version } = yield (0, baileys_1.fetchLatestBaileysVersion)();
@@ -66,9 +74,9 @@ class WhatsAppSession extends events_1.EventEmitter {
                 msgRetryCounterMap: this.msgRetryCounterMap,
                 markOnlineOnConnect: false,
                 auth: this.auth.getAuth(),
-                browser: baileys_1.Browsers.macOS('Desktop'),
-                downloadHistory: true,
-                syncFullHistory: true
+                browser: baileys_1.Browsers.macOS('Desktop')
+                // downloadHistory: true,
+                // syncFullHistory: true
             });
             this.store.bind(this.sock);
             this.sock.ev.on('creds.update', () => {
@@ -83,12 +91,14 @@ class WhatsAppSession extends events_1.EventEmitter {
         return __awaiter(this, void 0, void 0, function* () {
             console.log(`${this.uid}: Closing session`);
             (_a = this.sock) === null || _a === void 0 ? void 0 : _a.end(undefined);
+            this.removeAllListeners();
+            delete this.sock;
         });
     }
     _messageUpsert(data) {
         var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
-            const { messages, type } = data;
+            const { messages } = data;
             for (const message of messages) {
                 console.log(`${this.uid}: got message`);
                 const chatId = (_a = message.key) === null || _a === void 0 ? void 0 : _a.remoteJid;
@@ -97,10 +107,14 @@ class WhatsAppSession extends events_1.EventEmitter {
                     continue;
                 }
                 if (((_b = message.key) === null || _b === void 0 ? void 0 : _b.fromMe) === false) {
-                    this.emit(actions_1.ACTIONS.readMessages, { message, type });
+                    this.emit(actions_1.ACTIONS.readMessages, message);
                 }
             }
         });
+    }
+    isReady() {
+        var _a;
+        return ((_a = this.lastConnectionState) === null || _a === void 0 ? void 0 : _a.connection) === 'open';
     }
     _updateConnectionState(data) {
         var _a, _b;
@@ -129,6 +143,31 @@ class WhatsAppSession extends events_1.EventEmitter {
     }
     qrCode() {
         return this.lastConnectionState.qr;
+    }
+    downloadMessageMedia(message) {
+        var _a, _b, _c;
+        return __awaiter(this, void 0, void 0, function* () {
+            const chatId = message.key.remoteJid;
+            if (chatId == null || !this.acl.canRead(message.key.remoteJid)) {
+                throw new whatsappacl_1.NoAccessError('read', chatId !== null && chatId !== void 0 ? chatId : 'undefined');
+            }
+            try {
+                const buffer = yield (0, baileys_1.downloadMediaMessage)(message, 'buffer', {});
+                if (buffer instanceof Buffer) {
+                    return buffer;
+                }
+                // This should never happen but the signature of downloadMediaMessage
+                // doesn't fix the return type based on the `type` function parameter
+                throw new Error(`downloadMediaMessage returned invalid type, expected buffer: ${typeof buffer}`);
+            }
+            catch (error) {
+                if (axios_1.default.isAxiosError(error) && [410, 404].includes((_b = (_a = error.response) === null || _a === void 0 ? void 0 : _a.status) !== null && _b !== void 0 ? _b : 0)) {
+                    yield ((_c = this.sock) === null || _c === void 0 ? void 0 : _c.updateMediaMessage(message));
+                    return yield this.downloadMessageMedia(message);
+                }
+                throw error;
+            }
+        });
     }
     sendMessage(chatId, message, clearChatStatus = true, vampMaxSeconds = 10) {
         var _a, _b, _c;

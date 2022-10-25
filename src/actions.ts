@@ -1,14 +1,17 @@
 export enum ACTIONS {
-  writeMarkChatRead = 'write:markChatRead',
-  writeSendMessage = 'write:sendMessage',
-  writeLeaveGroup = 'write:leaveGroup',
+  writeMarkChatRead = 'write:chat:markRead',
+  writeSendMessage = 'write:messages:send',
+  writeLeaveGroup = 'write:group:leave',
 
   readMessagesSubscribe = 'read:messages:subscribe',
+  readMessagesUnSubscribe = 'read:messages:unsubscribe',
   readMessages = 'read:messages',
-  readGroupInviteMetadata = 'read:groupInviteMetadata',
-  readGroupMetadata = 'read:groupMetadata',
-  readJoinGroup = 'read:joinGroup',
-  readListGroups = 'read:listGroups',
+  readDownloadMessage = 'read:messages:downloadMedia',
+
+  readGroupInviteMetadata = 'read:groups:inviteMetadata',
+  readGroupMetadata = 'read:groups:metadata',
+  readJoinGroup = 'read:groups:join',
+  readListGroups = 'read:groups:list',
 
   connectionAuthAnonymous = 'connection:auth:anonymous',
   connectionStatus = 'connection:status',

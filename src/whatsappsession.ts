@@ -1,5 +1,6 @@
-import makeWASocket, { fetchLatestBaileysVersion, Browsers, ConnectionState, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, WAMessage, WASocket } from '@adiwajshing/baileys'
+import makeWASocket, { downloadMediaMessage, fetchLatestBaileysVersion, Browsers, ConnectionState, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, WAMessage, WASocket } from '@adiwajshing/baileys'
 import { Boom } from '@hapi/boom'
+import axios from 'axios'
 import { EventEmitter } from 'events'
 
 import { WhatsAppACLConfig, WhatsAppACL, NoAccessError } from './whatsappacl'
@@ -56,6 +57,10 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     this.auth.on('state:update', (auth) => this.emit(ACTIONS.connectionAuth, auth))
   }
 
+  id (): string | undefined {
+    return this.auth?.id()
+  }
+
   async init (): Promise<void> {
     const { version } = await fetchLatestBaileysVersion()
     this.sock = makeWASocket({
@@ -64,9 +69,9 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
       markOnlineOnConnect: false,
       auth: this.auth.getAuth(),
 
-      browser: Browsers.macOS('Desktop'),
-      downloadHistory: true,
-      syncFullHistory: true
+      browser: Browsers.macOS('Desktop')
+      // downloadHistory: true,
+      // syncFullHistory: true
     })
     this.store.bind(this.sock)
 
@@ -80,10 +85,12 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
   async close (): Promise<void> {
     console.log(`${this.uid}: Closing session`)
     this.sock?.end(undefined)
+    this.removeAllListeners()
+    delete this.sock
   }
 
   private async _messageUpsert (data: { messages: WAMessage[], type: MessageUpsertType }): Promise<void> {
-    const { messages, type } = data
+    const { messages } = data
     for (const message of messages) {
       console.log(`${this.uid}: got message`)
       const chatId: string | null | undefined = message.key?.remoteJid
@@ -92,9 +99,13 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
         continue
       }
       if (message.key?.fromMe === false) {
-        this.emit(ACTIONS.readMessages, { message, type })
+        this.emit(ACTIONS.readMessages, message)
       }
     }
+  }
+
+  isReady (): boolean {
+    return this.lastConnectionState?.connection === 'open'
   }
 
   private async _updateConnectionState (data: Partial<ConnectionState>): Promise<void> {
@@ -122,6 +133,28 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
 
   qrCode (): string | undefined {
     return this.lastConnectionState.qr
+  }
+
+  async downloadMessageMedia (message: WAMessage): Promise<Buffer> {
+    const chatId = message.key.remoteJid
+    if (chatId == null || !this.acl.canRead(message.key.remoteJid)) {
+      throw new NoAccessError('read', chatId ?? 'undefined')
+    }
+    try {
+      const buffer = await downloadMediaMessage(message, 'buffer', {})
+      if (buffer instanceof Buffer) {
+        return buffer
+      }
+      // This should never happen but the signature of downloadMediaMessage
+      // doesn't fix the return type based on the `type` function parameter
+      throw new Error(`downloadMediaMessage returned invalid type, expected buffer: ${typeof buffer}`)
+    } catch (error) {
+      if (axios.isAxiosError(error) && [410, 404].includes(error.response?.status ?? 0)) {
+        await this.sock?.updateMediaMessage(message)
+        return await this.downloadMessageMedia(message)
+      }
+      throw error
+    }
   }
 
   async sendMessage (chatId: string, message: string, clearChatStatus: boolean = true, vampMaxSeconds: number | undefined = 10): Promise<WAMessage | undefined> {

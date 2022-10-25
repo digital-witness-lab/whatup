@@ -11,10 +11,10 @@ io.attachApp(app)
 
 io.on('connection', async (socket) => {
   console.log(socket.id)
-  await registerHandlers(socket)
+  await registerHandlers(io, socket)
 })
 
-app.listen(3000, (token: any) => {
+app.listen(port, (token: any) => {
   if (token == null) {
     console.warn('port already in use')
   }

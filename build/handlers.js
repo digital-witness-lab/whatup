@@ -28,8 +28,27 @@ function assignBasicEvents(session, socket) {
         });
     });
 }
-function assignAuthenticatedEvents(session, socket) {
+function assignAuthenticatedEvents(sharedSession, io, socket) {
     return __awaiter(this, void 0, void 0, function* () {
+        const session = sharedSession.session;
+        if (sharedSession.hasReadMessageHandler == null || !sharedSession.hasReadMessageHandler) {
+            session.on(actions_1.ACTIONS.readMessages, (msg) => {
+                console.log(`sharing message with room: ${sharedSession.name}`);
+                io.to(sharedSession.name).emit(actions_1.ACTIONS.readMessages, msg);
+            });
+            sharedSession.hasReadMessageHandler = true;
+        }
+        socket.on(actions_1.ACTIONS.readDownloadMessage, (message, callback) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const buffer = yield sharedSession.session.downloadMessageMedia(message);
+                console.log("Downloaded media message");
+                callback(buffer);
+            }
+            catch (e) {
+                console.log(`Exception downloading media message: ${String(e)}`);
+                callback(e);
+            }
+        }));
         socket.on(actions_1.ACTIONS.writeSendMessage, (...args) => __awaiter(this, void 0, void 0, function* () {
             const callback = args.pop();
             try {
@@ -50,19 +69,13 @@ function assignAuthenticatedEvents(session, socket) {
                 callback({ error: e });
             }
         }));
-        socket.on(actions_1.ACTIONS.readMessagesSubscribe, (callback) => __awaiter(this, void 0, void 0, function* () {
-            // TODO: this unsubscribe functionality doesn't work using the callback
-            // mechanism. I think a better route may be to create a new room when
-            // message subscription happens and then put the client into it? this
-            // gives the client the opportunity to "unsubscribe" by leaving the room
-            // and the server can remove the event listener on that event.
-            const emitMessage = (data) => {
-                callback(data);
-            };
-            session.on(actions_1.ACTIONS.readMessages, emitMessage);
-            socket.on(actions_1.ACTIONS.readMessages, () => __awaiter(this, void 0, void 0, function* () {
-                session.off(actions_1.ACTIONS.readMessages, emitMessage);
-            }));
+        socket.on(actions_1.ACTIONS.readMessagesSubscribe, () => __awaiter(this, void 0, void 0, function* () {
+            console.log(`joining room: ${sharedSession.name}`);
+            yield socket.join(sharedSession.name);
+        }));
+        socket.on(actions_1.ACTIONS.readMessagesUnSubscribe, () => __awaiter(this, void 0, void 0, function* () {
+            console.log(`leaving room: ${sharedSession.name}`);
+            yield socket.leave(sharedSession.name);
         }));
         socket.on(actions_1.ACTIONS.writeLeaveGroup, (chatId, callback) => __awaiter(this, void 0, void 0, function* () {
             try {
@@ -105,10 +118,13 @@ function assignAuthenticatedEvents(session, socket) {
         });
     });
 }
-function getAuthedSession(session, auth, socket, sharedConnection = true) {
+function getAuthedSession(session, auth, io, socket, sharedConnection = true) {
     return __awaiter(this, void 0, void 0, function* () {
         let sharedSession;
-        let name = auth.id();
+        if (auth === null && session.id() === undefined) {
+            throw new Error('No additional auth provided and current session has not been authenticated');
+        }
+        let name = (auth !== null && auth !== void 0 ? auth : session).id();
         if (name === undefined) {
             throw new Error('Invalid Auth: not authenticated');
         }
@@ -122,19 +138,23 @@ function getAuthedSession(session, auth, socket, sharedConnection = true) {
             sharedSession.numListeners += 1;
             session = sharedSession.session;
             yield assignBasicEvents(session, socket);
+            if (session.isReady()) {
+                socket.emit(actions_1.ACTIONS.connectionReady, {});
+            }
         }
         else {
             sharedSession = { name, numListeners: 1, session };
             console.log(`${session.uid}: Creating new sharable session`);
             globalSessions[sharedSession.name] = sharedSession;
-            session.setAuth(auth);
+            if (auth !== null)
+                session.setAuth(auth);
             yield session.init();
         }
-        yield assignAuthenticatedEvents(session, socket);
+        yield assignAuthenticatedEvents(sharedSession, io, socket);
         return sharedSession;
     });
 }
-function registerHandlers(socket) {
+function registerHandlers(io, socket) {
     return __awaiter(this, void 0, void 0, function* () {
         let session = new whatsappsession_1.WhatsAppSession({ acl: { allowAll: true } });
         let sharedSession;
@@ -149,7 +169,7 @@ function registerHandlers(socket) {
             try {
                 // TODO: only use sharedSession and get rid of references to bare
                 // `session` object
-                sharedSession = yield getAuthedSession(session, auth, socket, sharedConnection);
+                sharedSession = yield getAuthedSession(session, auth, io, socket, sharedConnection);
                 session = sharedSession.session;
             }
             catch (e) {
@@ -160,6 +180,7 @@ function registerHandlers(socket) {
             console.log('Disconnecting');
             if (sharedSession !== undefined) {
                 sharedSession.numListeners -= 1;
+                yield (0, utils_1.sleep)(5000);
                 if (sharedSession.numListeners === 0) {
                     yield sharedSession.session.close();
                     // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
@@ -179,10 +200,21 @@ function registerHandlers(socket) {
             callback({ connection });
         });
         socket.on(actions_1.ACTIONS.connectionAuth, authenticateSession);
-        socket.on(actions_1.ACTIONS.connectionAuthAnonymous, () => __awaiter(this, void 0, void 0, function* () {
+        socket.on(actions_1.ACTIONS.connectionAuthAnonymous, (data, callback) => __awaiter(this, void 0, void 0, function* () {
+            let { sharedConnection } = data;
+            if (sharedConnection == null)
+                sharedConnection = false;
             console.log(`${session.uid}: Initializing empty session`);
             session.once(actions_1.ACTIONS.connectionReady, (0, utils_1.resolvePromiseSync)(() => __awaiter(this, void 0, void 0, function* () {
-                yield assignAuthenticatedEvents(session, socket);
+                try {
+                    // TODO: only use sharedSession and get rid of references to bare
+                    // `session` object
+                    sharedSession = yield getAuthedSession(session, null, io, socket, sharedConnection);
+                    session = sharedSession.session;
+                }
+                catch (e) {
+                    callback(e);
+                }
             })));
             yield session.init();
         }));

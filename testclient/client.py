@@ -40,7 +40,7 @@ def connection_auth(data):
 @sio.on("connection:ready")
 def ready(data):
     print(f"Connection ready: {data=}")
-    sio.emit("read:messages:subscribe", callback=message)
+    sio.emit("read:messages:subscribe")
 
 
 @sio.event
@@ -48,15 +48,15 @@ def disconnect():
     print("disconnected from server")
 
 
-def message(data):
-    print(f"Got Message: {data=}")
-    rjid = data["message"]["key"]["remoteJid"]
-    if "@g.us" in rjid:
-        sio.emit("read:groupMetadata", rjid, callback=group_metadata)
-
-
-def group_metadata(data):
-    print(f"Got group metadata: {data=}")
+@sio.on("read:messages")
+def message(msg):
+    rjid = msg["key"]["remoteJid"]
+    media = sio.call("read:messages:downloadMedia", msg)
+    print(f"Got Message: {msg=}")
+    print(f"Got meda: {media=}")
+    if False and "@g.us" in rjid:
+        group_metadata = sio.call("read:groups:metadata", rjid)
+        print(f"Group metadata: {group_metadata=}")
 
 
 if __name__ == "__main__":

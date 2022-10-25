@@ -1,0 +1,2 @@
+python-socketio[client,asyncio_client]
+qrcode

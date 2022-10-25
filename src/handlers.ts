@@ -1,8 +1,9 @@
-import { Socket } from 'socket.io'
+import { WAMessage } from '@adiwajshing/baileys'
+import { Server, Socket } from 'socket.io'
 
 import { WhatsAppSession } from './whatsappsession'
 import { WhatsAppAuth } from './whatsappauth'
-import { resolvePromiseSync } from './utils'
+import { sleep, resolvePromiseSync } from './utils'
 import { ACTIONS } from './actions'
 
 interface AuthenticateSessionParams {
@@ -14,6 +15,7 @@ interface SharedSession {
   session: WhatsAppSession
   name: string
   numListeners: number
+  hasReadMessageHandler?: boolean
 }
 
 const globalSessions: { [_: string]: SharedSession } = {}
@@ -30,7 +32,26 @@ async function assignBasicEvents (session: WhatsAppSession, socket: Socket): Pro
   })
 }
 
-async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Socket): Promise<void> {
+async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Server, socket: Socket): Promise<void> {
+  const session: WhatsAppSession = sharedSession.session
+  if (sharedSession.hasReadMessageHandler == null || !sharedSession.hasReadMessageHandler) {
+    session.on(ACTIONS.readMessages, (msg: any): void => {
+      console.log(`sharing message with room: ${sharedSession.name}`)
+      io.to(sharedSession.name).emit(ACTIONS.readMessages, msg)
+    })
+    sharedSession.hasReadMessageHandler = true
+  }
+
+  socket.on(ACTIONS.readDownloadMessage, async (message: WAMessage, callback: any) => {
+    try {
+      const buffer = await sharedSession.session.downloadMessageMedia(message)
+      console.log("Downloaded media message")
+      callback(buffer)
+    } catch (e) {
+      console.log(`Exception downloading media message: ${String(e)}`)
+      callback(e)
+    }
+  })
   socket.on(ACTIONS.writeSendMessage, async (...args: any[]) => {
     const callback: any = args.pop()
     try {
@@ -49,19 +70,15 @@ async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Sock
       callback({ error: e })
     }
   })
-  socket.on(ACTIONS.readMessagesSubscribe, async (callback: any) => {
-    // TODO: this unsubscribe functionality doesn't work using the callback
-    // mechanism. I think a better route may be to create a new room when
-    // message subscription happens and then put the client into it? this
-    // gives the client the opportunity to "unsubscribe" by leaving the room
-    // and the server can remove the event listener on that event.
-    const emitMessage = (data: any): void => {
-      callback(data)
-    }
-    session.on(ACTIONS.readMessages, emitMessage)
-    socket.on(ACTIONS.readMessages, async () => {
-      session.off(ACTIONS.readMessages, emitMessage)
-    })
+
+  socket.on(ACTIONS.readMessagesSubscribe, async () => {
+    console.log(`joining room: ${sharedSession.name}`)
+    await socket.join(sharedSession.name)
+  })
+
+  socket.on(ACTIONS.readMessagesUnSubscribe, async () => {
+    console.log(`leaving room: ${sharedSession.name}`)
+    await socket.leave(sharedSession.name)
   })
 
   socket.on(ACTIONS.writeLeaveGroup, async (chatId: string, callback: any) => {
@@ -101,9 +118,12 @@ async function assignAuthenticatedEvents (session: WhatsAppSession, socket: Sock
   })
 }
 
-async function getAuthedSession (session: WhatsAppSession, auth: WhatsAppAuth, socket: Socket, sharedConnection: Boolean = true): Promise<SharedSession> {
+async function getAuthedSession (session: WhatsAppSession, auth: WhatsAppAuth | null, io: Server, socket: Socket, sharedConnection: Boolean = true): Promise<SharedSession> {
   let sharedSession: SharedSession
-  let name = auth.id()
+  if (auth === null && session.id() === undefined) {
+    throw new Error('No additional auth provided and current session has not been authenticated')
+  }
+  let name = (auth ?? session).id()
   if (name === undefined) {
     throw new Error('Invalid Auth: not authenticated')
   }
@@ -117,18 +137,21 @@ async function getAuthedSession (session: WhatsAppSession, auth: WhatsAppAuth, s
     sharedSession.numListeners += 1
     session = sharedSession.session
     await assignBasicEvents(session, socket)
+    if (session.isReady()) {
+      socket.emit(ACTIONS.connectionReady, {})
+    }
   } else {
     sharedSession = { name, numListeners: 1, session }
     console.log(`${session.uid}: Creating new sharable session`)
     globalSessions[sharedSession.name] = sharedSession
-    session.setAuth(auth)
+    if (auth !== null) session.setAuth(auth)
     await session.init()
   }
-  await assignAuthenticatedEvents(session, socket)
+  await assignAuthenticatedEvents(sharedSession, io, socket)
   return sharedSession
 }
 
-export async function registerHandlers (socket: Socket): Promise<void> {
+export async function registerHandlers (io: Server, socket: Socket): Promise<void> {
   let session: WhatsAppSession = new WhatsAppSession({ acl: { allowAll: true } })
   let sharedSession: SharedSession | undefined
   await assignBasicEvents(session, socket)
@@ -143,7 +166,7 @@ export async function registerHandlers (socket: Socket): Promise<void> {
     try {
       // TODO: only use sharedSession and get rid of references to bare
       // `session` object
-      sharedSession = await getAuthedSession(session, auth, socket, sharedConnection)
+      sharedSession = await getAuthedSession(session, auth, io, socket, sharedConnection)
       session = sharedSession.session
     } catch (e) {
       callback(e)
@@ -154,6 +177,7 @@ export async function registerHandlers (socket: Socket): Promise<void> {
     console.log('Disconnecting')
     if (sharedSession !== undefined) {
       sharedSession.numListeners -= 1
+      await sleep(5000)
       if (sharedSession.numListeners === 0) {
         await sharedSession.session.close()
         // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
@@ -172,10 +196,19 @@ export async function registerHandlers (socket: Socket): Promise<void> {
     callback({ connection })
   })
   socket.on(ACTIONS.connectionAuth, authenticateSession)
-  socket.on(ACTIONS.connectionAuthAnonymous, async () => {
+  socket.on(ACTIONS.connectionAuthAnonymous, async (data: Partial<AuthenticateSessionParams>, callback: any) => {
+    let { sharedConnection } = data
+    if (sharedConnection == null) sharedConnection = false
     console.log(`${session.uid}: Initializing empty session`)
     session.once(ACTIONS.connectionReady, resolvePromiseSync(async (): Promise<void> => {
-      await assignAuthenticatedEvents(session, socket)
+      try {
+        // TODO: only use sharedSession and get rid of references to bare
+        // `session` object
+        sharedSession = await getAuthedSession(session, null, io, socket, sharedConnection)
+        session = sharedSession.session
+      } catch (e) {
+        callback(e)
+      }
     }))
     await session.init()
   })
