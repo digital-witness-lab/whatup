@@ -12,7 +12,9 @@
     "@adiwajshing/baileys": "~4.4.0",
     "@adiwajshing/keyed-db": "^0.2.4",
     "qrcode-terminal": "^0.12.0",
+    "sequelize": "^6.25.3",
     "socket.io": "^4.5.2",
+    "sqlite3": "^5.1.2",
     "uWebSockets.js": "uNetworking/uWebSockets.js#v20.10.0"
   },
   "optionalDependencies": {

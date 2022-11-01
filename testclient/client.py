@@ -61,4 +61,9 @@ def message(msg):
 
 if __name__ == "__main__":
     sio.connect("ws://localhost:3000")
-    sio.wait()
+    try:
+        sio.wait()
+    except KeyboardInterrupt:
+        print("Exiting")
+    finally:
+        sio.disconnect()
