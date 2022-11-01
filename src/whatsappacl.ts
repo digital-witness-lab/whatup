@@ -20,7 +20,7 @@ const WhatsAppACLConfigDefault: WhatsAppACLConfig = {
 }
 
 export class WhatsAppACL {
-  acl: WhatsAppACLConfig
+  readonly acl: WhatsAppACLConfig
 
   constructor (acl: Partial<WhatsAppACLConfig> = WhatsAppACLConfigDefault) {
     this.acl = { ...WhatsAppACLConfigDefault, ...acl }

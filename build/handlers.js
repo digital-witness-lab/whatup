@@ -10,16 +10,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerHandlers = void 0;
+const whatsappsessionstorage_1 = require("./whatsappsessionstorage");
 const whatsappsession_1 = require("./whatsappsession");
-const whatsappauth_1 = require("./whatsappauth");
 const utils_1 = require("./utils");
 const actions_1 = require("./actions");
 const globalSessions = {};
 function assignBasicEvents(session, socket) {
     return __awaiter(this, void 0, void 0, function* () {
-        session.on(actions_1.ACTIONS.connectionAuth, (state) => {
-            socket.emit(actions_1.ACTIONS.connectionAuth, { sessionAuth: state, error: null });
-        });
         session.on(actions_1.ACTIONS.connectionQr, (qrCode) => {
             socket.emit(actions_1.ACTIONS.connectionQr, { qr: qrCode.qr });
         });
@@ -118,13 +115,14 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
         });
     });
 }
-function getAuthedSession(session, auth, io, socket, sharedConnection = true) {
+function getAuthedSession(session, locator, io, socket, sharedConnection = true) {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         let sharedSession;
-        if (auth === null && session.id() === undefined) {
+        if (locator === null && session.id() === undefined) {
             throw new Error('No additional auth provided and current session has not been authenticated');
         }
-        let name = (auth !== null && auth !== void 0 ? auth : session).id();
+        let name = (_a = locator === null || locator === void 0 ? void 0 : locator.sessionId) !== null && _a !== void 0 ? _a : session.id();
         if (name === undefined) {
             throw new Error('Invalid Auth: not authenticated');
         }
@@ -146,8 +144,8 @@ function getAuthedSession(session, auth, io, socket, sharedConnection = true) {
             sharedSession = { name, numListeners: 1, session };
             console.log(`${session.uid}: Creating new sharable session`);
             globalSessions[sharedSession.name] = sharedSession;
-            if (auth !== null)
-                session.setAuth(auth);
+            if (locator !== null)
+                session.setStorage(locator);
             yield session.init();
         }
         yield assignAuthenticatedEvents(sharedSession, io, socket);
@@ -160,16 +158,15 @@ function registerHandlers(io, socket) {
         let sharedSession;
         yield assignBasicEvents(session, socket);
         const authenticateSession = (payload, callback) => __awaiter(this, void 0, void 0, function* () {
-            const { sessionAuth, sharedConnection } = payload;
-            const auth = whatsappauth_1.WhatsAppAuth.fromString(sessionAuth);
-            if (auth === undefined) {
-                callback(new Error('Unparsable Session Auth'));
+            const { sharedConnection } = payload;
+            if (!whatsappsessionstorage_1.WhatsAppSessionStorage.isValidateLocator(payload)) {
+                callback(new Error('Invalid authentication'));
                 return;
             }
             try {
                 // TODO: only use sharedSession and get rid of references to bare
                 // `session` object
-                sharedSession = yield getAuthedSession(session, auth, io, socket, sharedConnection);
+                sharedSession = yield getAuthedSession(session, payload, io, socket, sharedConnection);
                 session = sharedSession.session;
             }
             catch (e) {

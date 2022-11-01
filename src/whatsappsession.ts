@@ -6,6 +6,7 @@ import { EventEmitter } from 'events'
 import { WhatsAppACLConfig, WhatsAppACL, NoAccessError } from './whatsappacl'
 import { WhatsAppAuth, AuthenticationData } from './whatsappauth'
 import { WhatsAppStore } from './whatsappstore'
+import { WhatsAppSessionLocator, WhatsAppSessionStorage } from './whatsappsessionstorage'
 import { ACTIONS } from './actions'
 import { sleep, resolvePromiseSync } from './utils'
 
@@ -24,37 +25,38 @@ export interface WhatsAppSessionInterface {
   groups: () => GroupMetadata[]
 }
 
-export interface WhatsAppSessionConfig {
-  acl?: Partial<WhatsAppACLConfig>
-  authData?: AuthenticationData
-}
-
 export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInterface {
   public uid: string
   protected sock?: WASocket = undefined
-  protected config: WhatsAppSessionConfig = {}
   protected msgRetryCounterMap: MessageRetryMap = { }
   protected lastConnectionState: Partial<ConnectionState> = {}
 
   protected acl: WhatsAppACL
-  // @ts-expect-error: TS2564: this.auth is definitly initialized in
-  //                   `constructor()` through the call to `this.setAuth`
-  protected auth: WhatsAppAuth
+  protected auth!: WhatsAppAuth
   protected store: WhatsAppStore
+  protected sessionStorage: WhatsAppSessionStorage
 
-  constructor (config: Partial<WhatsAppSessionConfig>) {
+  constructor (locator: WhatsAppSessionLocator | undefined = undefined) {
     super()
-    this.uid = `WS-${Math.floor(Math.random() * 10000000)}`
+    let sessionLocator: WhatsAppSessionLocator
+    if (locator !== undefined) {
+      sessionLocator = locator
+    } else {
+      sessionLocator = WhatsAppSessionStorage.createLocator()
+      this.emit('locator:created', sessionLocator)
+    }
+    this.uid = sessionLocator.sessionId
     console.log(`${this.uid}: Constructing session`)
-    this.config = config
-    this.acl = new WhatsAppACL(config.acl)
-    this.setAuth(new WhatsAppAuth(this.config.authData))
+    this.sessionStorage = new WhatsAppSessionStorage(sessionLocator)
+    this.acl = new WhatsAppACL(this.sessionStorage.record.aclConfig)
     this.store = new WhatsAppStore(this.acl)
+
+    const auth = new WhatsAppAuth(this.sessionStorage.record.authData)
+    this.setAuth(auth)
   }
 
   setAuth (auth: WhatsAppAuth): void {
     this.auth = auth
-    this.auth.on('state:update', (auth) => this.emit(ACTIONS.connectionAuth, auth))
   }
 
   id (): string | undefined {
@@ -76,7 +78,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     this.store.bind(this.sock)
 
     this.sock.ev.on('creds.update', () => {
-      this.auth.update()
+      this._updateSessionStorage()
     })
     this.sock.ev.on('connection.update', resolvePromiseSync(this._updateConnectionState.bind(this)))
     this.sock.ev.on('messages.upsert', resolvePromiseSync(this._messageUpsert.bind(this)))
@@ -87,6 +89,13 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     this.sock?.end(undefined)
     this.removeAllListeners()
     delete this.sock
+  }
+
+  private _updateSessionStorage (): void {
+    this.sessionStorage.record = {
+      authData: this.auth.state,
+      aclConfig: this.acl.acl
+    }
   }
 
   private async _messageUpsert (data: { messages: WAMessage[], type: MessageUpsertType }): Promise<void> {

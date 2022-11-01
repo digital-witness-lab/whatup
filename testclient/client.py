@@ -28,15 +28,6 @@ def qr(data):
     print(data)
 
 
-@sio.on("connection:auth")
-def connection_auth(data):
-    if "sessionAuth" in data:
-        print("Got new auth... storing")
-        SESSION_AUTH = data["sessionAuth"]
-        with open("sessionauth.dat", "w") as fd:
-            fd.write(SESSION_AUTH)
-
-
 @sio.on("connection:ready")
 def ready(data):
     print(f"Connection ready: {data=}")

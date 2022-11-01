@@ -1,13 +1,13 @@
 import { WAMessage } from '@adiwajshing/baileys'
 import { Server, Socket } from 'socket.io'
 
+import { WhatsAppSessionLocator, WhatsAppSessionStorage } from './whatsappsessionstorage'
 import { WhatsAppSession } from './whatsappsession'
 import { WhatsAppAuth } from './whatsappauth'
 import { sleep, resolvePromiseSync } from './utils'
 import { ACTIONS } from './actions'
 
-interface AuthenticateSessionParams {
-  sessionAuth: string
+interface AuthenticateSessionParams extends WhatsAppSessionLocator {
   sharedConnection?: boolean
 }
 
@@ -21,9 +21,6 @@ interface SharedSession {
 const globalSessions: { [_: string]: SharedSession } = {}
 
 async function assignBasicEvents (session: WhatsAppSession, socket: Socket): Promise<void> {
-  session.on(ACTIONS.connectionAuth, (state) => {
-    socket.emit(ACTIONS.connectionAuth, { sessionAuth: state, error: null })
-  })
   session.on(ACTIONS.connectionQr, (qrCode) => {
     socket.emit(ACTIONS.connectionQr, { qr: qrCode.qr })
   })
@@ -118,12 +115,12 @@ async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Serv
   })
 }
 
-async function getAuthedSession (session: WhatsAppSession, auth: WhatsAppAuth | null, io: Server, socket: Socket, sharedConnection: Boolean = true): Promise<SharedSession> {
+async function getAuthedSession (session: WhatsAppSession, locator: WhatsAppSessionLocator | null, io: Server, socket: Socket, sharedConnection: Boolean = true): Promise<SharedSession> {
   let sharedSession: SharedSession
-  if (auth === null && session.id() === undefined) {
+  if (locator === null && session.id() === undefined) {
     throw new Error('No additional auth provided and current session has not been authenticated')
   }
-  let name = (auth ?? session).id()
+  let name = locator?.sessionId ?? session.id()
   if (name === undefined) {
     throw new Error('Invalid Auth: not authenticated')
   }
@@ -144,7 +141,7 @@ async function getAuthedSession (session: WhatsAppSession, auth: WhatsAppAuth | 
     sharedSession = { name, numListeners: 1, session }
     console.log(`${session.uid}: Creating new sharable session`)
     globalSessions[sharedSession.name] = sharedSession
-    if (auth !== null) session.setAuth(auth)
+    if (locator !== null) session.setStorage(locator)
     await session.init()
   }
   await assignAuthenticatedEvents(sharedSession, io, socket)
@@ -157,16 +154,15 @@ export async function registerHandlers (io: Server, socket: Socket): Promise<voi
   await assignBasicEvents(session, socket)
 
   const authenticateSession = async (payload: AuthenticateSessionParams, callback: any): Promise<void> => {
-    const { sessionAuth, sharedConnection } = payload
-    const auth: WhatsAppAuth | undefined = WhatsAppAuth.fromString(sessionAuth)
-    if (auth === undefined) {
-      callback(new Error('Unparsable Session Auth'))
+    const { sharedConnection } = payload
+    if (!WhatsAppSessionStorage.isValidateLocator(payload)) {
+      callback(new Error('Invalid authentication'))
       return
     }
     try {
       // TODO: only use sharedSession and get rid of references to bare
       // `session` object
-      sharedSession = await getAuthedSession(session, auth, io, socket, sharedConnection)
+      sharedSession = await getAuthedSession(session, payload, io, socket, sharedConnection)
       session = sharedSession.session
     } catch (e) {
       callback(e)

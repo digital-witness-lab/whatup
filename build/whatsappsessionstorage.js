@@ -4,20 +4,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppSessionStorage = void 0;
+const baileys_1 = require("@adiwajshing/baileys");
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const crypto_1 = __importDefault(require("crypto"));
+const DEFAULT_SESSION_STORAGE_OPTIONS = {
+    datadir: './data/',
+    loadRecord: true
+};
 class WhatsAppSessionStorage {
-    constructor(locator) {
-        var _a, _b;
+    constructor(locator, _options = {}) {
+        var _a;
+        this._writeQueue = {};
+        const options = Object.assign(_options, DEFAULT_SESSION_STORAGE_OPTIONS);
         this.sessionId = locator.sessionId;
-        this.dataDir = ((_a = locator.dataDir) !== null && _a !== void 0 ? _a : './');
+        this.dataDir = options.datadir;
         this._sessionHash = crypto_1.default.createHash('sha256').update(this.sessionId).digest('hex');
         let keysSecret;
         if (this._hasKeys()) {
             keysSecret = this._loadKeys(locator);
         }
-        else if ((_b = locator.createIfMissing) !== null && _b !== void 0 ? _b : true) {
+        else if ((_a = locator.createIfMissing) !== null && _a !== void 0 ? _a : true) {
             // The "?? true" effectively sets the default value of createIfMissing to true
             keysSecret = this._createKeys(locator);
         }
@@ -25,15 +32,31 @@ class WhatsAppSessionStorage {
             throw Error(`Missing keys for session: ${this.sessionId}: ${this._sessionHash}`);
         }
         this.keys = { publicKey: keysSecret.publicKey };
-        this._record = this._loadRecord(keysSecret);
+        if (options.loadRecord) {
+            this._record = this._loadRecord(keysSecret);
+        }
     }
-    createLocator(sessionId) {
+    static createLocator(sessionId = undefined) {
         return {
             sessionId: sessionId !== null && sessionId !== void 0 ? sessionId : crypto_1.default.randomUUID(),
-            passphrase: crypto_1.default.randomBytes(64).toString('hex')
+            passphrase: crypto_1.default.randomBytes(64).toString('hex'),
+            createIfMissing: true
         };
     }
+    static isValidateLocator(locator) {
+        try {
+            const session = new this(Object.assign(Object.assign({}, locator), { createIfMissing: false }), { loadRecord: false });
+            console.log(`Created session storage for id: ${session.sessionId}`);
+            return true;
+        }
+        catch (e) {
+            return false;
+        }
+    }
     get record() {
+        if (this._record === undefined) {
+            throw new Error('SessionStorage not initialized with loadRecord=True');
+        }
         return this._record;
     }
     set record(r) {
@@ -45,7 +68,7 @@ class WhatsAppSessionStorage {
     }
     _saveRecord(record, keys) {
         const contentEnc = this._encrypt(record, keys);
-        this._saveBlob(contentEnc, 'record');
+        this._saveBlob(contentEnc, 'record', 2000);
     }
     _hasKeys() {
         return fs_1.default.existsSync(this._blobPath('privKey')) && fs_1.default.existsSync(this._blobPath('pubKey'));
@@ -83,23 +106,32 @@ class WhatsAppSessionStorage {
         const filepath = this._blobPath(blobType);
         return fs_1.default.readFileSync(filepath);
     }
-    _saveBlob(blob, blobType) {
+    _saveBlob(blob, blobType, queueTime = 0) {
         const filepath = this._blobPath(blobType);
         if (!fs_1.default.existsSync(filepath)) {
             const fileparents = path_1.default.dirname(filepath);
             fs_1.default.mkdirSync(fileparents, { recursive: true });
         }
-        fs_1.default.writeFileSync(filepath, blob);
+        if (queueTime === 0) {
+            fs_1.default.writeFileSync(filepath, blob);
+        }
+        else {
+            if (filepath in this._writeQueue) {
+                clearTimeout(this._writeQueue[filepath]);
+            }
+            const timerid = setTimeout(() => fs_1.default.writeFileSync(filepath, blob), queueTime);
+            this._writeQueue[filepath] = timerid;
+        }
     }
     _decrypt(contentEnc, keys) {
         if (keys.privateKey === undefined) {
             throw Error('Private key must be set to decrypt');
         }
         const contentDec = crypto_1.default.privateDecrypt(keys.privateKey, contentEnc);
-        return JSON.parse(contentDec.toString('utf-8'));
+        return JSON.parse(contentDec.toString('utf-8'), baileys_1.BufferJSON.reviver);
     }
     _encrypt(record, keys) {
-        const contentDec = Buffer.from(JSON.stringify(record));
+        const contentDec = Buffer.from(JSON.stringify(record, baileys_1.BufferJSON.replacer));
         const contentEnc = crypto_1.default.publicEncrypt(keys.publicKey, contentDec);
         return contentEnc;
     }

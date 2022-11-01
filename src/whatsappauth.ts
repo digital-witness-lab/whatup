@@ -7,7 +7,7 @@ export interface AuthenticationData {
 }
 
 export class WhatsAppAuth extends EventEmitter implements SignalKeyStore {
-  protected state: AuthenticationData
+  readonly state: AuthenticationData
 
   constructor (state: AuthenticationData | null = null) {
     super()
@@ -38,10 +38,6 @@ export class WhatsAppAuth extends EventEmitter implements SignalKeyStore {
     return JSON.stringify(this.state, BufferJSON.replacer)
   }
 
-  update (): void {
-    this.emit('state:update', this.toString())
-  }
-
   async get<T extends keyof SignalDataTypeMap>(type: T, ids: string[]): Promise<{ [id: string]: SignalDataTypeMap[T] }> {
     return ids.reduce((dict: { [_: string]: any }, id: string): { [id: string]: SignalDataTypeMap[T] } => {
       let value = this.state.keys[type]?.[id]
@@ -63,6 +59,6 @@ export class WhatsAppAuth extends EventEmitter implements SignalKeyStore {
       }
       Object.assign(this.state.keys[key], data[key])
     }
-    this.update()
+    this.emit('update')
   }
 }

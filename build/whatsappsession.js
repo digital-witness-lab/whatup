@@ -42,25 +42,33 @@ const events_1 = require("events");
 const whatsappacl_1 = require("./whatsappacl");
 const whatsappauth_1 = require("./whatsappauth");
 const whatsappstore_1 = require("./whatsappstore");
+const whatsappsessionstorage_1 = require("./whatsappsessionstorage");
 const actions_1 = require("./actions");
 const utils_1 = require("./utils");
 class WhatsAppSession extends events_1.EventEmitter {
-    constructor(config) {
+    constructor(locator = undefined) {
         super();
         this.sock = undefined;
-        this.config = {};
         this.msgRetryCounterMap = {};
         this.lastConnectionState = {};
-        this.uid = `WS-${Math.floor(Math.random() * 10000000)}`;
+        let sessionLocator;
+        if (locator !== undefined) {
+            sessionLocator = locator;
+        }
+        else {
+            sessionLocator = whatsappsessionstorage_1.WhatsAppSessionStorage.createLocator();
+            this.emit('locator:created', sessionLocator);
+        }
+        this.uid = sessionLocator.sessionId;
         console.log(`${this.uid}: Constructing session`);
-        this.config = config;
-        this.acl = new whatsappacl_1.WhatsAppACL(config.acl);
-        this.setAuth(new whatsappauth_1.WhatsAppAuth(this.config.authData));
+        this.sessionStorage = new whatsappsessionstorage_1.WhatsAppSessionStorage(sessionLocator);
+        this.acl = new whatsappacl_1.WhatsAppACL(this.sessionStorage.record.aclConfig);
         this.store = new whatsappstore_1.WhatsAppStore(this.acl);
+        const auth = new whatsappauth_1.WhatsAppAuth(this.sessionStorage.record.authData);
+        this.setAuth(auth);
     }
     setAuth(auth) {
         this.auth = auth;
-        this.auth.on('state:update', (auth) => this.emit(actions_1.ACTIONS.connectionAuth, auth));
     }
     id() {
         var _a;
@@ -80,7 +88,7 @@ class WhatsAppSession extends events_1.EventEmitter {
             });
             this.store.bind(this.sock);
             this.sock.ev.on('creds.update', () => {
-                this.auth.update();
+                this._updateSessionStorage();
             });
             this.sock.ev.on('connection.update', (0, utils_1.resolvePromiseSync)(this._updateConnectionState.bind(this)));
             this.sock.ev.on('messages.upsert', (0, utils_1.resolvePromiseSync)(this._messageUpsert.bind(this)));
@@ -94,6 +102,12 @@ class WhatsAppSession extends events_1.EventEmitter {
             this.removeAllListeners();
             delete this.sock;
         });
+    }
+    _updateSessionStorage() {
+        this.sessionStorage.record = {
+            authData: this.auth.state,
+            aclConfig: this.acl.acl
+        };
     }
     _messageUpsert(data) {
         var _a, _b;

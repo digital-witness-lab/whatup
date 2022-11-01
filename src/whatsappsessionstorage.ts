@@ -1,3 +1,4 @@
+import { BufferJSON } from '@adiwajshing/baileys'
 import { WhatsAppACLConfig } from './whatsappacl'
 import { AuthenticationData } from './whatsappauth'
 
@@ -8,7 +9,6 @@ import crypto from 'crypto'
 export interface WhatsAppSessionLocator {
   sessionId: string
   passphrase: string
-  dataDir?: string
   createIfMissing?: boolean
 }
 
@@ -22,16 +22,28 @@ interface Keys {
   privateKey?: crypto.KeyObject
 }
 
+interface SessionStorageOptions {
+  datadir: string
+  loadRecord: boolean
+}
+
+const DEFAULT_SESSION_STORAGE_OPTIONS: SessionStorageOptions = {
+  datadir: './data/',
+  loadRecord: true
+}
+
 export class WhatsAppSessionStorage {
   public sessionId: string
   protected dataDir: string
   protected keys: Keys
   protected _sessionHash: string
-  protected _record: DataRecord
+  protected _record?: DataRecord
+  protected _writeQueue: { [_: string]: ReturnType<typeof setTimeout> } = {}
 
-  constructor (locator: WhatsAppSessionLocator) {
+  constructor (locator: WhatsAppSessionLocator, _options: Partial<SessionStorageOptions> = {}) {
+    const options: SessionStorageOptions = Object.assign(_options, DEFAULT_SESSION_STORAGE_OPTIONS)
     this.sessionId = locator.sessionId
-    this.dataDir = (locator.dataDir ?? './')
+    this.dataDir = options.datadir
     this._sessionHash = crypto.createHash('sha256').update(this.sessionId).digest('hex')
 
     let keysSecret: Keys
@@ -44,17 +56,36 @@ export class WhatsAppSessionStorage {
       throw Error(`Missing keys for session: ${this.sessionId}: ${this._sessionHash}`)
     }
     this.keys = { publicKey: keysSecret.publicKey }
-    this._record = this._loadRecord(keysSecret)
+    if (options.loadRecord) {
+      this._record = this._loadRecord(keysSecret)
+    }
   }
 
-  public createLocator (sessionId: string | undefined): WhatsAppSessionLocator {
+  static createLocator (sessionId: string | undefined = undefined): WhatsAppSessionLocator {
     return {
       sessionId: sessionId ?? crypto.randomUUID(),
-      passphrase: crypto.randomBytes(64).toString('hex')
+      passphrase: crypto.randomBytes(64).toString('hex'),
+      createIfMissing: true
+    }
+  }
+
+  static isValidateLocator (locator: WhatsAppSessionLocator): boolean {
+    try {
+      const session = new this(
+        { ...locator, createIfMissing: false },
+        { loadRecord: false }
+      )
+      console.log(`Created session storage for id: ${session.sessionId}`)
+      return true
+    } catch (e) {
+      return false
     }
   }
 
   public get record (): DataRecord {
+    if (this._record === undefined) {
+      throw new Error('SessionStorage not initialized with loadRecord=True')
+    }
     return this._record
   }
 
@@ -69,7 +100,7 @@ export class WhatsAppSessionStorage {
 
   protected _saveRecord (record: DataRecord, keys: Keys): void {
     const contentEnc = this._encrypt(record, keys)
-    this._saveBlob(contentEnc, 'record')
+    this._saveBlob(contentEnc, 'record', 2000)
   }
 
   protected _hasKeys (): boolean {
@@ -113,13 +144,21 @@ export class WhatsAppSessionStorage {
     return fs.readFileSync(filepath)
   }
 
-  private _saveBlob (blob: Buffer | string, blobType: string): void {
+  private _saveBlob (blob: Buffer | string, blobType: string, queueTime: number = 0): void {
     const filepath = this._blobPath(blobType)
     if (!fs.existsSync(filepath)) {
       const fileparents = path.dirname(filepath)
       fs.mkdirSync(fileparents, { recursive: true })
     }
-    fs.writeFileSync(filepath, blob)
+    if (queueTime === 0) {
+      fs.writeFileSync(filepath, blob)
+    } else {
+      if (filepath in this._writeQueue) {
+        clearTimeout(this._writeQueue[filepath])
+      }
+      const timerid = setTimeout(() => fs.writeFileSync(filepath, blob), queueTime)
+      this._writeQueue[filepath] = timerid
+    }
   }
 
   protected _decrypt (contentEnc: Buffer, keys: Keys): DataRecord {
@@ -127,11 +166,11 @@ export class WhatsAppSessionStorage {
       throw Error('Private key must be set to decrypt')
     }
     const contentDec = crypto.privateDecrypt(keys.privateKey, contentEnc)
-    return JSON.parse(contentDec.toString('utf-8'))
+    return JSON.parse(contentDec.toString('utf-8'), BufferJSON.reviver)
   }
 
   protected _encrypt (record: DataRecord, keys: Keys): Buffer {
-    const contentDec = Buffer.from(JSON.stringify(record))
+    const contentDec = Buffer.from(JSON.stringify(record, BufferJSON.replacer))
     const contentEnc = crypto.publicEncrypt(keys.publicKey, contentDec)
     return contentEnc
   }

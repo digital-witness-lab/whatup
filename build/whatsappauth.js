@@ -39,9 +39,6 @@ class WhatsAppAuth extends events_1.EventEmitter {
     toString() {
         return JSON.stringify(this.state, baileys_1.BufferJSON.replacer);
     }
-    update() {
-        this.emit('state:update', this.toString());
-    }
     get(type, ids) {
         return __awaiter(this, void 0, void 0, function* () {
             return ids.reduce((dict, id) => {
@@ -66,7 +63,7 @@ class WhatsAppAuth extends events_1.EventEmitter {
                 }
                 Object.assign(this.state.keys[key], data[key]);
             }
-            this.update();
+            this.emit('update');
         });
     }
 }
