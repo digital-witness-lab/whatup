@@ -36,18 +36,11 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
   protected store: WhatsAppStore
   protected sessionStorage: WhatsAppSessionStorage
 
-  constructor (locator: WhatsAppSessionLocator | undefined = undefined) {
+  constructor (locator: WhatsAppSessionLocator) {
     super()
-    let sessionLocator: WhatsAppSessionLocator
-    if (locator !== undefined) {
-      sessionLocator = locator
-    } else {
-      sessionLocator = WhatsAppSessionStorage.createLocator()
-      this.emit('locator:created', sessionLocator)
-    }
-    this.uid = sessionLocator.sessionId
+    this.uid = locator.sessionId
     console.log(`${this.uid}: Constructing session`)
-    this.sessionStorage = new WhatsAppSessionStorage(sessionLocator)
+    this.sessionStorage = new WhatsAppSessionStorage(locator)
     this.acl = new WhatsAppACL(this.sessionStorage.record.aclConfig)
     this.store = new WhatsAppStore(this.acl)
 
@@ -119,7 +112,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
 
   private async _updateConnectionState (data: Partial<ConnectionState>): Promise<void> {
     if (data.qr !== this.lastConnectionState.qr && data.qr != null) {
-      this.emit(ACTIONS.connectionQr, data)
+      this.emit(ACTIONS.connectionQr, data.qr)
     }
     if (data.connection === 'open') {
       this.emit(ACTIONS.connectionReady, data)

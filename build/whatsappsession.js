@@ -46,22 +46,14 @@ const whatsappsessionstorage_1 = require("./whatsappsessionstorage");
 const actions_1 = require("./actions");
 const utils_1 = require("./utils");
 class WhatsAppSession extends events_1.EventEmitter {
-    constructor(locator = undefined) {
+    constructor(locator) {
         super();
         this.sock = undefined;
         this.msgRetryCounterMap = {};
         this.lastConnectionState = {};
-        let sessionLocator;
-        if (locator !== undefined) {
-            sessionLocator = locator;
-        }
-        else {
-            sessionLocator = whatsappsessionstorage_1.WhatsAppSessionStorage.createLocator();
-            this.emit('locator:created', sessionLocator);
-        }
-        this.uid = sessionLocator.sessionId;
+        this.uid = locator.sessionId;
         console.log(`${this.uid}: Constructing session`);
-        this.sessionStorage = new whatsappsessionstorage_1.WhatsAppSessionStorage(sessionLocator);
+        this.sessionStorage = new whatsappsessionstorage_1.WhatsAppSessionStorage(locator);
         this.acl = new whatsappacl_1.WhatsAppACL(this.sessionStorage.record.aclConfig);
         this.store = new whatsappstore_1.WhatsAppStore(this.acl);
         const auth = new whatsappauth_1.WhatsAppAuth(this.sessionStorage.record.authData);
@@ -134,7 +126,7 @@ class WhatsAppSession extends events_1.EventEmitter {
         var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
             if (data.qr !== this.lastConnectionState.qr && data.qr != null) {
-                this.emit(actions_1.ACTIONS.connectionQr, data);
+                this.emit(actions_1.ACTIONS.connectionQr, data.qr);
             }
             if (data.connection === 'open') {
                 this.emit(actions_1.ACTIONS.connectionReady, data);

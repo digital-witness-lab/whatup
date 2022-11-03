@@ -14,9 +14,10 @@ export enum ACTIONS {
   readListGroups = 'read:groups:list',
 
   connectionAuthAnonymous = 'connection:auth:anonymous',
+  connectionAuth = 'connection:auth',
+  connectionAuthLocator = 'connection:auth:locator',
   connectionStatus = 'connection:status',
   connectionReady = 'connection:ready',
   connectionClosed = 'connection:closed',
   connectionQr = 'connection:qr',
-  connectionAuth = 'connection:auth'
 }

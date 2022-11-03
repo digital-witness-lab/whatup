@@ -14,15 +14,26 @@ const whatsappsessionstorage_1 = require("./whatsappsessionstorage");
 const whatsappsession_1 = require("./whatsappsession");
 const utils_1 = require("./utils");
 const actions_1 = require("./actions");
+const SESSION_CLOSE_GRACE_TIME = 5000;
 const globalSessions = {};
-function assignBasicEvents(session, socket) {
+function assignBasicEvents(sharedSession, socket) {
     return __awaiter(this, void 0, void 0, function* () {
-        session.on(actions_1.ACTIONS.connectionQr, (qrCode) => {
-            socket.emit(actions_1.ACTIONS.connectionQr, { qr: qrCode.qr });
+        sharedSession.session.on(actions_1.ACTIONS.connectionQr, (qrCode) => {
+            socket.emit(actions_1.ACTIONS.connectionQr, { qr: qrCode });
         });
-        session.on(actions_1.ACTIONS.connectionReady, (data) => {
-            socket.emit(actions_1.ACTIONS.connectionReady, data);
+        socket.on(actions_1.ACTIONS.connectionQr, (callback) => __awaiter(this, void 0, void 0, function* () {
+            const qrCode = sharedSession === null || sharedSession === void 0 ? void 0 : sharedSession.session.qrCode();
+            callback({ qr: qrCode });
+        }));
+        socket.on(actions_1.ACTIONS.connectionStatus, (callback) => {
+            const connection = sharedSession === null || sharedSession === void 0 ? void 0 : sharedSession.session.connection();
+            callback({ connection });
         });
+        if (sharedSession.anonymous) {
+            sharedSession.session.on(actions_1.ACTIONS.connectionReady, (data) => {
+                socket.emit(actions_1.ACTIONS.connectionReady, data);
+            });
+        }
     });
 }
 function assignAuthenticatedEvents(sharedSession, io, socket) {
@@ -38,12 +49,12 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
         socket.on(actions_1.ACTIONS.readDownloadMessage, (message, callback) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const buffer = yield sharedSession.session.downloadMessageMedia(message);
-                console.log("Downloaded media message");
+                console.log('Downloaded media message');
                 callback(buffer);
             }
             catch (e) {
                 console.log(`Exception downloading media message: ${String(e)}`);
-                callback(e);
+                return callback(e);
             }
         }));
         socket.on(actions_1.ACTIONS.writeSendMessage, (...args) => __awaiter(this, void 0, void 0, function* () {
@@ -54,7 +65,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
                 callback(sendMessage);
             }
             catch (e) {
-                callback({ error: e });
+                return callback(e);
             }
         }));
         socket.on(actions_1.ACTIONS.writeMarkChatRead, (chatId, callback) => __awaiter(this, void 0, void 0, function* () {
@@ -63,7 +74,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
                 callback({ error: null });
             }
             catch (e) {
-                callback({ error: e });
+                return callback(e);
             }
         }));
         socket.on(actions_1.ACTIONS.readMessagesSubscribe, () => __awaiter(this, void 0, void 0, function* () {
@@ -80,7 +91,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
                 callback(groupMetadata);
             }
             catch (e) {
-                callback(e);
+                return callback(e);
             }
         }));
         socket.on(actions_1.ACTIONS.readJoinGroup, (chatId, callback) => __awaiter(this, void 0, void 0, function* () {
@@ -89,7 +100,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
                 callback(groupMetadata);
             }
             catch (e) {
-                callback(e);
+                return callback(e);
             }
         }));
         socket.on(actions_1.ACTIONS.readGroupMetadata, (chatId, callback) => __awaiter(this, void 0, void 0, function* () {
@@ -98,7 +109,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
                 callback(groupMetadata);
             }
             catch (e) {
-                callback(e);
+                return callback(e);
             }
         }));
         socket.on(actions_1.ACTIONS.readGroupInviteMetadata, (inviteCode, callback) => __awaiter(this, void 0, void 0, function* () {
@@ -107,7 +118,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
                 callback(groupInviteMetadata);
             }
             catch (e) {
-                callback(e);
+                return callback(e);
             }
         }));
         socket.on(actions_1.ACTIONS.readListGroups, (callback) => {
@@ -115,105 +126,78 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
         });
     });
 }
-function getAuthedSession(session, locator, io, socket, sharedConnection = true) {
-    var _a;
+function createSession(locator, io, socket, sharedConnection = true, anonymous = false) {
     return __awaiter(this, void 0, void 0, function* () {
         let sharedSession;
-        if (locator === null && session.id() === undefined) {
-            throw new Error('No additional auth provided and current session has not been authenticated');
-        }
-        let name = (_a = locator === null || locator === void 0 ? void 0 : locator.sessionId) !== null && _a !== void 0 ? _a : session.id();
-        if (name === undefined) {
-            throw new Error('Invalid Auth: not authenticated');
-        }
-        if (sharedConnection === false) {
+        let name = locator.sessionId;
+        if (anonymous || !sharedConnection) {
             name = `private-${Math.floor(Math.random() * 10000000)}-${name}`;
         }
         if (name in globalSessions) {
-            console.log(`${session.uid}: Switching to shared session: ${globalSessions[name].session.uid}`);
-            yield session.close();
+            console.log(`Socket ${socket.id}: Found existing shared connection: ${name}`);
             sharedSession = globalSessions[name];
             sharedSession.numListeners += 1;
-            session = sharedSession.session;
-            yield assignBasicEvents(session, socket);
-            if (session.isReady()) {
+            yield assignBasicEvents(sharedSession, socket);
+            if (sharedSession.session.isReady()) {
+                // incase this event was already issued in the past, let's make sure the
+                // client knows the connected session is ready
                 socket.emit(actions_1.ACTIONS.connectionReady, {});
             }
         }
         else {
-            sharedSession = { name, numListeners: 1, session };
-            console.log(`${session.uid}: Creating new sharable session`);
+            const session = new whatsappsession_1.WhatsAppSession(locator);
+            sharedSession = { name, session, numListeners: 1, anonymous };
+            console.log(`Socket ${socket.id}: Creating new session: ${name}`);
             globalSessions[sharedSession.name] = sharedSession;
-            if (locator !== null)
-                session.setStorage(locator);
+            yield assignBasicEvents(sharedSession, socket);
             yield session.init();
         }
-        yield assignAuthenticatedEvents(sharedSession, io, socket);
+        if (!anonymous) {
+            yield assignAuthenticatedEvents(sharedSession, io, socket);
+        }
         return sharedSession;
     });
 }
 function registerHandlers(io, socket) {
     return __awaiter(this, void 0, void 0, function* () {
-        let session = new whatsappsession_1.WhatsAppSession({ acl: { allowAll: true } });
         let sharedSession;
-        yield assignBasicEvents(session, socket);
-        const authenticateSession = (payload, callback) => __awaiter(this, void 0, void 0, function* () {
-            const { sharedConnection } = payload;
-            if (!whatsappsessionstorage_1.WhatsAppSessionStorage.isValidateLocator(payload)) {
-                callback(new Error('Invalid authentication'));
-                return;
-            }
-            try {
-                // TODO: only use sharedSession and get rid of references to bare
-                // `session` object
-                sharedSession = yield getAuthedSession(session, payload, io, socket, sharedConnection);
-                session = sharedSession.session;
-            }
-            catch (e) {
-                callback(e);
-            }
-        });
         socket.on('disconnect', () => __awaiter(this, void 0, void 0, function* () {
             console.log('Disconnecting');
             if (sharedSession !== undefined) {
                 sharedSession.numListeners -= 1;
-                yield (0, utils_1.sleep)(5000);
-                if (sharedSession.numListeners === 0) {
+                yield (0, utils_1.sleep)(SESSION_CLOSE_GRACE_TIME);
+                if (sharedSession.name in globalSessions && sharedSession.numListeners === 0) {
                     yield sharedSession.session.close();
                     // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
                     delete globalSessions[sharedSession.name];
                 }
             }
-            else {
-                yield session.close();
+        }));
+        socket.on(actions_1.ACTIONS.connectionAuth, (payload, callback) => __awaiter(this, void 0, void 0, function* () {
+            const { sharedConnection } = payload;
+            payload.isNew = false;
+            try {
+                sharedSession = yield createSession(payload, io, socket, sharedConnection, false);
+            }
+            catch (e) {
+                return callback(e);
             }
         }));
-        socket.on(actions_1.ACTIONS.connectionQr, (callback) => __awaiter(this, void 0, void 0, function* () {
-            const qrCode = session.qrCode();
-            callback({ qrCode });
-        }));
-        socket.on(actions_1.ACTIONS.connectionStatus, (callback) => {
-            const connection = session.connection();
-            callback({ connection });
-        });
-        socket.on(actions_1.ACTIONS.connectionAuth, authenticateSession);
-        socket.on(actions_1.ACTIONS.connectionAuthAnonymous, (data, callback) => __awaiter(this, void 0, void 0, function* () {
-            let { sharedConnection } = data;
-            if (sharedConnection == null)
-                sharedConnection = false;
-            console.log(`${session.uid}: Initializing empty session`);
-            session.once(actions_1.ACTIONS.connectionReady, (0, utils_1.resolvePromiseSync)(() => __awaiter(this, void 0, void 0, function* () {
-                try {
-                    // TODO: only use sharedSession and get rid of references to bare
-                    // `session` object
-                    sharedSession = yield getAuthedSession(session, null, io, socket, sharedConnection);
-                    session = sharedSession.session;
-                }
-                catch (e) {
-                    callback(e);
-                }
+        socket.on(actions_1.ACTIONS.connectionAuthAnonymous, (sessionId, callback) => __awaiter(this, void 0, void 0, function* () {
+            // TODO: create shared session here
+            console.log(`${socket.id}: Initializing anonymous session: ${sessionId}`);
+            const locator = whatsappsessionstorage_1.WhatsAppSessionStorage.createLocator(sessionId);
+            try {
+                sharedSession = yield createSession(locator, io, socket, false, true);
+            }
+            catch (e) {
+                return callback(e);
+            }
+            socket.emit(actions_1.ACTIONS.connectionAuthLocator, locator);
+            sharedSession.session.once(actions_1.ACTIONS.connectionReady, (0, utils_1.resolvePromiseSync)(() => __awaiter(this, void 0, void 0, function* () {
+                yield assignAuthenticatedEvents(sharedSession, io, socket);
             })));
-            yield session.init();
+            yield sharedSession.session.init();
         }));
     });
 }

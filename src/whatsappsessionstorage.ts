@@ -9,7 +9,7 @@ import crypto from 'crypto'
 export interface WhatsAppSessionLocator {
   sessionId: string
   passphrase: string
-  createIfMissing?: boolean
+  isNew?: boolean
 }
 
 interface DataRecord {
@@ -47,10 +47,13 @@ export class WhatsAppSessionStorage {
     this._sessionHash = crypto.createHash('sha256').update(this.sessionId).digest('hex')
 
     let keysSecret: Keys
-    if (this._hasKeys()) {
+    const hasKeys: boolean = this._hasKeys()
+    if (hasKeys && (locator.isNew ?? false)) {
+      throw Error('Cannot set isNew for a locator with an existing sessionId')
+    } else if (hasKeys) {
       keysSecret = this._loadKeys(locator)
-    } else if (locator.createIfMissing ?? true) {
-      // The "?? true" effectively sets the default value of createIfMissing to true
+    } else if (locator.isNew ?? false) {
+      // The "?? true" effectively sets the default value of isNew to false
       keysSecret = this._createKeys(locator)
     } else {
       throw Error(`Missing keys for session: ${this.sessionId}: ${this._sessionHash}`)
@@ -65,14 +68,14 @@ export class WhatsAppSessionStorage {
     return {
       sessionId: sessionId ?? crypto.randomUUID(),
       passphrase: crypto.randomBytes(64).toString('hex'),
-      createIfMissing: true
+      isNew: true
     }
   }
 
-  static isValidateLocator (locator: WhatsAppSessionLocator): boolean {
+  static isValid (locator: WhatsAppSessionLocator): boolean {
     try {
       const session = new this(
-        { ...locator, createIfMissing: false },
+        { ...locator, isNew: false },
         { loadRecord: false }
       )
       console.log(`Created session storage for id: ${session.sessionId}`)

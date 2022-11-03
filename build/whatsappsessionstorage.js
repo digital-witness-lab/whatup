@@ -14,18 +14,22 @@ const DEFAULT_SESSION_STORAGE_OPTIONS = {
 };
 class WhatsAppSessionStorage {
     constructor(locator, _options = {}) {
-        var _a;
+        var _a, _b;
         this._writeQueue = {};
         const options = Object.assign(_options, DEFAULT_SESSION_STORAGE_OPTIONS);
         this.sessionId = locator.sessionId;
         this.dataDir = options.datadir;
         this._sessionHash = crypto_1.default.createHash('sha256').update(this.sessionId).digest('hex');
         let keysSecret;
-        if (this._hasKeys()) {
+        const hasKeys = this._hasKeys();
+        if (hasKeys && ((_a = locator.isNew) !== null && _a !== void 0 ? _a : false)) {
+            throw Error('Cannot set isNew for a locator with an existing sessionId');
+        }
+        else if (hasKeys) {
             keysSecret = this._loadKeys(locator);
         }
-        else if ((_a = locator.createIfMissing) !== null && _a !== void 0 ? _a : true) {
-            // The "?? true" effectively sets the default value of createIfMissing to true
+        else if ((_b = locator.isNew) !== null && _b !== void 0 ? _b : false) {
+            // The "?? true" effectively sets the default value of isNew to false
             keysSecret = this._createKeys(locator);
         }
         else {
@@ -40,12 +44,12 @@ class WhatsAppSessionStorage {
         return {
             sessionId: sessionId !== null && sessionId !== void 0 ? sessionId : crypto_1.default.randomUUID(),
             passphrase: crypto_1.default.randomBytes(64).toString('hex'),
-            createIfMissing: true
+            isNew: true
         };
     }
-    static isValidateLocator(locator) {
+    static isValid(locator) {
         try {
-            const session = new this(Object.assign(Object.assign({}, locator), { createIfMissing: false }), { loadRecord: false });
+            const session = new this(Object.assign(Object.assign({}, locator), { isNew: false }), { loadRecord: false });
             console.log(`Created session storage for id: ${session.sessionId}`);
             return true;
         }
