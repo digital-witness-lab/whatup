@@ -100,6 +100,7 @@ export class WhatsAppStore implements WhatsAppStoreInterface {
   }
 
   private _upsertContact (contacts: Contact[]): void {
+    console.log(`Upserting contacts: ${JSON.stringify(contacts)}`)
     contacts.map(this._setContact)
     console.log('upsert contacts:', this._contacts)
   }

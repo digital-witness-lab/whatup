@@ -1,10 +1,11 @@
 import makeWASocket, { downloadMediaMessage, fetchLatestBaileysVersion, Browsers, ConnectionState, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, WAMessage, WASocket } from '@adiwajshing/baileys'
 import { Boom } from '@hapi/boom'
+import P from 'pino'
 import axios from 'axios'
 import { EventEmitter } from 'events'
 
-import { WhatsAppACLConfig, WhatsAppACL, NoAccessError } from './whatsappacl'
-import { WhatsAppAuth, AuthenticationData } from './whatsappauth'
+import { WhatsAppACL, NoAccessError } from './whatsappacl'
+import { WhatsAppAuth } from './whatsappauth'
 import { WhatsAppStore } from './whatsappstore'
 import { WhatsAppSessionLocator, WhatsAppSessionStorage } from './whatsappsessionstorage'
 import { ACTIONS } from './actions'
@@ -40,16 +41,11 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     super()
     this.uid = locator.sessionId
     console.log(`${this.uid}: Constructing session`)
+
     this.sessionStorage = new WhatsAppSessionStorage(locator)
     this.acl = new WhatsAppACL(this.sessionStorage.record.aclConfig)
     this.store = new WhatsAppStore(this.acl)
-
-    const auth = new WhatsAppAuth(this.sessionStorage.record.authData)
-    this.setAuth(auth)
-  }
-
-  setAuth (auth: WhatsAppAuth): void {
-    this.auth = auth
+    this.auth = new WhatsAppAuth(this.sessionStorage.record.authData)
   }
 
   id (): string | undefined {
@@ -63,6 +59,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
       msgRetryCounterMap: this.msgRetryCounterMap,
       markOnlineOnConnect: false,
       auth: this.auth.getAuth(),
+      logger: P({ level: 'error' }),
 
       browser: Browsers.macOS('Desktop')
       // downloadHistory: true,

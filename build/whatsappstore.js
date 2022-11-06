@@ -80,6 +80,7 @@ class WhatsAppStore {
         console.log('update contact history:', this._contacts);
     }
     _upsertContact(contacts) {
+        console.log(`Upserting contacts: ${JSON.stringify(contacts)}`);
         contacts.map(this._setContact);
         console.log('upsert contacts:', this._contacts);
     }

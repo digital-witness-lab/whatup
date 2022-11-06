@@ -54,7 +54,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
             }
             catch (e) {
                 console.log(`Exception downloading media message: ${String(e)}`);
-                return callback(e);
+                return callback && callback({ error: e.message });
             }
         }));
         socket.on(actions_1.ACTIONS.writeSendMessage, (...args) => __awaiter(this, void 0, void 0, function* () {
@@ -65,7 +65,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
                 callback(sendMessage);
             }
             catch (e) {
-                return callback(e);
+                return callback && callback({ error: e.message });
             }
         }));
         socket.on(actions_1.ACTIONS.writeMarkChatRead, (chatId, callback) => __awaiter(this, void 0, void 0, function* () {
@@ -74,7 +74,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
                 callback({ error: null });
             }
             catch (e) {
-                return callback(e);
+                return callback && callback({ error: e.message });
             }
         }));
         socket.on(actions_1.ACTIONS.readMessagesSubscribe, () => __awaiter(this, void 0, void 0, function* () {
@@ -91,7 +91,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
                 callback(groupMetadata);
             }
             catch (e) {
-                return callback(e);
+                return callback && callback({ error: e.message });
             }
         }));
         socket.on(actions_1.ACTIONS.readJoinGroup, (chatId, callback) => __awaiter(this, void 0, void 0, function* () {
@@ -100,7 +100,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
                 callback(groupMetadata);
             }
             catch (e) {
-                return callback(e);
+                return callback && callback({ error: e.message });
             }
         }));
         socket.on(actions_1.ACTIONS.readGroupMetadata, (chatId, callback) => __awaiter(this, void 0, void 0, function* () {
@@ -109,7 +109,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
                 callback(groupMetadata);
             }
             catch (e) {
-                return callback(e);
+                return callback && callback({ error: e.message });
             }
         }));
         socket.on(actions_1.ACTIONS.readGroupInviteMetadata, (inviteCode, callback) => __awaiter(this, void 0, void 0, function* () {
@@ -118,7 +118,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
                 callback(groupInviteMetadata);
             }
             catch (e) {
-                return callback(e);
+                return callback && callback({ error: e.message });
             }
         }));
         socket.on(actions_1.ACTIONS.readListGroups, (callback) => {
@@ -178,21 +178,25 @@ function registerHandlers(io, socket) {
             payload.isNew = false;
             try {
                 sharedSession = yield createSession(payload, io, socket, sharedConnection, false);
+                return callback && callback(true);
             }
             catch (e) {
-                return callback(e);
+                return callback && callback({ error: e.message });
             }
         }));
-        socket.on(actions_1.ACTIONS.connectionAuthAnonymous, (sessionId, callback) => __awaiter(this, void 0, void 0, function* () {
+        socket.on(actions_1.ACTIONS.connectionAuthAnonymous, (data, callback) => __awaiter(this, void 0, void 0, function* () {
             // TODO: create shared session here
-            console.log(`${socket.id}: Initializing anonymous session: ${sessionId}`);
-            const locator = whatsappsessionstorage_1.WhatsAppSessionStorage.createLocator(sessionId);
+            const { name } = data;
+            const locator = whatsappsessionstorage_1.WhatsAppSessionStorage.createLocator(name);
+            console.log(`${socket.id}: Initializing anonymous session: ${locator.sessionId}`);
             try {
                 sharedSession = yield createSession(locator, io, socket, false, true);
             }
             catch (e) {
-                return callback(e);
+                console.log(e);
+                return callback && callback({ error: e.message });
             }
+            delete locator.isNew;
             socket.emit(actions_1.ACTIONS.connectionAuthLocator, locator);
             sharedSession.session.once(actions_1.ACTIONS.connectionReady, (0, utils_1.resolvePromiseSync)(() => __awaiter(this, void 0, void 0, function* () {
                 yield assignAuthenticatedEvents(sharedSession, io, socket);

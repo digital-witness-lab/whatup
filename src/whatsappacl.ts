@@ -12,7 +12,7 @@ export class NoAccessError extends Error {
   }
 }
 
-const WhatsAppACLConfigDefault: WhatsAppACLConfig = {
+export const DefaultWhatsAppACLConfig: WhatsAppACLConfig = {
   allowAll: false,
   canWrite: [],
   canRead: [],
@@ -22,8 +22,8 @@ const WhatsAppACLConfigDefault: WhatsAppACLConfig = {
 export class WhatsAppACL {
   readonly acl: WhatsAppACLConfig
 
-  constructor (acl: Partial<WhatsAppACLConfig> = WhatsAppACLConfigDefault) {
-    this.acl = { ...WhatsAppACLConfigDefault, ...acl }
+  constructor (acl: Partial<WhatsAppACLConfig> = DefaultWhatsAppACLConfig) {
+    this.acl = { ...DefaultWhatsAppACLConfig, ...acl }
   }
 
   canRead (chatId: string | null | undefined): boolean {

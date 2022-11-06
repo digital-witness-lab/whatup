@@ -37,6 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppSession = void 0;
 const baileys_1 = __importStar(require("@adiwajshing/baileys"));
+const pino_1 = __importDefault(require("pino"));
 const axios_1 = __importDefault(require("axios"));
 const events_1 = require("events");
 const whatsappacl_1 = require("./whatsappacl");
@@ -56,11 +57,7 @@ class WhatsAppSession extends events_1.EventEmitter {
         this.sessionStorage = new whatsappsessionstorage_1.WhatsAppSessionStorage(locator);
         this.acl = new whatsappacl_1.WhatsAppACL(this.sessionStorage.record.aclConfig);
         this.store = new whatsappstore_1.WhatsAppStore(this.acl);
-        const auth = new whatsappauth_1.WhatsAppAuth(this.sessionStorage.record.authData);
-        this.setAuth(auth);
-    }
-    setAuth(auth) {
-        this.auth = auth;
+        this.auth = new whatsappauth_1.WhatsAppAuth(this.sessionStorage.record.authData);
     }
     id() {
         var _a;
@@ -74,6 +71,7 @@ class WhatsAppSession extends events_1.EventEmitter {
                 msgRetryCounterMap: this.msgRetryCounterMap,
                 markOnlineOnConnect: false,
                 auth: this.auth.getAuth(),
+                logger: (0, pino_1.default)({ level: 'error' }),
                 browser: baileys_1.Browsers.macOS('Desktop')
                 // downloadHistory: true,
                 // syncFullHistory: true

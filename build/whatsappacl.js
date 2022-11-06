@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.WhatsAppACL = exports.NoAccessError = void 0;
+exports.WhatsAppACL = exports.DefaultWhatsAppACLConfig = exports.NoAccessError = void 0;
 class NoAccessError extends Error {
     constructor(mode, chatId) {
         super(`No access to ${mode}: ${chatId !== null && chatId !== void 0 ? chatId : 'no chatId'}`);
@@ -8,15 +8,15 @@ class NoAccessError extends Error {
     }
 }
 exports.NoAccessError = NoAccessError;
-const WhatsAppACLConfigDefault = {
+exports.DefaultWhatsAppACLConfig = {
     allowAll: false,
     canWrite: [],
     canRead: [],
     canReadWrite: []
 };
 class WhatsAppACL {
-    constructor(acl = WhatsAppACLConfigDefault) {
-        this.acl = Object.assign(Object.assign({}, WhatsAppACLConfigDefault), acl);
+    constructor(acl = exports.DefaultWhatsAppACLConfig) {
+        this.acl = Object.assign(Object.assign({}, exports.DefaultWhatsAppACLConfig), acl);
     }
     canRead(chatId) {
         if (this.acl.allowAll)
