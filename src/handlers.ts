@@ -3,13 +3,13 @@ import { Server, Socket } from 'socket.io'
 
 import { WhatsAppSessionLocator, WhatsAppSessionStorage } from './whatsappsessionstorage'
 import { WhatsAppSession } from './whatsappsession'
-import { WhatsAppAuth } from './whatsappauth'
 import { sleep, resolvePromiseSync } from './utils'
 import { ACTIONS } from './actions'
 
 const SESSION_CLOSE_GRACE_TIME = 5000
 
-interface AuthenticateSessionParams extends WhatsAppSessionLocator {
+interface AuthenticateSessionParams {
+  sessionLocator: WhatsAppSessionLocator
   sharedConnection?: boolean
 }
 
@@ -175,11 +175,11 @@ export async function registerHandlers (io: Server, socket: Socket): Promise<voi
   })
 
   socket.on(ACTIONS.connectionAuth, async (payload: AuthenticateSessionParams, callback: Function): Promise<void> => {
-    const { sharedConnection } = payload
-    payload.isNew = false
+    const { sharedConnection, sessionLocator } = payload
+    sessionLocator.isNew = false
     try {
-      sharedSession = await createSession(payload, io, socket, sharedConnection, false)
-      return callback && callback(true)
+      sharedSession = await createSession(sessionLocator, io, socket, sharedConnection, false)
+      return callback && callback({error: null})
     } catch (e: any) {
       return callback && callback({error: e.message})
     }

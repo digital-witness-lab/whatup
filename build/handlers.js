@@ -174,11 +174,11 @@ function registerHandlers(io, socket) {
             }
         }));
         socket.on(actions_1.ACTIONS.connectionAuth, (payload, callback) => __awaiter(this, void 0, void 0, function* () {
-            const { sharedConnection } = payload;
-            payload.isNew = false;
+            const { sharedConnection, sessionLocator } = payload;
+            sessionLocator.isNew = false;
             try {
-                sharedSession = yield createSession(payload, io, socket, sharedConnection, false);
-                return callback && callback(true);
+                sharedSession = yield createSession(sessionLocator, io, socket, sharedConnection, false);
+                return callback && callback({ error: null });
             }
             catch (e) {
                 return callback && callback({ error: e.message });
