@@ -16,7 +16,7 @@ class MessageBackup(WhatUpBase):
 
     async def on_connection_ready(self, *args, **kwargs):
         print(f"Subscribing to messages: {args}: {kwargs}")
-        await self.emit(actions.read_messages_subscribe)
+        await self.messages_subscribe()
     
     async def on_read_messages(self, message):
         chatId = message['key']['remoteJid']
@@ -33,7 +33,7 @@ class MessageBackup(WhatUpBase):
         meta_path = archive_path.parent / f'metadata.json'
         if is_groupchat(message) and not meta_path.exists():
             print("Getting metadata")
-            metadata = await self.call(actions.read_group_metadata, dict(chatId=chatId))
+            metadata = await self.group_metadata(chatId)
             with meta_path.open("w+") as fd:
                 json.dump(metadata, fd)
             print("Done")

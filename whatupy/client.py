@@ -28,9 +28,24 @@ class WhatUpBase(socketio.AsyncClientNamespace):
         media: bytes = await self.call(actions.read_download_message, message, timeout=5*60)
         return media
 
+    async def group_metadata(self, chatid) -> dict:
+        return await self.call(actions.read_group_metadata, dict(chatId=chatid))
+
+    async def send_message(self, chatid, message, clear_chat_status=True, vamp_max_seconds=60) -> dict:
+        data = {
+            'chatId': chatid,
+            'message': message,
+            'clearChatStatus': clear_chat_status,
+            'vampMaxSeconds': vamp_max_seconds,
+        }
+        return await self.call(actions.write_send_message, data)
+
+    async def messages_subscribe(self):
+        await self.emit(actions.read_messages_subscribe)
+
     async def trigger_event(self, event, *args):
         if whatup_event := actions.EVENTS.get(event):
-            print(f"Recieved whatup event: {whatup_event}: {event}")
+            print(f"Its a whatup event: {whatup_event}: {event}")
             return await super().trigger_event(whatup_event, *args)
         return await super().trigger_event(event, *args)
 
