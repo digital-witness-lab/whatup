@@ -1,0 +1,3 @@
+[submodule "pywhatup/whatupcore"]
+	path = pywhatup/whatupcore
+	url = git@github.com:digital-witness-lab/whatupcore.git
