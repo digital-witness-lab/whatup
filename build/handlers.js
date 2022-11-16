@@ -50,19 +50,20 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
             try {
                 const buffer = yield sharedSession.session.downloadMessageMedia(message);
                 console.log('Downloaded media message');
-                callback(buffer);
+                return callback && callback(buffer);
             }
             catch (e) {
                 console.log(`Exception downloading media message: ${String(e)}`);
                 return callback && callback({ error: e.message });
             }
         }));
-        socket.on(actions_1.ACTIONS.writeSendMessage, (...args) => __awaiter(this, void 0, void 0, function* () {
-            const callback = args.pop();
+        socket.on(actions_1.ACTIONS.writeSendMessage, (data, callback = undefined) => __awaiter(this, void 0, void 0, function* () {
+            const { chatId, message, clearChatStatus, vampMaxSeconds } = data;
             try {
                 // @ts-expect-error: TS2556: just let me use `...args` here pls.
-                const sendMessage = yield session.sendMessage(...args);
-                callback(sendMessage);
+                console.log(`Sending message: ${JSON.stringify(data)}`);
+                const sendMessage = yield session.sendMessage(chatId, message, clearChatStatus, vampMaxSeconds);
+                return callback && callback(sendMessage);
             }
             catch (e) {
                 return callback && callback({ error: e.message });
@@ -71,7 +72,7 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
         socket.on(actions_1.ACTIONS.writeMarkChatRead, (chatId, callback) => __awaiter(this, void 0, void 0, function* () {
             try {
                 yield session.markChatRead(chatId);
-                callback({ error: null });
+                return callback && callback({ error: null });
             }
             catch (e) {
                 return callback && callback({ error: e.message });
@@ -175,6 +176,8 @@ function registerHandlers(io, socket) {
         }));
         socket.on(actions_1.ACTIONS.connectionAuth, (payload, callback) => __awaiter(this, void 0, void 0, function* () {
             const { sharedConnection, sessionLocator } = payload;
+            console.log(`${socket.id}: Initializing authenticated session`);
+            console.log(payload);
             sessionLocator.isNew = false;
             try {
                 sharedSession = yield createSession(sessionLocator, io, socket, sharedConnection, false);

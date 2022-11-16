@@ -56,18 +56,19 @@ async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Serv
     try {
       const buffer = await sharedSession.session.downloadMessageMedia(message)
       console.log('Downloaded media message')
-      callback(buffer)
+      return callback && callback(buffer)
     } catch (e: any) {
       console.log(`Exception downloading media message: ${String(e)}`)
       return callback && callback({error: e.message})
     }
   })
-  socket.on(ACTIONS.writeSendMessage, async (...args: any[]) => {
-    const callback: Function = args.pop()
+  socket.on(ACTIONS.writeSendMessage, async (data, callback?: Function = undefined) => {
+    const { chatId, message, clearChatStatus, vampMaxSeconds } = data
     try {
       // @ts-expect-error: TS2556: just let me use `...args` here pls.
-      const sendMessage = await session.sendMessage(...args)
-      callback(sendMessage)
+      console.log(`Sending message: ${JSON.stringify(data)}`)
+      const sendMessage = await session.sendMessage(chatId, message, clearChatStatus, vampMaxSeconds)
+      return callback && callback(sendMessage)
     } catch (e: any) {
       return callback && callback({error: e.message})
     }
@@ -75,7 +76,7 @@ async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Serv
   socket.on(ACTIONS.writeMarkChatRead, async (chatId: string, callback: Function) => {
     try {
       await session.markChatRead(chatId)
-      callback({ error: null })
+      return callback && callback({ error: null })
     } catch (e: any) {
       return callback && callback({error: e.message})
     }
@@ -176,6 +177,8 @@ export async function registerHandlers (io: Server, socket: Socket): Promise<voi
 
   socket.on(ACTIONS.connectionAuth, async (payload: AuthenticateSessionParams, callback: Function): Promise<void> => {
     const { sharedConnection, sessionLocator } = payload
+    console.log(`${socket.id}: Initializing authenticated session`)
+    console.log(payload)
     sessionLocator.isNew = false
     try {
       sharedSession = await createSession(sessionLocator, io, socket, sharedConnection, false)
