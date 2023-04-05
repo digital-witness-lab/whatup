@@ -31,6 +31,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
   protected sock?: WASocket = undefined
   protected msgRetryCounterMap: MessageRetryMap = { }
   protected lastConnectionState: Partial<ConnectionState> = {}
+  protected closing: boolean = false
 
   protected acl: WhatsAppACL
   protected auth!: WhatsAppAuth
@@ -75,6 +76,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
   }
 
   async close (): Promise<void> {
+    this.closing = true
     console.log(`${this.uid}: Closing session`)
     this.sock?.end(undefined)
     this.removeAllListeners()
@@ -114,10 +116,10 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     console.log(`connection state update: ${JSON.stringify(data)}`)
     if (data.connection === 'open') {
       this.emit(ACTIONS.connectionReady, data)
-    } else if (data.connection !== undefined) {
+    } else if (data.connection === 'close') {
       this.emit(ACTIONS.connectionClosed, data)
       const { lastDisconnect } = data
-      if (lastDisconnect != null) {
+      if (lastDisconnect != null && !this.closing) {
         const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
         if (shouldReconnect) {
           await this.init()
