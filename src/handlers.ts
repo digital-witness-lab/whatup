@@ -25,17 +25,21 @@ const globalSessions: { [_: string]: SharedSession } = {}
 
 async function assignBasicEvents (sharedSession: SharedSession, socket: Socket): Promise<void> {
   sharedSession.session.on(ACTIONS.connectionQr, (qrCode) => {
-    socket.emit(ACTIONS.connectionQr, { qr: qrCode })
+    if (sharedSession.anonymous) {
+        socket.emit(ACTIONS.connectionQr, { qr: qrCode })
+    }
   })
   socket.on(ACTIONS.connectionQr, async (callback: Function) => {
+    if (sharedSession.anonymous) {
     const qrCode = sharedSession?.session.qrCode()
     callback({ qr: qrCode })
+    }
   })
   socket.on(ACTIONS.connectionStatus, (callback: Function) => {
     const connection = sharedSession?.session.connection()
     callback({ connection })
   })
-  if (sharedSession.anonymous) {
+  if (!sharedSession.anonymous) {
     sharedSession.session.on(ACTIONS.connectionReady, (data) => {
       socket.emit(ACTIONS.connectionReady, data)
     })
@@ -62,10 +66,9 @@ async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Serv
       return callback && callback({error: e.message})
     }
   })
-  socket.on(ACTIONS.writeSendMessage, async (data, callback?: Function = undefined) => {
+  socket.on(ACTIONS.writeSendMessage, async (data, callback?: Function) => {
     const { chatId, message, clearChatStatus, vampMaxSeconds } = data
     try {
-      // @ts-expect-error: TS2556: just let me use `...args` here pls.
       console.log(`Sending message: ${JSON.stringify(data)}`)
       const sendMessage = await session.sendMessage(chatId, message, clearChatStatus, vampMaxSeconds)
       return callback && callback(sendMessage)
@@ -201,7 +204,11 @@ export async function registerHandlers (io: Server, socket: Socket): Promise<voi
     delete locator.isNew
     socket.emit(ACTIONS.connectionAuthLocator, locator)
     sharedSession.session.once(ACTIONS.connectionReady, resolvePromiseSync(async (): Promise<void> => {
+      console.log(`${socket.id}: ${name}: Upgrading connection to authenticated`)
+      sharedSession.anonymous = false
+      await assignBasicEvents(sharedSession, socket)
       await assignAuthenticatedEvents(sharedSession, io, socket)
+      socket.emit(ACTIONS.connectionReady, {})
     }))
     await sharedSession.session.init()
   })

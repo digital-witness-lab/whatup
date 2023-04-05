@@ -10,6 +10,7 @@ const port = 3000
 io.attachApp(app)
 
 io.on('connection', async (socket) => {
+  console.info(`New connection ${socket.id}`)
   await registerHandlers(io, socket)
 })
 

@@ -95,17 +95,17 @@ export class WhatsAppStore implements WhatsAppStoreInterface {
 
   //* ******** START Contact Events *************//
   private _updateContactHistory (data: { contacts: Contact[], isLatest: boolean }): void {
-    data.contacts.map(this._setContact)
-    console.log('update contact history:', this._contacts)
+    console.log(`Updating contact history: ${data.contacts.length}`)
+    data.contacts.map(this._setContact.bind(this))
   }
 
   private _upsertContact (contacts: Contact[]): void {
-    console.log(`Upserting contacts: ${JSON.stringify(contacts)}`)
-    contacts.map(this._setContact)
-    console.log('upsert contacts:', this._contacts)
+    console.log(`Upserting contacts: ${contacts.length}`)
+    contacts.map(this._setContact.bind(this))
   }
 
   private _updateContact (contacts: Array<Partial<Contact>>): void {
+    console.log(`Updating contacts: ${contacts.length}`)
     for (const contact of contacts) {
       const cid: string | undefined = contact.id
       if (cid == null) return
@@ -113,7 +113,6 @@ export class WhatsAppStore implements WhatsAppStoreInterface {
         Object.assign(this._contacts[cid], contact)
       }
     }
-    console.log('update contacts:', this._contacts)
   }
 
   private _setContact (contact: Contact): void {
@@ -125,7 +124,7 @@ export class WhatsAppStore implements WhatsAppStoreInterface {
   //* ******** START Message Events *************//
   private _updateMessageHistory (data: { messages: WAMessage[], isLatest: boolean }): void {
     const { messages } = data
-    messages.map(this._setLatestMessage)
+    messages.map(this._setLatestMessage.bind(this))
   }
 
   private _messageUpsert (data: { messages: WAMessage[], type: MessageUpsertType }): void {
@@ -154,6 +153,7 @@ export class WhatsAppStore implements WhatsAppStoreInterface {
   }
 
   private _updateChat (chats: Array<Partial<Chat>>): void {
+    console.log(`Updating chats: ${chats.length}`)
     for (const chat of chats) {
       const cid: string | undefined = chat.id
       if (cid == null) return
@@ -161,24 +161,24 @@ export class WhatsAppStore implements WhatsAppStoreInterface {
         Object.assign(this._chats[cid], chat)
       }
     }
-    console.log('update contacts:', this._contacts)
   }
 
   private _upsertChat (chats: Chat[]): void {
-    chats.map(this.setChat)
+    chats.map(this.setChat.bind(this))
   }
 
   private _updateChatHistory (data: { chats: Chat[], isLatest: boolean }): void {
-    data.chats.map(this.setChat)
+    data.chats.map(this.setChat.bind(this))
   }
   //* ******** END Chat Events *************//
 
   //* ******** START Contact Events *************//
   protected _upsertGroups (groupMetadatas: GroupMetadata[]): void {
-    groupMetadatas.map(this.setGroupMetadata)
+    groupMetadatas.map(this.setGroupMetadata.bind(this))
   }
 
   protected _updateGroups (groupMetadatas: Array<Partial<GroupMetadata>>): void {
+    console.log(`Updating groups: ${groupMetadatas.length}`)
     for (const groupMetadata of groupMetadatas) {
       const gid: string | undefined = groupMetadata.id
       if (gid == null) return
@@ -186,7 +186,6 @@ export class WhatsAppStore implements WhatsAppStoreInterface {
         Object.assign(this._groupMetadata[gid], groupMetadata)
       }
     }
-    console.log('update contacts:', this._contacts)
   }
   //* ******** END Contact Events *************//
 }

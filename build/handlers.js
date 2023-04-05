@@ -19,17 +19,21 @@ const globalSessions = {};
 function assignBasicEvents(sharedSession, socket) {
     return __awaiter(this, void 0, void 0, function* () {
         sharedSession.session.on(actions_1.ACTIONS.connectionQr, (qrCode) => {
-            socket.emit(actions_1.ACTIONS.connectionQr, { qr: qrCode });
+            if (sharedSession.anonymous) {
+                socket.emit(actions_1.ACTIONS.connectionQr, { qr: qrCode });
+            }
         });
         socket.on(actions_1.ACTIONS.connectionQr, (callback) => __awaiter(this, void 0, void 0, function* () {
-            const qrCode = sharedSession === null || sharedSession === void 0 ? void 0 : sharedSession.session.qrCode();
-            callback({ qr: qrCode });
+            if (sharedSession.anonymous) {
+                const qrCode = sharedSession === null || sharedSession === void 0 ? void 0 : sharedSession.session.qrCode();
+                callback({ qr: qrCode });
+            }
         }));
         socket.on(actions_1.ACTIONS.connectionStatus, (callback) => {
             const connection = sharedSession === null || sharedSession === void 0 ? void 0 : sharedSession.session.connection();
             callback({ connection });
         });
-        if (sharedSession.anonymous) {
+        if (!sharedSession.anonymous) {
             sharedSession.session.on(actions_1.ACTIONS.connectionReady, (data) => {
                 socket.emit(actions_1.ACTIONS.connectionReady, data);
             });
@@ -57,10 +61,9 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
                 return callback && callback({ error: e.message });
             }
         }));
-        socket.on(actions_1.ACTIONS.writeSendMessage, (data, callback = undefined) => __awaiter(this, void 0, void 0, function* () {
+        socket.on(actions_1.ACTIONS.writeSendMessage, (data, callback) => __awaiter(this, void 0, void 0, function* () {
             const { chatId, message, clearChatStatus, vampMaxSeconds } = data;
             try {
-                // @ts-expect-error: TS2556: just let me use `...args` here pls.
                 console.log(`Sending message: ${JSON.stringify(data)}`);
                 const sendMessage = yield session.sendMessage(chatId, message, clearChatStatus, vampMaxSeconds);
                 return callback && callback(sendMessage);
@@ -202,7 +205,11 @@ function registerHandlers(io, socket) {
             delete locator.isNew;
             socket.emit(actions_1.ACTIONS.connectionAuthLocator, locator);
             sharedSession.session.once(actions_1.ACTIONS.connectionReady, (0, utils_1.resolvePromiseSync)(() => __awaiter(this, void 0, void 0, function* () {
+                console.log(`${socket.id}: ${name}: Upgrading connection to authenticated`);
+                sharedSession.anonymous = false;
+                yield assignBasicEvents(sharedSession, socket);
                 yield assignAuthenticatedEvents(sharedSession, io, socket);
+                socket.emit(actions_1.ACTIONS.connectionReady, {});
             })));
             yield sharedSession.session.init();
         }));

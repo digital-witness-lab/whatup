@@ -76,15 +76,15 @@ class WhatsAppStore {
     //* ******** END PUBLIC METHODS ************//
     //* ******** START Contact Events *************//
     _updateContactHistory(data) {
-        data.contacts.map(this._setContact);
-        console.log('update contact history:', this._contacts);
+        console.log(`Updating contact history: ${data.contacts.length}`);
+        data.contacts.map(this._setContact.bind(this));
     }
     _upsertContact(contacts) {
-        console.log(`Upserting contacts: ${JSON.stringify(contacts)}`);
-        contacts.map(this._setContact);
-        console.log('upsert contacts:', this._contacts);
+        console.log(`Upserting contacts: ${contacts.length}`);
+        contacts.map(this._setContact.bind(this));
     }
     _updateContact(contacts) {
+        console.log(`Updating contacts: ${contacts.length}`);
         for (const contact of contacts) {
             const cid = contact.id;
             if (cid == null)
@@ -93,7 +93,6 @@ class WhatsAppStore {
                 Object.assign(this._contacts[cid], contact);
             }
         }
-        console.log('update contacts:', this._contacts);
     }
     _setContact(contact) {
         const cid = contact.id;
@@ -103,7 +102,7 @@ class WhatsAppStore {
     //* ******** START Message Events *************//
     _updateMessageHistory(data) {
         const { messages } = data;
-        messages.map(this._setLatestMessage);
+        messages.map(this._setLatestMessage.bind(this));
     }
     _messageUpsert(data) {
         for (const message of data.messages) {
@@ -131,6 +130,7 @@ class WhatsAppStore {
         }
     }
     _updateChat(chats) {
+        console.log(`Updating chats: ${chats.length}`);
         for (const chat of chats) {
             const cid = chat.id;
             if (cid == null)
@@ -139,20 +139,20 @@ class WhatsAppStore {
                 Object.assign(this._chats[cid], chat);
             }
         }
-        console.log('update contacts:', this._contacts);
     }
     _upsertChat(chats) {
-        chats.map(this.setChat);
+        chats.map(this.setChat.bind(this));
     }
     _updateChatHistory(data) {
-        data.chats.map(this.setChat);
+        data.chats.map(this.setChat.bind(this));
     }
     //* ******** END Chat Events *************//
     //* ******** START Contact Events *************//
     _upsertGroups(groupMetadatas) {
-        groupMetadatas.map(this.setGroupMetadata);
+        groupMetadatas.map(this.setGroupMetadata.bind(this));
     }
     _updateGroups(groupMetadatas) {
+        console.log(`Updating groups: ${groupMetadatas.length}`);
         for (const groupMetadata of groupMetadatas) {
             const gid = groupMetadata.id;
             if (gid == null)
@@ -161,7 +161,6 @@ class WhatsAppStore {
                 Object.assign(this._groupMetadata[gid], groupMetadata);
             }
         }
-        console.log('update contacts:', this._contacts);
     }
 }
 exports.WhatsAppStore = WhatsAppStore;

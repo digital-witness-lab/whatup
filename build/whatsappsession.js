@@ -126,6 +126,7 @@ class WhatsAppSession extends events_1.EventEmitter {
             if (data.qr !== this.lastConnectionState.qr && data.qr != null) {
                 this.emit(actions_1.ACTIONS.connectionQr, data.qr);
             }
+            console.log(`connection state update: ${JSON.stringify(data)}`);
             if (data.connection === 'open') {
                 this.emit(actions_1.ACTIONS.connectionReady, data);
             }

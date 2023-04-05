@@ -111,6 +111,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     if (data.qr !== this.lastConnectionState.qr && data.qr != null) {
       this.emit(ACTIONS.connectionQr, data.qr)
     }
+    console.log(`connection state update: ${JSON.stringify(data)}`)
     if (data.connection === 'open') {
       this.emit(ACTIONS.connectionReady, data)
     } else if (data.connection !== undefined) {
