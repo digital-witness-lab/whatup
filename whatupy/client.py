@@ -46,6 +46,19 @@ class WhatUpBase(socketio.AsyncClientNamespace):
         self._call_lock = asyncio.Lock()
         self._sio: socketio.AsyncClient | None = None
 
+    @classmethod
+    async def start(cls, *args, **kwargs):
+        logger.info("Opening connection")
+        bot = cls(*args, **kwargs)
+        await bot.connect("ws://localhost:3000/")
+        try:
+            bot.logger.info("Waiting")
+            await bot.wait()
+        except KeyboardInterrupt:
+            bot.logger.info("Exiting")
+        finally:
+            await bot.disconnect()
+
     async def connect(self, url, **kwargs):
         if self._sio:
             await self.disconnect()
@@ -68,10 +81,7 @@ class WhatUpBase(socketio.AsyncClientNamespace):
         self.logger.info("Downloading message media")
         # TODO: transform `message` to only send back essential properties to
         # whatupcore for the download
-        media: bytes = await self.call(
-            actions.read_download_message, message, timeout=5 * 60
-        )
-        return media
+        return await self.call(actions.read_download_message, message, timeout=5 * 60)
 
     async def group_metadata(self, chatid) -> dict:
         self.logger.info("Getting group metadata")

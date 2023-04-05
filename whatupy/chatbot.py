@@ -65,16 +65,3 @@ class ChatBot(WhatUpBase):
 
         status = await self.send_message(chatid, response)
         self.logger.info(f"Send status: {status}")
-
-    @staticmethod
-    async def start(locator, **kwargs):
-        logger.info("Opening connection")
-        bot = ChatBot(session_locator=locator, **kwargs)
-        await bot.connect("ws://localhost:3000/")
-        try:
-            bot.logger.info("Waiting")
-            await bot.wait()
-        except KeyboardInterrupt:
-            bot.logger.info("Exiting")
-        finally:
-            await bot.disconnect()
