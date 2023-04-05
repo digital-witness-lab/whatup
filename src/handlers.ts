@@ -26,13 +26,13 @@ const globalSessions: { [_: string]: SharedSession } = {}
 async function assignBasicEvents (sharedSession: SharedSession, socket: Socket): Promise<void> {
   sharedSession.session.on(ACTIONS.connectionQr, (qrCode) => {
     if (sharedSession.anonymous) {
-        socket.emit(ACTIONS.connectionQr, { qr: qrCode })
+      socket.emit(ACTIONS.connectionQr, { qr: qrCode })
     }
   })
   socket.on(ACTIONS.connectionQr, async (callback: Function) => {
     if (sharedSession.anonymous) {
-    const qrCode = sharedSession?.session.qrCode()
-    callback({ qr: qrCode })
+      const qrCode = sharedSession?.session.qrCode()
+      callback({ qr: qrCode })
     }
   })
   socket.on(ACTIONS.connectionStatus, (callback: Function) => {
@@ -181,7 +181,6 @@ export async function registerHandlers (io: Server, socket: Socket): Promise<voi
   socket.on(ACTIONS.connectionAuth, async (payload: AuthenticateSessionParams, callback: Function): Promise<void> => {
     const { sharedConnection, sessionLocator } = payload
     console.log(`${socket.id}: Initializing authenticated session`)
-    console.log(payload)
     sessionLocator.isNew = false
     try {
       sharedSession = await createSession(sessionLocator, io, socket, sharedConnection, false)

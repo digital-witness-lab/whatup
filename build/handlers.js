@@ -180,7 +180,6 @@ function registerHandlers(io, socket) {
         socket.on(actions_1.ACTIONS.connectionAuth, (payload, callback) => __awaiter(this, void 0, void 0, function* () {
             const { sharedConnection, sessionLocator } = payload;
             console.log(`${socket.id}: Initializing authenticated session`);
-            console.log(payload);
             sessionLocator.isNew = false;
             try {
                 sharedSession = yield createSession(sessionLocator, io, socket, sharedConnection, false);
