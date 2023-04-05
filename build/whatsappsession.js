@@ -135,12 +135,9 @@ class WhatsAppSession extends events_1.EventEmitter {
             else if (data.connection === 'close') {
                 this.emit(actions_1.ACTIONS.connectionClosed, data);
                 const { lastDisconnect } = data;
-                console.log(`last disconnect: ${lastDisconnect}`);
                 if (lastDisconnect != null && !this.closing) {
                     const shouldReconnect = ((_b = (_a = lastDisconnect.error) === null || _a === void 0 ? void 0 : _a.output) === null || _b === void 0 ? void 0 : _b.statusCode) !== baileys_1.DisconnectReason.loggedOut;
-                    console.log(`shouldReconnect: ${shouldReconnect}`);
                     if (shouldReconnect) {
-                        console.log("re-initializing");
                         yield this.init();
                     }
                 }
