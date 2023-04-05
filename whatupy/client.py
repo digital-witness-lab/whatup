@@ -4,12 +4,10 @@ import re
 import ssl
 from pathlib import Path
 
-import socketio
 import aiohttp
+import socketio
 
-from . import actions
-from . import utils
-
+from . import actions, utils
 
 logger = logging.getLogger(__name__)
 

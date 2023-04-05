@@ -1,11 +1,9 @@
+import json
 import logging
 from pathlib import Path
-import json
 
-
-from .client import WhatUpBase
 from . import utils
-
+from .client import WhatUpBase
 
 logger = logging.getLogger(__name__)
 

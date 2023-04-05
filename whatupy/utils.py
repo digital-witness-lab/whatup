@@ -1,15 +1,13 @@
 import asyncio
-import warnings
-import random
-import string
-import re
-from functools import wraps
-import typing as T
-
 import mimetypes
+import random
+import re
+import string
+import typing as T
+import warnings
+from functools import wraps
 
 import qrcode
-
 
 WORDLIST_SIZE = None
 

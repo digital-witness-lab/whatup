@@ -1,12 +1,10 @@
 import asyncio
+import logging
 import random
 import typing as T
-import logging
 
-
-from .client import WhatUpBase
 from . import utils
-
+from .client import WhatUpBase
 
 logger = logging.getLogger(__name__)
 
