@@ -2,18 +2,12 @@ import asyncio
 import random
 import typing as T
 import logging
-import json
 
 
-from . import actions
 from .client import WhatUpBase
-from .utils import is_groupchat
+from . import utils
 
 
-WORDS = [w.strip() for w in open("/usr/share/dict/words")]
-
-FORMAT = f"[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
-logging.basicConfig(format=FORMAT, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -44,10 +38,10 @@ class ChatBot(WhatUpBase):
 
     def generate_message(self) -> str:
         n_words = random.randint(1, 20)
-        return " ".join(random.sample(WORDS, n_words))
+        return " ".join(utils.random_words(n_words))
 
     async def on_read_messages(self, message):
-        if message["key"]["fromMe"] or is_groupchat(message):
+        if message["key"]["fromMe"] or utils.is_groupchat(message):
             return
 
         chatid: str = message["key"]["remoteJid"]
@@ -72,23 +66,15 @@ class ChatBot(WhatUpBase):
         status = await self.send_message(chatid, response)
         self.logger.info(f"Send status: {status}")
 
-    async def on_connection_auth_locator(self, session_locator):
-        await super().on_connection_auth_locator(session_locator)
-        fname = f"./sessions/{self.name}.json"
-        self.logger.info(f"Saving session data to: {fname}")
-        with open(fname, "w+") as fd:
-            fd.write(json.dumps(session_locator))
-
     @staticmethod
     async def start(locator, **kwargs):
         logger.info("Opening connection")
-        sio = await ChatBot.connect(
-            "ws://localhost:3000/", session_locator=locator, **kwargs
-        )
+        bot = ChatBot(session_locator=locator, **kwargs)
+        await bot.connect("ws://localhost:3000/")
         try:
-            logger.info("Waiting")
-            await sio.wait()
+            bot.logger.info("Waiting")
+            await bot.wait()
         except KeyboardInterrupt:
-            logger.info("Exiting")
+            bot.logger.info("Exiting")
         finally:
-            await sio.disconnect()
+            await bot.disconnect()

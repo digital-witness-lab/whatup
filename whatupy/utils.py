@@ -14,7 +14,7 @@ import qrcode
 WORDLIST_SIZE = None
 
 
-def random_name(n_words=3) -> str:
+def random_words(n_words=3) -> T.List[str]:
     global WORDLIST_SIZE
     if WORDLIST_SIZE is None:
         with open("/usr/share/dict/words") as fd:
@@ -24,7 +24,7 @@ def random_name(n_words=3) -> str:
             "Could not use word-list file at /usr/share/dict/words. "
             "Using random ascii letters instead of random words"
         )
-        return "".join(random.sample(string.ascii_lowercase, 12))
+        return random.sample(string.ascii_lowercase, 12)
     idxs = [random.randint(0, WORDLIST_SIZE) for _ in range(n_words)]
     idxs.sort()
     words: T.List[str] = []
@@ -39,7 +39,7 @@ def random_name(n_words=3) -> str:
                     words.append(word.strip().lower())
             if len(words) == n_words:
                 break
-    return "-".join(words)
+    return words
 
 
 def async_cli(fxn):

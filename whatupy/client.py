@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 
 import socketio
 
@@ -14,25 +15,54 @@ class WhatUpBase(socketio.AsyncClientNamespace):
     def __init__(
         self,
         *args,
-        name=None,
-        session_locator=None,
+        name: str | None = None,
+        session_locator: dict | None = None,
         timeout=120,
-        logger=logger,
+        allow_unauthenticated=False,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.name = name or utils.random_name()
+        if not name and not session_locator:
+            raise ValueError(
+                "Either name alone (for anonymous connections) or session_locator alone (for authenticated connections) must be provided"
+            )
+
+        if name and not re.match(r"[a-zA-Z0-9-:_]{8,}", name):
+            raise ValueError(
+                "Client name must be at least 8 characters long with only a-zA-Z0-9-:_"
+            )
+        elif not name and session_locator:
+            self.name = session_locator["sessionId"]
+        else:
+            self.name = name
+
+        if not allow_unauthenticated and not session_locator:
+            raise SystemError(
+                "Attempting to instantiate client that disallows unauthenticated sessions without session_locator"
+            )
         self.session_locator = session_locator
         self.timeout = timeout
-        self.logger = logger
+        self.logger = logging.getLogger(f"{__name__}:{self.name}")
         self._call_lock = asyncio.Lock()
+        self._sio: socketio.AsyncClient | None = None
 
-    @classmethod
-    async def connect(cls, url, **kwargs):
-        sio = socketio.AsyncClient()
-        sio.register_namespace(cls(**kwargs))
+    async def connect(self, url, **kwargs):
+        if self._sio:
+            await self.disconnect()
+        self._sio = sio = socketio.AsyncClient()
+        sio.register_namespace(self)
         await sio.connect(url)
-        return sio
+        return self
+
+    async def disconnect(self):
+        if not self._sio:
+            raise ValueError("Trying to disconnect a client that hasn't been connected")
+        await self._sio.disconnect()
+
+    async def wait(self):
+        if not self._sio:
+            raise ValueError("Trying to wait on a client that hasn't been connected")
+        await self._sio.wait()
 
     async def download_message_media(self, message) -> bytes:
         self.logger.info("Downloading message media")
@@ -50,13 +80,13 @@ class WhatUpBase(socketio.AsyncClientNamespace):
     async def send_message(
         self, chatid: str, message: str, clear_chat_status=True, vamp_max_seconds=60
     ) -> dict:
-        self.logger.info("Sending message")
         data = {
             "chatId": chatid,
             "message": message,
             "clearChatStatus": clear_chat_status,
             "vampMaxSeconds": vamp_max_seconds,
         }
+        self.logger.info(f"Sending message: {data=}")
         return await self.call(actions.write_send_message, data)
 
     async def messages_subscribe(self):

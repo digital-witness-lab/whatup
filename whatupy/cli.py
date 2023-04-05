@@ -1,15 +1,22 @@
 import json
+import logging
+from pathlib import Path
 
 import click
 
-from .client import WhatUpBase
 from .chatbot import ChatBot
+from .onboardbot import OnboardBot
 from .utils import async_cli
+
+FORMAT = f"[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
+logging.basicConfig(format=FORMAT, level=logging.INFO)
 
 
 @click.group()
-def cli():
-    pass
+@click.option("--debug/-d", type=bool, is_flag=True, default=False)
+def cli(debug):
+    if debug:
+        logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
 
 @cli.command()
@@ -32,12 +39,35 @@ async def chatbot(locator, response_time, response_time_sigma, friend):
     )
 
 
+@cli.command
+@async_cli
+@click.option(
+    "--session-dir",
+    type=click.Path(file_okay=False, writable=True, path_type=Path),
+    default=Path("./sessions/"),
+)
+@click.argument("name", type=str)
+async def onboard(name, session_dir: Path):
+    session_dir.mkdir(parents=True, exist_ok=True)
+    session_file = session_dir / f"{name}.json"
+    await OnboardBot.start(name, session_file)
+
+
 @cli.command()
 @async_cli
-@click.argument("locator", type=click.File(mode="w+"))
-async def create_locator(locator):
-
-    pass
+@click.option(
+    "--session-dir", type=click.Path(file_okay=False, writable=True, path_type=Path)
+)
+async def onboard_bulk(session_dir: Path):
+    while True:
+        name: str = click.prompt(
+            "Enter name for the next user to be onboarded", type=str
+        )
+        if not name:
+            print("No name provided... exiting.")
+            return
+        session_file = session_dir / f"{name}.json"
+        await OnboardBot.start(name, session_file)
 
 
 if __name__ == "__main__":
