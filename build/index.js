@@ -9,21 +9,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const uWebSockets_js_1 = require("uWebSockets.js");
+const fs_1 = require("fs");
+const http2_1 = require("http2");
 const socket_io_1 = require("socket.io");
 const handlers_1 = require("./handlers");
-// @ts-expect-error: TS7009
-const app = new uWebSockets_js_1.App();
-const io = new socket_io_1.Server();
 const port = 3000;
-io.attachApp(app);
+const httpServer = (0, http2_1.createSecureServer)({
+    allowHTTP1: true,
+    key: (0, fs_1.readFileSync)('static/key.pem'),
+    cert: (0, fs_1.readFileSync)('static/cert.pem')
+});
+const io = new socket_io_1.Server(httpServer, {});
 io.on('connection', (socket) => __awaiter(void 0, void 0, void 0, function* () {
     console.info(`New connection ${socket.id}`);
     yield (0, handlers_1.registerHandlers)(io, socket);
 }));
-app.listen(port, (token) => {
-    if (token == null) {
-        console.warn('port already in use');
-    }
-    console.log(`Listening on port: ${port}`);
-});
+console.log(`Listening on port: ${port}`);
+httpServer.listen(port);
