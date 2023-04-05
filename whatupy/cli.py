@@ -16,10 +16,15 @@ logging.basicConfig(format=FORMAT, level=logging.INFO)
 
 
 @click.group()
-@click.option("--debug/-d", type=bool, is_flag=True, default=False)
-def cli(debug):
+@click.option("--debug", "-d", type=bool, is_flag=True, default=False)
+@click.option("--host", "-H", type=str, default="localhost")
+@click.option("--port", "-p", type=int, default=3000)
+@click.pass_context
+def cli(ctx, debug, host, port):
+    ctx.obj = {"debug": debug}
     if debug:
         logging.basicConfig(format=FORMAT, level=logging.DEBUG)
+    ctx.obj["connection_params"] = {"host": host, "port": port}
 
 
 @cli.command()
@@ -30,13 +35,15 @@ def cli(debug):
 @click.option(
     "--response-time-sigma", type=float, default=15, help="Response time sigma"
 )
-async def chatbot(locator, response_time, response_time_sigma, friend):
+@click.pass_context
+async def chatbot(ctx, locator, response_time, response_time_sigma, friend):
     session_locator: dict = json.load(locator)
     await ChatBot.start(
         session_locator,
         response_time=response_time,
         response_time_sigma=response_time_sigma,
         friends=friend,
+        **ctx.obj["connection_params"],
     )
 
 
@@ -48,10 +55,11 @@ async def chatbot(locator, response_time, response_time_sigma, friend):
     default=Path("./sessions/"),
 )
 @click.argument("name", type=str)
-async def onboard(name, session_dir: Path):
+@click.pass_context
+async def onboard(ctx, name, session_dir: Path):
     session_dir.mkdir(parents=True, exist_ok=True)
     session_file = session_dir / f"{name}.json"
-    await OnboardBot.start(name, session_file)
+    await OnboardBot.start(name, session_file, **ctx.obj["connection_params"])
 
 
 @cli.command()
@@ -61,7 +69,8 @@ async def onboard(name, session_dir: Path):
     type=click.Path(file_okay=False, writable=True, path_type=Path),
     default=Path("./sessions/"),
 )
-async def onboard_bulk(session_dir: Path):
+@click.pass_context
+async def onboard_bulk(ctx, session_dir: Path):
     session_dir.mkdir(parents=True, exist_ok=True)
     while True:
         name: str = click.prompt(
@@ -71,7 +80,7 @@ async def onboard_bulk(session_dir: Path):
             print("No name provided... exiting.")
             return
         session_file = session_dir / f"{name}.json"
-        await OnboardBot.start(name, session_file)
+        await OnboardBot.start(name, session_file, **ctx.obj["connection_params"])
 
 
 @cli.command()
@@ -82,7 +91,8 @@ async def onboard_bulk(session_dir: Path):
     type=click.Path(file_okay=False, writable=True, path_type=Path),
     default=Path("./archive/"),
 )
-async def archivebot(locators, archive_dir: Path):
+@click.pass_context
+async def archivebot(ctx, locators, archive_dir: Path):
     archive_dir.mkdir(parents=True, exist_ok=True)
     session_locators: T.List[dict] = []
     for locator in locators:
@@ -93,7 +103,9 @@ async def archivebot(locators, archive_dir: Path):
     async with asyncio.TaskGroup() as tg:
         for session_locator in session_locators:
             coro = ArchiveBot.start(
-                archive_dir=archive_dir, session_locator=session_locator
+                archive_dir=archive_dir,
+                session_locator=session_locator,
+                **ctx.obj["connection_params"],
             )
             tg.create_task(coro)
 

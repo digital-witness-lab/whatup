@@ -47,10 +47,10 @@ class WhatUpBase(socketio.AsyncClientNamespace):
         self._sio: socketio.AsyncClient | None = None
 
     @classmethod
-    async def start(cls, *args, **kwargs):
+    async def start(cls, *args, host="localhost", port=3000, **kwargs):
         logger.info("Opening connection")
         bot = cls(*args, **kwargs)
-        await bot.connect("ws://localhost:3000/")
+        await bot.connect(f"ws://{host}:{port}/")
         try:
             bot.logger.info("Waiting")
             await bot.wait()
