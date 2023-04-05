@@ -28,7 +28,9 @@ class ArchiveBot(WhatUpBase):
         await self.messages_subscribe()
 
     async def on_read_messages(self, message):
-        if message["key"]["fromMe"]:
+        if "messageStubType" in message:
+            return
+        elif message["key"]["fromMe"]:
             return
 
         conversation_dir: Path = self.archive_dir / message["key"]["remoteJid"]

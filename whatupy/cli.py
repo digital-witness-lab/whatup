@@ -92,12 +92,12 @@ async def onboard_bulk(ctx, session_dir: Path):
 
 @cli.command()
 @async_cli
-@click.option("--locator", "locators", type=click.File(), multiple=True)
 @click.option(
     "--archive-dir",
     type=click.Path(file_okay=False, writable=True, path_type=Path),
     default=Path("./archive/"),
 )
+@click.argument("locators", type=click.File(), nargs=-1)
 @click.pass_context
 async def archivebot(ctx, locators, archive_dir: Path):
     archive_dir.mkdir(parents=True, exist_ok=True)

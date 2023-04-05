@@ -30,9 +30,9 @@ class WhatUpBase(socketio.AsyncClientNamespace):
                 "Either name alone (for anonymous connections) or session_locator alone (for authenticated connections) must be provided"
             )
 
-        if name and not re.match(r"[a-zA-Z0-9-:_]{8,}", name):
+        if name and not re.match(r"[a-zA-Z0-9-:_]{3,}", name):
             raise ValueError(
-                "Client name must be at least 8 characters long with only a-zA-Z0-9-:_"
+                f"Client name must be at least 8 characters long with only a-zA-Z0-9-:_: {name}"
             )
         elif not name and session_locator:
             self.name = session_locator["sessionId"]
