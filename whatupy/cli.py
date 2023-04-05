@@ -2,6 +2,7 @@ import json
 import asyncio
 import logging
 from pathlib import Path
+from importlib.resources import files
 import typing as T
 
 import click
@@ -13,18 +14,24 @@ from .utils import async_cli
 
 FORMAT = f"[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
+DEFAULT_CERT = Path(files("whatupy").joinpath("whatupcore/static/cert.pem"))
 
 
 @click.group()
 @click.option("--debug", "-d", type=bool, is_flag=True, default=False)
 @click.option("--host", "-H", type=str, default="localhost")
 @click.option("--port", "-p", type=int, default=3000)
+@click.option(
+    "--cert",
+    type=click.Path(dir_okay=False, exists=True, readable=True, path_type=Path),
+    default=DEFAULT_CERT,
+)
 @click.pass_context
-def cli(ctx, debug, host, port):
+def cli(ctx, debug, host, port, cert: Path):
     ctx.obj = {"debug": debug}
     if debug:
         logging.basicConfig(format=FORMAT, level=logging.DEBUG)
-    ctx.obj["connection_params"] = {"host": host, "port": port}
+    ctx.obj["connection_params"] = {"host": host, "port": port, "cert": cert}
 
 
 @cli.command()

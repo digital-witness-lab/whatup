@@ -1,8 +1,11 @@
 import asyncio
 import logging
 import re
+import ssl
+from pathlib import Path
 
 import socketio
+import aiohttp
 
 from . import actions
 from . import utils
@@ -47,10 +50,12 @@ class WhatUpBase(socketio.AsyncClientNamespace):
         self._sio: socketio.AsyncClient | None = None
 
     @classmethod
-    async def start(cls, *args, host="localhost", port=3000, **kwargs):
+    async def start(
+        cls, *args, host="localhost", port=3000, cert: Path | None = None, **kwargs
+    ):
         logger.info("Opening connection")
         bot = cls(*args, **kwargs)
-        await bot.connect(f"ws://{host}:{port}/")
+        await bot.connect(f"https://{host}:{port}/", cert)
         try:
             bot.logger.info("Waiting")
             await bot.wait()
@@ -59,10 +64,20 @@ class WhatUpBase(socketio.AsyncClientNamespace):
         finally:
             await bot.disconnect()
 
-    async def connect(self, url, **kwargs):
+    async def connect(self, url, cert: Path | None = None):
         if self._sio:
             await self.disconnect()
-        self._sio = sio = socketio.AsyncClient()
+
+        if cert is not None:
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.load_verify_locations(cafile=cert)
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
+            http_session = aiohttp.ClientSession(connector=connector)
+            self._sio = sio = socketio.AsyncClient(http_session=http_session)
+        else:
+            self._sio = sio = socketio.AsyncClient()
+
         sio.register_namespace(self)
         await sio.connect(url)
         return self
