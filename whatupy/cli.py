@@ -7,12 +7,25 @@ from pathlib import Path
 
 import click
 
-from .bots import ArchiveBot, ChatBot, OnboardBot
+from .bots import BaseBot, ArchiveBot, ChatBot, OnboardBot
 from .utils import async_cli
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
 DEFAULT_CERT = Path(str(files("whatupy").joinpath("whatupcore/static/cert.pem")))
+
+
+async def run_multi_bots(bot: BaseBot, locators: T.List[T.TextIO], bot_args: dict):
+    session_locators: T.List[dict] = []
+    for locator in locators:
+        try:
+            session_locators.append(json.load(locator))
+        except ValueError:
+            raise Exception(f"Could not parse locator: {locator}")
+    async with asyncio.TaskGroup() as tg:
+        for session_locator in session_locators:
+            coro = bot.start(session_locator=session_locator, **bot_args)
+            tg.create_task(coro)
 
 
 @click.group()
@@ -34,7 +47,6 @@ def cli(ctx, debug, host, port, cert: Path):
 
 @cli.command()
 @async_cli
-@click.option("--locator", type=click.File())
 @click.option("--friend", multiple=True, help="Which users to chat with")
 @click.option(
     "--response-time", type=float, default=60, help="Mean response time (seconds)"
@@ -45,21 +57,20 @@ def cli(ctx, debug, host, port, cert: Path):
     default=15,
     help="Response time sigma (seconds)",
 )
+@click.argument("locators", type=click.File(), nargs=-1)
 @click.pass_context
-async def chatbot(ctx, locator, response_time, response_time_sigma, friend):
+async def chatbot(ctx, locators, response_time, response_time_sigma, friend):
     """
     Create a bot-evasion chat-bot. Multiple bots can be turned into this mode
     and they will communicate with one-another so as to simulate real users
     chatting.
     """
-    session_locator: dict = json.load(locator)
-    await ChatBot.start(
-        session_locator,
-        response_time=response_time,
-        response_time_sigma=response_time_sigma,
-        friends=friend,
+    params = {
+        "response_time": response_time,
+        "response_time_sigma": response_time_sigma,
         **ctx.obj["connection_params"],
-    )
+    }
+    await run_multi_bots(ChatBot, locators, params)
 
 
 @cli.command
@@ -138,20 +149,8 @@ async def archivebot(ctx, locators, archive_dir: Path):
             └── metadata.json
     """
     archive_dir.mkdir(parents=True, exist_ok=True)
-    session_locators: T.List[dict] = []
-    for locator in locators:
-        try:
-            session_locators.append(json.load(locator))
-        except ValueError:
-            raise Exception(f"Could not parse locator: {locator}")
-    async with asyncio.TaskGroup() as tg:
-        for session_locator in session_locators:
-            coro = ArchiveBot.start(
-                archive_dir=archive_dir,
-                session_locator=session_locator,
-                **ctx.obj["connection_params"],
-            )
-            tg.create_task(coro)
+    params = {"archive_dir": archive_dir, **ctx.obj["connection_params"]}
+    await run_multi_bots(ArchiveBot, locators, params)
 
 
 if __name__ == "__main__":
