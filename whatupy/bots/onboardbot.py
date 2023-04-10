@@ -3,12 +3,12 @@ import json
 import logging
 from pathlib import Path
 
-from .client import WhatUpBase
+from . import BaseBot
 
 logger = logging.getLogger(__name__)
 
 
-class OnboardBot(WhatUpBase):
+class OnboardBot(BaseBot):
     def __init__(
         self,
         name,

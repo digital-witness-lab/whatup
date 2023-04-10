@@ -3,13 +3,13 @@ import logging
 import random
 import typing as T
 
-from . import utils
-from .client import WhatUpBase
+from .. import utils
+from . import BaseBot
 
 logger = logging.getLogger(__name__)
 
 
-class ChatBot(WhatUpBase):
+class ChatBot(BaseBot):
     def __init__(
         self,
         *args,

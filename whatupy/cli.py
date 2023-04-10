@@ -7,14 +7,12 @@ from pathlib import Path
 
 import click
 
-from .archivebot import ArchiveBot
-from .chatbot import ChatBot
-from .onboardbot import OnboardBot
+from .bots import ArchiveBot, ChatBot, OnboardBot
 from .utils import async_cli
 
-FORMAT = f"[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
+FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
-DEFAULT_CERT = Path(files("whatupy").joinpath("whatupcore/static/cert.pem"))
+DEFAULT_CERT = Path(str(files("whatupy").joinpath("whatupcore/static/cert.pem")))
 
 
 @click.group()

@@ -2,13 +2,13 @@ import json
 import logging
 from pathlib import Path
 
-from . import utils
-from .client import WhatUpBase
+from .. import utils
+from . import BaseBot
 
 logger = logging.getLogger(__name__)
 
 
-class ArchiveBot(WhatUpBase):
+class ArchiveBot(BaseBot):
     def __init__(
         self,
         archive_dir: Path,
@@ -28,13 +28,20 @@ class ArchiveBot(WhatUpBase):
         elif message["key"]["fromMe"]:
             return
 
-        conversation_dir: Path = self.archive_dir / message["key"]["remoteJid"]
+        chatid = message["key"]["remoteJid"]
+        conversation_dir: Path = self.archive_dir / chatid
         conversation_dir.mkdir(parents=True, exist_ok=True)
         message_id = f"{message['messageTimestamp']}_{message['key']['id']}"
         message["archive_id"] = message_id
 
         with open(conversation_dir / f"{message_id}.json", "w+") as fd:
-            fd.write(json.dumps(message))
+            json.dump(message, fd)
+
+        meta_path = conversation_dir / "metadata.json"
+        if utils.is_groupchat(message) and not meta_path.exists():
+            metadata = await self.group_metadata(chatid)
+            with meta_path.open("w+") as fd:
+                json.dump(metadata, fd)
 
         if utils.is_media_message(message):
             media_dir: Path = conversation_dir / "media"

@@ -7,12 +7,12 @@ from pathlib import Path
 import aiohttp
 import socketio
 
-from . import actions, utils
+from .. import actions, utils
 
 logger = logging.getLogger(__name__)
 
 
-class WhatUpBase(socketio.AsyncClientNamespace):
+class BaseBot(socketio.AsyncClientNamespace):
     def __init__(
         self,
         *args,
