@@ -35,13 +35,23 @@ def cli(ctx, debug, host, port, cert: Path):
 @cli.command()
 @async_cli
 @click.option("--locator", type=click.File())
-@click.option("--friend", multiple=True)
-@click.option("--response-time", type=float, default=60, help="Mean response time")
+@click.option("--friend", multiple=True, help="Which users to chat with")
 @click.option(
-    "--response-time-sigma", type=float, default=15, help="Response time sigma"
+    "--response-time", type=float, default=60, help="Mean response time (seconds)"
+)
+@click.option(
+    "--response-time-sigma",
+    type=float,
+    default=15,
+    help="Response time sigma (seconds)",
 )
 @click.pass_context
 async def chatbot(ctx, locator, response_time, response_time_sigma, friend):
+    """
+    Create a bot-evasion chat-bot. Multiple bots can be turned into this mode
+    and they will communicate with one-another so as to simulate real users
+    chatting.
+    """
     session_locator: dict = json.load(locator)
     await ChatBot.start(
         session_locator,
@@ -62,6 +72,10 @@ async def chatbot(ctx, locator, response_time, response_time_sigma, friend):
 @click.argument("name", type=str)
 @click.pass_context
 async def onboard(ctx, name, session_dir: Path):
+    """
+    Creates a QR code for provided bot. The command will exit on a sucessful QR
+    code scan. The session file will be saved to <session-dir>/<name>.json
+    """
     session_dir.mkdir(parents=True, exist_ok=True)
     session_file = session_dir / f"{name}.json"
     await OnboardBot.start(name, session_file, **ctx.obj["connection_params"])
@@ -76,6 +90,17 @@ async def onboard(ctx, name, session_dir: Path):
 )
 @click.pass_context
 async def onboard_bulk(ctx, session_dir: Path):
+    """
+    Starts an interaction to simplify onboarding multiple bots. You will be
+    prompted for a name to provide the bot and then be shown a QR code to scan.
+    Once the scan is successful, the process will restart so you can onboard
+    another bot. The locator file will be saved to the session-dir directory
+    with the following format,
+
+        <session-dir>/
+        ├── <bot-name1>.json
+        └── <bot-name2>.json
+    """
     session_dir.mkdir(parents=True, exist_ok=True)
     while True:
         name: str = click.prompt(
@@ -98,6 +123,18 @@ async def onboard_bulk(ctx, session_dir: Path):
 @click.argument("locators", type=click.File(), nargs=-1)
 @click.pass_context
 async def archivebot(ctx, locators, archive_dir: Path):
+    """
+    Bot to archive all the data the provided bots have access to. Give as many
+    locators to specify which bots should be listened to. Data gets saved in
+    the archive-dir with the following structure,
+
+        <archive-dir>/
+        └── <chat-id>/
+            ├── <message-id>.json
+            ├── media/
+            │   └── <message-id>_imageMessage.jpg
+            └── metadata.json
+    """
     archive_dir.mkdir(parents=True, exist_ok=True)
     session_locators: T.List[dict] = []
     for locator in locators:
