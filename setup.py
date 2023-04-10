@@ -8,7 +8,7 @@ with open("requirements.txt") as f:
 
 setup(
     name="whatupy",
-    version="0.1.0",
+    version="1.0.0",
     author="Micha Gorelick",
     author_email="mynameisfiber@gmail.com",
     url="https://github.com/digital-witness-lab/whatsupy/",
