@@ -97,6 +97,7 @@ async def onboard_bulk(ctx, session_dir: Path):
     another bot. The locator file will be saved to the session-dir directory
     with the following format,
 
+        \b
         <session-dir>/
         ├── <bot-name1>.json
         └── <bot-name2>.json
@@ -128,6 +129,7 @@ async def archivebot(ctx, locators, archive_dir: Path):
     locators to specify which bots should be listened to. Data gets saved in
     the archive-dir with the following structure,
 
+        \b
         <archive-dir>/
         └── <chat-id>/
             ├── <message-id>.json
