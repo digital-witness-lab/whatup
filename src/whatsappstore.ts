@@ -1,48 +1,47 @@
+import { EventEmitter } from 'events'
+
 import { WASocket, WAMessage, MessageUpsertType, GroupMetadata, Contact, Chat } from '@adiwajshing/baileys'
 
 import { WhatsAppACL } from './whatsappacl'
+import { WhatsAppStoreInterface } from './interfaces'
 
-export interface WhatsAppStoreInterface {
-  bind: (sock: WASocket) => void
-  contacts: () => Contact[]
-  chats: () => Chat[]
-  groups: () => GroupMetadata[]
-  contact: (cid: string) => Contact | undefined
-  setChat: (chat: Chat) => Chat | undefined
-  setGroupMetadata: (groupMetadata: GroupMetadata) => GroupMetadata | undefined
-  lastMessage: (chatId: string) => WAMessage | undefined
-  groupMetadata: (chatId: string) => Promise<GroupMetadata | undefined>
-}
-
-export class WhatsAppStore implements WhatsAppStoreInterface {
+export class WhatsAppStore extends EventEmitter implements WhatsAppStoreInterface {
   protected sock: WASocket | undefined
   protected acl: WhatsAppACL
 
   protected _lastMessage: { [_: string]: WAMessage } = {}
+  protected _messageHistory: { [_: string]: WAMessage[] } = {}
   protected _groupMetadata: { [_: string]: GroupMetadata } = {}
   protected _contacts: { [_: string]: Contact } = {}
   protected _chats: { [_: string]: Chat } = {}
+  protected _saveMessageHistory: boolean = false
 
-  constructor (acl: WhatsAppACL) {
+  constructor (acl: WhatsAppACL, saveMessageHistory: boolean = false) {
+    super()
     this.acl = acl
+    this._saveMessageHistory = saveMessageHistory
   }
 
   public bind (sock: WASocket): void {
     this.sock = sock
 
+    this.sock.ev.on('messaging-history.set', (data: { chats: Chat[], contacts: Contact[], messages: WAMessage[], isLatest: boolean }) => {
+      console.log(`Recieved history update: n_messages = ${data.messages.length}: n_chats = ${data.chats.length}: n_contacts = ${data.contacts.length}`)
+      this._updateMessageHistory(data)
+      this._updateChatHistory(data)
+      this._updateContactHistory(data)
+    })
+
     this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this))
-    this.sock.ev.on('messages.set', this._updateMessageHistory.bind(this))
 
     this.sock.ev.on('groups.upsert', this._upsertGroups.bind(this))
     this.sock.ev.on('groups.update', this._updateGroups.bind(this))
     // this.sock.ev.on('group-participants.update', ...)
 
-    this.sock.ev.on('chats.set', this._updateChatHistory.bind(this))
     this.sock.ev.on('chats.upsert', this._upsertChat.bind(this))
     this.sock.ev.on('chats.update', this._updateChat.bind(this))
     this.sock.ev.on('chats.delete', this._deleteChat.bind(this))
 
-    this.sock.ev.on('contacts.set', this._updateContactHistory.bind(this))
     this.sock.ev.on('contacts.upsert', this._upsertContact.bind(this))
     this.sock.ev.on('contacts.update', this._updateContact.bind(this))
   }
@@ -91,6 +90,16 @@ export class WhatsAppStore implements WhatsAppStoreInterface {
   public lastMessage (chatId: string): WAMessage | undefined {
     return this._lastMessage[chatId]
   }
+
+  public messageHistory (): { [_: string]: WAMessage[] } {
+    return this._messageHistory
+  }
+
+  public clearMessageHistory (): void {
+    this._messageHistory = {}
+    this._saveMessageHistory = false
+  }
+
   //* ******** END PUBLIC METHODS ************//
 
   //* ******** START Contact Events *************//
@@ -124,19 +133,38 @@ export class WhatsAppStore implements WhatsAppStoreInterface {
   //* ******** START Message Events *************//
   private _updateMessageHistory (data: { messages: WAMessage[], isLatest: boolean }): void {
     const { messages } = data
+    console.log(`Recieved update message history: ${messages.length}`)
     messages.map(this._setLatestMessage.bind(this))
+    messages.map(this._setMessageHistory.bind(this))
   }
 
   private _messageUpsert (data: { messages: WAMessage[], type: MessageUpsertType }): void {
+    console.log(`Recieved upsert message history: ${data.messages.length}`)
     for (const message of data.messages) {
       this._setLatestMessage(message)
+      this._setMessageHistory(message)
     }
+  }
+
+  private canAccessMessage (chatId: string | null | undefined): boolean {
+    if (chatId == null) return false
+    if (!this.acl.canRead(chatId) && !this.acl.canWrite(chatId)) return false
+    return true
+  }
+
+  private _setMessageHistory (message: WAMessage): void {
+    if (!this._saveMessageHistory) return
+    const chatId: string | null | undefined = message.key?.remoteJid
+    if (chatId == null || !this.canAccessMessage(chatId)) return
+    if (this._messageHistory[chatId] === undefined) this._messageHistory[chatId] = []
+    this._messageHistory[chatId].push(message)
+    this._messageHistory[chatId].sort((a, b) => (((a.messageTimestamp ?? 0) as number) - ((b.messageTimestamp ?? 0) as number)))
+    this.emit('messageHistory.update', message)
   }
 
   private _setLatestMessage (message: WAMessage): void {
     const chatId: string | null | undefined = message.key?.remoteJid
-    if (chatId == null) return
-    if (!this.acl.canRead(chatId) && !this.acl.canWrite(chatId)) return
+    if (chatId == null || !this.canAccessMessage(chatId)) return
     const lastMessage: WAMessage | undefined = this._lastMessage[chatId]
     if (lastMessage == null || lastMessage.key.id == null || (message.key.id != null && lastMessage.key.id < message.key.id)) {
       this._lastMessage[chatId] = message

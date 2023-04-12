@@ -1,10 +1,7 @@
 import { proto, BufferJSON, initAuthCreds, AuthenticationState, AuthenticationCreds, SignalKeyStore, SignalDataSet, SignalDataTypeMap } from '@adiwajshing/baileys'
 import { EventEmitter } from 'events'
 
-export interface AuthenticationData {
-  creds: AuthenticationCreds
-  keys: { [_: string]: any }
-}
+import { AuthenticationData } from './interfaces'
 
 export class WhatsAppAuth extends EventEmitter implements SignalKeyStore {
   readonly state: AuthenticationData

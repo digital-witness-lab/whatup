@@ -1,4 +1,5 @@
-import makeWASocket, { downloadMediaMessage, fetchLatestBaileysVersion, Browsers, ConnectionState, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, WAMessage, WASocket } from '@adiwajshing/baileys'
+import makeWASocket, { downloadMediaMessage, fetchLatestBaileysVersion, Browsers, ConnectionState, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, WAMessage, WASocket, S_WHATSAPP_NET } from '@adiwajshing/baileys'
+import { debounce } from 'tadaaa'
 import { Boom } from '@hapi/boom'
 import P from 'pino'
 import axios from 'axios'
@@ -7,24 +8,10 @@ import { EventEmitter } from 'events'
 import { WhatsAppACL, NoAccessError } from './whatsappacl'
 import { WhatsAppAuth } from './whatsappauth'
 import { WhatsAppStore } from './whatsappstore'
-import { WhatsAppSessionLocator, WhatsAppSessionStorage } from './whatsappsessionstorage'
+import { WhatsAppSessionStorage } from './whatsappsessionstorage'
 import { ACTIONS } from './actions'
 import { sleep, resolvePromiseSync } from './utils'
-
-export interface GroupJoinResponse {metadata: GroupMetadata, response?: string }
-
-export interface WhatsAppSessionInterface {
-  init: () => Promise<void>
-  qrCode: () => string | undefined
-  connection: () => string | undefined
-
-  sendMessage: (chatId: string, message: string, clearChatStatus: boolean, vampMaxSeconds: number | undefined) => Promise<WAMessage | undefined>
-  markChatRead: (chatId: string) => Promise<void>
-  joinGroup: (inviteCode: string) => Promise<GroupJoinResponse | undefined | null>
-  groupMetadata: (chatId: string) => Promise<GroupMetadata | undefined>
-  groupInviteMetadata: (inviteCode: string) => Promise<GroupMetadata | undefined | null>
-  groups: () => GroupMetadata[]
-}
+import { SessionOptions, WhatsAppSessionLocator, GroupJoinResponse, WhatsAppSessionInterface } from './interfaces'
 
 export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInterface {
   public uid: string
@@ -32,20 +19,22 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
   protected msgRetryCounterMap: MessageRetryMap = { }
   protected lastConnectionState: Partial<ConnectionState> = {}
   protected closing: boolean = false
+  protected sessionOptions: SessionOptions = {}
 
   protected acl: WhatsAppACL
   protected auth!: WhatsAppAuth
   protected store: WhatsAppStore
   protected sessionStorage: WhatsAppSessionStorage
 
-  constructor (locator: WhatsAppSessionLocator) {
+  constructor (locator: WhatsAppSessionLocator, sessionOptions: SessionOptions = {}) {
     super()
     this.uid = locator.sessionId
-    console.log(`${this.uid}: Constructing session`)
+    console.log(`${this.uid}: Constructing session: ${JSON.stringify(sessionOptions)}`)
+    this.sessionOptions = sessionOptions
 
     this.sessionStorage = new WhatsAppSessionStorage(locator)
     this.acl = new WhatsAppACL(this.sessionStorage.record.aclConfig)
-    this.store = new WhatsAppStore(this.acl)
+    this.store = new WhatsAppStore(this.acl, this.sessionOptions.sendMessageHistory ?? false)
     this.auth = new WhatsAppAuth(this.sessionStorage.record.authData)
   }
 
@@ -62,9 +51,8 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
       auth: this.auth.getAuth(),
       logger: P({ level: 'error' }),
 
-      browser: Browsers.macOS('Desktop')
-      // downloadHistory: true,
-      // syncFullHistory: true
+      browser: Browsers.macOS('Desktop'),
+      syncFullHistory: this.sessionOptions.sendMessageHistory ?? false
     })
     this.store.bind(this.sock)
 
@@ -73,6 +61,12 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     })
     this.sock.ev.on('connection.update', resolvePromiseSync(this._updateConnectionState.bind(this)))
     this.sock.ev.on('messages.upsert', resolvePromiseSync(this._messageUpsert.bind(this)))
+    this.store.on('messageHistory.update', () => debounce(async (msg: WAMessage) => {
+      await this.emitMessageHistory()
+      if (this.sessionOptions.sharedConnection !== true) {
+        this.store.clearMessageHistory()
+      }
+    }, { delay: 5000, onError: console.log }))
   }
 
   async close (): Promise<void> {
@@ -90,9 +84,10 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     }
   }
 
-  private async _messageUpsert (data: { messages: WAMessage[], type: MessageUpsertType }): Promise<void> {
-    const { messages } = data
+  private async _messageUpsert (data: { messages: WAMessage[], type: MessageUpsertType | 'history' }): Promise<void> {
+    const { messages, type } = data
     for (const message of messages) {
+      const messageAugmented = { type, ...message }
       console.log(`${this.uid}: got message`)
       const chatId: string | null | undefined = message.key?.remoteJid
       if (chatId == null || !this.acl.canRead(chatId)) {
@@ -100,7 +95,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
         continue
       }
       if (message.key?.fromMe === false) {
-        this.emit(ACTIONS.readMessages, message)
+        this.emit(ACTIONS.readMessages, messageAugmented)
       }
     }
   }
@@ -116,6 +111,11 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     console.log(`connection state update: ${JSON.stringify(data)}`)
     if (data.connection === 'open') {
       this.emit(ACTIONS.connectionReady, data)
+      // Note: In the multi-device version of WhatsApp -- if a desktop client
+      // is active, WA doesn't send push notifications to the device. If you
+      // would like to receive said notifications -- mark your Baileys client
+      // offline using sock.sendPresenceUpdate('unavailable')
+      await this.sock?.sendPresenceUpdate('unavailable')
     } else if (data.connection === 'close') {
       this.emit(ACTIONS.connectionClosed, data)
       const { lastDisconnect } = data
@@ -156,6 +156,13 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
         return await this.downloadMessageMedia(message)
       }
       throw error
+    }
+  }
+
+  async emitMessageHistory (): Promise<void> {
+    const history = this.store.messageHistory()
+    for (const chatId in history) {
+      await this._messageUpsert({ messages: history[chatId], type: 'history' })
     }
   }
 

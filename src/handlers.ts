@@ -1,25 +1,13 @@
 import { WAMessage } from '@adiwajshing/baileys'
 import { Server, Socket } from 'socket.io'
 
-import { WhatsAppSessionLocator, WhatsAppSessionStorage } from './whatsappsessionstorage'
+import { WhatsAppSessionStorage } from './whatsappsessionstorage'
 import { WhatsAppSession } from './whatsappsession'
 import { sleep, resolvePromiseSync } from './utils'
 import { ACTIONS } from './actions'
+import { AuthenticateSessionParams, SessionOptions, SharedSession, WhatsAppSessionLocator } from './interfaces'
 
 const SESSION_CLOSE_GRACE_TIME = 5000
-
-interface AuthenticateSessionParams {
-  sessionLocator: WhatsAppSessionLocator
-  sharedConnection?: boolean
-}
-
-interface SharedSession {
-  session: WhatsAppSession
-  name: string
-  numListeners: number
-  anonymous: boolean
-  hasReadMessageHandler?: boolean
-}
 
 const globalSessions: { [_: string]: SharedSession } = {}
 
@@ -63,7 +51,7 @@ async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Serv
       return callback && callback(buffer)
     } catch (e: any) {
       console.log(`Exception downloading media message: ${String(e)}`)
-      return callback && callback({error: e.message})
+      return callback && callback({ error: e.message })
     }
   })
   socket.on(ACTIONS.writeSendMessage, async (data, callback?: Function) => {
@@ -71,9 +59,9 @@ async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Serv
     try {
       console.log(`Sending message: ${JSON.stringify(data)}`)
       const sendMessage = await session.sendMessage(chatId, message, clearChatStatus, vampMaxSeconds)
-      return callback && callback(sendMessage)
+      return (callback != null) && callback(sendMessage)
     } catch (e: any) {
-      return callback && callback({error: e.message})
+      return (callback != null) && callback({ error: e.message })
     }
   })
   socket.on(ACTIONS.writeMarkChatRead, async (chatId: string, callback: Function) => {
@@ -81,7 +69,7 @@ async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Serv
       await session.markChatRead(chatId)
       return callback && callback({ error: null })
     } catch (e: any) {
-      return callback && callback({error: e.message})
+      return callback && callback({ error: e.message })
     }
   })
 
@@ -100,7 +88,7 @@ async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Serv
       const groupMetadata = await session.leaveGroup(chatId)
       callback(groupMetadata)
     } catch (e: any) {
-      return callback && callback({error: e.message})
+      return callback && callback({ error: e.message })
     }
   })
   socket.on(ACTIONS.readJoinGroup, async (chatId: string, callback: Function) => {
@@ -108,7 +96,7 @@ async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Serv
       const groupMetadata = await session.joinGroup(chatId)
       callback(groupMetadata)
     } catch (e: any) {
-      return callback && callback({error: e.message})
+      return callback && callback({ error: e.message })
     }
   })
   socket.on(ACTIONS.readGroupMetadata, async (chatId: string, callback: Function) => {
@@ -116,7 +104,7 @@ async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Serv
       const groupMetadata = await session.groupMetadata(chatId)
       callback(groupMetadata)
     } catch (e: any) {
-      return callback && callback({error: e.message})
+      return callback && callback({ error: e.message })
     }
   })
   socket.on(ACTIONS.readGroupInviteMetadata, async (inviteCode: string, callback: Function) => {
@@ -124,7 +112,7 @@ async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Serv
       const groupInviteMetadata = await session.groupInviteMetadata(inviteCode)
       callback(groupInviteMetadata)
     } catch (e: any) {
-      return callback && callback({error: e.message})
+      return callback && callback({ error: e.message })
     }
   })
   socket.on(ACTIONS.readListGroups, (callback: Function) => {
@@ -132,10 +120,10 @@ async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Serv
   })
 }
 
-async function createSession (locator: WhatsAppSessionLocator, io: Server, socket: Socket, sharedConnection: boolean = true, anonymous: boolean = false): Promise<SharedSession> {
+async function createSession (locator: WhatsAppSessionLocator, io: Server, socket: Socket, sessionOptions: SessionOptions = {}, anonymous: boolean = false): Promise<SharedSession> {
   let sharedSession: SharedSession
   let name: string = locator.sessionId
-  if (anonymous || !sharedConnection) {
+  if (anonymous || !(sessionOptions.sharedConnection ?? false)) {
     name = `private-${Math.floor(Math.random() * 10000000)}-${name}`
   }
   if (name in globalSessions) {
@@ -147,9 +135,12 @@ async function createSession (locator: WhatsAppSessionLocator, io: Server, socke
       // incase this event was already issued in the past, let's make sure the
       // client knows the connected session is ready
       socket.emit(ACTIONS.connectionReady, {})
+      if (sessionOptions.sendMessageHistory ?? false) {
+        await sharedSession.session.emitMessageHistory()
+      }
     }
   } else {
-    const session = new WhatsAppSession(locator)
+    const session = new WhatsAppSession(locator, sessionOptions)
     sharedSession = { name, session, numListeners: 1, anonymous }
     console.log(`Socket ${socket.id}: Creating new session: ${name}`)
     globalSessions[sharedSession.name] = sharedSession
@@ -179,14 +170,14 @@ export async function registerHandlers (io: Server, socket: Socket): Promise<voi
   })
 
   socket.on(ACTIONS.connectionAuth, async (payload: AuthenticateSessionParams, callback: Function): Promise<void> => {
-    const { sharedConnection, sessionLocator } = payload
+    const { sessionOptions, sessionLocator } = payload
     console.log(`${socket.id}: Initializing authenticated session`)
     sessionLocator.isNew = false
     try {
-      sharedSession = await createSession(sessionLocator, io, socket, sharedConnection, false)
-      return callback && callback({error: null})
+      sharedSession = await createSession(sessionLocator, io, socket, sessionOptions, false)
+      return callback && callback({ error: null })
     } catch (e: any) {
-      return callback && callback({error: e.message})
+      return callback && callback({ error: e.message })
     }
   })
   socket.on(ACTIONS.connectionAuthAnonymous, async (data: { [_: string]: string }, callback: Function) => {
@@ -195,10 +186,10 @@ export async function registerHandlers (io: Server, socket: Socket): Promise<voi
     const locator = WhatsAppSessionStorage.createLocator(name)
     console.log(`${socket.id}: Initializing anonymous session: ${locator.sessionId}`)
     try {
-      sharedSession = await createSession(locator, io, socket, false, true)
+      sharedSession = await createSession(locator, io, socket, {}, true)
     } catch (e: any) {
       console.log(e)
-      return callback && callback({error: e.message})
+      return callback && callback({ error: e.message })
     }
     delete locator.isNew
     socket.emit(ACTIONS.connectionAuthLocator, locator)

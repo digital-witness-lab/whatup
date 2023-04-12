@@ -1,9 +1,4 @@
-export interface WhatsAppACLConfig {
-  allowAll: boolean
-  canWrite: string[]
-  canRead: string[]
-  canReadWrite: string[]
-}
+import { WhatsAppACLConfig } from './interfaces'
 
 export class NoAccessError extends Error {
   constructor (mode: string, chatId: string | undefined) {

@@ -37,6 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppSession = void 0;
 const baileys_1 = __importStar(require("@adiwajshing/baileys"));
+const tadaaa_1 = require("tadaaa");
 const pino_1 = __importDefault(require("pino"));
 const axios_1 = __importDefault(require("axios"));
 const events_1 = require("events");
@@ -47,17 +48,20 @@ const whatsappsessionstorage_1 = require("./whatsappsessionstorage");
 const actions_1 = require("./actions");
 const utils_1 = require("./utils");
 class WhatsAppSession extends events_1.EventEmitter {
-    constructor(locator) {
+    constructor(locator, sessionOptions = {}) {
+        var _a;
         super();
         this.sock = undefined;
         this.msgRetryCounterMap = {};
         this.lastConnectionState = {};
         this.closing = false;
+        this.sessionOptions = {};
         this.uid = locator.sessionId;
-        console.log(`${this.uid}: Constructing session`);
+        console.log(`${this.uid}: Constructing session: ${JSON.stringify(sessionOptions)}`);
+        this.sessionOptions = sessionOptions;
         this.sessionStorage = new whatsappsessionstorage_1.WhatsAppSessionStorage(locator);
         this.acl = new whatsappacl_1.WhatsAppACL(this.sessionStorage.record.aclConfig);
-        this.store = new whatsappstore_1.WhatsAppStore(this.acl);
+        this.store = new whatsappstore_1.WhatsAppStore(this.acl, (_a = this.sessionOptions.sendMessageHistory) !== null && _a !== void 0 ? _a : false);
         this.auth = new whatsappauth_1.WhatsAppAuth(this.sessionStorage.record.authData);
     }
     id() {
@@ -65,6 +69,7 @@ class WhatsAppSession extends events_1.EventEmitter {
         return (_a = this.auth) === null || _a === void 0 ? void 0 : _a.id();
     }
     init() {
+        var _a;
         return __awaiter(this, void 0, void 0, function* () {
             const { version } = yield (0, baileys_1.fetchLatestBaileysVersion)();
             this.sock = (0, baileys_1.default)({
@@ -73,9 +78,8 @@ class WhatsAppSession extends events_1.EventEmitter {
                 markOnlineOnConnect: false,
                 auth: this.auth.getAuth(),
                 logger: (0, pino_1.default)({ level: 'error' }),
-                browser: baileys_1.Browsers.macOS('Desktop')
-                // downloadHistory: true,
-                // syncFullHistory: true
+                browser: baileys_1.Browsers.macOS('Desktop'),
+                syncFullHistory: (_a = this.sessionOptions.sendMessageHistory) !== null && _a !== void 0 ? _a : false
             });
             this.store.bind(this.sock);
             this.sock.ev.on('creds.update', () => {
@@ -83,6 +87,12 @@ class WhatsAppSession extends events_1.EventEmitter {
             });
             this.sock.ev.on('connection.update', (0, utils_1.resolvePromiseSync)(this._updateConnectionState.bind(this)));
             this.sock.ev.on('messages.upsert', (0, utils_1.resolvePromiseSync)(this._messageUpsert.bind(this)));
+            this.store.on('messageHistory.update', () => (0, tadaaa_1.debounce)((msg) => __awaiter(this, void 0, void 0, function* () {
+                yield this.emitMessageHistory();
+                if (this.sessionOptions.sharedConnection !== true) {
+                    this.store.clearMessageHistory();
+                }
+            }), { delay: 5000, onError: console.log }));
         });
     }
     close() {
@@ -104,8 +114,9 @@ class WhatsAppSession extends events_1.EventEmitter {
     _messageUpsert(data) {
         var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
-            const { messages } = data;
+            const { messages, type } = data;
             for (const message of messages) {
+                const messageAugmented = Object.assign({ type }, message);
                 console.log(`${this.uid}: got message`);
                 const chatId = (_a = message.key) === null || _a === void 0 ? void 0 : _a.remoteJid;
                 if (chatId == null || !this.acl.canRead(chatId)) {
@@ -113,7 +124,7 @@ class WhatsAppSession extends events_1.EventEmitter {
                     continue;
                 }
                 if (((_b = message.key) === null || _b === void 0 ? void 0 : _b.fromMe) === false) {
-                    this.emit(actions_1.ACTIONS.readMessages, message);
+                    this.emit(actions_1.ACTIONS.readMessages, messageAugmented);
                 }
             }
         });
@@ -123,7 +134,7 @@ class WhatsAppSession extends events_1.EventEmitter {
         return ((_a = this.lastConnectionState) === null || _a === void 0 ? void 0 : _a.connection) === 'open';
     }
     _updateConnectionState(data) {
-        var _a, _b;
+        var _a, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
             if (data.qr !== this.lastConnectionState.qr && data.qr != null) {
                 this.emit(actions_1.ACTIONS.connectionQr, data.qr);
@@ -131,12 +142,17 @@ class WhatsAppSession extends events_1.EventEmitter {
             console.log(`connection state update: ${JSON.stringify(data)}`);
             if (data.connection === 'open') {
                 this.emit(actions_1.ACTIONS.connectionReady, data);
+                // Note: In the multi-device version of WhatsApp -- if a desktop client
+                // is active, WA doesn't send push notifications to the device. If you
+                // would like to receive said notifications -- mark your Baileys client
+                // offline using sock.sendPresenceUpdate('unavailable')
+                yield ((_a = this.sock) === null || _a === void 0 ? void 0 : _a.sendPresenceUpdate('unavailable'));
             }
             else if (data.connection === 'close') {
                 this.emit(actions_1.ACTIONS.connectionClosed, data);
                 const { lastDisconnect } = data;
                 if (lastDisconnect != null && !this.closing) {
-                    const shouldReconnect = ((_b = (_a = lastDisconnect.error) === null || _a === void 0 ? void 0 : _a.output) === null || _b === void 0 ? void 0 : _b.statusCode) !== baileys_1.DisconnectReason.loggedOut;
+                    const shouldReconnect = ((_c = (_b = lastDisconnect.error) === null || _b === void 0 ? void 0 : _b.output) === null || _c === void 0 ? void 0 : _c.statusCode) !== baileys_1.DisconnectReason.loggedOut;
                     if (shouldReconnect) {
                         yield this.init();
                     }
@@ -173,6 +189,14 @@ class WhatsAppSession extends events_1.EventEmitter {
                     return yield this.downloadMessageMedia(message);
                 }
                 throw error;
+            }
+        });
+    }
+    emitMessageHistory() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const history = this.store.messageHistory();
+            for (const chatId in history) {
+                yield this._messageUpsert({ messages: history[chatId], type: 'history' });
             }
         });
     }

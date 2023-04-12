@@ -10,26 +10,34 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppStore = void 0;
-class WhatsAppStore {
-    constructor(acl) {
+const events_1 = require("events");
+class WhatsAppStore extends events_1.EventEmitter {
+    constructor(acl, saveMessageHistory = false) {
+        super();
         this._lastMessage = {};
+        this._messageHistory = {};
         this._groupMetadata = {};
         this._contacts = {};
         this._chats = {};
+        this._saveMessageHistory = false;
         this.acl = acl;
+        this._saveMessageHistory = saveMessageHistory;
     }
     bind(sock) {
         this.sock = sock;
+        this.sock.ev.on('messaging-history.set', (data) => {
+            console.log(`Recieved history update: n_messages = ${data.messages.length}: n_chats = ${data.chats.length}: n_contacts = ${data.contacts.length}`);
+            this._updateMessageHistory(data);
+            this._updateChatHistory(data);
+            this._updateContactHistory(data);
+        });
         this.sock.ev.on('messages.upsert', this._messageUpsert.bind(this));
-        this.sock.ev.on('messages.set', this._updateMessageHistory.bind(this));
         this.sock.ev.on('groups.upsert', this._upsertGroups.bind(this));
         this.sock.ev.on('groups.update', this._updateGroups.bind(this));
         // this.sock.ev.on('group-participants.update', ...)
-        this.sock.ev.on('chats.set', this._updateChatHistory.bind(this));
         this.sock.ev.on('chats.upsert', this._upsertChat.bind(this));
         this.sock.ev.on('chats.update', this._updateChat.bind(this));
         this.sock.ev.on('chats.delete', this._deleteChat.bind(this));
-        this.sock.ev.on('contacts.set', this._updateContactHistory.bind(this));
         this.sock.ev.on('contacts.upsert', this._upsertContact.bind(this));
         this.sock.ev.on('contacts.update', this._updateContact.bind(this));
     }
@@ -73,6 +81,13 @@ class WhatsAppStore {
     lastMessage(chatId) {
         return this._lastMessage[chatId];
     }
+    messageHistory() {
+        return this._messageHistory;
+    }
+    clearMessageHistory() {
+        this._messageHistory = {};
+        this._saveMessageHistory = false;
+    }
     //* ******** END PUBLIC METHODS ************//
     //* ******** START Contact Events *************//
     _updateContactHistory(data) {
@@ -102,19 +117,41 @@ class WhatsAppStore {
     //* ******** START Message Events *************//
     _updateMessageHistory(data) {
         const { messages } = data;
+        console.log(`Recieved update message history: ${messages.length}`);
         messages.map(this._setLatestMessage.bind(this));
+        messages.map(this._setMessageHistory.bind(this));
     }
     _messageUpsert(data) {
+        console.log(`Recieved upsert message history: ${data.messages.length}`);
         for (const message of data.messages) {
             this._setLatestMessage(message);
+            this._setMessageHistory(message);
         }
+    }
+    canAccessMessage(chatId) {
+        if (chatId == null)
+            return false;
+        if (!this.acl.canRead(chatId) && !this.acl.canWrite(chatId))
+            return false;
+        return true;
+    }
+    _setMessageHistory(message) {
+        var _a;
+        if (!this._saveMessageHistory)
+            return;
+        const chatId = (_a = message.key) === null || _a === void 0 ? void 0 : _a.remoteJid;
+        if (chatId == null || !this.canAccessMessage(chatId))
+            return;
+        if (this._messageHistory[chatId] === undefined)
+            this._messageHistory[chatId] = [];
+        this._messageHistory[chatId].push(message);
+        this._messageHistory[chatId].sort((a, b) => { var _a, _b; return (((_a = a.messageTimestamp) !== null && _a !== void 0 ? _a : 0) - ((_b = b.messageTimestamp) !== null && _b !== void 0 ? _b : 0)); });
+        this.emit('messageHistory.update', message);
     }
     _setLatestMessage(message) {
         var _a;
         const chatId = (_a = message.key) === null || _a === void 0 ? void 0 : _a.remoteJid;
-        if (chatId == null)
-            return;
-        if (!this.acl.canRead(chatId) && !this.acl.canWrite(chatId))
+        if (chatId == null || !this.canAccessMessage(chatId))
             return;
         const lastMessage = this._lastMessage[chatId];
         if (lastMessage == null || lastMessage.key.id == null || (message.key.id != null && lastMessage.key.id < message.key.id)) {

@@ -1,31 +1,9 @@
 import { BufferJSON } from '@adiwajshing/baileys'
-import { WhatsAppACLConfig } from './whatsappacl'
-import { AuthenticationData } from './whatsappauth'
+import { SessionStorageOptions, DataRecord, WhatsAppSessionLocator, Keys } from './interfaces'
 
 import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
-
-export interface WhatsAppSessionLocator {
-  sessionId: string
-  passphrase: string
-  isNew?: boolean
-}
-
-interface DataRecord {
-  authData: AuthenticationData | null
-  aclConfig: Partial<WhatsAppACLConfig>
-}
-
-interface Keys {
-  publicKey: crypto.KeyObject
-  privateKey?: crypto.KeyObject
-}
-
-interface SessionStorageOptions {
-  datadir: string
-  loadRecord: boolean
-}
 
 const DEFAULT_SESSION_STORAGE_OPTIONS: SessionStorageOptions = {
   datadir: './data/',

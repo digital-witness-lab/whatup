@@ -66,10 +66,10 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
             try {
                 console.log(`Sending message: ${JSON.stringify(data)}`);
                 const sendMessage = yield session.sendMessage(chatId, message, clearChatStatus, vampMaxSeconds);
-                return callback && callback(sendMessage);
+                return (callback != null) && callback(sendMessage);
             }
             catch (e) {
-                return callback && callback({ error: e.message });
+                return (callback != null) && callback({ error: e.message });
             }
         }));
         socket.on(actions_1.ACTIONS.writeMarkChatRead, (chatId, callback) => __awaiter(this, void 0, void 0, function* () {
@@ -130,11 +130,12 @@ function assignAuthenticatedEvents(sharedSession, io, socket) {
         });
     });
 }
-function createSession(locator, io, socket, sharedConnection = true, anonymous = false) {
+function createSession(locator, io, socket, sessionOptions = {}, anonymous = false) {
+    var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         let sharedSession;
         let name = locator.sessionId;
-        if (anonymous || !sharedConnection) {
+        if (anonymous || !((_a = sessionOptions.sharedConnection) !== null && _a !== void 0 ? _a : false)) {
             name = `private-${Math.floor(Math.random() * 10000000)}-${name}`;
         }
         if (name in globalSessions) {
@@ -146,10 +147,13 @@ function createSession(locator, io, socket, sharedConnection = true, anonymous =
                 // incase this event was already issued in the past, let's make sure the
                 // client knows the connected session is ready
                 socket.emit(actions_1.ACTIONS.connectionReady, {});
+                if ((_b = sessionOptions.sendMessageHistory) !== null && _b !== void 0 ? _b : false) {
+                    yield sharedSession.session.emitMessageHistory();
+                }
             }
         }
         else {
-            const session = new whatsappsession_1.WhatsAppSession(locator);
+            const session = new whatsappsession_1.WhatsAppSession(locator, sessionOptions);
             sharedSession = { name, session, numListeners: 1, anonymous };
             console.log(`Socket ${socket.id}: Creating new session: ${name}`);
             globalSessions[sharedSession.name] = sharedSession;
@@ -178,11 +182,11 @@ function registerHandlers(io, socket) {
             }
         }));
         socket.on(actions_1.ACTIONS.connectionAuth, (payload, callback) => __awaiter(this, void 0, void 0, function* () {
-            const { sharedConnection, sessionLocator } = payload;
+            const { sessionOptions, sessionLocator } = payload;
             console.log(`${socket.id}: Initializing authenticated session`);
             sessionLocator.isNew = false;
             try {
-                sharedSession = yield createSession(sessionLocator, io, socket, sharedConnection, false);
+                sharedSession = yield createSession(sessionLocator, io, socket, sessionOptions, false);
                 return callback && callback({ error: null });
             }
             catch (e) {
@@ -195,7 +199,7 @@ function registerHandlers(io, socket) {
             const locator = whatsappsessionstorage_1.WhatsAppSessionStorage.createLocator(name);
             console.log(`${socket.id}: Initializing anonymous session: ${locator.sessionId}`);
             try {
-                sharedSession = yield createSession(locator, io, socket, false, true);
+                sharedSession = yield createSession(locator, io, socket, {}, true);
             }
             catch (e) {
                 console.log(e);
