@@ -6,7 +6,7 @@ import fs from 'fs'
 import crypto from 'crypto'
 
 const DEFAULT_SESSION_STORAGE_OPTIONS: SessionStorageOptions = {
-  datadir: './data/',
+  datadir: process.env.STORAGE_DIR || './data/',
   loadRecord: true
 }
 

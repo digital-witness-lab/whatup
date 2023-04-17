@@ -154,4 +154,4 @@ async def archivebot(ctx, locators, archive_dir: Path):
 
 
 if __name__ == "__main__":
-    cli()
+    cli(auto_envvar_prefix="WHATUPY")
