@@ -3,11 +3,14 @@ import { createSecureServer } from 'http2'
 import { Server } from 'socket.io'
 import { registerHandlers } from './handlers'
 
+const keydir = process.env.KEY_DIR || './static/'
 const port = 3000
+console.log(`Loading key:${keydir}/key.pem`)
+console.log(`Loading cert:${keydir}/cert.pem`)
 const httpServer = createSecureServer({
   allowHTTP1: true,
-  key: readFileSync('static/key.pem'),
-  cert: readFileSync('static/cert.pem')
+  key: readFileSync(`${keydir}/key.pem`),
+  cert: readFileSync(`${keydir}/cert.pem`)
 })
 
 const io = new Server(httpServer, { })
