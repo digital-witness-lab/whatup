@@ -31,7 +31,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "whatupy = whatupy.cli:cli",
+            "whatupy = whatupy.cli:main",
         ],
     },
 )

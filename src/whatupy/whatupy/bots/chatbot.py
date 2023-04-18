@@ -32,7 +32,7 @@ class ChatBot(BaseBot):
         for friend in self.friends:
             self.logger.info(f"Saying hello to: {friend}")
             await asyncio.sleep(5)
-            await self.send_message(friend, self.generate_message())
+            await self.send_message(friend, {"text": self.generate_message()})
 
     def generate_message(self) -> str:
         n_words = random.randint(1, 20)
@@ -61,5 +61,5 @@ class ChatBot(BaseBot):
         await asyncio.sleep(wait_time)
         self.pending_messages[chatid] -= 1
 
-        status = await self.send_message(chatid, response)
+        status = await self.send_message(chatid, {"text": response})
         self.logger.info(f"Send status: {status}")

@@ -20,6 +20,7 @@ class BaseBot(socketio.AsyncClientNamespace):
         session_locator: dict | None = None,
         timeout=120,
         allow_unauthenticated=False,
+        control_groups: list,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -41,6 +42,7 @@ class BaseBot(socketio.AsyncClientNamespace):
             raise SystemError(
                 "Attempting to instantiate client that disallows unauthenticated sessions without session_locator"
             )
+        self.control_groups = control_groups
         self.session_locator = session_locator
         self.timeout = timeout
         self.logger = logging.getLogger(f"{__name__}:{self.name}")
@@ -101,23 +103,41 @@ class BaseBot(socketio.AsyncClientNamespace):
         return await self.call(actions.read_group_metadata, dict(chatId=chatid))
 
     async def send_message(
-        self, chatid: str, message: str, clear_chat_status=True, vamp_max_seconds=60
+        self,
+        chatid: str,
+        message_content: dict,
+        message_options: dict | None = None,
+        clear_chat_status=True,
+        vamp_max_seconds=60,
     ) -> dict:
         data = {
             "chatId": chatid,
-            "message": message,
+            "messageContent": message_content,
+            "messageOptions": message_options or {},
             "clearChatStatus": clear_chat_status,
             "vampMaxSeconds": vamp_max_seconds,
         }
-        self.logger.info(f"Sending message: {data=}")
+        self.logger.info(f"Sending message: {chatid=}")
         return await self.call(actions.write_send_message, data)
 
     async def messages_subscribe(self):
         self.logger.info("Subscribing to messages")
         await self.emit(actions.read_messages_subscribe)
 
+    def get_event_type(self, event_type, *args) -> str | None:
+        whatup_event = actions.EVENTS.get(event_type)
+        if whatup_event == actions.EVENTS.get("read_messages"):
+            self.logger.info("got a message event")
+            try:
+                message = args[0]
+                if message["key"]["remoteJid"] in self.control_groups:
+                    whatup_event = "read_messages_control"
+            except (IndexError, KeyError):
+                pass
+        return whatup_event
+
     async def trigger_event(self, event: str, *args):
-        if whatup_event := actions.EVENTS.get(event):
+        if whatup_event := self.get_event_type(event, *args):
             self.logger.info(f"Its a whatup event: {whatup_event}: {event}")
             return await super().trigger_event(whatup_event, *args)
         return await super().trigger_event(event, *args)
