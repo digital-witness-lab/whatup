@@ -7,15 +7,18 @@ from pathlib import Path
 
 import click
 
-from .bots import BaseBot, ArchiveBot, ChatBot, OnboardBot
+from .bots import BaseBot, BotType, ArchiveBot, ChatBot, OnboardBot
 from .utils import async_cli
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
+logger = logging.getLogger(__name__)
 DEFAULT_CERT = Path(str(files("whatupy").joinpath("whatupcore/static/cert.pem")))
 
 
-async def run_multi_bots(bot: BaseBot, locators: T.List[T.TextIO], bot_args: dict):
+async def run_multi_bots(
+    bot: T.Type[BotType], locators: T.List[T.TextIO], bot_args: dict
+):
     session_locators: T.List[dict] = []
     for locator in locators:
         try:
@@ -30,6 +33,14 @@ async def run_multi_bots(bot: BaseBot, locators: T.List[T.TextIO], bot_args: dic
 
 @click.group()
 @click.option("--debug", "-d", type=bool, is_flag=True, default=False)
+@click.option(
+    "--control-group",
+    "-c",
+    "control_groups",
+    multiple=True,
+    type=str,
+    default=["120363104970691776@g.us"],
+)
 @click.option("--host", "-H", type=str, default="localhost")
 @click.option("--port", "-p", type=int, default=3000)
 @click.option(
@@ -38,11 +49,17 @@ async def run_multi_bots(bot: BaseBot, locators: T.List[T.TextIO], bot_args: dic
     default=DEFAULT_CERT,
 )
 @click.pass_context
-def cli(ctx, debug, host, port, cert: Path):
+def cli(ctx, debug, host, port, control_groups: list, cert: Path):
     ctx.obj = {"debug": debug}
     if debug:
         logging.basicConfig(format=FORMAT, level=logging.DEBUG)
-    ctx.obj["connection_params"] = {"host": host, "port": port, "cert": cert}
+    ctx.obj["connection_params"] = {
+        "host": host,
+        "port": port,
+        "cert": cert,
+        "control_groups": control_groups,
+    }
+    logger.info(f"Command Context: {ctx.obj}")
 
 
 @cli.command()
@@ -153,5 +170,5 @@ async def archivebot(ctx, locators, archive_dir: Path):
     await run_multi_bots(ArchiveBot, locators, params)
 
 
-if __name__ == "__main__":
+def main():
     cli(auto_envvar_prefix="WHATUPY")

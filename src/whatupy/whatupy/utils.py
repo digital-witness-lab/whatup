@@ -48,6 +48,20 @@ def async_cli(fxn):
     return wrapper
 
 
+def get_message_text(message) -> str | None:
+    try:
+        # Normal text message
+        return message["message"]["conversation"]
+    except KeyError:
+        pass
+    try:
+        # Disappearing message
+        return message["message"]["extendedTextMessage"]["text"]
+    except KeyError:
+        pass
+    return None
+
+
 def is_media_message(message) -> bool:
     return any("mediaKey" in m for m in message["message"].values())
 

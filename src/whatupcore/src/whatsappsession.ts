@@ -1,4 +1,4 @@
-import makeWASocket, { downloadMediaMessage, fetchLatestBaileysVersion, Browsers, ConnectionState, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, WAMessage, WASocket, S_WHATSAPP_NET } from '@adiwajshing/baileys'
+import makeWASocket, { downloadMediaMessage, fetchLatestBaileysVersion, Browsers, ConnectionState, DisconnectReason, GroupMetadata, MessageRetryMap, MessageUpsertType, WAMessage, WASocket, AnyMessageContent, MiscMessageGenerationOptions } from '@adiwajshing/baileys'
 import { debounce } from 'tadaaa'
 import { Boom } from '@hapi/boom'
 import P from 'pino'
@@ -166,7 +166,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     }
   }
 
-  async sendMessage (chatId: string, message: string, clearChatStatus: boolean = true, vampMaxSeconds: number | undefined = 10): Promise<WAMessage | undefined> {
+  async sendMessage (chatId: string, messageContent: AnyMessageContent, messageOptions: MiscMessageGenerationOptions, clearChatStatus: boolean = true, vampMaxSeconds: number | undefined = 10): Promise<WAMessage | undefined> {
     if (!this.acl.canWrite(chatId)) {
       throw new NoAccessError('write', chatId)
     }
@@ -181,7 +181,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
       }
       await this.sock?.sendPresenceUpdate('available', chatId)
     }
-    return await this.sock?.sendMessage(chatId, { text: message })
+    return await this.sock?.sendMessage(chatId, messageContent, messageOptions)
   }
 
   async markChatRead (chatId: string): Promise<void> {
