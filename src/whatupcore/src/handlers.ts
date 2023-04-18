@@ -55,10 +55,10 @@ async function assignAuthenticatedEvents (sharedSession: SharedSession, io: Serv
     }
   })
   socket.on(ACTIONS.writeSendMessage, async (data, callback?: Function) => {
-    const { chatId, message, clearChatStatus, vampMaxSeconds } = data
+    const { chatId, messageContent, messageOptions, clearChatStatus, vampMaxSeconds } = data
     try {
       console.log(`Sending message: ${JSON.stringify(data)}`)
-      const sendMessage = await session.sendMessage(chatId, message, clearChatStatus, vampMaxSeconds)
+      const sendMessage = await session.sendMessage(chatId, messageContent, messageOptions, clearChatStatus, vampMaxSeconds)
       return (callback != null) && callback(sendMessage)
     } catch (e: any) {
       return (callback != null) && callback({ error: e.message })

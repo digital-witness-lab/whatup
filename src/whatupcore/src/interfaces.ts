@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 
-import { AuthenticationCreds, WASocket, WAMessage, GroupMetadata, Contact, Chat } from '@adiwajshing/baileys'
+import { AuthenticationCreds, WASocket, WAMessage, GroupMetadata, Contact, Chat, AnyMessageContent, MiscMessageGenerationOptions} from '@adiwajshing/baileys'
 
 import { WhatsAppSession } from './whatsappsession'
 
@@ -75,7 +75,7 @@ export interface WhatsAppSessionInterface {
   connection: () => string | undefined
 
   emitMessageHistory: () => Promise<void>
-  sendMessage: (chatId: string, message: string, clearChatStatus: boolean, vampMaxSeconds: number | undefined) => Promise<WAMessage | undefined>
+  sendMessage: (chatId: string, messageContent: AnyMessageContent, messageOptions: MiscMessageGenerationOptions, clearChatStatus: boolean, vampMaxSeconds: number | undefined) => Promise<WAMessage | undefined>
   markChatRead: (chatId: string) => Promise<void>
   joinGroup: (inviteCode: string) => Promise<GroupJoinResponse | undefined | null>
   groupMetadata: (chatId: string) => Promise<GroupMetadata | undefined>

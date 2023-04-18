@@ -16,8 +16,10 @@ services:
       - core
     environment:
       - WHATUPY_CERT=/usr/src/whatupy-data/static/cert.pem
+      - WHATUPY_CONTROL_GROUPS=120363104970691776@g.us 33671714377@s.whatsapp.net # cool friends + micha
     volumes:
+      - ./src/whatupcore:/usr/src/whatupy/whatupy/whatupcore
       - ./data/keys/cert.pem:/usr/src/whatupy-data/cert.pem
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
       - ./data/message-archive/:/usr/src/whatupy-data/message-archive/
-    command: whatupy --host core --cert /usr/src/whatupy-data/cert.pem archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/*.json
+    command: sh -c "whatupy --host core --cert /usr/src/whatupy-data/cert.pem archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/gertrude.json"
