@@ -45,7 +45,7 @@ async def run_multi_bots(
 @click.option("--port", "-p", type=int, default=3000)
 @click.option(
     "--cert",
-    type=click.Path(dir_okay=False, exists=True, readable=True, path_type=Path),
+    type=click.Path(dir_okay=False, readable=True, path_type=Path),
     default=DEFAULT_CERT,
 )
 @click.pass_context
@@ -59,7 +59,7 @@ def cli(ctx, debug, host, port, control_groups: list, cert: Path):
         "cert": cert,
         "control_groups": control_groups,
     }
-    logger.info(f"Command Context: {ctx.obj}")
+    logger.debug(f"Command Context: {ctx.obj}")
 
 
 @cli.command()
