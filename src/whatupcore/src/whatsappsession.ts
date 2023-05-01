@@ -171,6 +171,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
       throw new NoAccessError('write', chatId)
     }
     if (clearChatStatus) {
+      console.log(`Setting chat as read: ${chatId}`)
       await this.markChatRead(chatId)
     }
     if (vampMaxSeconds > 0) {
@@ -190,7 +191,7 @@ export class WhatsAppSession extends EventEmitter implements WhatsAppSessionInte
     }
     const msg: WAMessage | undefined = this.store.lastMessage(chatId)
     if ((msg?.key) != null) {
-      await this.sock?.chatModify({ markRead: false, lastMessages: [msg] }, chatId)
+      await this.sock?.readMessages([msg.key])
     }
   }
 

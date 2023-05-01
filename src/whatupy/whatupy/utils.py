@@ -5,11 +5,13 @@ import re
 import string
 import typing as T
 import warnings
+import hashlib
 from functools import wraps
 
 import qrcode
 
 WORDLIST_SIZE = None
+RANDOM_SALT = random.randbytes(32)
 
 
 def random_words(n_words=3) -> T.List[str]:
@@ -40,12 +42,22 @@ def random_words(n_words=3) -> T.List[str]:
     return words
 
 
+def random_hash(item: str, iterations=1_000) -> bytes:
+    return hashlib.pbkdf2_hmac(
+        "sha256", item.encode("utf8"), salt=RANDOM_SALT, iterations=iterations
+    )
+
+
 def async_cli(fxn):
     @wraps(fxn)
     def wrapper(*args, **kwargs):
         return asyncio.run(fxn(*args, **kwargs))
 
     return wrapper
+
+
+def get_message_sender(message) -> str | None:
+    return message["key"].get("participant") or message["key"]["remoteJid"]
 
 
 def get_message_text(message) -> str | None:

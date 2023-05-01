@@ -34,28 +34,31 @@ class ArchiveBot(BaseBot):
         except KeyError:
             self.logger.debug(f"Could not find command in control message: {message}")
             return
-        sender = message["key"].get("participant") or message["key"]["remoteJid"]
+        sender = utils.get_message_sender(message)
+        if not sender:
+            self.logger.debug(f"Could not identify sender of command: {message}")
+            return
         if match := re.match("/archive-download", command):
             self.logger.info("Sending archive json")
             buffer = BytesIO()
             with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
                 tar.add(self.archive_dir, arcname=self.archive_dir.name)
-            await self.send_message(
-                sender,
-                {
-                    "fileName": "archive.tar.gz",
-                    "mimetype": "application/gzip",
-                    "document": buffer.getvalue(),
-                    "disappearingMessagesInChat": 60 * 60 * 10,
-                    "caption": "[[ some interesting stats ]]",
-                },
-                vamp_max_seconds=10,
-            )
-            await self.send_message(
-                sender,
-                {"disappearingMessagesInChat": False},
-                vamp_max_seconds=5,
-            )
+            async with self.disappearing_messages(sender, message_ttl=60 * 60 * 12):
+                await self.send_message(
+                    sender,
+                    {
+                        "fileName": "archive.tar.gz",
+                        "mimetype": "application/gzip",
+                        "document": buffer.getvalue(),
+                        "caption": "[[ some interesting stats ]]",
+                    },
+                    vamp_max_seconds=10,
+                )
+        elif match := re.match("/archive-list-chats", command):
+            self.logger.info("Sending chat list")
+            chats = [chat.name for chat in self.archive_dir.iterdir()]
+            message = f"I'm currently tracking the following chats: {', '.join(chats)}"
+            await self.send_message(sender, {"text": message})
 
     async def on_read_messages(self, message):
         if "messageStubType" in message:
