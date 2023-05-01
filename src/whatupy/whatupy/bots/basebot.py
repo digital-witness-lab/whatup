@@ -2,7 +2,11 @@ import asyncio
 import logging
 import re
 import ssl
+import time
+import contextlib
+from collections import defaultdict
 from pathlib import Path
+import typing as T
 
 import aiohttp
 import socketio
@@ -10,6 +14,12 @@ import socketio
 from .. import actions, utils
 
 logger = logging.getLogger(__name__)
+
+COMMAND_PINNING: T.Dict[bytes, T.List[int]] = {}
+COMMAND_PINNING_TTL: int = (
+    60 * 60
+)  # amount of time in seconds a bot should pin to a sender
+BOT_REGISTRY = defaultdict(dict)
 
 
 class BaseBot(socketio.AsyncClientNamespace):
@@ -80,11 +90,13 @@ class BaseBot(socketio.AsyncClientNamespace):
 
         sio.register_namespace(self)
         await sio.connect(url)
+        BOT_REGISTRY[self.__class__.__name__][id(self)] = self
         return self
 
     async def disconnect(self):
         if not self._sio:
             raise ValueError("Trying to disconnect a client that hasn't been connected")
+        BOT_REGISTRY[self.__class__.__name__].pop(id(self), None)
         await self._sio.disconnect()
 
     async def wait(self):
@@ -101,6 +113,15 @@ class BaseBot(socketio.AsyncClientNamespace):
     async def group_metadata(self, chatid) -> dict:
         self.logger.info("Getting group metadata")
         return await self.call(actions.read_group_metadata, dict(chatId=chatid))
+
+    @contextlib.asynccontextmanager
+    async def disappearing_messages(self, sender, message_ttl, **kwargs):
+        kwargs.setdefault("vamp_max_seconds", 5)
+        await self.send_message(
+            sender, {"disappearingMessagesInChat": 60 * 60 * 12}, **kwargs
+        )
+        yield
+        await self.send_message(sender, {"disappearingMessagesInChat": False}, **kwargs)
 
     async def send_message(
         self,
@@ -124,6 +145,25 @@ class BaseBot(socketio.AsyncClientNamespace):
         self.logger.info("Subscribing to messages")
         await self.emit(actions.read_messages_subscribe)
 
+    def dispatch_control_message(self, event_type, message):
+        sender = utils.get_message_sender(message)
+        if not sender:
+            return None
+        sender_hash = utils.random_hash(sender)
+        t = int(time.time())
+        if sender_hash in COMMAND_PINNING and COMMAND_PINNING[sender_hash][1] > t:
+            target_bot_id = COMMAND_PINNING[sender_hash][0]
+            COMMAND_PINNING[sender_hash][1] = t + COMMAND_PINNING_TTL
+        else:
+            registry = BOT_REGISTRY[self.__class__.__name__]
+            index = (t // COMMAND_PINNING_TTL) % len(registry)
+            target_bot_id = list(registry.keys())[index]
+            COMMAND_PINNING[sender_hash] = [target_bot_id, t + COMMAND_PINNING_TTL]
+        if id(self) == target_bot_id:
+            return "read_messages_control"
+        else:
+            return "read_messages_control_secondary"
+
     def get_event_type(self, event_type, *args) -> str | None:
         whatup_event = actions.EVENTS.get(event_type)
         if whatup_event == actions.EVENTS.get("read_messages"):
@@ -131,7 +171,7 @@ class BaseBot(socketio.AsyncClientNamespace):
             try:
                 message = args[0]
                 if message["key"]["remoteJid"] in self.control_groups:
-                    whatup_event = "read_messages_control"
+                    whatup_event = self.dispatch_control_message(event_type, message)
             except (IndexError, KeyError):
                 pass
         return whatup_event
