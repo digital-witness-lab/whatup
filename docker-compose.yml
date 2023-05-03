@@ -1,7 +1,7 @@
 services:
   core:
     image: whatup/whatupcore
-    build: ./src/whatupcore/
+    build: ./whatupcore/
     environment:
       - KEY_DIR=/usr/src/whatupcore-data/keys/
       - STORAGE_DIR=/usr/src/whatupcore-data/storage/
@@ -11,14 +11,14 @@ services:
 
   bot-archive:
     image: whatup/whatupy
-    build: ./src/whatupy/
+    build: ./whatupy/
     links:
       - core
     environment:
       - WHATUPY_CERT=/usr/src/whatupy-data/static/cert.pem
       - WHATUPY_CONTROL_GROUPS=c+c-prod@g.us 33671714377@s.whatsapp.net # c+c-prod + micha
     volumes:
-      - ./src/whatupcore:/usr/src/whatupy/whatupy/whatupcore
+      - ./whatupcore:/usr/src/whatupy/whatupy/whatupcore
       - ./data/keys/cert.pem:/usr/src/whatupy-data/cert.pem
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
       - ./data/message-archive/:/usr/src/whatupy-data/message-archive/
