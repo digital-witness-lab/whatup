@@ -4,6 +4,7 @@ package whatup;
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
+import "whatsappweb.proto";
 
 option go_package = "github.com/digital-witness-lab/whatup/protos/whatupcore";
 
@@ -11,7 +12,7 @@ option go_package = "github.com/digital-witness-lab/whatup/protos/whatupcore";
 service WhatUpCore {
     rpc GetConnectionStatus(google.protobuf.Empty) returns (ConnectionStatus) {}
     rpc GetMessage(google.protobuf.Empty) returns (stream Message) {}
-    rpc DownloadMedia(MediaLocator) returns (Media) {}
+    rpc DownloadMedia(MediaInfo) returns (Media) {}
 }
 
 message JID {
@@ -23,14 +24,17 @@ message JID {
 }
 
 message ConnectionStatus {
-    bool connected = 1;
-    google.protobuf.Timestamp timestamp = 2;
+    bool isConnected = 1;
+    bool isLoggedIn = 2;
+    google.protobuf.Timestamp timestamp = 3;
 }
 
 message Message {
     MessageInfo info = 1;
     MessageContent content = 2;
     MessageProperties messageProperties = 3;
+
+    whatsappweb.Message originalMessage = 4;
 }
 
 message MessageSource {
@@ -51,13 +55,15 @@ message MessageInfo {
 
     string category = 6; // TODO: turn into enum!
     bool multicast = 7;
-    //string mediaType = 8; moved into message content
 }
 
 message MessageContent {
-    string text = 1;
-    string mimeType = 2;
-    MediaLocator mediaLocator = 3;
+    string title = 1;
+    string text = 2;
+
+    map<string, string> properties = 3;
+    bytes thumbnail = 4;
+    MediaInfo mediaInfo = 5;
 }
 
 message MessageProperties {
@@ -65,10 +71,18 @@ message MessageProperties {
     bool isViewOnce = 2;
     bool isDocumentWithCaption = 3;
     bool isEdit = 4;
+    uint32 forwardedScore = 5;
 }
 
-message MediaLocator {
+message MediaInfo {
+    enum MediaType {
+        NONE = 0;
+        IMAGE = 1;
+        VIDEO = 2;
+    }
     map<string, bytes> locator = 1;
+    MediaType mediaType = 3;
+    string mimeType = 4;
 }
 
 message Media {
