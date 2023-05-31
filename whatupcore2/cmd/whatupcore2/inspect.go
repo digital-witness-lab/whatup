@@ -8,25 +8,18 @@ import (
 )
 
 var onlyDigits bool
-var inspectCmd = &cobra.Command{
-    Use:   "inspect",
+var whatsAppConnectCmd = &cobra.Command{
+    Use:   "connect",
     Aliases: []string{"insp"},
-    Short:  "Inspects a string",
-    Args:  cobra.ExactArgs(1),
+    Short:  "Connects to WhatsApp and maintains a connection",
+    Args:  cobra.ExactArgs(0),
     Run: func(cmd *cobra.Command, args []string) {
 
-        i := args[0]
-        res, kind := whatupcore2.Inspect(i, onlyDigits)
-
-        pluralS := "s"
-        if res == 1 {
-            pluralS = ""
-        }
-        fmt.Printf("'%s' has %d %s%s.\n", i, res, kind, pluralS)
+        fmt.Println("Connecting to WhatsApp")
+        whatupcore2.WhatsAppConnect()
     },
 }
 
 func init() {
-    inspectCmd.Flags().BoolVarP(&onlyDigits, "digits", "d", false, "Count only digits")
-    rootCmd.AddCommand(inspectCmd)
+    rootCmd.AddCommand(whatsAppConnectCmd)
 }
