@@ -2,9 +2,13 @@ package whatupcore2
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/mdp/qrterminal/v3"
@@ -17,6 +21,10 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+const (
+    DB_ROOT = "db"
+)
+
 func eventHandler(evt interface{}) {
     switch v := evt.(type) {
     case *events.Message:
@@ -24,55 +32,103 @@ func eventHandler(evt interface{}) {
     }
 }
 
-func WhatsAppConnect() {
-    dbLog := waLog.Stdout("Database", "DEBUG", true)
-    // Make sure you add appropriate DB connector imports, e.g.
-    // github.com/mattn/go-sqlite3 for SQLite
-    container, err := sqlstore.New("sqlite3", "file:whatupcore2.db?_foreign_keys=on", dbLog)
-    if err != nil {
-        panic(err)
+func hashStringHex(unhashed string) string {
+    h := sha256.New()
+    h.Write([]byte(unhashed))
+    hash := hex.EncodeToString(h.Sum(nil))
+    return hash
+}
+
+func createDBFilePath(username string, n_subdirs int) (string, error) {
+    if (n_subdirs < 1) {
+        return "", fmt.Errorf("n_subdirs must be >= 1: %d", n_subdirs)
     }
-    // If you want multiple sessions, remember their JIDs and use
-    // .GetDevice(jid) or .GetAllDevices() instead.
+    path_username := filepath.Join(strings.Split(username[0:n_subdirs], "")...)
+    path := filepath.Join(".", DB_ROOT, path_username)
+    err := os.MkdirAll(path, 0700)
+    if (err != nil) {
+        return "", err
+    }
+    return filepath.Join(path, fmt.Sprintf("%s.db", username)), nil
+}
+
+func cleanupDBFile(path string) {
+    for path != DB_ROOT && path != "."{
+        err := os.Remove(path)
+        if (err != nil) {
+            return
+        }
+        path = filepath.Dir(path)
+    }
+}
+
+func WhatsAppConnect(username string, passphrase string) error {
+    dbLog := waLog.Stdout("Database", "DEBUG", true)
+
+    username_safe := hashStringHex(username)
+    passphrase_safe := hashStringHex(passphrase)
+    db_path, err := createDBFilePath(username_safe, 4)
+    if err != nil {
+        return err
+    }
+    fmt.Println("Using database file:", db_path)
+    db_uri := fmt.Sprintf("file:%s?_foreign_keys=on&_key=%s", db_path, passphrase_safe)
+    container, err := sqlstore.New("sqlite3", db_uri, dbLog)
+    if err != nil {
+        return err
+    }
     deviceStore, err := container.GetFirstDevice()
     if err != nil {
-        panic(err)
+        return err
     }
     clientLog := waLog.Stdout("Client", "DEBUG", true)
     client := whatsmeow.NewClient(deviceStore, clientLog)
     client.AddEventHandler(eventHandler)
 
+    signalChan := make(chan os.Signal, 1)
+    signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+
     if client.Store.ID == nil {
         // No ID stored, new login
+        loggedin := false
+        defer func() {
+            if (!loggedin) {
+                fmt.Println("No login detected... deleteing temporary DB file:", db_path)
+                cleanupDBFile(db_path)
+            }
+        }()
         qrChan, _ := client.GetQRChannel(context.Background())
         err = client.Connect()
         if err != nil {
-            panic(err)
+            return err
         }
-        for evt := range qrChan {
-            if evt.Event == "code" {
-                // Render the QR code here e.g.
-                // qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L,
-                // os.Stdout) or just manually `echo 2@... | qrencode -t
-                // ansiutf8` in a terminal
-                fmt.Println("QR code:")
-                qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
-            } else {
-                fmt.Println("Login event:", evt.Event)
+        defer client.Disconnect()
+
+        for {
+            select {
+            case evt := <- qrChan:
+                if evt.Event == "code" {
+                    fmt.Println("QR code:")
+                    qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
+                } else {
+                    loggedin = true
+                    fmt.Println("Login event:", evt.Event)
+                }
+            case <- signalChan:
+                return nil
             }
         }
     } else {
         // Already logged in, just connect
         err = client.Connect()
         if err != nil {
-            panic(err)
+            return err
         }
+        defer client.Disconnect()
     }
 
-    // Listen to Ctrl+C (you can also do something else that prevents the program from exiting)
-    c := make(chan os.Signal)
-    signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-    <-c
-
-    client.Disconnect()
+    fmt.Println("Waiting for interrupt")
+    <-signalChan
+    fmt.Println("Cleanly exiting")
+    return nil
 }
