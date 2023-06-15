@@ -5,7 +5,7 @@
 syntax = "proto2";
 package whatsappweb;
 
-option go_package = "github.com/digital-witness-lab/whatup/protos/whatsappweb";
+option go_package = "github.com/digital-witness-lab/whatup/protos";
 
 message ADVSignedKeyIndexList {
     optional bytes details = 1;
