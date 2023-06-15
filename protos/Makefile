@@ -1,18 +1,20 @@
-all: proto_go/whatupcore.pb.go proto_py/whatupcore_pb2.py
+all: whatupcore.pb.go whatupcore_pb2.py
 .PHONY: all clean
 
-proto_go/whatupcore.pb.go: whatupcore.proto
-	mkdir -p ./proto_go/
-	protoc \
-		--go_out=./proto_go/ \
-		--go_opt paths=source_relative \
-		whatupcore.proto 
 
-proto_py/whatupcore_pb2.py: whatupcore.proto
-	mkdir -p ./proto_py/
+whatupcore.pb.go: whatupcore.proto
 	protoc \
-		--python_out=./proto_py/ \
-		whatupcore.proto 
+		--go_out=. \
+		--go_opt paths=source_relative \
+		--go-grpc_out=. \
+		--go-grpc_opt=paths=source_relative \
+		*.proto 
+	go mod tidy
+
+whatupcore_pb2.py: whatupcore.proto
+	protoc \
+		--python_out=. \
+		*.proto 
 
 clean:
-	rm -rf ./proto_py/ ./proto_go/
+	rm -rf *.pb.go *_pb2.py
