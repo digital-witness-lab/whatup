@@ -1,17 +1,17 @@
 syntax = "proto3";
 
-package whatup;
+package protos;
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 import "whatsappweb.proto";
 
-option go_package = "github.com/digital-witness-lab/whatup/protos/whatupcore";
+option go_package = "github.com/digital-witness-lab/whatup/protos";
 
 
 service WhatUpCore {
     rpc GetConnectionStatus(google.protobuf.Empty) returns (ConnectionStatus) {}
-    rpc GetMessage(google.protobuf.Empty) returns (stream Message) {}
+    rpc GetMessage(google.protobuf.Empty) returns (stream WUMessage) {}
     rpc DownloadMedia(MediaInfo) returns (Media) {}
 }
 
@@ -29,7 +29,7 @@ message ConnectionStatus {
     google.protobuf.Timestamp timestamp = 3;
 }
 
-message Message {
+message WUMessage {
     MessageInfo info = 1;
     MessageContent content = 2;
     MessageProperties messageProperties = 3;

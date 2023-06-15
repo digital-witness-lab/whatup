@@ -19,10 +19,10 @@ import whatsappweb_pb2 as whatsappweb__pb2
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='whatupcore.proto',
-  package='whatup',
+  package='protos',
   syntax='proto3',
-  serialized_options=_b('Z7github.com/digital-witness-lab/whatup/protos/whatupcore'),
-  serialized_pb=_b('\n\x10whatupcore.proto\x12\x06whatup\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x11whatsappweb.proto\"N\n\x03JID\x12\x0c\n\x04user\x18\x01 \x01(\t\x12\r\n\x05\x61gent\x18\x02 \x01(\r\x12\x0e\n\x06\x64\x65vice\x18\x03 \x01(\r\x12\x0e\n\x06server\x18\x04 \x01(\r\x12\n\n\x02\x61\x64\x18\x05 \x01(\r\"j\n\x10\x43onnectionStatus\x12\x13\n\x0bisConnected\x18\x01 \x01(\x08\x12\x12\n\nisLoggedIn\x18\x02 \x01(\x08\x12-\n\ttimestamp\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xba\x01\n\x07Message\x12!\n\x04info\x18\x01 \x01(\x0b\x32\x13.whatup.MessageInfo\x12\'\n\x07\x63ontent\x18\x02 \x01(\x0b\x32\x16.whatup.MessageContent\x12\x34\n\x11messageProperties\x18\x03 \x01(\x0b\x32\x19.whatup.MessageProperties\x12-\n\x0foriginalMessage\x18\x04 \x01(\x0b\x32\x14.whatsappweb.Message\"\x93\x01\n\rMessageSource\x12\x19\n\x04\x63hat\x18\x01 \x01(\x0b\x32\x0b.whatup.JID\x12\x1b\n\x06sender\x18\x02 \x01(\x0b\x32\x0b.whatup.JID\x12\'\n\x12\x62roadcastListOwner\x18\x03 \x01(\x0b\x32\x0b.whatup.JID\x12\x10\n\x08isFromMe\x18\x04 \x01(\x08\x12\x0f\n\x07isGroup\x18\x05 \x01(\x08\"\xb4\x01\n\x0bMessageInfo\x12%\n\x06source\x18\x01 \x01(\x0b\x32\x15.whatup.MessageSource\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\n\n\x02id\x18\x03 \x01(\t\x12\x10\n\x08pushName\x18\x04 \x01(\t\x12\x0c\n\x04type\x18\x05 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x06 \x01(\t\x12\x11\n\tmulticast\x18\x07 \x01(\x08\"\xd5\x01\n\x0eMessageContent\x12\r\n\x05title\x18\x01 \x01(\t\x12\x0c\n\x04text\x18\x02 \x01(\t\x12:\n\nproperties\x18\x03 \x03(\x0b\x32&.whatup.MessageContent.PropertiesEntry\x12\x11\n\tthumbnail\x18\x04 \x01(\x0c\x12$\n\tmediaInfo\x18\x05 \x01(\x0b\x32\x11.whatup.MediaInfo\x1a\x31\n\x0fPropertiesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x83\x01\n\x11MessageProperties\x12\x13\n\x0bisEphemeral\x18\x01 \x01(\x08\x12\x12\n\nisViewOnce\x18\x02 \x01(\x08\x12\x1d\n\x15isDocumentWithCaption\x18\x03 \x01(\x08\x12\x0e\n\x06isEdit\x18\x04 \x01(\x08\x12\x16\n\x0e\x66orwardedScore\x18\x05 \x01(\r\"\xdb\x01\n\tMediaInfo\x12/\n\x07locator\x18\x01 \x03(\x0b\x32\x1e.whatup.MediaInfo.LocatorEntry\x12.\n\tmediaType\x18\x03 \x01(\x0e\x32\x1b.whatup.MediaInfo.MediaType\x12\x10\n\x08mimeType\x18\x04 \x01(\t\x1a.\n\x0cLocatorEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"+\n\tMediaType\x12\x08\n\x04NONE\x10\x00\x12\t\n\x05IMAGE\x10\x01\x12\t\n\x05VIDEO\x10\x02\"\x19\n\x05Media\x12\x10\n\x08\x43ontents\x18\x01 \x01(\x0c\x32\xc7\x01\n\nWhatUpCore\x12I\n\x13GetConnectionStatus\x12\x16.google.protobuf.Empty\x1a\x18.whatup.ConnectionStatus\"\x00\x12\x39\n\nGetMessage\x12\x16.google.protobuf.Empty\x1a\x0f.whatup.Message\"\x00\x30\x01\x12\x33\n\rDownloadMedia\x12\x11.whatup.MediaInfo\x1a\r.whatup.Media\"\x00\x42\x39Z7github.com/digital-witness-lab/whatup/protos/whatupcoreb\x06proto3')
+  serialized_options=_b('Z,github.com/digital-witness-lab/whatup/protos'),
+  serialized_pb=_b('\n\x10whatupcore.proto\x12\x06protos\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x11whatsappweb.proto\"N\n\x03JID\x12\x0c\n\x04user\x18\x01 \x01(\t\x12\r\n\x05\x61gent\x18\x02 \x01(\r\x12\x0e\n\x06\x64\x65vice\x18\x03 \x01(\r\x12\x0e\n\x06server\x18\x04 \x01(\r\x12\n\n\x02\x61\x64\x18\x05 \x01(\r\"j\n\x10\x43onnectionStatus\x12\x13\n\x0bisConnected\x18\x01 \x01(\x08\x12\x12\n\nisLoggedIn\x18\x02 \x01(\x08\x12-\n\ttimestamp\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xbc\x01\n\tWUMessage\x12!\n\x04info\x18\x01 \x01(\x0b\x32\x13.protos.MessageInfo\x12\'\n\x07\x63ontent\x18\x02 \x01(\x0b\x32\x16.protos.MessageContent\x12\x34\n\x11messageProperties\x18\x03 \x01(\x0b\x32\x19.protos.MessageProperties\x12-\n\x0foriginalMessage\x18\x04 \x01(\x0b\x32\x14.whatsappweb.Message\"\x93\x01\n\rMessageSource\x12\x19\n\x04\x63hat\x18\x01 \x01(\x0b\x32\x0b.protos.JID\x12\x1b\n\x06sender\x18\x02 \x01(\x0b\x32\x0b.protos.JID\x12\'\n\x12\x62roadcastListOwner\x18\x03 \x01(\x0b\x32\x0b.protos.JID\x12\x10\n\x08isFromMe\x18\x04 \x01(\x08\x12\x0f\n\x07isGroup\x18\x05 \x01(\x08\"\xb4\x01\n\x0bMessageInfo\x12%\n\x06source\x18\x01 \x01(\x0b\x32\x15.protos.MessageSource\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\n\n\x02id\x18\x03 \x01(\t\x12\x10\n\x08pushName\x18\x04 \x01(\t\x12\x0c\n\x04type\x18\x05 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x06 \x01(\t\x12\x11\n\tmulticast\x18\x07 \x01(\x08\"\xd5\x01\n\x0eMessageContent\x12\r\n\x05title\x18\x01 \x01(\t\x12\x0c\n\x04text\x18\x02 \x01(\t\x12:\n\nproperties\x18\x03 \x03(\x0b\x32&.protos.MessageContent.PropertiesEntry\x12\x11\n\tthumbnail\x18\x04 \x01(\x0c\x12$\n\tmediaInfo\x18\x05 \x01(\x0b\x32\x11.protos.MediaInfo\x1a\x31\n\x0fPropertiesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x83\x01\n\x11MessageProperties\x12\x13\n\x0bisEphemeral\x18\x01 \x01(\x08\x12\x12\n\nisViewOnce\x18\x02 \x01(\x08\x12\x1d\n\x15isDocumentWithCaption\x18\x03 \x01(\x08\x12\x0e\n\x06isEdit\x18\x04 \x01(\x08\x12\x16\n\x0e\x66orwardedScore\x18\x05 \x01(\r\"\xdb\x01\n\tMediaInfo\x12/\n\x07locator\x18\x01 \x03(\x0b\x32\x1e.protos.MediaInfo.LocatorEntry\x12.\n\tmediaType\x18\x03 \x01(\x0e\x32\x1b.protos.MediaInfo.MediaType\x12\x10\n\x08mimeType\x18\x04 \x01(\t\x1a.\n\x0cLocatorEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"+\n\tMediaType\x12\x08\n\x04NONE\x10\x00\x12\t\n\x05IMAGE\x10\x01\x12\t\n\x05VIDEO\x10\x02\"\x19\n\x05Media\x12\x10\n\x08\x43ontents\x18\x01 \x01(\x0c\x32\xc9\x01\n\nWhatUpCore\x12I\n\x13GetConnectionStatus\x12\x16.google.protobuf.Empty\x1a\x18.protos.ConnectionStatus\"\x00\x12;\n\nGetMessage\x12\x16.google.protobuf.Empty\x1a\x11.protos.WUMessage\"\x00\x30\x01\x12\x33\n\rDownloadMedia\x12\x11.protos.MediaInfo\x1a\r.protos.Media\"\x00\x42.Z,github.com/digital-witness-lab/whatup/protosb\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,whatsappweb__pb2.DESCRIPTOR,])
 
@@ -30,7 +30,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
 
 _MEDIAINFO_MEDIATYPE = _descriptor.EnumDescriptor(
   name='MediaType',
-  full_name='whatup.MediaInfo.MediaType',
+  full_name='protos.MediaInfo.MediaType',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -49,49 +49,49 @@ _MEDIAINFO_MEDIATYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1346,
-  serialized_end=1389,
+  serialized_start=1348,
+  serialized_end=1391,
 )
 _sym_db.RegisterEnumDescriptor(_MEDIAINFO_MEDIATYPE)
 
 
 _JID = _descriptor.Descriptor(
   name='JID',
-  full_name='whatup.JID',
+  full_name='protos.JID',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='user', full_name='whatup.JID.user', index=0,
+      name='user', full_name='protos.JID.user', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='agent', full_name='whatup.JID.agent', index=1,
+      name='agent', full_name='protos.JID.agent', index=1,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='device', full_name='whatup.JID.device', index=2,
+      name='device', full_name='protos.JID.device', index=2,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='server', full_name='whatup.JID.server', index=3,
+      name='server', full_name='protos.JID.server', index=3,
       number=4, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='ad', full_name='whatup.JID.ad', index=4,
+      name='ad', full_name='protos.JID.ad', index=4,
       number=5, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -116,27 +116,27 @@ _JID = _descriptor.Descriptor(
 
 _CONNECTIONSTATUS = _descriptor.Descriptor(
   name='ConnectionStatus',
-  full_name='whatup.ConnectionStatus',
+  full_name='protos.ConnectionStatus',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='isConnected', full_name='whatup.ConnectionStatus.isConnected', index=0,
+      name='isConnected', full_name='protos.ConnectionStatus.isConnected', index=0,
       number=1, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='isLoggedIn', full_name='whatup.ConnectionStatus.isLoggedIn', index=1,
+      name='isLoggedIn', full_name='protos.ConnectionStatus.isLoggedIn', index=1,
       number=2, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='timestamp', full_name='whatup.ConnectionStatus.timestamp', index=2,
+      name='timestamp', full_name='protos.ConnectionStatus.timestamp', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -159,36 +159,36 @@ _CONNECTIONSTATUS = _descriptor.Descriptor(
 )
 
 
-_MESSAGE = _descriptor.Descriptor(
-  name='Message',
-  full_name='whatup.Message',
+_WUMESSAGE = _descriptor.Descriptor(
+  name='WUMessage',
+  full_name='protos.WUMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='info', full_name='whatup.Message.info', index=0,
+      name='info', full_name='protos.WUMessage.info', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='content', full_name='whatup.Message.content', index=1,
+      name='content', full_name='protos.WUMessage.content', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='messageProperties', full_name='whatup.Message.messageProperties', index=2,
+      name='messageProperties', full_name='protos.WUMessage.messageProperties', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='originalMessage', full_name='whatup.Message.originalMessage', index=3,
+      name='originalMessage', full_name='protos.WUMessage.originalMessage', index=3,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -207,47 +207,47 @@ _MESSAGE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=298,
-  serialized_end=484,
+  serialized_end=486,
 )
 
 
 _MESSAGESOURCE = _descriptor.Descriptor(
   name='MessageSource',
-  full_name='whatup.MessageSource',
+  full_name='protos.MessageSource',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='chat', full_name='whatup.MessageSource.chat', index=0,
+      name='chat', full_name='protos.MessageSource.chat', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sender', full_name='whatup.MessageSource.sender', index=1,
+      name='sender', full_name='protos.MessageSource.sender', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='broadcastListOwner', full_name='whatup.MessageSource.broadcastListOwner', index=2,
+      name='broadcastListOwner', full_name='protos.MessageSource.broadcastListOwner', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='isFromMe', full_name='whatup.MessageSource.isFromMe', index=3,
+      name='isFromMe', full_name='protos.MessageSource.isFromMe', index=3,
       number=4, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='isGroup', full_name='whatup.MessageSource.isGroup', index=4,
+      name='isGroup', full_name='protos.MessageSource.isGroup', index=4,
       number=5, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
@@ -265,62 +265,62 @@ _MESSAGESOURCE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=487,
-  serialized_end=634,
+  serialized_start=489,
+  serialized_end=636,
 )
 
 
 _MESSAGEINFO = _descriptor.Descriptor(
   name='MessageInfo',
-  full_name='whatup.MessageInfo',
+  full_name='protos.MessageInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='source', full_name='whatup.MessageInfo.source', index=0,
+      name='source', full_name='protos.MessageInfo.source', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='timestamp', full_name='whatup.MessageInfo.timestamp', index=1,
+      name='timestamp', full_name='protos.MessageInfo.timestamp', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='id', full_name='whatup.MessageInfo.id', index=2,
+      name='id', full_name='protos.MessageInfo.id', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pushName', full_name='whatup.MessageInfo.pushName', index=3,
+      name='pushName', full_name='protos.MessageInfo.pushName', index=3,
       number=4, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='type', full_name='whatup.MessageInfo.type', index=4,
+      name='type', full_name='protos.MessageInfo.type', index=4,
       number=5, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='category', full_name='whatup.MessageInfo.category', index=5,
+      name='category', full_name='protos.MessageInfo.category', index=5,
       number=6, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='multicast', full_name='whatup.MessageInfo.multicast', index=6,
+      name='multicast', full_name='protos.MessageInfo.multicast', index=6,
       number=7, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
@@ -338,27 +338,27 @@ _MESSAGEINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=637,
-  serialized_end=817,
+  serialized_start=639,
+  serialized_end=819,
 )
 
 
 _MESSAGECONTENT_PROPERTIESENTRY = _descriptor.Descriptor(
   name='PropertiesEntry',
-  full_name='whatup.MessageContent.PropertiesEntry',
+  full_name='protos.MessageContent.PropertiesEntry',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='whatup.MessageContent.PropertiesEntry.key', index=0,
+      name='key', full_name='protos.MessageContent.PropertiesEntry.key', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='value', full_name='whatup.MessageContent.PropertiesEntry.value', index=1,
+      name='value', full_name='protos.MessageContent.PropertiesEntry.value', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -376,47 +376,47 @@ _MESSAGECONTENT_PROPERTIESENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=984,
-  serialized_end=1033,
+  serialized_start=986,
+  serialized_end=1035,
 )
 
 _MESSAGECONTENT = _descriptor.Descriptor(
   name='MessageContent',
-  full_name='whatup.MessageContent',
+  full_name='protos.MessageContent',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='title', full_name='whatup.MessageContent.title', index=0,
+      name='title', full_name='protos.MessageContent.title', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='text', full_name='whatup.MessageContent.text', index=1,
+      name='text', full_name='protos.MessageContent.text', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='properties', full_name='whatup.MessageContent.properties', index=2,
+      name='properties', full_name='protos.MessageContent.properties', index=2,
       number=3, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='thumbnail', full_name='whatup.MessageContent.thumbnail', index=3,
+      name='thumbnail', full_name='protos.MessageContent.thumbnail', index=3,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='mediaInfo', full_name='whatup.MessageContent.mediaInfo', index=4,
+      name='mediaInfo', full_name='protos.MessageContent.mediaInfo', index=4,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -434,48 +434,48 @@ _MESSAGECONTENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=820,
-  serialized_end=1033,
+  serialized_start=822,
+  serialized_end=1035,
 )
 
 
 _MESSAGEPROPERTIES = _descriptor.Descriptor(
   name='MessageProperties',
-  full_name='whatup.MessageProperties',
+  full_name='protos.MessageProperties',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='isEphemeral', full_name='whatup.MessageProperties.isEphemeral', index=0,
+      name='isEphemeral', full_name='protos.MessageProperties.isEphemeral', index=0,
       number=1, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='isViewOnce', full_name='whatup.MessageProperties.isViewOnce', index=1,
+      name='isViewOnce', full_name='protos.MessageProperties.isViewOnce', index=1,
       number=2, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='isDocumentWithCaption', full_name='whatup.MessageProperties.isDocumentWithCaption', index=2,
+      name='isDocumentWithCaption', full_name='protos.MessageProperties.isDocumentWithCaption', index=2,
       number=3, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='isEdit', full_name='whatup.MessageProperties.isEdit', index=3,
+      name='isEdit', full_name='protos.MessageProperties.isEdit', index=3,
       number=4, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='forwardedScore', full_name='whatup.MessageProperties.forwardedScore', index=4,
+      name='forwardedScore', full_name='protos.MessageProperties.forwardedScore', index=4,
       number=5, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -493,27 +493,27 @@ _MESSAGEPROPERTIES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1036,
-  serialized_end=1167,
+  serialized_start=1038,
+  serialized_end=1169,
 )
 
 
 _MEDIAINFO_LOCATORENTRY = _descriptor.Descriptor(
   name='LocatorEntry',
-  full_name='whatup.MediaInfo.LocatorEntry',
+  full_name='protos.MediaInfo.LocatorEntry',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='whatup.MediaInfo.LocatorEntry.key', index=0,
+      name='key', full_name='protos.MediaInfo.LocatorEntry.key', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='value', full_name='whatup.MediaInfo.LocatorEntry.value', index=1,
+      name='value', full_name='protos.MediaInfo.LocatorEntry.value', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -531,33 +531,33 @@ _MEDIAINFO_LOCATORENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1298,
-  serialized_end=1344,
+  serialized_start=1300,
+  serialized_end=1346,
 )
 
 _MEDIAINFO = _descriptor.Descriptor(
   name='MediaInfo',
-  full_name='whatup.MediaInfo',
+  full_name='protos.MediaInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='locator', full_name='whatup.MediaInfo.locator', index=0,
+      name='locator', full_name='protos.MediaInfo.locator', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='mediaType', full_name='whatup.MediaInfo.mediaType', index=1,
+      name='mediaType', full_name='protos.MediaInfo.mediaType', index=1,
       number=3, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='mimeType', full_name='whatup.MediaInfo.mimeType', index=2,
+      name='mimeType', full_name='protos.MediaInfo.mimeType', index=2,
       number=4, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -576,20 +576,20 @@ _MEDIAINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1170,
-  serialized_end=1389,
+  serialized_start=1172,
+  serialized_end=1391,
 )
 
 
 _MEDIA = _descriptor.Descriptor(
   name='Media',
-  full_name='whatup.Media',
+  full_name='protos.Media',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='Contents', full_name='whatup.Media.Contents', index=0,
+      name='Contents', full_name='protos.Media.Contents', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -607,15 +607,15 @@ _MEDIA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1391,
-  serialized_end=1416,
+  serialized_start=1393,
+  serialized_end=1418,
 )
 
 _CONNECTIONSTATUS.fields_by_name['timestamp'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
-_MESSAGE.fields_by_name['info'].message_type = _MESSAGEINFO
-_MESSAGE.fields_by_name['content'].message_type = _MESSAGECONTENT
-_MESSAGE.fields_by_name['messageProperties'].message_type = _MESSAGEPROPERTIES
-_MESSAGE.fields_by_name['originalMessage'].message_type = whatsappweb__pb2._MESSAGE
+_WUMESSAGE.fields_by_name['info'].message_type = _MESSAGEINFO
+_WUMESSAGE.fields_by_name['content'].message_type = _MESSAGECONTENT
+_WUMESSAGE.fields_by_name['messageProperties'].message_type = _MESSAGEPROPERTIES
+_WUMESSAGE.fields_by_name['originalMessage'].message_type = whatsappweb__pb2._MESSAGE
 _MESSAGESOURCE.fields_by_name['chat'].message_type = _JID
 _MESSAGESOURCE.fields_by_name['sender'].message_type = _JID
 _MESSAGESOURCE.fields_by_name['broadcastListOwner'].message_type = _JID
@@ -630,7 +630,7 @@ _MEDIAINFO.fields_by_name['mediaType'].enum_type = _MEDIAINFO_MEDIATYPE
 _MEDIAINFO_MEDIATYPE.containing_type = _MEDIAINFO
 DESCRIPTOR.message_types_by_name['JID'] = _JID
 DESCRIPTOR.message_types_by_name['ConnectionStatus'] = _CONNECTIONSTATUS
-DESCRIPTOR.message_types_by_name['Message'] = _MESSAGE
+DESCRIPTOR.message_types_by_name['WUMessage'] = _WUMESSAGE
 DESCRIPTOR.message_types_by_name['MessageSource'] = _MESSAGESOURCE
 DESCRIPTOR.message_types_by_name['MessageInfo'] = _MESSAGEINFO
 DESCRIPTOR.message_types_by_name['MessageContent'] = _MESSAGECONTENT
@@ -642,35 +642,35 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 JID = _reflection.GeneratedProtocolMessageType('JID', (_message.Message,), dict(
   DESCRIPTOR = _JID,
   __module__ = 'whatupcore_pb2'
-  # @@protoc_insertion_point(class_scope:whatup.JID)
+  # @@protoc_insertion_point(class_scope:protos.JID)
   ))
 _sym_db.RegisterMessage(JID)
 
 ConnectionStatus = _reflection.GeneratedProtocolMessageType('ConnectionStatus', (_message.Message,), dict(
   DESCRIPTOR = _CONNECTIONSTATUS,
   __module__ = 'whatupcore_pb2'
-  # @@protoc_insertion_point(class_scope:whatup.ConnectionStatus)
+  # @@protoc_insertion_point(class_scope:protos.ConnectionStatus)
   ))
 _sym_db.RegisterMessage(ConnectionStatus)
 
-Message = _reflection.GeneratedProtocolMessageType('Message', (_message.Message,), dict(
-  DESCRIPTOR = _MESSAGE,
+WUMessage = _reflection.GeneratedProtocolMessageType('WUMessage', (_message.Message,), dict(
+  DESCRIPTOR = _WUMESSAGE,
   __module__ = 'whatupcore_pb2'
-  # @@protoc_insertion_point(class_scope:whatup.Message)
+  # @@protoc_insertion_point(class_scope:protos.WUMessage)
   ))
-_sym_db.RegisterMessage(Message)
+_sym_db.RegisterMessage(WUMessage)
 
 MessageSource = _reflection.GeneratedProtocolMessageType('MessageSource', (_message.Message,), dict(
   DESCRIPTOR = _MESSAGESOURCE,
   __module__ = 'whatupcore_pb2'
-  # @@protoc_insertion_point(class_scope:whatup.MessageSource)
+  # @@protoc_insertion_point(class_scope:protos.MessageSource)
   ))
 _sym_db.RegisterMessage(MessageSource)
 
 MessageInfo = _reflection.GeneratedProtocolMessageType('MessageInfo', (_message.Message,), dict(
   DESCRIPTOR = _MESSAGEINFO,
   __module__ = 'whatupcore_pb2'
-  # @@protoc_insertion_point(class_scope:whatup.MessageInfo)
+  # @@protoc_insertion_point(class_scope:protos.MessageInfo)
   ))
 _sym_db.RegisterMessage(MessageInfo)
 
@@ -679,12 +679,12 @@ MessageContent = _reflection.GeneratedProtocolMessageType('MessageContent', (_me
   PropertiesEntry = _reflection.GeneratedProtocolMessageType('PropertiesEntry', (_message.Message,), dict(
     DESCRIPTOR = _MESSAGECONTENT_PROPERTIESENTRY,
     __module__ = 'whatupcore_pb2'
-    # @@protoc_insertion_point(class_scope:whatup.MessageContent.PropertiesEntry)
+    # @@protoc_insertion_point(class_scope:protos.MessageContent.PropertiesEntry)
     ))
   ,
   DESCRIPTOR = _MESSAGECONTENT,
   __module__ = 'whatupcore_pb2'
-  # @@protoc_insertion_point(class_scope:whatup.MessageContent)
+  # @@protoc_insertion_point(class_scope:protos.MessageContent)
   ))
 _sym_db.RegisterMessage(MessageContent)
 _sym_db.RegisterMessage(MessageContent.PropertiesEntry)
@@ -692,7 +692,7 @@ _sym_db.RegisterMessage(MessageContent.PropertiesEntry)
 MessageProperties = _reflection.GeneratedProtocolMessageType('MessageProperties', (_message.Message,), dict(
   DESCRIPTOR = _MESSAGEPROPERTIES,
   __module__ = 'whatupcore_pb2'
-  # @@protoc_insertion_point(class_scope:whatup.MessageProperties)
+  # @@protoc_insertion_point(class_scope:protos.MessageProperties)
   ))
 _sym_db.RegisterMessage(MessageProperties)
 
@@ -701,12 +701,12 @@ MediaInfo = _reflection.GeneratedProtocolMessageType('MediaInfo', (_message.Mess
   LocatorEntry = _reflection.GeneratedProtocolMessageType('LocatorEntry', (_message.Message,), dict(
     DESCRIPTOR = _MEDIAINFO_LOCATORENTRY,
     __module__ = 'whatupcore_pb2'
-    # @@protoc_insertion_point(class_scope:whatup.MediaInfo.LocatorEntry)
+    # @@protoc_insertion_point(class_scope:protos.MediaInfo.LocatorEntry)
     ))
   ,
   DESCRIPTOR = _MEDIAINFO,
   __module__ = 'whatupcore_pb2'
-  # @@protoc_insertion_point(class_scope:whatup.MediaInfo)
+  # @@protoc_insertion_point(class_scope:protos.MediaInfo)
   ))
 _sym_db.RegisterMessage(MediaInfo)
 _sym_db.RegisterMessage(MediaInfo.LocatorEntry)
@@ -714,7 +714,7 @@ _sym_db.RegisterMessage(MediaInfo.LocatorEntry)
 Media = _reflection.GeneratedProtocolMessageType('Media', (_message.Message,), dict(
   DESCRIPTOR = _MEDIA,
   __module__ = 'whatupcore_pb2'
-  # @@protoc_insertion_point(class_scope:whatup.Media)
+  # @@protoc_insertion_point(class_scope:protos.Media)
   ))
 _sym_db.RegisterMessage(Media)
 
@@ -725,16 +725,16 @@ _MEDIAINFO_LOCATORENTRY._options = None
 
 _WHATUPCORE = _descriptor.ServiceDescriptor(
   name='WhatUpCore',
-  full_name='whatup.WhatUpCore',
+  full_name='protos.WhatUpCore',
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=1419,
-  serialized_end=1618,
+  serialized_start=1421,
+  serialized_end=1622,
   methods=[
   _descriptor.MethodDescriptor(
     name='GetConnectionStatus',
-    full_name='whatup.WhatUpCore.GetConnectionStatus',
+    full_name='protos.WhatUpCore.GetConnectionStatus',
     index=0,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -743,16 +743,16 @@ _WHATUPCORE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='GetMessage',
-    full_name='whatup.WhatUpCore.GetMessage',
+    full_name='protos.WhatUpCore.GetMessage',
     index=1,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
-    output_type=_MESSAGE,
+    output_type=_WUMESSAGE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
     name='DownloadMedia',
-    full_name='whatup.WhatUpCore.DownloadMedia',
+    full_name='protos.WhatUpCore.DownloadMedia',
     index=2,
     containing_service=None,
     input_type=_MEDIAINFO,
