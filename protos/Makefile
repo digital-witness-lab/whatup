@@ -1,5 +1,5 @@
 all: whatupcore.pb.go whatupcore_pb2.py
-.PHONY: all clean client
+.PHONY: all clean client client-ssl evans
 
 
 whatupcore.pb.go: whatupcore.proto
@@ -16,9 +16,14 @@ whatupcore_pb2.py: whatupcore.proto
 		--python_out=. \
 		*.proto 
 
-client:
+evans:
 	go install github.com/ktr0731/evans@v0.10.11
-	evans --port 3447 --tls --cert ../data/keys/cert.pem --certkey ../data/keys/key.pem --servername localhost --proto *.proto
+
+client-ssl: evans
+	evans --host 127.0.0.1 --port 3447 --tls --cert ../data/keys/cert.pem --certkey ../data/keys/key.pem --servername localhost --proto *.proto
+
+client: evans
+	evans --host 127.0.0.1 --port 3447 --proto *.proto
 
 clean:
 	rm -rf *.pb.go *_pb2.py
