@@ -9,10 +9,30 @@ import "whatsappweb.proto";
 option go_package = "github.com/digital-witness-lab/whatup/protos";
 
 
+service WhatUpCoreAuth {
+    rpc Login(WUCredentials) returns (SessionToken) {}
+    rpc Register(WUCredentials) returns (stream RegisterMessages) {}
+}
+
 service WhatUpCore {
     rpc GetConnectionStatus(google.protobuf.Empty) returns (ConnectionStatus) {}
     rpc GetMessage(google.protobuf.Empty) returns (stream WUMessage) {}
     rpc DownloadMedia(MediaInfo) returns (Media) {}
+}
+
+message SessionToken {
+    string token = 1;
+}
+
+message RegisterMessages {
+    string qrcode = 1;
+    bool loggedIn = 2;
+    SessionToken token = 3;
+}
+
+message WUCredentials {
+    string username = 1;
+    string passphrase = 2;
 }
 
 message JID {

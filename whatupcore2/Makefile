@@ -2,7 +2,7 @@
 
 whatupcore2:
 	+$(MAKE) -C ../protos/ all
-	go build .
+	go build -tags=sqlcipher .
 
 connect: whatupcore2
 	./whatupcore2 connect
