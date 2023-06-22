@@ -19,6 +19,156 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
+// WhatUpCoreAuthClient is the client API for WhatUpCoreAuth service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type WhatUpCoreAuthClient interface {
+	Login(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (*SessionToken, error)
+	Register(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (WhatUpCoreAuth_RegisterClient, error)
+}
+
+type whatUpCoreAuthClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewWhatUpCoreAuthClient(cc grpc.ClientConnInterface) WhatUpCoreAuthClient {
+	return &whatUpCoreAuthClient{cc}
+}
+
+func (c *whatUpCoreAuthClient) Login(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (*SessionToken, error) {
+	out := new(SessionToken)
+	err := c.cc.Invoke(ctx, "/protos.WhatUpCoreAuth/Login", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *whatUpCoreAuthClient) Register(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (WhatUpCoreAuth_RegisterClient, error) {
+	stream, err := c.cc.NewStream(ctx, &WhatUpCoreAuth_ServiceDesc.Streams[0], "/protos.WhatUpCoreAuth/Register", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &whatUpCoreAuthRegisterClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type WhatUpCoreAuth_RegisterClient interface {
+	Recv() (*RegisterMessages, error)
+	grpc.ClientStream
+}
+
+type whatUpCoreAuthRegisterClient struct {
+	grpc.ClientStream
+}
+
+func (x *whatUpCoreAuthRegisterClient) Recv() (*RegisterMessages, error) {
+	m := new(RegisterMessages)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// WhatUpCoreAuthServer is the server API for WhatUpCoreAuth service.
+// All implementations must embed UnimplementedWhatUpCoreAuthServer
+// for forward compatibility
+type WhatUpCoreAuthServer interface {
+	Login(context.Context, *WUCredentials) (*SessionToken, error)
+	Register(*WUCredentials, WhatUpCoreAuth_RegisterServer) error
+	mustEmbedUnimplementedWhatUpCoreAuthServer()
+}
+
+// UnimplementedWhatUpCoreAuthServer must be embedded to have forward compatible implementations.
+type UnimplementedWhatUpCoreAuthServer struct {
+}
+
+func (UnimplementedWhatUpCoreAuthServer) Login(context.Context, *WUCredentials) (*SessionToken, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedWhatUpCoreAuthServer) Register(*WUCredentials, WhatUpCoreAuth_RegisterServer) error {
+	return status.Errorf(codes.Unimplemented, "method Register not implemented")
+}
+func (UnimplementedWhatUpCoreAuthServer) mustEmbedUnimplementedWhatUpCoreAuthServer() {}
+
+// UnsafeWhatUpCoreAuthServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to WhatUpCoreAuthServer will
+// result in compilation errors.
+type UnsafeWhatUpCoreAuthServer interface {
+	mustEmbedUnimplementedWhatUpCoreAuthServer()
+}
+
+func RegisterWhatUpCoreAuthServer(s grpc.ServiceRegistrar, srv WhatUpCoreAuthServer) {
+	s.RegisterService(&WhatUpCoreAuth_ServiceDesc, srv)
+}
+
+func _WhatUpCoreAuth_Login_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WUCredentials)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WhatUpCoreAuthServer).Login(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.WhatUpCoreAuth/Login",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WhatUpCoreAuthServer).Login(ctx, req.(*WUCredentials))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WhatUpCoreAuth_Register_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(WUCredentials)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(WhatUpCoreAuthServer).Register(m, &whatUpCoreAuthRegisterServer{stream})
+}
+
+type WhatUpCoreAuth_RegisterServer interface {
+	Send(*RegisterMessages) error
+	grpc.ServerStream
+}
+
+type whatUpCoreAuthRegisterServer struct {
+	grpc.ServerStream
+}
+
+func (x *whatUpCoreAuthRegisterServer) Send(m *RegisterMessages) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+// WhatUpCoreAuth_ServiceDesc is the grpc.ServiceDesc for WhatUpCoreAuth service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var WhatUpCoreAuth_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "protos.WhatUpCoreAuth",
+	HandlerType: (*WhatUpCoreAuthServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Login",
+			Handler:    _WhatUpCoreAuth_Login_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Register",
+			Handler:       _WhatUpCoreAuth_Register_Handler,
+			ServerStreams: true,
+		},
+	},
+	Metadata: "whatupcore.proto",
+}
+
 // WhatUpCoreClient is the client API for WhatUpCore service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
