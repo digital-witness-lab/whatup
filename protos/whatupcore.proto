@@ -12,12 +12,19 @@ option go_package = "github.com/digital-witness-lab/whatup/protos";
 service WhatUpCoreAuth {
     rpc Login(WUCredentials) returns (SessionToken) {}
     rpc Register(WUCredentials) returns (stream RegisterMessages) {}
+    rpc RenewToken(SessionToken) returns (SessionToken) {}
 }
 
 service WhatUpCore {
-    rpc GetConnectionStatus(google.protobuf.Empty) returns (ConnectionStatus) {}
-    rpc GetMessage(google.protobuf.Empty) returns (stream WUMessage) {}
+    rpc GetConnectionStatus(ConnectionStatusOptions) returns (ConnectionStatus) {}
+    rpc GetMessages(MessagesOptions) returns (stream WUMessage) {}
     rpc DownloadMedia(MediaInfo) returns (Media) {}
+}
+
+message ConnectionStatusOptions {
+}
+
+message MessagesOptions {
 }
 
 message SessionToken {
