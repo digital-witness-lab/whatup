@@ -8,7 +8,6 @@ package protos
 
 import (
 	context "context"
-	empty "github.com/golang/protobuf/ptypes/empty"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -25,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type WhatUpCoreAuthClient interface {
 	Login(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (*SessionToken, error)
 	Register(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (WhatUpCoreAuth_RegisterClient, error)
+	RenewToken(ctx context.Context, in *SessionToken, opts ...grpc.CallOption) (*SessionToken, error)
 }
 
 type whatUpCoreAuthClient struct {
@@ -76,12 +76,22 @@ func (x *whatUpCoreAuthRegisterClient) Recv() (*RegisterMessages, error) {
 	return m, nil
 }
 
+func (c *whatUpCoreAuthClient) RenewToken(ctx context.Context, in *SessionToken, opts ...grpc.CallOption) (*SessionToken, error) {
+	out := new(SessionToken)
+	err := c.cc.Invoke(ctx, "/protos.WhatUpCoreAuth/RenewToken", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WhatUpCoreAuthServer is the server API for WhatUpCoreAuth service.
 // All implementations must embed UnimplementedWhatUpCoreAuthServer
 // for forward compatibility
 type WhatUpCoreAuthServer interface {
 	Login(context.Context, *WUCredentials) (*SessionToken, error)
 	Register(*WUCredentials, WhatUpCoreAuth_RegisterServer) error
+	RenewToken(context.Context, *SessionToken) (*SessionToken, error)
 	mustEmbedUnimplementedWhatUpCoreAuthServer()
 }
 
@@ -94,6 +104,9 @@ func (UnimplementedWhatUpCoreAuthServer) Login(context.Context, *WUCredentials) 
 }
 func (UnimplementedWhatUpCoreAuthServer) Register(*WUCredentials, WhatUpCoreAuth_RegisterServer) error {
 	return status.Errorf(codes.Unimplemented, "method Register not implemented")
+}
+func (UnimplementedWhatUpCoreAuthServer) RenewToken(context.Context, *SessionToken) (*SessionToken, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RenewToken not implemented")
 }
 func (UnimplementedWhatUpCoreAuthServer) mustEmbedUnimplementedWhatUpCoreAuthServer() {}
 
@@ -147,6 +160,24 @@ func (x *whatUpCoreAuthRegisterServer) Send(m *RegisterMessages) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _WhatUpCoreAuth_RenewToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SessionToken)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WhatUpCoreAuthServer).RenewToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.WhatUpCoreAuth/RenewToken",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WhatUpCoreAuthServer).RenewToken(ctx, req.(*SessionToken))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WhatUpCoreAuth_ServiceDesc is the grpc.ServiceDesc for WhatUpCoreAuth service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -157,6 +188,10 @@ var WhatUpCoreAuth_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _WhatUpCoreAuth_Login_Handler,
+		},
+		{
+			MethodName: "RenewToken",
+			Handler:    _WhatUpCoreAuth_RenewToken_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
@@ -173,8 +208,8 @@ var WhatUpCoreAuth_ServiceDesc = grpc.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WhatUpCoreClient interface {
-	GetConnectionStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ConnectionStatus, error)
-	GetMessage(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (WhatUpCore_GetMessageClient, error)
+	GetConnectionStatus(ctx context.Context, in *ConnectionStatusOptions, opts ...grpc.CallOption) (*ConnectionStatus, error)
+	GetMessages(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetMessagesClient, error)
 	DownloadMedia(ctx context.Context, in *MediaInfo, opts ...grpc.CallOption) (*Media, error)
 }
 
@@ -186,7 +221,7 @@ func NewWhatUpCoreClient(cc grpc.ClientConnInterface) WhatUpCoreClient {
 	return &whatUpCoreClient{cc}
 }
 
-func (c *whatUpCoreClient) GetConnectionStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ConnectionStatus, error) {
+func (c *whatUpCoreClient) GetConnectionStatus(ctx context.Context, in *ConnectionStatusOptions, opts ...grpc.CallOption) (*ConnectionStatus, error) {
 	out := new(ConnectionStatus)
 	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/GetConnectionStatus", in, out, opts...)
 	if err != nil {
@@ -195,12 +230,12 @@ func (c *whatUpCoreClient) GetConnectionStatus(ctx context.Context, in *empty.Em
 	return out, nil
 }
 
-func (c *whatUpCoreClient) GetMessage(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (WhatUpCore_GetMessageClient, error) {
-	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[0], "/protos.WhatUpCore/GetMessage", opts...)
+func (c *whatUpCoreClient) GetMessages(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetMessagesClient, error) {
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[0], "/protos.WhatUpCore/GetMessages", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &whatUpCoreGetMessageClient{stream}
+	x := &whatUpCoreGetMessagesClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -210,16 +245,16 @@ func (c *whatUpCoreClient) GetMessage(ctx context.Context, in *empty.Empty, opts
 	return x, nil
 }
 
-type WhatUpCore_GetMessageClient interface {
+type WhatUpCore_GetMessagesClient interface {
 	Recv() (*WUMessage, error)
 	grpc.ClientStream
 }
 
-type whatUpCoreGetMessageClient struct {
+type whatUpCoreGetMessagesClient struct {
 	grpc.ClientStream
 }
 
-func (x *whatUpCoreGetMessageClient) Recv() (*WUMessage, error) {
+func (x *whatUpCoreGetMessagesClient) Recv() (*WUMessage, error) {
 	m := new(WUMessage)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -240,8 +275,8 @@ func (c *whatUpCoreClient) DownloadMedia(ctx context.Context, in *MediaInfo, opt
 // All implementations must embed UnimplementedWhatUpCoreServer
 // for forward compatibility
 type WhatUpCoreServer interface {
-	GetConnectionStatus(context.Context, *empty.Empty) (*ConnectionStatus, error)
-	GetMessage(*empty.Empty, WhatUpCore_GetMessageServer) error
+	GetConnectionStatus(context.Context, *ConnectionStatusOptions) (*ConnectionStatus, error)
+	GetMessages(*MessagesOptions, WhatUpCore_GetMessagesServer) error
 	DownloadMedia(context.Context, *MediaInfo) (*Media, error)
 	mustEmbedUnimplementedWhatUpCoreServer()
 }
@@ -250,11 +285,11 @@ type WhatUpCoreServer interface {
 type UnimplementedWhatUpCoreServer struct {
 }
 
-func (UnimplementedWhatUpCoreServer) GetConnectionStatus(context.Context, *empty.Empty) (*ConnectionStatus, error) {
+func (UnimplementedWhatUpCoreServer) GetConnectionStatus(context.Context, *ConnectionStatusOptions) (*ConnectionStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetConnectionStatus not implemented")
 }
-func (UnimplementedWhatUpCoreServer) GetMessage(*empty.Empty, WhatUpCore_GetMessageServer) error {
-	return status.Errorf(codes.Unimplemented, "method GetMessage not implemented")
+func (UnimplementedWhatUpCoreServer) GetMessages(*MessagesOptions, WhatUpCore_GetMessagesServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetMessages not implemented")
 }
 func (UnimplementedWhatUpCoreServer) DownloadMedia(context.Context, *MediaInfo) (*Media, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DownloadMedia not implemented")
@@ -273,7 +308,7 @@ func RegisterWhatUpCoreServer(s grpc.ServiceRegistrar, srv WhatUpCoreServer) {
 }
 
 func _WhatUpCore_GetConnectionStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
+	in := new(ConnectionStatusOptions)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -285,29 +320,29 @@ func _WhatUpCore_GetConnectionStatus_Handler(srv interface{}, ctx context.Contex
 		FullMethod: "/protos.WhatUpCore/GetConnectionStatus",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WhatUpCoreServer).GetConnectionStatus(ctx, req.(*empty.Empty))
+		return srv.(WhatUpCoreServer).GetConnectionStatus(ctx, req.(*ConnectionStatusOptions))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WhatUpCore_GetMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(empty.Empty)
+func _WhatUpCore_GetMessages_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(MessagesOptions)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(WhatUpCoreServer).GetMessage(m, &whatUpCoreGetMessageServer{stream})
+	return srv.(WhatUpCoreServer).GetMessages(m, &whatUpCoreGetMessagesServer{stream})
 }
 
-type WhatUpCore_GetMessageServer interface {
+type WhatUpCore_GetMessagesServer interface {
 	Send(*WUMessage) error
 	grpc.ServerStream
 }
 
-type whatUpCoreGetMessageServer struct {
+type whatUpCoreGetMessagesServer struct {
 	grpc.ServerStream
 }
 
-func (x *whatUpCoreGetMessageServer) Send(m *WUMessage) error {
+func (x *whatUpCoreGetMessagesServer) Send(m *WUMessage) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -347,8 +382,8 @@ var WhatUpCore_ServiceDesc = grpc.ServiceDesc{
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "GetMessage",
-			Handler:       _WhatUpCore_GetMessage_Handler,
+			StreamName:    "GetMessages",
+			Handler:       _WhatUpCore_GetMessages_Handler,
 			ServerStreams: true,
 		},
 	},
