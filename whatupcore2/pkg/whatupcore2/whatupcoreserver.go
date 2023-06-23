@@ -25,3 +25,22 @@ func (s *WhatUpCoreServer) GetConnectionStatus(ctx context.Context, credentials 
         Timestamp: timestamppb.New(session.Client.LastSuccessfulConnect),
     }, nil
 }
+
+func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, server pb.WhatUpCore_GetMessagesServer) error {
+    session, ok := server.Context().Value("session").(*Session)
+    if !ok {
+        return fmt.Errorf("Could not extract session from context")
+    }
+
+    ctx, cancel := context.WithCancel(context.Background())
+    msgChan := session.Client.GetMessages(ctx)
+
+    for msg := range msgChan {
+        if err := server.Send(msg); err != nil {
+            cancel()
+            return nil
+        }
+    }
+    session.Client.Log.Debugf("Ending GetMessages")
+    return nil
+}

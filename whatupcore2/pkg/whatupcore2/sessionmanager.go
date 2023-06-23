@@ -3,18 +3,63 @@ package whatupcore2
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
+)
+
+var (
+    SessionTimeout = 10 * time.Minute  // TODO: this should probably be the same as the JWT timeout?
 )
 
 type SessionManager struct {
-    tokenToSession map[string]*Session
+    idToSession map[string]*Session
     secretKey []byte
+
+    cancelFunc context.CancelFunc
 }
 
-func NewSessionManager(secretKey []byte) (*SessionManager, error) {
+func NewSessionManager(secretKey []byte) *SessionManager {
     return &SessionManager{
-        tokenToSession: make(map[string]*Session),
+        idToSession: make(map[string]*Session),
         secretKey: secretKey,
-    }, nil
+    }
+}
+
+func (sm *SessionManager) Start() {
+    ctx, cancel := context.WithCancel(context.Background())
+    sm.cancelFunc = cancel
+
+    go func(ctx context.Context) {
+        ticker := time.NewTicker(SessionTimeout)
+        for {
+            select {
+            case <-ticker.C:
+                sm.pruneSessions()
+            case <-ctx.Done():
+                return
+            }
+        }
+    }(ctx)
+}
+
+func (sm *SessionManager) Stop() {
+    if sm.cancelFunc != nil {
+        sm.cancelFunc()
+    }
+}
+
+func (sm *SessionManager) pruneSessions() {
+    oldest := time.Now().Add(-SessionTimeout)
+    nRemoved := 0
+    for _, session := range sm.idToSession {
+        if oldest.Compare(session.lastAccess) > 0 {
+            sm.removeSession(session)
+            nRemoved += 1
+        }
+    }
+    if nRemoved > 0 {
+        fmt.Printf("Pruned sessions: %d sessions removed\n", nRemoved)
+    }
 }
 
 func (sm *SessionManager) AddLogin(username string, passphrase string) (*Session, error) {
@@ -47,32 +92,42 @@ func (sm *SessionManager) AddRegistration(ctx context.Context, username string, 
 }
 
 func (sm *SessionManager) addSession(session *Session) error {
-    if _, collision := sm.tokenToSession[session.tokenString]; collision {
-        return errors.New("Token Collision in SessionManager. Panic.")
+    if _, collision := sm.idToSession[session.sessionId]; collision {
+        return errors.New("Session ID Collision in SessionManager. Panic.")
     }
 
-    sm.tokenToSession[session.tokenString] = session
-    // TODO: add timer to remove stale tokenToSession (token expiration?)
+    sm.idToSession[session.sessionId] = session
+    // TODO: add timer to remove stale idToSession (token expiration?)
     return nil
 }
 
 func (sm *SessionManager) removeSession(session *Session) bool {
-    if _, sessionExists := sm.tokenToSession[session.tokenString]; !sessionExists {
+    if _, sessionExists := sm.idToSession[session.sessionId]; !sessionExists {
         return false
     }
-    delete(sm.tokenToSession, session.tokenString)
+    session.Close()
+    delete(sm.idToSession, session.sessionId)
     return true
 }
 
-func (sm *SessionManager) RenewSessionToken(token string) (*Session, error) {
-    session, found := sm.tokenToSession[token]
+func (sm *SessionManager) TokenToSessionId(token string) (string, error) {
+    return parseTokenString(token, sm.secretKey)
+}
+
+func (sm *SessionManager) RenewSessionToken(sessionId string) (*Session, error) {
+    session, found := sm.GetSession(sessionId)
     if !found {
         return nil, errors.New("Could not find session")
     }
-    return session, session.RenewToken(sm.secretKey)
+    err := session.RenewToken(sm.secretKey)
+    return session, err
 }
 
-func (sm *SessionManager) GetSession(token string) (*Session, bool) {
-    session, found := sm.tokenToSession[token]
+func (sm *SessionManager) GetSession(sessionId string) (*Session, bool) {
+    session, found := sm.idToSession[sessionId]
+    if !found {
+        return nil, false
+    }
+    session.lastAccess = time.Now()
     return session, found
 }

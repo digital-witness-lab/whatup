@@ -3,9 +3,9 @@
 // WA Web 2.2319.9 
 
 syntax = "proto2";
-package whatsappweb;
+package proto;
 
-option go_package = "github.com/digital-witness-lab/whatup/protos";
+option go_package = "go.mau.fi/whatsmeow/binary/proto";
 
 message ADVSignedKeyIndexList {
     optional bytes details = 1;

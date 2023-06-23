@@ -8,13 +8,13 @@ whatupcore.pb.go: whatupcore.proto
 		--go_opt paths=source_relative \
 		--go-grpc_out=. \
 		--go-grpc_opt=paths=source_relative \
-		*.proto 
+		whatupcore.proto 
 	go mod tidy
 
 whatupcore_pb2.py: whatupcore.proto
 	protoc \
 		--python_out=. \
-		*.proto 
+		whatupcore.proto 
 
 evans:
 	go install github.com/ktr0731/evans@v0.10.11
