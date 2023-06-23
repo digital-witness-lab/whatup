@@ -2,10 +2,11 @@ package whatupcore2
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type WhatUpCoreAuthServer struct {
@@ -21,7 +22,7 @@ func (s *WhatUpCoreAuthServer) AuthFuncOverride(ctx context.Context, fullMethodN
 
 func (s *WhatUpCoreAuthServer) Login(ctx context.Context, credentials *pb.WUCredentials) (*pb.SessionToken, error) {
     if (len(credentials.Passphrase) < 8) {
-        return nil, errors.New("Passphrase too short. Must be >= 8 characters")
+        return nil, status.Error(codes.InvalidArgument, "Passphrase too short. Must be >= 8 characters")
     }
     session, err := s.sessionManager.AddLogin(credentials.Username, credentials.Passphrase)
     if err != nil {
@@ -31,7 +32,12 @@ func (s *WhatUpCoreAuthServer) Login(ctx context.Context, credentials *pb.WUCred
 }
 
 func (s *WhatUpCoreAuthServer) RenewToken(ctx context.Context, token *pb.SessionToken) (*pb.SessionToken, error) {
-    session, err := s.sessionManager.RenewSessionToken(token.Token)
+    sessionId, err := s.sessionManager.TokenToSessionId(token.Token)
+    if err != nil {
+        return nil, status.Errorf(codes.Unauthenticated, "Invalid token: %v", err)
+    }
+
+    session, err := s.sessionManager.RenewSessionToken(sessionId)
     if err != nil {
         return nil, err
     }
@@ -40,7 +46,7 @@ func (s *WhatUpCoreAuthServer) RenewToken(ctx context.Context, token *pb.Session
 
 func (s *WhatUpCoreAuthServer) Register(credentials *pb.WUCredentials, qrStream pb.WhatUpCoreAuth_RegisterServer) error {
     if (len(credentials.Passphrase) < 8) {
-        return errors.New("Passphrase too short. Must be >= 8 characters")
+        return status.Error(codes.InvalidArgument, "Passphrase too short. Must be >= 8 characters")
     }
     ctx := context.Background()
     ctx, cancel := context.WithCancel(ctx)

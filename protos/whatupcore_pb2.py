@@ -13,7 +13,6 @@ _sym_db = _symbol_database.Default()
 
 
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
-from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 import whatsappweb_pb2 as whatsappweb__pb2
 
 
@@ -22,9 +21,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='protos',
   syntax='proto3',
   serialized_options=_b('Z,github.com/digital-witness-lab/whatup/protos'),
-  serialized_pb=_b('\n\x10whatupcore.proto\x12\x06protos\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x11whatsappweb.proto\"\x19\n\x17\x43onnectionStatusOptions\"\x11\n\x0fMessagesOptions\"\x1d\n\x0cSessionToken\x12\r\n\x05token\x18\x01 \x01(\t\"Y\n\x10RegisterMessages\x12\x0e\n\x06qrcode\x18\x01 \x01(\t\x12\x10\n\x08loggedIn\x18\x02 \x01(\x08\x12#\n\x05token\x18\x03 \x01(\x0b\x32\x14.protos.SessionToken\"5\n\rWUCredentials\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x12\n\npassphrase\x18\x02 \x01(\t\"N\n\x03JID\x12\x0c\n\x04user\x18\x01 \x01(\t\x12\r\n\x05\x61gent\x18\x02 \x01(\r\x12\x0e\n\x06\x64\x65vice\x18\x03 \x01(\r\x12\x0e\n\x06server\x18\x04 \x01(\r\x12\n\n\x02\x61\x64\x18\x05 \x01(\r\"j\n\x10\x43onnectionStatus\x12\x13\n\x0bisConnected\x18\x01 \x01(\x08\x12\x12\n\nisLoggedIn\x18\x02 \x01(\x08\x12-\n\ttimestamp\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xbc\x01\n\tWUMessage\x12!\n\x04info\x18\x01 \x01(\x0b\x32\x13.protos.MessageInfo\x12\'\n\x07\x63ontent\x18\x02 \x01(\x0b\x32\x16.protos.MessageContent\x12\x34\n\x11messageProperties\x18\x03 \x01(\x0b\x32\x19.protos.MessageProperties\x12-\n\x0foriginalMessage\x18\x04 \x01(\x0b\x32\x14.whatsappweb.Message\"\x93\x01\n\rMessageSource\x12\x19\n\x04\x63hat\x18\x01 \x01(\x0b\x32\x0b.protos.JID\x12\x1b\n\x06sender\x18\x02 \x01(\x0b\x32\x0b.protos.JID\x12\'\n\x12\x62roadcastListOwner\x18\x03 \x01(\x0b\x32\x0b.protos.JID\x12\x10\n\x08isFromMe\x18\x04 \x01(\x08\x12\x0f\n\x07isGroup\x18\x05 \x01(\x08\"\xb4\x01\n\x0bMessageInfo\x12%\n\x06source\x18\x01 \x01(\x0b\x32\x15.protos.MessageSource\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\n\n\x02id\x18\x03 \x01(\t\x12\x10\n\x08pushName\x18\x04 \x01(\t\x12\x0c\n\x04type\x18\x05 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x06 \x01(\t\x12\x11\n\tmulticast\x18\x07 \x01(\x08\"\xd5\x01\n\x0eMessageContent\x12\r\n\x05title\x18\x01 \x01(\t\x12\x0c\n\x04text\x18\x02 \x01(\t\x12:\n\nproperties\x18\x03 \x03(\x0b\x32&.protos.MessageContent.PropertiesEntry\x12\x11\n\tthumbnail\x18\x04 \x01(\x0c\x12$\n\tmediaInfo\x18\x05 \x01(\x0b\x32\x11.protos.MediaInfo\x1a\x31\n\x0fPropertiesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x83\x01\n\x11MessageProperties\x12\x13\n\x0bisEphemeral\x18\x01 \x01(\x08\x12\x12\n\nisViewOnce\x18\x02 \x01(\x08\x12\x1d\n\x15isDocumentWithCaption\x18\x03 \x01(\x08\x12\x0e\n\x06isEdit\x18\x04 \x01(\x08\x12\x16\n\x0e\x66orwardedScore\x18\x05 \x01(\r\"\xdb\x01\n\tMediaInfo\x12/\n\x07locator\x18\x01 \x03(\x0b\x32\x1e.protos.MediaInfo.LocatorEntry\x12.\n\tmediaType\x18\x03 \x01(\x0e\x32\x1b.protos.MediaInfo.MediaType\x12\x10\n\x08mimeType\x18\x04 \x01(\t\x1a.\n\x0cLocatorEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"+\n\tMediaType\x12\x08\n\x04NONE\x10\x00\x12\t\n\x05IMAGE\x10\x01\x12\t\n\x05VIDEO\x10\x02\"\x19\n\x05Media\x12\x10\n\x08\x43ontents\x18\x01 \x01(\x0c\x32\xc5\x01\n\x0eWhatUpCoreAuth\x12\x36\n\x05Login\x12\x15.protos.WUCredentials\x1a\x14.protos.SessionToken\"\x00\x12?\n\x08Register\x12\x15.protos.WUCredentials\x1a\x18.protos.RegisterMessages\"\x00\x30\x01\x12:\n\nRenewToken\x12\x14.protos.SessionToken\x1a\x14.protos.SessionToken\"\x00\x32\xd4\x01\n\nWhatUpCore\x12R\n\x13GetConnectionStatus\x12\x1f.protos.ConnectionStatusOptions\x1a\x18.protos.ConnectionStatus\"\x00\x12=\n\x0bGetMessages\x12\x17.protos.MessagesOptions\x1a\x11.protos.WUMessage\"\x00\x30\x01\x12\x33\n\rDownloadMedia\x12\x11.protos.MediaInfo\x1a\r.protos.Media\"\x00\x42.Z,github.com/digital-witness-lab/whatup/protosb\x06proto3')
+  serialized_pb=_b('\n\x10whatupcore.proto\x12\x06protos\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11whatsappweb.proto\"\x19\n\x17\x43onnectionStatusOptions\"\x11\n\x0fMessagesOptions\"\x1d\n\x0cSessionToken\x12\r\n\x05token\x18\x01 \x01(\t\"Y\n\x10RegisterMessages\x12\x0e\n\x06qrcode\x18\x01 \x01(\t\x12\x10\n\x08loggedIn\x18\x02 \x01(\x08\x12#\n\x05token\x18\x03 \x01(\x0b\x32\x14.protos.SessionToken\"5\n\rWUCredentials\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x12\n\npassphrase\x18\x02 \x01(\t\"N\n\x03JID\x12\x0c\n\x04user\x18\x01 \x01(\t\x12\r\n\x05\x61gent\x18\x02 \x01(\r\x12\x0e\n\x06\x64\x65vice\x18\x03 \x01(\r\x12\x0e\n\x06server\x18\x04 \x01(\t\x12\n\n\x02\x61\x64\x18\x05 \x01(\x08\"j\n\x10\x43onnectionStatus\x12\x13\n\x0bisConnected\x18\x01 \x01(\x08\x12\x12\n\nisLoggedIn\x18\x02 \x01(\x08\x12-\n\ttimestamp\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xb6\x01\n\tWUMessage\x12!\n\x04info\x18\x01 \x01(\x0b\x32\x13.protos.MessageInfo\x12\'\n\x07\x63ontent\x18\x02 \x01(\x0b\x32\x16.protos.MessageContent\x12\x34\n\x11messageProperties\x18\x03 \x01(\x0b\x32\x19.protos.MessageProperties\x12\'\n\x0foriginalMessage\x18\x04 \x01(\x0b\x32\x0e.proto.Message\"\x93\x01\n\rMessageSource\x12\x19\n\x04\x63hat\x18\x01 \x01(\x0b\x32\x0b.protos.JID\x12\x1b\n\x06sender\x18\x02 \x01(\x0b\x32\x0b.protos.JID\x12\'\n\x12\x62roadcastListOwner\x18\x03 \x01(\x0b\x32\x0b.protos.JID\x12\x10\n\x08isFromMe\x18\x04 \x01(\x08\x12\x0f\n\x07isGroup\x18\x05 \x01(\x08\"\xb4\x01\n\x0bMessageInfo\x12%\n\x06source\x18\x01 \x01(\x0b\x32\x15.protos.MessageSource\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\n\n\x02id\x18\x03 \x01(\t\x12\x10\n\x08pushName\x18\x04 \x01(\t\x12\x0c\n\x04type\x18\x05 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x06 \x01(\t\x12\x11\n\tmulticast\x18\x07 \x01(\x08\"\xd5\x01\n\x0eMessageContent\x12\r\n\x05title\x18\x01 \x01(\t\x12\x0c\n\x04text\x18\x02 \x01(\t\x12:\n\nproperties\x18\x03 \x03(\x0b\x32&.protos.MessageContent.PropertiesEntry\x12\x11\n\tthumbnail\x18\x04 \x01(\x0c\x12$\n\tmediaInfo\x18\x05 \x01(\x0b\x32\x11.protos.MediaInfo\x1a\x31\n\x0fPropertiesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x83\x01\n\x11MessageProperties\x12\x13\n\x0bisEphemeral\x18\x01 \x01(\x08\x12\x12\n\nisViewOnce\x18\x02 \x01(\x08\x12\x1d\n\x15isDocumentWithCaption\x18\x03 \x01(\x08\x12\x0e\n\x06isEdit\x18\x04 \x01(\x08\x12\x16\n\x0e\x66orwardedScore\x18\x05 \x01(\r\"\xdb\x01\n\tMediaInfo\x12/\n\x07locator\x18\x01 \x03(\x0b\x32\x1e.protos.MediaInfo.LocatorEntry\x12.\n\tmediaType\x18\x03 \x01(\x0e\x32\x1b.protos.MediaInfo.MediaType\x12\x10\n\x08mimeType\x18\x04 \x01(\t\x1a.\n\x0cLocatorEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"+\n\tMediaType\x12\x08\n\x04NONE\x10\x00\x12\t\n\x05IMAGE\x10\x01\x12\t\n\x05VIDEO\x10\x02\"\x19\n\x05Media\x12\x10\n\x08\x43ontents\x18\x01 \x01(\x0c\x32\xc5\x01\n\x0eWhatUpCoreAuth\x12\x36\n\x05Login\x12\x15.protos.WUCredentials\x1a\x14.protos.SessionToken\"\x00\x12?\n\x08Register\x12\x15.protos.WUCredentials\x1a\x18.protos.RegisterMessages\"\x00\x30\x01\x12:\n\nRenewToken\x12\x14.protos.SessionToken\x1a\x14.protos.SessionToken\"\x00\x32\xd4\x01\n\nWhatUpCore\x12R\n\x13GetConnectionStatus\x12\x1f.protos.ConnectionStatusOptions\x1a\x18.protos.ConnectionStatus\"\x00\x12=\n\x0bGetMessages\x12\x17.protos.MessagesOptions\x1a\x11.protos.WUMessage\"\x00\x30\x01\x12\x33\n\rDownloadMedia\x12\x11.protos.MediaInfo\x1a\r.protos.Media\"\x00\x42.Z,github.com/digital-witness-lab/whatup/protosb\x06proto3')
   ,
-  dependencies=[google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,whatsappweb__pb2.DESCRIPTOR,])
+  dependencies=[google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,whatsappweb__pb2.DESCRIPTOR,])
 
 
 
@@ -49,8 +48,8 @@ _MEDIAINFO_MEDIATYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1571,
-  serialized_end=1614,
+  serialized_start=1536,
+  serialized_end=1579,
 )
 _sym_db.RegisterEnumDescriptor(_MEDIAINFO_MEDIATYPE)
 
@@ -74,8 +73,8 @@ _CONNECTIONSTATUSOPTIONS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=109,
-  serialized_end=134,
+  serialized_start=80,
+  serialized_end=105,
 )
 
 
@@ -98,8 +97,8 @@ _MESSAGESOPTIONS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=136,
-  serialized_end=153,
+  serialized_start=107,
+  serialized_end=124,
 )
 
 
@@ -129,8 +128,8 @@ _SESSIONTOKEN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=155,
-  serialized_end=184,
+  serialized_start=126,
+  serialized_end=155,
 )
 
 
@@ -174,8 +173,8 @@ _REGISTERMESSAGES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=186,
-  serialized_end=275,
+  serialized_start=157,
+  serialized_end=246,
 )
 
 
@@ -212,8 +211,8 @@ _WUCREDENTIALS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=277,
-  serialized_end=330,
+  serialized_start=248,
+  serialized_end=301,
 )
 
 
@@ -247,15 +246,15 @@ _JID = _descriptor.Descriptor(
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='server', full_name='protos.JID.server', index=3,
-      number=4, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='ad', full_name='protos.JID.ad', index=4,
-      number=5, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
+      number=5, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -271,8 +270,8 @@ _JID = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=332,
-  serialized_end=410,
+  serialized_start=303,
+  serialized_end=381,
 )
 
 
@@ -316,8 +315,8 @@ _CONNECTIONSTATUS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=412,
-  serialized_end=518,
+  serialized_start=383,
+  serialized_end=489,
 )
 
 
@@ -368,8 +367,8 @@ _WUMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=521,
-  serialized_end=709,
+  serialized_start=492,
+  serialized_end=674,
 )
 
 
@@ -427,8 +426,8 @@ _MESSAGESOURCE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=712,
-  serialized_end=859,
+  serialized_start=677,
+  serialized_end=824,
 )
 
 
@@ -500,8 +499,8 @@ _MESSAGEINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=862,
-  serialized_end=1042,
+  serialized_start=827,
+  serialized_end=1007,
 )
 
 
@@ -538,8 +537,8 @@ _MESSAGECONTENT_PROPERTIESENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1209,
-  serialized_end=1258,
+  serialized_start=1174,
+  serialized_end=1223,
 )
 
 _MESSAGECONTENT = _descriptor.Descriptor(
@@ -596,8 +595,8 @@ _MESSAGECONTENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1045,
-  serialized_end=1258,
+  serialized_start=1010,
+  serialized_end=1223,
 )
 
 
@@ -655,8 +654,8 @@ _MESSAGEPROPERTIES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1261,
-  serialized_end=1392,
+  serialized_start=1226,
+  serialized_end=1357,
 )
 
 
@@ -693,8 +692,8 @@ _MEDIAINFO_LOCATORENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1523,
-  serialized_end=1569,
+  serialized_start=1488,
+  serialized_end=1534,
 )
 
 _MEDIAINFO = _descriptor.Descriptor(
@@ -738,8 +737,8 @@ _MEDIAINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1395,
-  serialized_end=1614,
+  serialized_start=1360,
+  serialized_end=1579,
 )
 
 
@@ -769,8 +768,8 @@ _MEDIA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1616,
-  serialized_end=1641,
+  serialized_start=1581,
+  serialized_end=1606,
 )
 
 _REGISTERMESSAGES.fields_by_name['token'].message_type = _SESSIONTOKEN
@@ -932,8 +931,8 @@ _WHATUPCOREAUTH = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=1644,
-  serialized_end=1841,
+  serialized_start=1609,
+  serialized_end=1806,
   methods=[
   _descriptor.MethodDescriptor(
     name='Login',
@@ -974,8 +973,8 @@ _WHATUPCORE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=1,
   serialized_options=None,
-  serialized_start=1844,
-  serialized_end=2056,
+  serialized_start=1809,
+  serialized_end=2021,
   methods=[
   _descriptor.MethodDescriptor(
     name='GetConnectionStatus',

@@ -11,17 +11,31 @@ import (
 	"sync"
 	"time"
 
+	_ "github.com/mattn/go-sqlite3"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store/sqlstore"
+	"go.mau.fi/whatsmeow/types"
+	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
-	_ "github.com/mattn/go-sqlite3"
+	pb "github.com/digital-witness-lab/whatup/protos"
 )
 
 const (
     DB_ROOT = "db"
     CONNECT_TIMEOUT = 5 * time.Second
 )
+
+func JIDToProto(JID types.JID) *pb.JID {
+    return &pb.JID{
+        User: JID.User,
+        Agent: uint32(JID.Agent),
+        Device: uint32(JID.Device),
+        Server: JID.Server,
+        Ad: JID.AD,
+    }
+}
 
 type RegistrationState struct {
     QRCodes chan string
@@ -203,4 +217,58 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
             return false
         }
     }
+}
+
+func (wac *WhatsAppClient) normalizeMessage(msg *events.Message) (*pb.WUMessage, bool) {
+    wac.Log.Debugf("Got message: %!v\n", msg)
+    return &pb.WUMessage{
+        Content: &pb.MessageContent{
+            Title: msg.Message.GetExtendedTextMessage().GetTitle(),
+            Text: msg.Message.GetConversation(),
+            Thumbnail: msg.Message.GetExtendedTextMessage().GetJpegThumbnail(),
+        },
+        Info: &pb.MessageInfo{
+            Source: &pb.MessageSource{
+                Chat: JIDToProto(msg.Info.Chat),
+                Sender: JIDToProto(msg.Info.Sender),
+                BroadcastListOwner: JIDToProto(msg.Info.BroadcastListOwner),
+                IsFromMe: msg.Info.IsFromMe,
+                IsGroup: msg.Info.IsGroup,
+            },
+            Timestamp: timestamppb.New(msg.Info.Timestamp),
+            Id: msg.Info.ID,
+            PushName: msg.Info.PushName,
+            Type: msg.Info.Type,
+            Category: msg.Info.Category,
+            Multicast: msg.Info.Multicast,
+        },
+        MessageProperties: &pb.MessageProperties{
+            IsEphemeral: msg.IsEphemeral,
+            IsViewOnce: msg.IsViewOnce,
+            IsDocumentWithCaption: msg.IsDocumentWithCaption,
+            IsEdit: msg.IsEdit,
+            ForwardedScore: msg.RawMessage.GetExtendedTextMessage().GetContextInfo().GetForwardingScore(),
+        },
+        OriginalMessage: msg.RawMessage,
+    }, true
+}
+
+func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *pb.WUMessage {
+    msgChan := make(chan *pb.WUMessage)
+    handlerId := wac.AddEventHandler(func(evt interface{}) {
+        switch evt.(type) {
+            case *events.Message:
+                if msg, ok := wac.normalizeMessage(evt.(*events.Message)); ok {
+                    msgChan <- msg
+                }
+        }
+    })
+    go func() {
+        for range ctx.Done() {
+            wac.RemoveEventHandler(handlerId)
+            close(msgChan)
+            return
+        }
+    }()
+    return msgChan
 }

@@ -19,12 +19,19 @@ var (
 
 type SessionJWTClaims struct {
 	Username string `json:"username"`
-	Token string `json:"token"`
-	jwt.StandardClaims
+	SessionId string `json:"token"`
+	jwt.RegisteredClaims
+}
+
+func (claims SessionJWTClaims) Validate() error {
+    if claims.Issuer != TOKEN_VERSION {
+        return jwt.ErrTokenInvalidIssuer
+    }
+    return nil
 }
 
 
-func randomToken() string {
+func randomString() string {
     b := make([]byte, TOKEN_LENGTH)
     if _, err := rand.Read(b); err != nil {
         return ""
@@ -33,10 +40,10 @@ func randomToken() string {
 }
 
 
-func createJWTToken(username string, token string) *jwt.Token {
+func createJWTToken(username string, sessionId string) *jwt.Token {
     claims := SessionJWTClaims{
         username,
-        token,
+        sessionId,
         jwt.RegisteredClaims{
             ExpiresAt: jwt.NewNumericDate(time.Now().Add(TOKEN_EXPIRATION)),
 		    IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -49,7 +56,7 @@ func createJWTToken(username string, token string) *jwt.Token {
     return tokenObj
 }
 
-func verifyTokenString(tokenString string, secret []byte) (bool, error) {
+func parseTokenString(tokenString string, secret []byte) (string, error) {
     token, err := jwt.ParseWithClaims(
         tokenString,
         &SessionJWTClaims{},
@@ -62,16 +69,16 @@ func verifyTokenString(tokenString string, secret []byte) (bool, error) {
         jwt.WithLeeway(EXPIRATION_LEEWAY),
     )
     if err != nil {
-        return false, err
+        return "", err
     }
     if !token.Valid {
-        return false, fmt.Errorf("Token Invalid")
+        return "", fmt.Errorf("Token Invalid")
     }
 
     claims, ok := token.Claims.(*SessionJWTClaims)
     if !ok {
-        return false, fmt.Errorf("Token Invalid: Unparsable claims")
+        return "", fmt.Errorf("Token Invalid: Unparsable claims")
     }
 
-    return true, nil
+    return claims.SessionId, nil
 }
