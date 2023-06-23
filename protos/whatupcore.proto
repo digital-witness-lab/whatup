@@ -3,7 +3,6 @@ syntax = "proto3";
 package protos;
 
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/empty.proto";
 import "whatsappweb.proto";
 
 option go_package = "github.com/digital-witness-lab/whatup/protos";
@@ -46,8 +45,8 @@ message JID {
     string user = 1;
     uint32 agent = 2;
     uint32 device = 3;
-    uint32 server = 4;
-    uint32 ad = 5;
+    string server = 4;
+    bool ad = 5;
 }
 
 message ConnectionStatus {
@@ -61,7 +60,7 @@ message WUMessage {
     MessageContent content = 2;
     MessageProperties messageProperties = 3;
 
-    whatsappweb.Message originalMessage = 4;
+    proto.Message originalMessage = 4;
 }
 
 message MessageSource {

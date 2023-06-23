@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 )
@@ -27,11 +29,12 @@ func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(cont
 	    if err != nil {
 	    	return nil, err
 	    }
-        if ok, err := verifyTokenString(token, secretKey); !ok {
+        sessionId, err := sessionManager.TokenToSessionId(token)
+        if err != nil {
             return nil, status.Errorf(codes.Unauthenticated, "Invalid auth token: %v", err)
         }
 
-        session, ok := sessionManager.GetSession(token)
+        session, ok := sessionManager.GetSession(sessionId)
 	    if !ok {
 	    	return nil, status.Errorf(codes.Unauthenticated, "Unregistered auth token")
 	    }
@@ -47,8 +50,12 @@ func StartRPC(port uint32) error {
         return err
 	}
 
-    sessionManager, err := NewSessionManager(JWT_SECRET)
+    sessionManager := NewSessionManager(JWT_SECRET)
+    sessionManager.Start()
     authCheck := createAuthCheck(sessionManager, JWT_SECRET)
+    keepAlive := grpc.KeepaliveParams(keepalive.ServerParameters{
+        Time: 10 * time.Second,
+    })
 
     var s *grpc.Server
     if false {
@@ -57,20 +64,23 @@ func StartRPC(port uint32) error {
 	    	log.Fatalf("could not load server credentials: %v", err)
             return err
         }
-	    s = grpc.NewServer(grpc.Creds(creds))
+	    s = grpc.NewServer(grpc.Creds(creds), keepAlive)
     } else {
 	    s = grpc.NewServer(
 		    grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
 		    grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
+            keepAlive,
         )
     }
     reflection.Register(s)
+
     pb.RegisterWhatUpCoreAuthServer(s, &WhatUpCoreAuthServer{
         sessionManager:sessionManager,
     })
     pb.RegisterWhatUpCoreServer(s, &WhatUpCoreServer{
         sessionManager:sessionManager,
     })
+
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)

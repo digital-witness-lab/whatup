@@ -10,19 +10,25 @@ import (
 
 type Session struct {
     Username string
+    sessionId string
     token *jwt.Token
     tokenString string
 
     createdAt time.Time
     renewedAt time.Time
+    lastAccess time.Time
 
     Client *WhatsAppClient
 }
 
 func NewSessionDisconnected(username string, secretKey []byte) (*Session, error) {
+    now := time.Now()
     session := &Session{
         Username: username,
-        createdAt: time.Now(),
+        sessionId: randomString(),
+        createdAt: now,
+        renewedAt: now,
+        lastAccess: now,
     }
     session.RenewToken(secretKey)
     return session, nil
@@ -51,6 +57,10 @@ func NewSessionRegister(ctx context.Context, username string, passphrase string,
         return nil, nil, err
     }
     return session, state, nil
+}
+
+func (session *Session) Close() {
+    session.Client.Disconnect()
 }
 
 func (session *Session) ToProto() *pb.SessionToken {
@@ -83,7 +93,7 @@ func (session *Session) LoginOrRegister(ctx context.Context, username string, pa
 }
 
 func (session *Session) RenewToken(secretKey []byte) error {
-    token:= createJWTToken(session.Username, randomToken())
+    token:= createJWTToken(session.Username, session.sessionId)
     tokenString, err := token.SignedString(secretKey)
     if err != nil {
         return err
