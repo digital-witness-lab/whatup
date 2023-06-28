@@ -1,6 +1,70 @@
 package whatupcore2
 
-import "reflect"
+import (
+	"reflect"
+
+	pb "github.com/digital-witness-lab/whatup/protos"
+	"go.mau.fi/whatsmeow/types"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+func JIDToProto(JID types.JID) *pb.JID {
+	return &pb.JID{
+		User:   JID.User,
+		Agent:  uint32(JID.Agent),
+		Device: uint32(JID.Device),
+		Server: JID.Server,
+		Ad:     JID.AD,
+	}
+}
+
+func ProtoToJID(pJID *pb.JID) types.JID {
+    return types.JID{
+		User:   pJID.User,
+		Agent:  uint8(pJID.Agent),
+		Device: uint8(pJID.Device),
+		Server: pJID.Server,
+		AD:     pJID.Ad,
+    }
+}
+
+func GroupInfoToProto(gi *types.GroupInfo) *pb.GroupInfo {
+    participants := make([]*pb.GroupParticipant, len(gi.Participants))
+    for i, p := range gi.Participants {
+        participants[i] = &pb.GroupParticipant{
+            JID: JIDToProto(p.JID),
+            IsAdmin: p.IsAdmin,
+            IsSuperAdmin: p.IsSuperAdmin,
+            JoinError: uint32(p.Error),
+        }
+    }
+    return &pb.GroupInfo{
+        CreatedAt: timestamppb.New(gi.GroupCreated),
+        JID: JIDToProto(gi.JID),
+
+        GroupName: &pb.GroupName{
+            Name: gi.GroupName.Name,
+            UpdatedAt: timestamppb.New(gi.GroupName.NameSetAt),
+            UpdatedBy: JIDToProto(gi.GroupName.NameSetBy),
+        },
+        GroupTopic: &pb.GroupTopic{
+            Topic: gi.GroupTopic.Topic,
+            TopicId: gi.GroupTopic.TopicID,
+            UpdatedAt: timestamppb.New(gi.GroupTopic.TopicSetAt),
+            UpdatedBy: JIDToProto(gi.GroupTopic.TopicSetBy),
+            TopicDeleted: gi.GroupTopic.TopicDeleted,
+        },
+        ParentJID: JIDToProto(gi.LinkedParentJID),
+        MemberAddMode: string(gi.MemberAddMode),
+        IsLocked: gi.IsLocked,
+        IsAnnounce: gi.IsAnnounce,
+        IsEphemeral: gi.IsEphemeral,
+
+        ParticipantVersionId: gi.ParticipantVersionID,
+        Participants: participants,
+    }
+}
+
 
 func valuesFilterZero(values []reflect.Value) []reflect.Value {
 	filtered := make([]reflect.Value, 0, len(values))

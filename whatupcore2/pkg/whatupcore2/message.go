@@ -9,7 +9,6 @@ import (
 	pb "github.com/digital-witness-lab/whatup/protos"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
-	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -18,16 +17,6 @@ import (
 var (
 	ErrNoThumnails = errors.New("No thumbnail found")
 )
-
-func JIDToProto(JID types.JID) *pb.JID {
-	return &pb.JID{
-		User:   JID.User,
-		Agent:  uint32(JID.Agent),
-		Device: uint32(JID.Device),
-		Server: JID.Server,
-		Ad:     JID.AD,
-	}
-}
 
 type HasContextInfo interface {
 	GetContextInfo() *waProto.ContextInfo

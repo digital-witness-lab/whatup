@@ -17,7 +17,47 @@ service WhatUpCoreAuth {
 service WhatUpCore {
     rpc GetConnectionStatus(ConnectionStatusOptions) returns (ConnectionStatus) {}
     rpc GetMessages(MessagesOptions) returns (stream WUMessage) {}
+    rpc GetGroupInfo(JID) returns (GroupInfo) {}
     rpc DownloadMedia(MediaMessage) returns (MediaContent) {}
+}
+
+message GroupName {
+    string name = 1;
+    google.protobuf.Timestamp updatedAt = 2;
+    JID updatedBy = 3;
+}
+
+message GroupTopic {
+    string topic = 1;
+    string topicId = 2;
+    google.protobuf.Timestamp updatedAt = 3;
+    JID updatedBy = 4;
+    bool topicDeleted = 5;
+}
+
+message GroupParticipant {
+    JID JID = 1;
+    bool isAdmin = 2;
+    bool isSuperAdmin = 3;
+    uint32 joinError = 4;
+}
+
+message GroupInfo {
+    // types.GroupInfo
+    google.protobuf.Timestamp createdAt = 1;
+    JID JID = 2;
+    
+    GroupName groupName = 3;
+    GroupTopic groupTopic = 4;
+    string memberAddMode = 5;
+    bool isLocked = 6;
+    bool isAnnounce = 7;
+    bool isEphemeral = 8;
+
+    string participantVersionId = 9;
+    repeated GroupParticipant participants = 10;
+
+    JID parentJID = 11;
 }
 
 message ConnectionStatusOptions {
