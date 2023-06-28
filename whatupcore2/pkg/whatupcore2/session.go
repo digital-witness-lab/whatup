@@ -9,111 +9,109 @@ import (
 )
 
 type Session struct {
-    Username string
-    sessionId string
-    token *jwt.Token
-    tokenString string
+	Username    string
+	sessionId   string
+	token       *jwt.Token
+	tokenString string
 
-    createdAt time.Time
-    renewedAt time.Time
-    lastAccess time.Time
+	createdAt  time.Time
+	renewedAt  time.Time
+	lastAccess time.Time
 
-    Client *WhatsAppClient
+	Client *WhatsAppClient
 }
 
 func NewSessionDisconnected(username string, secretKey []byte) (*Session, error) {
-    now := time.Now()
-    session := &Session{
-        Username: username,
-        sessionId: randomString(),
-        createdAt: now,
-        renewedAt: now,
-        lastAccess: now,
-    }
-    session.RenewToken(secretKey)
-    return session, nil
+	now := time.Now()
+	session := &Session{
+		Username:   username,
+		sessionId:  randomString(),
+		createdAt:  now,
+		renewedAt:  now,
+		lastAccess: now,
+	}
+	session.RenewToken(secretKey)
+	return session, nil
 }
 
 func NewSessionLogin(username string, passphrase string, secretKey []byte) (*Session, error) {
-    session, err := NewSessionDisconnected(username, secretKey)
-    if err != nil {
-        return nil, err
-    }
+	session, err := NewSessionDisconnected(username, secretKey)
+	if err != nil {
+		return nil, err
+	}
 
-    if err = session.Login(username, passphrase); err != nil {
-        return nil, err
-    }
-    return session, nil
+	if err = session.Login(username, passphrase); err != nil {
+		return nil, err
+	}
+	return session, nil
 }
 
 func NewSessionRegister(ctx context.Context, username string, passphrase string, secretKey []byte) (*Session, *RegistrationState, error) {
-    session, err := NewSessionDisconnected(username, secretKey)
-    if err != nil {
-        return nil, nil, err
-    }
+	session, err := NewSessionDisconnected(username, secretKey)
+	if err != nil {
+		return nil, nil, err
+	}
 
-    state, err := session.LoginOrRegister(ctx, username, passphrase)
-    if err != nil {
-        return nil, nil, err
-    }
-    return session, state, nil
+	state, err := session.LoginOrRegister(ctx, username, passphrase)
+	if err != nil {
+		return nil, nil, err
+	}
+	return session, state, nil
 }
 
 func (session *Session) Close() {
-    session.Client.Disconnect()
+	session.Client.Disconnect()
 }
 
 func (session *Session) ToProto() *pb.SessionToken {
-    return &pb.SessionToken{Token: session.TokenString()}
+	return &pb.SessionToken{Token: session.TokenString()}
 }
 
-
 func (session *Session) Login(username string, passphrase string) error {
-    client, err := NewWhatsAppClient(username, passphrase)
-    if err != nil {
-        return err
-    }
+	client, err := NewWhatsAppClient(username, passphrase)
+	if err != nil {
+		return err
+	}
 
-    if err := client.Login(5 * time.Second); err != nil {
-        return err
-    }
-    session.Client = client 
-    return nil
+	if err := client.Login(5 * time.Second); err != nil {
+		return err
+	}
+	session.Client = client
+	return nil
 }
 
 func (session *Session) LoginOrRegister(ctx context.Context, username string, passphrase string) (*RegistrationState, error) {
-    client, err := NewWhatsAppClient(username, passphrase)
-    if err != nil {
-        return nil, err
-    }
+	client, err := NewWhatsAppClient(username, passphrase)
+	if err != nil {
+		return nil, err
+	}
 
-    state := client.LoginOrRegister(ctx)
-    session.Client = client 
-    return state, nil
+	state := client.LoginOrRegister(ctx)
+	session.Client = client
+	return state, nil
 }
 
 func (session *Session) RenewToken(secretKey []byte) error {
-    token:= createJWTToken(session.Username, session.sessionId)
-    tokenString, err := token.SignedString(secretKey)
-    if err != nil {
-        return err
-    }
+	token := createJWTToken(session.Username, session.sessionId)
+	tokenString, err := token.SignedString(secretKey)
+	if err != nil {
+		return err
+	}
 
-    session.renewedAt = time.Now()
-    session.token = token
-    session.tokenString = tokenString
-    return nil
+	session.renewedAt = time.Now()
+	session.token = token
+	session.tokenString = tokenString
+	return nil
 }
 
 func (session *Session) IsExpired() bool {
-    exp, err := session.token.Claims.GetExpirationTime()
-    if err != nil {
-        return true
-    }
-    return exp.Before(time.Now())
+	exp, err := session.token.Claims.GetExpirationTime()
+	if err != nil {
+		return true
+	}
+	return exp.Before(time.Now())
 }
 
 func (session *Session) TokenString() string {
-    return session.tokenString
+	return session.tokenString
 }
-
