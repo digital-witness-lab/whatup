@@ -17,7 +17,7 @@ service WhatUpCoreAuth {
 service WhatUpCore {
     rpc GetConnectionStatus(ConnectionStatusOptions) returns (ConnectionStatus) {}
     rpc GetMessages(MessagesOptions) returns (stream WUMessage) {}
-    rpc DownloadMedia(MediaInfo) returns (Media) {}
+    rpc DownloadMedia(MediaMessage) returns (MediaContent) {}
 }
 
 message ConnectionStatusOptions {
@@ -86,10 +86,11 @@ message MessageInfo {
 message MessageContent {
     string title = 1;
     string text = 2;
+    string link = 3;
 
-    map<string, string> properties = 3;
-    bytes thumbnail = 4;
-    MediaInfo mediaInfo = 5;
+    map<string, string> properties = 4;
+    bytes thumbnail = 5;
+    MediaMessage mediaMessage = 6;
 }
 
 message MessageProperties {
@@ -97,20 +98,21 @@ message MessageProperties {
     bool isViewOnce = 2;
     bool isDocumentWithCaption = 3;
     bool isEdit = 4;
-    uint32 forwardedScore = 5;
+    bool isForwarded = 5;
+    uint32 forwardedScore = 6;
 }
 
-message MediaInfo {
-    enum MediaType {
-        NONE = 0;
-        IMAGE = 1;
-        VIDEO = 2;
+message MediaMessage {
+    oneof payload {
+        proto.ImageMessage imageMessage = 1;
+        proto.VideoMessage videoMessage = 2;
+        proto.AudioMessage audioMessage = 3;
+        proto.DocumentMessage documentMessage = 4;
+        proto.StickerMessage stickerMessage = 5;
+        proto.ReactionMessage reactionMessage = 6;
     }
-    map<string, bytes> locator = 1;
-    MediaType mediaType = 3;
-    string mimeType = 4;
 }
 
-message Media {
+message MediaContent {
     bytes Contents = 1;
 }
