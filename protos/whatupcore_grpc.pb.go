@@ -210,6 +210,7 @@ var WhatUpCoreAuth_ServiceDesc = grpc.ServiceDesc{
 type WhatUpCoreClient interface {
 	GetConnectionStatus(ctx context.Context, in *ConnectionStatusOptions, opts ...grpc.CallOption) (*ConnectionStatus, error)
 	GetMessages(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetMessagesClient, error)
+	GetGroupInfo(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupInfo, error)
 	DownloadMedia(ctx context.Context, in *MediaMessage, opts ...grpc.CallOption) (*MediaContent, error)
 }
 
@@ -262,6 +263,15 @@ func (x *whatUpCoreGetMessagesClient) Recv() (*WUMessage, error) {
 	return m, nil
 }
 
+func (c *whatUpCoreClient) GetGroupInfo(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupInfo, error) {
+	out := new(GroupInfo)
+	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/GetGroupInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *whatUpCoreClient) DownloadMedia(ctx context.Context, in *MediaMessage, opts ...grpc.CallOption) (*MediaContent, error) {
 	out := new(MediaContent)
 	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/DownloadMedia", in, out, opts...)
@@ -277,6 +287,7 @@ func (c *whatUpCoreClient) DownloadMedia(ctx context.Context, in *MediaMessage, 
 type WhatUpCoreServer interface {
 	GetConnectionStatus(context.Context, *ConnectionStatusOptions) (*ConnectionStatus, error)
 	GetMessages(*MessagesOptions, WhatUpCore_GetMessagesServer) error
+	GetGroupInfo(context.Context, *JID) (*GroupInfo, error)
 	DownloadMedia(context.Context, *MediaMessage) (*MediaContent, error)
 	mustEmbedUnimplementedWhatUpCoreServer()
 }
@@ -290,6 +301,9 @@ func (UnimplementedWhatUpCoreServer) GetConnectionStatus(context.Context, *Conne
 }
 func (UnimplementedWhatUpCoreServer) GetMessages(*MessagesOptions, WhatUpCore_GetMessagesServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetMessages not implemented")
+}
+func (UnimplementedWhatUpCoreServer) GetGroupInfo(context.Context, *JID) (*GroupInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroupInfo not implemented")
 }
 func (UnimplementedWhatUpCoreServer) DownloadMedia(context.Context, *MediaMessage) (*MediaContent, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DownloadMedia not implemented")
@@ -346,6 +360,24 @@ func (x *whatUpCoreGetMessagesServer) Send(m *WUMessage) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _WhatUpCore_GetGroupInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JID)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WhatUpCoreServer).GetGroupInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.WhatUpCore/GetGroupInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WhatUpCoreServer).GetGroupInfo(ctx, req.(*JID))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WhatUpCore_DownloadMedia_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MediaMessage)
 	if err := dec(in); err != nil {
@@ -374,6 +406,10 @@ var WhatUpCore_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetConnectionStatus",
 			Handler:    _WhatUpCore_GetConnectionStatus_Handler,
+		},
+		{
+			MethodName: "GetGroupInfo",
+			Handler:    _WhatUpCore_GetGroupInfo_Handler,
 		},
 		{
 			MethodName: "DownloadMedia",
