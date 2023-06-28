@@ -38,7 +38,13 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 	msgChan := session.Client.GetMessages(ctx)
 
 	for msg := range msgChan {
-		if err := server.Send(msg); err != nil {
+        if messageOptions.MarkMessagesRead {
+            msg.MarkRead()
+        }
+        msgProto, ok := msg.ToProto()
+        if !ok {
+            session.Client.Log.Errorf("Could not convert message to WUMessage proto: %v", msg)
+        } else if err := server.Send(msgProto); err != nil {
 			return nil
 		}
 	}

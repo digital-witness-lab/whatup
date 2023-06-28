@@ -16,8 +16,6 @@ import (
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
-
-	pb "github.com/digital-witness-lab/whatup/protos"
 )
 
 const (
@@ -206,8 +204,8 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 	}
 }
 
-func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *pb.WUMessage {
-	msgChan := make(chan *pb.WUMessage)
+func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
+	msgChan := make(chan *Message)
 	handlerId := wac.AddEventHandler(func(evt interface{}) {
 		switch wmMsg := evt.(type) {
 		case *events.Message:
@@ -215,9 +213,7 @@ func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *pb.WUMessage {
 			if err != nil {
 				return
 			}
-			if msg, ok := msg.ToProto(); ok {
-				msgChan <- msg
-			}
+            msgChan <- msg
 		}
 	})
 	go func() {

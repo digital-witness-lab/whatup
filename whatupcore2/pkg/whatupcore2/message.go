@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -39,6 +41,21 @@ func NewMessageFromWhatsMeow(client *WhatsAppClient, m *events.Message) (*Messag
 		log:     waLog.Stdout(fmt.Sprintf("Message: %s", msgId), "DEBUG", true),
 		Message: m,
 	}, nil
+}
+
+func (msg *Message) MarkRead() error {
+    now := time.Now()
+    msg.log.Debugf("Marking message as read")
+    var sender types.JID
+    if msg.Info.IsGroup {
+        sender = msg.Info.Sender
+    }
+    return msg.client.MarkRead(
+        []types.MessageID{msg.Info.ID},
+        now,
+        msg.Info.Chat,
+        sender,
+    )
 }
 
 func (msg *Message) GetExtendedMessage() interface{} {
