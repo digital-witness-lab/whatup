@@ -44,18 +44,18 @@ func NewMessageFromWhatsMeow(client *WhatsAppClient, m *events.Message) (*Messag
 }
 
 func (msg *Message) MarkRead() error {
-    now := time.Now()
-    msg.log.Debugf("Marking message as read")
-    var sender types.JID
-    if msg.Info.IsGroup {
-        sender = msg.Info.Sender
-    }
-    return msg.client.MarkRead(
-        []types.MessageID{msg.Info.ID},
-        now,
-        msg.Info.Chat,
-        sender,
-    )
+	now := time.Now()
+	msg.log.Debugf("Marking message as read")
+	var sender types.JID
+	if msg.Info.IsGroup {
+		sender = msg.Info.Sender
+	}
+	return msg.client.MarkRead(
+		[]types.MessageID{msg.Info.ID},
+		now,
+		msg.Info.Chat,
+		sender,
+	)
 }
 
 func (msg *Message) GetExtendedMessage() interface{} {

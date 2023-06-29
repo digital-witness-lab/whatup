@@ -213,7 +213,7 @@ func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 			if err != nil {
 				return
 			}
-            msgChan <- msg
+			msgChan <- msg
 		}
 	})
 	go func() {
