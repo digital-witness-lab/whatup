@@ -24,11 +24,17 @@ evans:
 test/fiber_bearer.txt: test/fiber.json
 	evans --host 127.0.0.1 --port 3447 --proto whatupcore.proto cli call --file test/fiber.json protos.WhatUpCoreAuth.Login | jq -r '.token' > test/fiber_bearer.txt
 
-client-ssl: evans
+client-login-history: test/fiber.json
+	evans --host 127.0.0.1 --port 3447 --proto whatupcore.proto cli call --file test/fiber.json protos.WhatUpCoreAuth.LoginWithHistory
+
+client-auth-ssl: evans
 	evans --tls --cert ../data/keys/cert.pem --certkey ../data/keys/key.pem --servername localhost ${EVANS_PARAMS} repl
 
-client: evans test/fiber_bearer.txt
+client-auth: evans test/fiber_bearer.txt
 	evans --header Authorization="bearer $(file < ./test/fiber_bearer.txt)" ${EVANS_PARAMS} repl --service WhatUpCore
+
+client:
+	evans ${EVANS_PARAMS} repl --service WhatUpCore
 
 clean:
 	rm -rf *.pb.go *_pb2.py ./test/*_bearer.txt

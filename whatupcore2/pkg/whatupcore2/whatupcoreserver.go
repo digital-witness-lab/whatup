@@ -2,6 +2,7 @@ package whatupcore2
 
 import (
 	"context"
+	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
@@ -42,6 +43,28 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		if messageOptions.MarkMessagesRead {
 			msg.MarkRead()
 		}
+		msgProto, ok := msg.ToProto()
+		if !ok {
+			session.Client.Log.Errorf("Could not convert message to WUMessage proto: %v", msg)
+		} else if err := server.Send(msgProto); err != nil {
+			return nil
+		}
+	}
+	session.Client.Log.Debugf("Ending GetMessages")
+	return nil
+}
+
+func (s *WhatUpCoreServer) GetPendingHistory(messageOptions *pb.MessagesOptions, server pb.WhatUpCore_GetPendingHistoryServer) error {
+	session, ok := server.Context().Value("session").(*Session)
+	if !ok {
+		return status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second * time.Duration(messageOptions.HistoryReadTimeout))
+	defer cancel()
+	msgChan := session.Client.GetHistoryMessages(ctx)
+
+	for msg := range msgChan {
 		msgProto, ok := msg.ToProto()
 		if !ok {
 			session.Client.Log.Errorf("Could not convert message to WUMessage proto: %v", msg)

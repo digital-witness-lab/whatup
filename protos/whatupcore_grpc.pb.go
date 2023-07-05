@@ -24,7 +24,6 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WhatUpCoreAuthClient interface {
 	Login(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (*SessionToken, error)
-	LoginWithHistory(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (WhatUpCoreAuth_LoginWithHistoryClient, error)
 	Register(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (WhatUpCoreAuth_RegisterClient, error)
 	RenewToken(ctx context.Context, in *SessionToken, opts ...grpc.CallOption) (*SessionToken, error)
 }
@@ -46,40 +45,8 @@ func (c *whatUpCoreAuthClient) Login(ctx context.Context, in *WUCredentials, opt
 	return out, nil
 }
 
-func (c *whatUpCoreAuthClient) LoginWithHistory(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (WhatUpCoreAuth_LoginWithHistoryClient, error) {
-	stream, err := c.cc.NewStream(ctx, &WhatUpCoreAuth_ServiceDesc.Streams[0], "/protos.WhatUpCoreAuth/LoginWithHistory", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &whatUpCoreAuthLoginWithHistoryClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type WhatUpCoreAuth_LoginWithHistoryClient interface {
-	Recv() (*LoginHistory, error)
-	grpc.ClientStream
-}
-
-type whatUpCoreAuthLoginWithHistoryClient struct {
-	grpc.ClientStream
-}
-
-func (x *whatUpCoreAuthLoginWithHistoryClient) Recv() (*LoginHistory, error) {
-	m := new(LoginHistory)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 func (c *whatUpCoreAuthClient) Register(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (WhatUpCoreAuth_RegisterClient, error) {
-	stream, err := c.cc.NewStream(ctx, &WhatUpCoreAuth_ServiceDesc.Streams[1], "/protos.WhatUpCoreAuth/Register", opts...)
+	stream, err := c.cc.NewStream(ctx, &WhatUpCoreAuth_ServiceDesc.Streams[0], "/protos.WhatUpCoreAuth/Register", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +91,6 @@ func (c *whatUpCoreAuthClient) RenewToken(ctx context.Context, in *SessionToken,
 // for forward compatibility
 type WhatUpCoreAuthServer interface {
 	Login(context.Context, *WUCredentials) (*SessionToken, error)
-	LoginWithHistory(*WUCredentials, WhatUpCoreAuth_LoginWithHistoryServer) error
 	Register(*WUCredentials, WhatUpCoreAuth_RegisterServer) error
 	RenewToken(context.Context, *SessionToken) (*SessionToken, error)
 	mustEmbedUnimplementedWhatUpCoreAuthServer()
@@ -136,9 +102,6 @@ type UnimplementedWhatUpCoreAuthServer struct {
 
 func (UnimplementedWhatUpCoreAuthServer) Login(context.Context, *WUCredentials) (*SessionToken, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
-}
-func (UnimplementedWhatUpCoreAuthServer) LoginWithHistory(*WUCredentials, WhatUpCoreAuth_LoginWithHistoryServer) error {
-	return status.Errorf(codes.Unimplemented, "method LoginWithHistory not implemented")
 }
 func (UnimplementedWhatUpCoreAuthServer) Register(*WUCredentials, WhatUpCoreAuth_RegisterServer) error {
 	return status.Errorf(codes.Unimplemented, "method Register not implemented")
@@ -175,27 +138,6 @@ func _WhatUpCoreAuth_Login_Handler(srv interface{}, ctx context.Context, dec fun
 		return srv.(WhatUpCoreAuthServer).Login(ctx, req.(*WUCredentials))
 	}
 	return interceptor(ctx, in, info, handler)
-}
-
-func _WhatUpCoreAuth_LoginWithHistory_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(WUCredentials)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(WhatUpCoreAuthServer).LoginWithHistory(m, &whatUpCoreAuthLoginWithHistoryServer{stream})
-}
-
-type WhatUpCoreAuth_LoginWithHistoryServer interface {
-	Send(*LoginHistory) error
-	grpc.ServerStream
-}
-
-type whatUpCoreAuthLoginWithHistoryServer struct {
-	grpc.ServerStream
-}
-
-func (x *whatUpCoreAuthLoginWithHistoryServer) Send(m *LoginHistory) error {
-	return x.ServerStream.SendMsg(m)
 }
 
 func _WhatUpCoreAuth_Register_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -255,11 +197,6 @@ var WhatUpCoreAuth_ServiceDesc = grpc.ServiceDesc{
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "LoginWithHistory",
-			Handler:       _WhatUpCoreAuth_LoginWithHistory_Handler,
-			ServerStreams: true,
-		},
-		{
 			StreamName:    "Register",
 			Handler:       _WhatUpCoreAuth_Register_Handler,
 			ServerStreams: true,
@@ -273,11 +210,13 @@ var WhatUpCoreAuth_ServiceDesc = grpc.ServiceDesc{
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WhatUpCoreClient interface {
 	GetConnectionStatus(ctx context.Context, in *ConnectionStatusOptions, opts ...grpc.CallOption) (*ConnectionStatus, error)
-	GetMessages(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetMessagesClient, error)
 	GetGroupInfo(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupInfo, error)
 	GetGroupInfoInvite(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error)
-	DownloadMedia(ctx context.Context, in *proto.Message, opts ...grpc.CallOption) (*MediaContent, error)
 	JoinGroup(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error)
+	GetMessages(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetMessagesClient, error)
+	GetPendingHistory(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetPendingHistoryClient, error)
+	// DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
+	DownloadMedia(ctx context.Context, in *proto.Message, opts ...grpc.CallOption) (*MediaContent, error)
 }
 
 type whatUpCoreClient struct {
@@ -291,6 +230,33 @@ func NewWhatUpCoreClient(cc grpc.ClientConnInterface) WhatUpCoreClient {
 func (c *whatUpCoreClient) GetConnectionStatus(ctx context.Context, in *ConnectionStatusOptions, opts ...grpc.CallOption) (*ConnectionStatus, error) {
 	out := new(ConnectionStatus)
 	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/GetConnectionStatus", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *whatUpCoreClient) GetGroupInfo(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupInfo, error) {
+	out := new(GroupInfo)
+	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/GetGroupInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *whatUpCoreClient) GetGroupInfoInvite(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error) {
+	out := new(GroupInfo)
+	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/GetGroupInfoInvite", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *whatUpCoreClient) JoinGroup(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error) {
+	out := new(GroupInfo)
+	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/JoinGroup", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -329,22 +295,36 @@ func (x *whatUpCoreGetMessagesClient) Recv() (*WUMessage, error) {
 	return m, nil
 }
 
-func (c *whatUpCoreClient) GetGroupInfo(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupInfo, error) {
-	out := new(GroupInfo)
-	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/GetGroupInfo", in, out, opts...)
+func (c *whatUpCoreClient) GetPendingHistory(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetPendingHistoryClient, error) {
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[1], "/protos.WhatUpCore/GetPendingHistory", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &whatUpCoreGetPendingHistoryClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
-func (c *whatUpCoreClient) GetGroupInfoInvite(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error) {
-	out := new(GroupInfo)
-	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/GetGroupInfoInvite", in, out, opts...)
-	if err != nil {
+type WhatUpCore_GetPendingHistoryClient interface {
+	Recv() (*WUMessage, error)
+	grpc.ClientStream
+}
+
+type whatUpCoreGetPendingHistoryClient struct {
+	grpc.ClientStream
+}
+
+func (x *whatUpCoreGetPendingHistoryClient) Recv() (*WUMessage, error) {
+	m := new(WUMessage)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	return out, nil
+	return m, nil
 }
 
 func (c *whatUpCoreClient) DownloadMedia(ctx context.Context, in *proto.Message, opts ...grpc.CallOption) (*MediaContent, error) {
@@ -356,25 +336,18 @@ func (c *whatUpCoreClient) DownloadMedia(ctx context.Context, in *proto.Message,
 	return out, nil
 }
 
-func (c *whatUpCoreClient) JoinGroup(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error) {
-	out := new(GroupInfo)
-	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/JoinGroup", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // WhatUpCoreServer is the server API for WhatUpCore service.
 // All implementations must embed UnimplementedWhatUpCoreServer
 // for forward compatibility
 type WhatUpCoreServer interface {
 	GetConnectionStatus(context.Context, *ConnectionStatusOptions) (*ConnectionStatus, error)
-	GetMessages(*MessagesOptions, WhatUpCore_GetMessagesServer) error
 	GetGroupInfo(context.Context, *JID) (*GroupInfo, error)
 	GetGroupInfoInvite(context.Context, *InviteCode) (*GroupInfo, error)
-	DownloadMedia(context.Context, *proto.Message) (*MediaContent, error)
 	JoinGroup(context.Context, *InviteCode) (*GroupInfo, error)
+	GetMessages(*MessagesOptions, WhatUpCore_GetMessagesServer) error
+	GetPendingHistory(*MessagesOptions, WhatUpCore_GetPendingHistoryServer) error
+	// DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
+	DownloadMedia(context.Context, *proto.Message) (*MediaContent, error)
 	mustEmbedUnimplementedWhatUpCoreServer()
 }
 
@@ -385,20 +358,23 @@ type UnimplementedWhatUpCoreServer struct {
 func (UnimplementedWhatUpCoreServer) GetConnectionStatus(context.Context, *ConnectionStatusOptions) (*ConnectionStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetConnectionStatus not implemented")
 }
-func (UnimplementedWhatUpCoreServer) GetMessages(*MessagesOptions, WhatUpCore_GetMessagesServer) error {
-	return status.Errorf(codes.Unimplemented, "method GetMessages not implemented")
-}
 func (UnimplementedWhatUpCoreServer) GetGroupInfo(context.Context, *JID) (*GroupInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroupInfo not implemented")
 }
 func (UnimplementedWhatUpCoreServer) GetGroupInfoInvite(context.Context, *InviteCode) (*GroupInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroupInfoInvite not implemented")
 }
-func (UnimplementedWhatUpCoreServer) DownloadMedia(context.Context, *proto.Message) (*MediaContent, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DownloadMedia not implemented")
-}
 func (UnimplementedWhatUpCoreServer) JoinGroup(context.Context, *InviteCode) (*GroupInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method JoinGroup not implemented")
+}
+func (UnimplementedWhatUpCoreServer) GetMessages(*MessagesOptions, WhatUpCore_GetMessagesServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetMessages not implemented")
+}
+func (UnimplementedWhatUpCoreServer) GetPendingHistory(*MessagesOptions, WhatUpCore_GetPendingHistoryServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetPendingHistory not implemented")
+}
+func (UnimplementedWhatUpCoreServer) DownloadMedia(context.Context, *proto.Message) (*MediaContent, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DownloadMedia not implemented")
 }
 func (UnimplementedWhatUpCoreServer) mustEmbedUnimplementedWhatUpCoreServer() {}
 
@@ -429,27 +405,6 @@ func _WhatUpCore_GetConnectionStatus_Handler(srv interface{}, ctx context.Contex
 		return srv.(WhatUpCoreServer).GetConnectionStatus(ctx, req.(*ConnectionStatusOptions))
 	}
 	return interceptor(ctx, in, info, handler)
-}
-
-func _WhatUpCore_GetMessages_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(MessagesOptions)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(WhatUpCoreServer).GetMessages(m, &whatUpCoreGetMessagesServer{stream})
-}
-
-type WhatUpCore_GetMessagesServer interface {
-	Send(*WUMessage) error
-	grpc.ServerStream
-}
-
-type whatUpCoreGetMessagesServer struct {
-	grpc.ServerStream
-}
-
-func (x *whatUpCoreGetMessagesServer) Send(m *WUMessage) error {
-	return x.ServerStream.SendMsg(m)
 }
 
 func _WhatUpCore_GetGroupInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -488,24 +443,6 @@ func _WhatUpCore_GetGroupInfoInvite_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WhatUpCore_DownloadMedia_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(proto.Message)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WhatUpCoreServer).DownloadMedia(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/protos.WhatUpCore/DownloadMedia",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WhatUpCoreServer).DownloadMedia(ctx, req.(*proto.Message))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _WhatUpCore_JoinGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(InviteCode)
 	if err := dec(in); err != nil {
@@ -520,6 +457,66 @@ func _WhatUpCore_JoinGroup_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WhatUpCoreServer).JoinGroup(ctx, req.(*InviteCode))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WhatUpCore_GetMessages_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(MessagesOptions)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(WhatUpCoreServer).GetMessages(m, &whatUpCoreGetMessagesServer{stream})
+}
+
+type WhatUpCore_GetMessagesServer interface {
+	Send(*WUMessage) error
+	grpc.ServerStream
+}
+
+type whatUpCoreGetMessagesServer struct {
+	grpc.ServerStream
+}
+
+func (x *whatUpCoreGetMessagesServer) Send(m *WUMessage) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _WhatUpCore_GetPendingHistory_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(MessagesOptions)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(WhatUpCoreServer).GetPendingHistory(m, &whatUpCoreGetPendingHistoryServer{stream})
+}
+
+type WhatUpCore_GetPendingHistoryServer interface {
+	Send(*WUMessage) error
+	grpc.ServerStream
+}
+
+type whatUpCoreGetPendingHistoryServer struct {
+	grpc.ServerStream
+}
+
+func (x *whatUpCoreGetPendingHistoryServer) Send(m *WUMessage) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _WhatUpCore_DownloadMedia_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(proto.Message)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WhatUpCoreServer).DownloadMedia(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.WhatUpCore/DownloadMedia",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WhatUpCoreServer).DownloadMedia(ctx, req.(*proto.Message))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -544,18 +541,23 @@ var WhatUpCore_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WhatUpCore_GetGroupInfoInvite_Handler,
 		},
 		{
-			MethodName: "DownloadMedia",
-			Handler:    _WhatUpCore_DownloadMedia_Handler,
-		},
-		{
 			MethodName: "JoinGroup",
 			Handler:    _WhatUpCore_JoinGroup_Handler,
+		},
+		{
+			MethodName: "DownloadMedia",
+			Handler:    _WhatUpCore_DownloadMedia_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "GetMessages",
 			Handler:       _WhatUpCore_GetMessages_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "GetPendingHistory",
+			Handler:       _WhatUpCore_GetPendingHistory_Handler,
 			ServerStreams: true,
 		},
 	},

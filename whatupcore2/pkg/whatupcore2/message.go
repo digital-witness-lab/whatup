@@ -65,20 +65,23 @@ func (msg *Message) GetExtendedMessage() interface{} {
 		return nil
 	}
 	m := msg.MessageEvent.Message
+    if m == nil {
+        return nil
+    }
 	switch {
-	case m.ImageMessage != nil:
+	case m.GetImageMessage() != nil:
 		return m.GetImageMessage()
-	case m.VideoMessage != nil:
+	case m.GetVideoMessage() != nil:
 		return m.GetVideoMessage()
-	case m.AudioMessage != nil:
+	case m.GetAudioMessage() != nil:
 		return m.GetAudioMessage()
-	case m.DocumentMessage != nil:
+	case m.GetDocumentMessage() != nil:
 		return m.GetDocumentMessage()
-	case m.StickerMessage != nil:
+	case m.GetStickerMessage() != nil:
 		return m.GetStickerMessage()
-	case m.ExtendedTextMessage != nil:
+	case m.GetExtendedTextMessage() != nil:
 		return m.GetExtendedTextMessage()
-	case m.ReactionMessage != nil:
+	case m.GetAudioMessage() != nil:
 		return m.GetReactionMessage()
 	default:
 		return nil
@@ -171,7 +174,11 @@ func (msg *Message) GetThumbnail() ([]byte, error) {
 }
 
 func (msg *Message) getThumbnail(extMessage interface{}) ([]byte, error) {
-	thumbnail, err := msg.client.DownloadThumbnail(extMessage.(whatsmeow.DownloadableThumbnail))
+    thumbnailMsg, ok := extMessage.(whatsmeow.DownloadableThumbnail)
+    if !ok {
+        return nil, ErrNoThumnails
+    }
+	thumbnail, err := msg.client.DownloadThumbnail(thumbnailMsg)
 	if err == nil {
 		return thumbnail, err
 	}
