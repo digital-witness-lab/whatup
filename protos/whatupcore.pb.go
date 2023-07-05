@@ -22,6 +22,134 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type LoginHistory struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Types that are assignable to Payload:
+	//
+	//	*LoginHistory_Token
+	//	*LoginHistory_HistoryMsg
+	Payload isLoginHistory_Payload `protobuf_oneof:"payload"`
+}
+
+func (x *LoginHistory) Reset() {
+	*x = LoginHistory{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_whatupcore_proto_msgTypes[0]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *LoginHistory) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LoginHistory) ProtoMessage() {}
+
+func (x *LoginHistory) ProtoReflect() protoreflect.Message {
+	mi := &file_whatupcore_proto_msgTypes[0]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LoginHistory.ProtoReflect.Descriptor instead.
+func (*LoginHistory) Descriptor() ([]byte, []int) {
+	return file_whatupcore_proto_rawDescGZIP(), []int{0}
+}
+
+func (m *LoginHistory) GetPayload() isLoginHistory_Payload {
+	if m != nil {
+		return m.Payload
+	}
+	return nil
+}
+
+func (x *LoginHistory) GetToken() *SessionToken {
+	if x, ok := x.GetPayload().(*LoginHistory_Token); ok {
+		return x.Token
+	}
+	return nil
+}
+
+func (x *LoginHistory) GetHistoryMsg() *WUMessage {
+	if x, ok := x.GetPayload().(*LoginHistory_HistoryMsg); ok {
+		return x.HistoryMsg
+	}
+	return nil
+}
+
+type isLoginHistory_Payload interface {
+	isLoginHistory_Payload()
+}
+
+type LoginHistory_Token struct {
+	Token *SessionToken `protobuf:"bytes,1,opt,name=token,proto3,oneof"`
+}
+
+type LoginHistory_HistoryMsg struct {
+	HistoryMsg *WUMessage `protobuf:"bytes,2,opt,name=historyMsg,proto3,oneof"`
+}
+
+func (*LoginHistory_Token) isLoginHistory_Payload() {}
+
+func (*LoginHistory_HistoryMsg) isLoginHistory_Payload() {}
+
+type InviteCode struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Link string `protobuf:"bytes,1,opt,name=link,proto3" json:"link,omitempty"`
+}
+
+func (x *InviteCode) Reset() {
+	*x = InviteCode{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_whatupcore_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *InviteCode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InviteCode) ProtoMessage() {}
+
+func (x *InviteCode) ProtoReflect() protoreflect.Message {
+	mi := &file_whatupcore_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InviteCode.ProtoReflect.Descriptor instead.
+func (*InviteCode) Descriptor() ([]byte, []int) {
+	return file_whatupcore_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *InviteCode) GetLink() string {
+	if x != nil {
+		return x.Link
+	}
+	return ""
+}
+
 type GroupName struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -35,7 +163,7 @@ type GroupName struct {
 func (x *GroupName) Reset() {
 	*x = GroupName{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[0]
+		mi := &file_whatupcore_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -48,7 +176,7 @@ func (x *GroupName) String() string {
 func (*GroupName) ProtoMessage() {}
 
 func (x *GroupName) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[0]
+	mi := &file_whatupcore_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -61,7 +189,7 @@ func (x *GroupName) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupName.ProtoReflect.Descriptor instead.
 func (*GroupName) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{0}
+	return file_whatupcore_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GroupName) GetName() string {
@@ -100,7 +228,7 @@ type GroupTopic struct {
 func (x *GroupTopic) Reset() {
 	*x = GroupTopic{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[1]
+		mi := &file_whatupcore_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -113,7 +241,7 @@ func (x *GroupTopic) String() string {
 func (*GroupTopic) ProtoMessage() {}
 
 func (x *GroupTopic) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[1]
+	mi := &file_whatupcore_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -126,7 +254,7 @@ func (x *GroupTopic) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupTopic.ProtoReflect.Descriptor instead.
 func (*GroupTopic) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{1}
+	return file_whatupcore_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GroupTopic) GetTopic() string {
@@ -178,7 +306,7 @@ type GroupParticipant struct {
 func (x *GroupParticipant) Reset() {
 	*x = GroupParticipant{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[2]
+		mi := &file_whatupcore_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -191,7 +319,7 @@ func (x *GroupParticipant) String() string {
 func (*GroupParticipant) ProtoMessage() {}
 
 func (x *GroupParticipant) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[2]
+	mi := &file_whatupcore_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -204,7 +332,7 @@ func (x *GroupParticipant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupParticipant.ProtoReflect.Descriptor instead.
 func (*GroupParticipant) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{2}
+	return file_whatupcore_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GroupParticipant) GetJID() *JID {
@@ -257,7 +385,7 @@ type GroupInfo struct {
 func (x *GroupInfo) Reset() {
 	*x = GroupInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[3]
+		mi := &file_whatupcore_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -270,7 +398,7 @@ func (x *GroupInfo) String() string {
 func (*GroupInfo) ProtoMessage() {}
 
 func (x *GroupInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[3]
+	mi := &file_whatupcore_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -283,7 +411,7 @@ func (x *GroupInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupInfo.ProtoReflect.Descriptor instead.
 func (*GroupInfo) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{3}
+	return file_whatupcore_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GroupInfo) GetCreatedAt() *timestamp.Timestamp {
@@ -372,7 +500,7 @@ type ConnectionStatusOptions struct {
 func (x *ConnectionStatusOptions) Reset() {
 	*x = ConnectionStatusOptions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[4]
+		mi := &file_whatupcore_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -385,7 +513,7 @@ func (x *ConnectionStatusOptions) String() string {
 func (*ConnectionStatusOptions) ProtoMessage() {}
 
 func (x *ConnectionStatusOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[4]
+	mi := &file_whatupcore_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -398,7 +526,7 @@ func (x *ConnectionStatusOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectionStatusOptions.ProtoReflect.Descriptor instead.
 func (*ConnectionStatusOptions) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{4}
+	return file_whatupcore_proto_rawDescGZIP(), []int{6}
 }
 
 type MessagesOptions struct {
@@ -406,13 +534,14 @@ type MessagesOptions struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Whether to mark messages as read when they are recieved
 	MarkMessagesRead bool `protobuf:"varint,1,opt,name=MarkMessagesRead,proto3" json:"MarkMessagesRead,omitempty"`
 }
 
 func (x *MessagesOptions) Reset() {
 	*x = MessagesOptions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[5]
+		mi := &file_whatupcore_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -425,7 +554,7 @@ func (x *MessagesOptions) String() string {
 func (*MessagesOptions) ProtoMessage() {}
 
 func (x *MessagesOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[5]
+	mi := &file_whatupcore_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -438,7 +567,7 @@ func (x *MessagesOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MessagesOptions.ProtoReflect.Descriptor instead.
 func (*MessagesOptions) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{5}
+	return file_whatupcore_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *MessagesOptions) GetMarkMessagesRead() bool {
@@ -459,7 +588,7 @@ type SessionToken struct {
 func (x *SessionToken) Reset() {
 	*x = SessionToken{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[6]
+		mi := &file_whatupcore_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -472,7 +601,7 @@ func (x *SessionToken) String() string {
 func (*SessionToken) ProtoMessage() {}
 
 func (x *SessionToken) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[6]
+	mi := &file_whatupcore_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -485,7 +614,7 @@ func (x *SessionToken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionToken.ProtoReflect.Descriptor instead.
 func (*SessionToken) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{6}
+	return file_whatupcore_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SessionToken) GetToken() string {
@@ -508,7 +637,7 @@ type RegisterMessages struct {
 func (x *RegisterMessages) Reset() {
 	*x = RegisterMessages{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[7]
+		mi := &file_whatupcore_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -521,7 +650,7 @@ func (x *RegisterMessages) String() string {
 func (*RegisterMessages) ProtoMessage() {}
 
 func (x *RegisterMessages) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[7]
+	mi := &file_whatupcore_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -534,7 +663,7 @@ func (x *RegisterMessages) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterMessages.ProtoReflect.Descriptor instead.
 func (*RegisterMessages) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{7}
+	return file_whatupcore_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *RegisterMessages) GetQrcode() string {
@@ -570,7 +699,7 @@ type WUCredentials struct {
 func (x *WUCredentials) Reset() {
 	*x = WUCredentials{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[8]
+		mi := &file_whatupcore_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -583,7 +712,7 @@ func (x *WUCredentials) String() string {
 func (*WUCredentials) ProtoMessage() {}
 
 func (x *WUCredentials) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[8]
+	mi := &file_whatupcore_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -596,7 +725,7 @@ func (x *WUCredentials) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WUCredentials.ProtoReflect.Descriptor instead.
 func (*WUCredentials) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{8}
+	return file_whatupcore_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *WUCredentials) GetUsername() string {
@@ -628,7 +757,7 @@ type JID struct {
 func (x *JID) Reset() {
 	*x = JID{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[9]
+		mi := &file_whatupcore_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -641,7 +770,7 @@ func (x *JID) String() string {
 func (*JID) ProtoMessage() {}
 
 func (x *JID) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[9]
+	mi := &file_whatupcore_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -654,7 +783,7 @@ func (x *JID) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JID.ProtoReflect.Descriptor instead.
 func (*JID) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{9}
+	return file_whatupcore_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *JID) GetUser() string {
@@ -705,7 +834,7 @@ type ConnectionStatus struct {
 func (x *ConnectionStatus) Reset() {
 	*x = ConnectionStatus{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[10]
+		mi := &file_whatupcore_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -718,7 +847,7 @@ func (x *ConnectionStatus) String() string {
 func (*ConnectionStatus) ProtoMessage() {}
 
 func (x *ConnectionStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[10]
+	mi := &file_whatupcore_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -731,7 +860,7 @@ func (x *ConnectionStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectionStatus.ProtoReflect.Descriptor instead.
 func (*ConnectionStatus) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{10}
+	return file_whatupcore_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ConnectionStatus) GetIsConnected() bool {
@@ -769,7 +898,7 @@ type WUMessage struct {
 func (x *WUMessage) Reset() {
 	*x = WUMessage{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[11]
+		mi := &file_whatupcore_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -782,7 +911,7 @@ func (x *WUMessage) String() string {
 func (*WUMessage) ProtoMessage() {}
 
 func (x *WUMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[11]
+	mi := &file_whatupcore_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -795,7 +924,7 @@ func (x *WUMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WUMessage.ProtoReflect.Descriptor instead.
 func (*WUMessage) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{11}
+	return file_whatupcore_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *WUMessage) GetInfo() *MessageInfo {
@@ -841,7 +970,7 @@ type MessageSource struct {
 func (x *MessageSource) Reset() {
 	*x = MessageSource{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[12]
+		mi := &file_whatupcore_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -854,7 +983,7 @@ func (x *MessageSource) String() string {
 func (*MessageSource) ProtoMessage() {}
 
 func (x *MessageSource) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[12]
+	mi := &file_whatupcore_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -867,7 +996,7 @@ func (x *MessageSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MessageSource.ProtoReflect.Descriptor instead.
 func (*MessageSource) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{12}
+	return file_whatupcore_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *MessageSource) GetChat() *JID {
@@ -922,7 +1051,7 @@ type MessageInfo struct {
 func (x *MessageInfo) Reset() {
 	*x = MessageInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[13]
+		mi := &file_whatupcore_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -935,7 +1064,7 @@ func (x *MessageInfo) String() string {
 func (*MessageInfo) ProtoMessage() {}
 
 func (x *MessageInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[13]
+	mi := &file_whatupcore_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -948,7 +1077,7 @@ func (x *MessageInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MessageInfo.ProtoReflect.Descriptor instead.
 func (*MessageInfo) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{13}
+	return file_whatupcore_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *MessageInfo) GetSource() *MessageSource {
@@ -1016,7 +1145,7 @@ type MessageContent struct {
 func (x *MessageContent) Reset() {
 	*x = MessageContent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[14]
+		mi := &file_whatupcore_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1029,7 +1158,7 @@ func (x *MessageContent) String() string {
 func (*MessageContent) ProtoMessage() {}
 
 func (x *MessageContent) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[14]
+	mi := &file_whatupcore_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1042,7 +1171,7 @@ func (x *MessageContent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MessageContent.ProtoReflect.Descriptor instead.
 func (*MessageContent) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{14}
+	return file_whatupcore_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *MessageContent) GetTitle() string {
@@ -1098,12 +1227,13 @@ type MessageProperties struct {
 	IsEdit                bool   `protobuf:"varint,4,opt,name=isEdit,proto3" json:"isEdit,omitempty"`
 	IsForwarded           bool   `protobuf:"varint,5,opt,name=isForwarded,proto3" json:"isForwarded,omitempty"`
 	ForwardedScore        uint32 `protobuf:"varint,6,opt,name=forwardedScore,proto3" json:"forwardedScore,omitempty"`
+	IsInvite              bool   `protobuf:"varint,7,opt,name=isInvite,proto3" json:"isInvite,omitempty"`
 }
 
 func (x *MessageProperties) Reset() {
 	*x = MessageProperties{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[15]
+		mi := &file_whatupcore_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1116,7 +1246,7 @@ func (x *MessageProperties) String() string {
 func (*MessageProperties) ProtoMessage() {}
 
 func (x *MessageProperties) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[15]
+	mi := &file_whatupcore_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1129,7 +1259,7 @@ func (x *MessageProperties) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MessageProperties.ProtoReflect.Descriptor instead.
 func (*MessageProperties) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{15}
+	return file_whatupcore_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *MessageProperties) GetIsEphemeral() bool {
@@ -1174,6 +1304,13 @@ func (x *MessageProperties) GetForwardedScore() uint32 {
 	return 0
 }
 
+func (x *MessageProperties) GetIsInvite() bool {
+	if x != nil {
+		return x.IsInvite
+	}
+	return false
+}
+
 type MediaMessage struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1193,7 +1330,7 @@ type MediaMessage struct {
 func (x *MediaMessage) Reset() {
 	*x = MediaMessage{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[16]
+		mi := &file_whatupcore_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1206,7 +1343,7 @@ func (x *MediaMessage) String() string {
 func (*MediaMessage) ProtoMessage() {}
 
 func (x *MediaMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[16]
+	mi := &file_whatupcore_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1219,7 +1356,7 @@ func (x *MediaMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MediaMessage.ProtoReflect.Descriptor instead.
 func (*MediaMessage) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{16}
+	return file_whatupcore_proto_rawDescGZIP(), []int{18}
 }
 
 func (m *MediaMessage) GetPayload() isMediaMessage_Payload {
@@ -1316,13 +1453,13 @@ type MediaContent struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Contents []byte `protobuf:"bytes,1,opt,name=Contents,proto3" json:"Contents,omitempty"`
+	Body []byte `protobuf:"bytes,1,opt,name=Body,proto3" json:"Body,omitempty"`
 }
 
 func (x *MediaContent) Reset() {
 	*x = MediaContent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_whatupcore_proto_msgTypes[17]
+		mi := &file_whatupcore_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1335,7 +1472,7 @@ func (x *MediaContent) String() string {
 func (*MediaContent) ProtoMessage() {}
 
 func (x *MediaContent) ProtoReflect() protoreflect.Message {
-	mi := &file_whatupcore_proto_msgTypes[17]
+	mi := &file_whatupcore_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1348,12 +1485,12 @@ func (x *MediaContent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MediaContent.ProtoReflect.Descriptor instead.
 func (*MediaContent) Descriptor() ([]byte, []int) {
-	return file_whatupcore_proto_rawDescGZIP(), []int{17}
+	return file_whatupcore_proto_rawDescGZIP(), []int{19}
 }
 
-func (x *MediaContent) GetContents() []byte {
+func (x *MediaContent) GetBody() []byte {
 	if x != nil {
-		return x.Contents
+		return x.Body
 	}
 	return nil
 }
@@ -1365,7 +1502,17 @@ var file_whatupcore_proto_rawDesc = []byte{
 	0x74, 0x6f, 0x12, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x1a, 0x1f, 0x67, 0x6f, 0x6f, 0x67,
 	0x6c, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x74, 0x69, 0x6d, 0x65,
 	0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x11, 0x77, 0x68, 0x61,
-	0x74, 0x73, 0x61, 0x70, 0x70, 0x77, 0x65, 0x62, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x84,
+	0x74, 0x73, 0x61, 0x70, 0x70, 0x77, 0x65, 0x62, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x7c,
+	0x0a, 0x0c, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x72, 0x79, 0x12, 0x2c,
+	0x0a, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x54, 0x6f,
+	0x6b, 0x65, 0x6e, 0x48, 0x00, 0x52, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x12, 0x33, 0x0a, 0x0a,
+	0x68, 0x69, 0x73, 0x74, 0x6f, 0x72, 0x79, 0x4d, 0x73, 0x67, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x11, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x57, 0x55, 0x4d, 0x65, 0x73, 0x73,
+	0x61, 0x67, 0x65, 0x48, 0x00, 0x52, 0x0a, 0x68, 0x69, 0x73, 0x74, 0x6f, 0x72, 0x79, 0x4d, 0x73,
+	0x67, 0x42, 0x09, 0x0a, 0x07, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x22, 0x20, 0x0a, 0x0a,
+	0x49, 0x6e, 0x76, 0x69, 0x74, 0x65, 0x43, 0x6f, 0x64, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x6c, 0x69,
+	0x6e, 0x6b, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6c, 0x69, 0x6e, 0x6b, 0x22, 0x84,
 	0x01, 0x0a, 0x09, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x12, 0x0a, 0x04,
 	0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65,
 	0x12, 0x38, 0x0a, 0x09, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x18, 0x02, 0x20,
@@ -1524,7 +1671,7 @@ var file_whatupcore_proto_rawDesc = []byte{
 	0x65, 0x72, 0x74, 0x69, 0x65, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b,
 	0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a,
 	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61,
-	0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0xed, 0x01, 0x0a, 0x11, 0x4d, 0x65, 0x73, 0x73,
+	0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x89, 0x02, 0x0a, 0x11, 0x4d, 0x65, 0x73, 0x73,
 	0x61, 0x67, 0x65, 0x50, 0x72, 0x6f, 0x70, 0x65, 0x72, 0x74, 0x69, 0x65, 0x73, 0x12, 0x20, 0x0a,
 	0x0b, 0x69, 0x73, 0x45, 0x70, 0x68, 0x65, 0x6d, 0x65, 0x72, 0x61, 0x6c, 0x18, 0x01, 0x20, 0x01,
 	0x28, 0x08, 0x52, 0x0b, 0x69, 0x73, 0x45, 0x70, 0x68, 0x65, 0x6d, 0x65, 0x72, 0x61, 0x6c, 0x12,
@@ -1539,68 +1686,81 @@ var file_whatupcore_proto_rawDesc = []byte{
 	0x28, 0x08, 0x52, 0x0b, 0x69, 0x73, 0x46, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x65, 0x64, 0x12,
 	0x26, 0x0a, 0x0e, 0x66, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x65, 0x64, 0x53, 0x63, 0x6f, 0x72,
 	0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x0e, 0x66, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64,
-	0x65, 0x64, 0x53, 0x63, 0x6f, 0x72, 0x65, 0x22, 0x93, 0x03, 0x0a, 0x0c, 0x4d, 0x65, 0x64, 0x69,
-	0x61, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x39, 0x0a, 0x0c, 0x69, 0x6d, 0x61, 0x67,
-	0x65, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x13,
-	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x49, 0x6d, 0x61, 0x67, 0x65, 0x4d, 0x65, 0x73, 0x73,
-	0x61, 0x67, 0x65, 0x48, 0x00, 0x52, 0x0c, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x4d, 0x65, 0x73, 0x73,
-	0x61, 0x67, 0x65, 0x12, 0x39, 0x0a, 0x0c, 0x76, 0x69, 0x64, 0x65, 0x6f, 0x4d, 0x65, 0x73, 0x73,
-	0x61, 0x67, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x2e, 0x56, 0x69, 0x64, 0x65, 0x6f, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x48, 0x00,
-	0x52, 0x0c, 0x76, 0x69, 0x64, 0x65, 0x6f, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x39,
-	0x0a, 0x0c, 0x61, 0x75, 0x64, 0x69, 0x6f, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x41, 0x75, 0x64,
-	0x69, 0x6f, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x48, 0x00, 0x52, 0x0c, 0x61, 0x75, 0x64,
-	0x69, 0x6f, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x42, 0x0a, 0x0f, 0x64, 0x6f, 0x63,
-	0x75, 0x6d, 0x65, 0x6e, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x04, 0x20, 0x01,
-	0x28, 0x0b, 0x32, 0x16, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x6f, 0x63, 0x75, 0x6d,
-	0x65, 0x6e, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x48, 0x00, 0x52, 0x0f, 0x64, 0x6f,
-	0x63, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x3f, 0x0a,
-	0x0e, 0x73, 0x74, 0x69, 0x63, 0x6b, 0x65, 0x72, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18,
-	0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x74,
-	0x69, 0x63, 0x6b, 0x65, 0x72, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x48, 0x00, 0x52, 0x0e,
-	0x73, 0x74, 0x69, 0x63, 0x6b, 0x65, 0x72, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x42,
-	0x0a, 0x0f, 0x72, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67,
-	0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
-	0x52, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x48,
-	0x00, 0x52, 0x0f, 0x72, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4d, 0x65, 0x73, 0x73, 0x61,
-	0x67, 0x65, 0x42, 0x09, 0x0a, 0x07, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x22, 0x2a, 0x0a,
-	0x0c, 0x4d, 0x65, 0x64, 0x69, 0x61, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12, 0x1a, 0x0a,
-	0x08, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52,
-	0x08, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x73, 0x32, 0xc5, 0x01, 0x0a, 0x0e, 0x57, 0x68,
-	0x61, 0x74, 0x55, 0x70, 0x43, 0x6f, 0x72, 0x65, 0x41, 0x75, 0x74, 0x68, 0x12, 0x36, 0x0a, 0x05,
-	0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x12, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x57,
-	0x55, 0x43, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x73, 0x1a, 0x14, 0x2e, 0x70,
+	0x65, 0x64, 0x53, 0x63, 0x6f, 0x72, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x69, 0x73, 0x49, 0x6e, 0x76,
+	0x69, 0x74, 0x65, 0x18, 0x07, 0x20, 0x01, 0x28, 0x08, 0x52, 0x08, 0x69, 0x73, 0x49, 0x6e, 0x76,
+	0x69, 0x74, 0x65, 0x22, 0x93, 0x03, 0x0a, 0x0c, 0x4d, 0x65, 0x64, 0x69, 0x61, 0x4d, 0x65, 0x73,
+	0x73, 0x61, 0x67, 0x65, 0x12, 0x39, 0x0a, 0x0c, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x4d, 0x65, 0x73,
+	0x73, 0x61, 0x67, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2e, 0x49, 0x6d, 0x61, 0x67, 0x65, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x48,
+	0x00, 0x52, 0x0c, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12,
+	0x39, 0x0a, 0x0c, 0x76, 0x69, 0x64, 0x65, 0x6f, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x56, 0x69,
+	0x64, 0x65, 0x6f, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x48, 0x00, 0x52, 0x0c, 0x76, 0x69,
+	0x64, 0x65, 0x6f, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x39, 0x0a, 0x0c, 0x61, 0x75,
+	0x64, 0x69, 0x6f, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x13, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x41, 0x75, 0x64, 0x69, 0x6f, 0x4d, 0x65,
+	0x73, 0x73, 0x61, 0x67, 0x65, 0x48, 0x00, 0x52, 0x0c, 0x61, 0x75, 0x64, 0x69, 0x6f, 0x4d, 0x65,
+	0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x42, 0x0a, 0x0f, 0x64, 0x6f, 0x63, 0x75, 0x6d, 0x65, 0x6e,
+	0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x16,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x6f, 0x63, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x4d,
+	0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x48, 0x00, 0x52, 0x0f, 0x64, 0x6f, 0x63, 0x75, 0x6d, 0x65,
+	0x6e, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x3f, 0x0a, 0x0e, 0x73, 0x74, 0x69,
+	0x63, 0x6b, 0x65, 0x72, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x74, 0x69, 0x63, 0x6b, 0x65,
+	0x72, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x48, 0x00, 0x52, 0x0e, 0x73, 0x74, 0x69, 0x63,
+	0x6b, 0x65, 0x72, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x42, 0x0a, 0x0f, 0x72, 0x65,
+	0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x06, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x65, 0x61, 0x63,
+	0x74, 0x69, 0x6f, 0x6e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x48, 0x00, 0x52, 0x0f, 0x72,
+	0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x42, 0x09,
+	0x0a, 0x07, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x22, 0x22, 0x0a, 0x0c, 0x4d, 0x65, 0x64,
+	0x69, 0x61, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x42, 0x6f, 0x64,
+	0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x42, 0x6f, 0x64, 0x79, 0x32, 0x8a, 0x02,
+	0x0a, 0x0e, 0x57, 0x68, 0x61, 0x74, 0x55, 0x70, 0x43, 0x6f, 0x72, 0x65, 0x41, 0x75, 0x74, 0x68,
+	0x12, 0x36, 0x0a, 0x05, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x12, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x73, 0x2e, 0x57, 0x55, 0x43, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x73,
+	0x1a, 0x14, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f,
+	0x6e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x22, 0x00, 0x12, 0x43, 0x0a, 0x10, 0x4c, 0x6f, 0x67, 0x69,
+	0x6e, 0x57, 0x69, 0x74, 0x68, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x72, 0x79, 0x12, 0x15, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x57, 0x55, 0x43, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69,
+	0x61, 0x6c, 0x73, 0x1a, 0x14, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x4c, 0x6f, 0x67,
+	0x69, 0x6e, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x72, 0x79, 0x22, 0x00, 0x30, 0x01, 0x12, 0x3f, 0x0a,
+	0x08, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x12, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x73, 0x2e, 0x57, 0x55, 0x43, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x73,
+	0x1a, 0x18, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74,
+	0x65, 0x72, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x22, 0x00, 0x30, 0x01, 0x12, 0x3a,
+	0x0a, 0x0a, 0x52, 0x65, 0x6e, 0x65, 0x77, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x12, 0x14, 0x2e, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x6b,
-	0x65, 0x6e, 0x22, 0x00, 0x12, 0x3f, 0x0a, 0x08, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72,
-	0x12, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x57, 0x55, 0x43, 0x72, 0x65, 0x64,
-	0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x73, 0x1a, 0x18, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73,
-	0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
-	0x73, 0x22, 0x00, 0x30, 0x01, 0x12, 0x3a, 0x0a, 0x0a, 0x52, 0x65, 0x6e, 0x65, 0x77, 0x54, 0x6f,
-	0x6b, 0x65, 0x6e, 0x12, 0x14, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x53, 0x65, 0x73,
-	0x73, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x1a, 0x14, 0x2e, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x73, 0x2e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x22,
-	0x00, 0x32, 0x90, 0x02, 0x0a, 0x0a, 0x57, 0x68, 0x61, 0x74, 0x55, 0x70, 0x43, 0x6f, 0x72, 0x65,
-	0x12, 0x52, 0x0a, 0x13, 0x47, 0x65, 0x74, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f,
-	0x6e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x1f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73,
-	0x2e, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x75,
-	0x73, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x1a, 0x18, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x73, 0x2e, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74,
-	0x75, 0x73, 0x22, 0x00, 0x12, 0x3d, 0x0a, 0x0b, 0x47, 0x65, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61,
-	0x67, 0x65, 0x73, 0x12, 0x17, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x4d, 0x65, 0x73,
-	0x73, 0x61, 0x67, 0x65, 0x73, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x1a, 0x11, 0x2e, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x57, 0x55, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x22,
-	0x00, 0x30, 0x01, 0x12, 0x30, 0x0a, 0x0c, 0x47, 0x65, 0x74, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x49,
-	0x6e, 0x66, 0x6f, 0x12, 0x0b, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x4a, 0x49, 0x44,
-	0x1a, 0x11, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x49,
-	0x6e, 0x66, 0x6f, 0x22, 0x00, 0x12, 0x3d, 0x0a, 0x0d, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61,
-	0x64, 0x4d, 0x65, 0x64, 0x69, 0x61, 0x12, 0x14, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e,
-	0x4d, 0x65, 0x64, 0x69, 0x61, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x1a, 0x14, 0x2e, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x4d, 0x65, 0x64, 0x69, 0x61, 0x43, 0x6f, 0x6e, 0x74, 0x65,
-	0x6e, 0x74, 0x22, 0x00, 0x42, 0x2e, 0x5a, 0x2c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
-	0x6f, 0x6d, 0x2f, 0x64, 0x69, 0x67, 0x69, 0x74, 0x61, 0x6c, 0x2d, 0x77, 0x69, 0x74, 0x6e, 0x65,
-	0x73, 0x73, 0x2d, 0x6c, 0x61, 0x62, 0x2f, 0x77, 0x68, 0x61, 0x74, 0x75, 0x70, 0x2f, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x6e, 0x1a, 0x14, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x53, 0x65, 0x73, 0x73,
+	0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x22, 0x00, 0x32, 0xff, 0x02, 0x0a, 0x0a, 0x57,
+	0x68, 0x61, 0x74, 0x55, 0x70, 0x43, 0x6f, 0x72, 0x65, 0x12, 0x52, 0x0a, 0x13, 0x47, 0x65, 0x74,
+	0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73,
+	0x12, 0x1f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63,
+	0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e,
+	0x73, 0x1a, 0x18, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x43, 0x6f, 0x6e, 0x6e, 0x65,
+	0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x22, 0x00, 0x12, 0x3d, 0x0a,
+	0x0b, 0x47, 0x65, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x12, 0x17, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x4f, 0x70,
+	0x74, 0x69, 0x6f, 0x6e, 0x73, 0x1a, 0x11, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x57,
+	0x55, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x22, 0x00, 0x30, 0x01, 0x12, 0x30, 0x0a, 0x0c,
+	0x47, 0x65, 0x74, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x0b, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x4a, 0x49, 0x44, 0x1a, 0x11, 0x2e, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x73, 0x2e, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x6e, 0x66, 0x6f, 0x22, 0x00, 0x12, 0x3d,
+	0x0a, 0x12, 0x47, 0x65, 0x74, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x6e, 0x66, 0x6f, 0x49, 0x6e,
+	0x76, 0x69, 0x74, 0x65, 0x12, 0x12, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x49, 0x6e,
+	0x76, 0x69, 0x74, 0x65, 0x43, 0x6f, 0x64, 0x65, 0x1a, 0x11, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x73, 0x2e, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x6e, 0x66, 0x6f, 0x22, 0x00, 0x12, 0x37, 0x0a,
+	0x0d, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x4d, 0x65, 0x64, 0x69, 0x61, 0x12, 0x0e,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x1a, 0x14,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x4d, 0x65, 0x64, 0x69, 0x61, 0x43, 0x6f, 0x6e,
+	0x74, 0x65, 0x6e, 0x74, 0x22, 0x00, 0x12, 0x34, 0x0a, 0x09, 0x4a, 0x6f, 0x69, 0x6e, 0x47, 0x72,
+	0x6f, 0x75, 0x70, 0x12, 0x12, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e, 0x49, 0x6e, 0x76,
+	0x69, 0x74, 0x65, 0x43, 0x6f, 0x64, 0x65, 0x1a, 0x11, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73,
+	0x2e, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x6e, 0x66, 0x6f, 0x22, 0x00, 0x42, 0x2e, 0x5a, 0x2c,
+	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x69, 0x67, 0x69, 0x74,
+	0x61, 0x6c, 0x2d, 0x77, 0x69, 0x74, 0x6e, 0x65, 0x73, 0x73, 0x2d, 0x6c, 0x61, 0x62, 0x2f, 0x77,
+	0x68, 0x61, 0x74, 0x75, 0x70, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1615,86 +1775,96 @@ func file_whatupcore_proto_rawDescGZIP() []byte {
 	return file_whatupcore_proto_rawDescData
 }
 
-var file_whatupcore_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_whatupcore_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_whatupcore_proto_goTypes = []interface{}{
-	(*GroupName)(nil),               // 0: protos.GroupName
-	(*GroupTopic)(nil),              // 1: protos.GroupTopic
-	(*GroupParticipant)(nil),        // 2: protos.GroupParticipant
-	(*GroupInfo)(nil),               // 3: protos.GroupInfo
-	(*ConnectionStatusOptions)(nil), // 4: protos.ConnectionStatusOptions
-	(*MessagesOptions)(nil),         // 5: protos.MessagesOptions
-	(*SessionToken)(nil),            // 6: protos.SessionToken
-	(*RegisterMessages)(nil),        // 7: protos.RegisterMessages
-	(*WUCredentials)(nil),           // 8: protos.WUCredentials
-	(*JID)(nil),                     // 9: protos.JID
-	(*ConnectionStatus)(nil),        // 10: protos.ConnectionStatus
-	(*WUMessage)(nil),               // 11: protos.WUMessage
-	(*MessageSource)(nil),           // 12: protos.MessageSource
-	(*MessageInfo)(nil),             // 13: protos.MessageInfo
-	(*MessageContent)(nil),          // 14: protos.MessageContent
-	(*MessageProperties)(nil),       // 15: protos.MessageProperties
-	(*MediaMessage)(nil),            // 16: protos.MediaMessage
-	(*MediaContent)(nil),            // 17: protos.MediaContent
-	nil,                             // 18: protos.MessageContent.PropertiesEntry
-	(*timestamp.Timestamp)(nil),     // 19: google.protobuf.Timestamp
-	(*proto.Message)(nil),           // 20: proto.Message
-	(*proto.ImageMessage)(nil),      // 21: proto.ImageMessage
-	(*proto.VideoMessage)(nil),      // 22: proto.VideoMessage
-	(*proto.AudioMessage)(nil),      // 23: proto.AudioMessage
-	(*proto.DocumentMessage)(nil),   // 24: proto.DocumentMessage
-	(*proto.StickerMessage)(nil),    // 25: proto.StickerMessage
-	(*proto.ReactionMessage)(nil),   // 26: proto.ReactionMessage
+	(*LoginHistory)(nil),            // 0: protos.LoginHistory
+	(*InviteCode)(nil),              // 1: protos.InviteCode
+	(*GroupName)(nil),               // 2: protos.GroupName
+	(*GroupTopic)(nil),              // 3: protos.GroupTopic
+	(*GroupParticipant)(nil),        // 4: protos.GroupParticipant
+	(*GroupInfo)(nil),               // 5: protos.GroupInfo
+	(*ConnectionStatusOptions)(nil), // 6: protos.ConnectionStatusOptions
+	(*MessagesOptions)(nil),         // 7: protos.MessagesOptions
+	(*SessionToken)(nil),            // 8: protos.SessionToken
+	(*RegisterMessages)(nil),        // 9: protos.RegisterMessages
+	(*WUCredentials)(nil),           // 10: protos.WUCredentials
+	(*JID)(nil),                     // 11: protos.JID
+	(*ConnectionStatus)(nil),        // 12: protos.ConnectionStatus
+	(*WUMessage)(nil),               // 13: protos.WUMessage
+	(*MessageSource)(nil),           // 14: protos.MessageSource
+	(*MessageInfo)(nil),             // 15: protos.MessageInfo
+	(*MessageContent)(nil),          // 16: protos.MessageContent
+	(*MessageProperties)(nil),       // 17: protos.MessageProperties
+	(*MediaMessage)(nil),            // 18: protos.MediaMessage
+	(*MediaContent)(nil),            // 19: protos.MediaContent
+	nil,                             // 20: protos.MessageContent.PropertiesEntry
+	(*timestamp.Timestamp)(nil),     // 21: google.protobuf.Timestamp
+	(*proto.Message)(nil),           // 22: proto.Message
+	(*proto.ImageMessage)(nil),      // 23: proto.ImageMessage
+	(*proto.VideoMessage)(nil),      // 24: proto.VideoMessage
+	(*proto.AudioMessage)(nil),      // 25: proto.AudioMessage
+	(*proto.DocumentMessage)(nil),   // 26: proto.DocumentMessage
+	(*proto.StickerMessage)(nil),    // 27: proto.StickerMessage
+	(*proto.ReactionMessage)(nil),   // 28: proto.ReactionMessage
 }
 var file_whatupcore_proto_depIdxs = []int32{
-	19, // 0: protos.GroupName.updatedAt:type_name -> google.protobuf.Timestamp
-	9,  // 1: protos.GroupName.updatedBy:type_name -> protos.JID
-	19, // 2: protos.GroupTopic.updatedAt:type_name -> google.protobuf.Timestamp
-	9,  // 3: protos.GroupTopic.updatedBy:type_name -> protos.JID
-	9,  // 4: protos.GroupParticipant.JID:type_name -> protos.JID
-	19, // 5: protos.GroupInfo.createdAt:type_name -> google.protobuf.Timestamp
-	9,  // 6: protos.GroupInfo.JID:type_name -> protos.JID
-	0,  // 7: protos.GroupInfo.groupName:type_name -> protos.GroupName
-	1,  // 8: protos.GroupInfo.groupTopic:type_name -> protos.GroupTopic
-	2,  // 9: protos.GroupInfo.participants:type_name -> protos.GroupParticipant
-	9,  // 10: protos.GroupInfo.parentJID:type_name -> protos.JID
-	6,  // 11: protos.RegisterMessages.token:type_name -> protos.SessionToken
-	19, // 12: protos.ConnectionStatus.timestamp:type_name -> google.protobuf.Timestamp
-	13, // 13: protos.WUMessage.info:type_name -> protos.MessageInfo
-	14, // 14: protos.WUMessage.content:type_name -> protos.MessageContent
-	15, // 15: protos.WUMessage.messageProperties:type_name -> protos.MessageProperties
-	20, // 16: protos.WUMessage.originalMessage:type_name -> proto.Message
-	9,  // 17: protos.MessageSource.chat:type_name -> protos.JID
-	9,  // 18: protos.MessageSource.sender:type_name -> protos.JID
-	9,  // 19: protos.MessageSource.broadcastListOwner:type_name -> protos.JID
-	12, // 20: protos.MessageInfo.source:type_name -> protos.MessageSource
-	19, // 21: protos.MessageInfo.timestamp:type_name -> google.protobuf.Timestamp
-	18, // 22: protos.MessageContent.properties:type_name -> protos.MessageContent.PropertiesEntry
-	16, // 23: protos.MessageContent.mediaMessage:type_name -> protos.MediaMessage
-	21, // 24: protos.MediaMessage.imageMessage:type_name -> proto.ImageMessage
-	22, // 25: protos.MediaMessage.videoMessage:type_name -> proto.VideoMessage
-	23, // 26: protos.MediaMessage.audioMessage:type_name -> proto.AudioMessage
-	24, // 27: protos.MediaMessage.documentMessage:type_name -> proto.DocumentMessage
-	25, // 28: protos.MediaMessage.stickerMessage:type_name -> proto.StickerMessage
-	26, // 29: protos.MediaMessage.reactionMessage:type_name -> proto.ReactionMessage
-	8,  // 30: protos.WhatUpCoreAuth.Login:input_type -> protos.WUCredentials
-	8,  // 31: protos.WhatUpCoreAuth.Register:input_type -> protos.WUCredentials
-	6,  // 32: protos.WhatUpCoreAuth.RenewToken:input_type -> protos.SessionToken
-	4,  // 33: protos.WhatUpCore.GetConnectionStatus:input_type -> protos.ConnectionStatusOptions
-	5,  // 34: protos.WhatUpCore.GetMessages:input_type -> protos.MessagesOptions
-	9,  // 35: protos.WhatUpCore.GetGroupInfo:input_type -> protos.JID
-	16, // 36: protos.WhatUpCore.DownloadMedia:input_type -> protos.MediaMessage
-	6,  // 37: protos.WhatUpCoreAuth.Login:output_type -> protos.SessionToken
-	7,  // 38: protos.WhatUpCoreAuth.Register:output_type -> protos.RegisterMessages
-	6,  // 39: protos.WhatUpCoreAuth.RenewToken:output_type -> protos.SessionToken
-	10, // 40: protos.WhatUpCore.GetConnectionStatus:output_type -> protos.ConnectionStatus
-	11, // 41: protos.WhatUpCore.GetMessages:output_type -> protos.WUMessage
-	3,  // 42: protos.WhatUpCore.GetGroupInfo:output_type -> protos.GroupInfo
-	17, // 43: protos.WhatUpCore.DownloadMedia:output_type -> protos.MediaContent
-	37, // [37:44] is the sub-list for method output_type
-	30, // [30:37] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	8,  // 0: protos.LoginHistory.token:type_name -> protos.SessionToken
+	13, // 1: protos.LoginHistory.historyMsg:type_name -> protos.WUMessage
+	21, // 2: protos.GroupName.updatedAt:type_name -> google.protobuf.Timestamp
+	11, // 3: protos.GroupName.updatedBy:type_name -> protos.JID
+	21, // 4: protos.GroupTopic.updatedAt:type_name -> google.protobuf.Timestamp
+	11, // 5: protos.GroupTopic.updatedBy:type_name -> protos.JID
+	11, // 6: protos.GroupParticipant.JID:type_name -> protos.JID
+	21, // 7: protos.GroupInfo.createdAt:type_name -> google.protobuf.Timestamp
+	11, // 8: protos.GroupInfo.JID:type_name -> protos.JID
+	2,  // 9: protos.GroupInfo.groupName:type_name -> protos.GroupName
+	3,  // 10: protos.GroupInfo.groupTopic:type_name -> protos.GroupTopic
+	4,  // 11: protos.GroupInfo.participants:type_name -> protos.GroupParticipant
+	11, // 12: protos.GroupInfo.parentJID:type_name -> protos.JID
+	8,  // 13: protos.RegisterMessages.token:type_name -> protos.SessionToken
+	21, // 14: protos.ConnectionStatus.timestamp:type_name -> google.protobuf.Timestamp
+	15, // 15: protos.WUMessage.info:type_name -> protos.MessageInfo
+	16, // 16: protos.WUMessage.content:type_name -> protos.MessageContent
+	17, // 17: protos.WUMessage.messageProperties:type_name -> protos.MessageProperties
+	22, // 18: protos.WUMessage.originalMessage:type_name -> proto.Message
+	11, // 19: protos.MessageSource.chat:type_name -> protos.JID
+	11, // 20: protos.MessageSource.sender:type_name -> protos.JID
+	11, // 21: protos.MessageSource.broadcastListOwner:type_name -> protos.JID
+	14, // 22: protos.MessageInfo.source:type_name -> protos.MessageSource
+	21, // 23: protos.MessageInfo.timestamp:type_name -> google.protobuf.Timestamp
+	20, // 24: protos.MessageContent.properties:type_name -> protos.MessageContent.PropertiesEntry
+	18, // 25: protos.MessageContent.mediaMessage:type_name -> protos.MediaMessage
+	23, // 26: protos.MediaMessage.imageMessage:type_name -> proto.ImageMessage
+	24, // 27: protos.MediaMessage.videoMessage:type_name -> proto.VideoMessage
+	25, // 28: protos.MediaMessage.audioMessage:type_name -> proto.AudioMessage
+	26, // 29: protos.MediaMessage.documentMessage:type_name -> proto.DocumentMessage
+	27, // 30: protos.MediaMessage.stickerMessage:type_name -> proto.StickerMessage
+	28, // 31: protos.MediaMessage.reactionMessage:type_name -> proto.ReactionMessage
+	10, // 32: protos.WhatUpCoreAuth.Login:input_type -> protos.WUCredentials
+	10, // 33: protos.WhatUpCoreAuth.LoginWithHistory:input_type -> protos.WUCredentials
+	10, // 34: protos.WhatUpCoreAuth.Register:input_type -> protos.WUCredentials
+	8,  // 35: protos.WhatUpCoreAuth.RenewToken:input_type -> protos.SessionToken
+	6,  // 36: protos.WhatUpCore.GetConnectionStatus:input_type -> protos.ConnectionStatusOptions
+	7,  // 37: protos.WhatUpCore.GetMessages:input_type -> protos.MessagesOptions
+	11, // 38: protos.WhatUpCore.GetGroupInfo:input_type -> protos.JID
+	1,  // 39: protos.WhatUpCore.GetGroupInfoInvite:input_type -> protos.InviteCode
+	22, // 40: protos.WhatUpCore.DownloadMedia:input_type -> proto.Message
+	1,  // 41: protos.WhatUpCore.JoinGroup:input_type -> protos.InviteCode
+	8,  // 42: protos.WhatUpCoreAuth.Login:output_type -> protos.SessionToken
+	0,  // 43: protos.WhatUpCoreAuth.LoginWithHistory:output_type -> protos.LoginHistory
+	9,  // 44: protos.WhatUpCoreAuth.Register:output_type -> protos.RegisterMessages
+	8,  // 45: protos.WhatUpCoreAuth.RenewToken:output_type -> protos.SessionToken
+	12, // 46: protos.WhatUpCore.GetConnectionStatus:output_type -> protos.ConnectionStatus
+	13, // 47: protos.WhatUpCore.GetMessages:output_type -> protos.WUMessage
+	5,  // 48: protos.WhatUpCore.GetGroupInfo:output_type -> protos.GroupInfo
+	5,  // 49: protos.WhatUpCore.GetGroupInfoInvite:output_type -> protos.GroupInfo
+	19, // 50: protos.WhatUpCore.DownloadMedia:output_type -> protos.MediaContent
+	5,  // 51: protos.WhatUpCore.JoinGroup:output_type -> protos.GroupInfo
+	42, // [42:52] is the sub-list for method output_type
+	32, // [32:42] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_whatupcore_proto_init() }
@@ -1704,7 +1874,7 @@ func file_whatupcore_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_whatupcore_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GroupName); i {
+			switch v := v.(*LoginHistory); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1716,7 +1886,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GroupTopic); i {
+			switch v := v.(*InviteCode); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1728,7 +1898,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GroupParticipant); i {
+			switch v := v.(*GroupName); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1740,7 +1910,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GroupInfo); i {
+			switch v := v.(*GroupTopic); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1752,7 +1922,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ConnectionStatusOptions); i {
+			switch v := v.(*GroupParticipant); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1764,7 +1934,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MessagesOptions); i {
+			switch v := v.(*GroupInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1776,7 +1946,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SessionToken); i {
+			switch v := v.(*ConnectionStatusOptions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1788,7 +1958,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RegisterMessages); i {
+			switch v := v.(*MessagesOptions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1800,7 +1970,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WUCredentials); i {
+			switch v := v.(*SessionToken); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1812,7 +1982,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*JID); i {
+			switch v := v.(*RegisterMessages); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1824,7 +1994,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ConnectionStatus); i {
+			switch v := v.(*WUCredentials); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1836,7 +2006,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WUMessage); i {
+			switch v := v.(*JID); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1848,7 +2018,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MessageSource); i {
+			switch v := v.(*ConnectionStatus); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1860,7 +2030,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MessageInfo); i {
+			switch v := v.(*WUMessage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1872,7 +2042,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MessageContent); i {
+			switch v := v.(*MessageSource); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1884,7 +2054,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MessageProperties); i {
+			switch v := v.(*MessageInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1896,7 +2066,7 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MediaMessage); i {
+			switch v := v.(*MessageContent); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1908,6 +2078,30 @@ func file_whatupcore_proto_init() {
 			}
 		}
 		file_whatupcore_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*MessageProperties); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_whatupcore_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*MediaMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_whatupcore_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*MediaContent); i {
 			case 0:
 				return &v.state
@@ -1920,7 +2114,11 @@ func file_whatupcore_proto_init() {
 			}
 		}
 	}
-	file_whatupcore_proto_msgTypes[16].OneofWrappers = []interface{}{
+	file_whatupcore_proto_msgTypes[0].OneofWrappers = []interface{}{
+		(*LoginHistory_Token)(nil),
+		(*LoginHistory_HistoryMsg)(nil),
+	}
+	file_whatupcore_proto_msgTypes[18].OneofWrappers = []interface{}{
 		(*MediaMessage_ImageMessage)(nil),
 		(*MediaMessage_VideoMessage)(nil),
 		(*MediaMessage_AudioMessage)(nil),
@@ -1934,7 +2132,7 @@ func file_whatupcore_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_whatupcore_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

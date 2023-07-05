@@ -28,10 +28,12 @@ type HasJpegThumbnail interface {
 	GetJpegThumbnail() []byte
 }
 
+type MessageEvent = events.Message
+
 type Message struct {
 	client *WhatsAppClient
 	log    waLog.Logger
-	*events.Message
+	*MessageEvent
 }
 
 func NewMessageFromWhatsMeow(client *WhatsAppClient, m *events.Message) (*Message, error) {
@@ -39,7 +41,7 @@ func NewMessageFromWhatsMeow(client *WhatsAppClient, m *events.Message) (*Messag
 	return &Message{
 		client:  client,
 		log:     waLog.Stdout(fmt.Sprintf("Message: %s", msgId), "DEBUG", true),
-		Message: m,
+		MessageEvent: m,
 	}, nil
 }
 
@@ -62,7 +64,7 @@ func (msg *Message) GetExtendedMessage() interface{} {
 	if msg == nil {
 		return nil
 	}
-	m := msg.Message.Message
+	m := msg.MessageEvent.Message
 	switch {
 	case m.ImageMessage != nil:
 		return m.GetImageMessage()
@@ -113,7 +115,7 @@ func (msg *Message) downloadableMessageToMediaMessage(extMessage interface{}) *p
 }
 
 func (msg *Message) MessageFieldsToStr(fields []string) string {
-	values := findFieldNameFunc(msg.Message.Message,
+	values := findFieldNameFunc(msg.MessageEvent.Message,
 		func(field string) bool {
 			for _, f := range fields {
 				if f == field {
@@ -135,7 +137,11 @@ func (msg *Message) MessageTitle() string {
 }
 
 func (msg *Message) GetLink() string {
-	return msg.Message.Message.GetExtendedTextMessage().GetCanonicalUrl()
+	return msg.MessageEvent.Message.GetExtendedTextMessage().GetCanonicalUrl()
+}
+
+func (msg *Message) IsInvite() bool {
+    return msg.MessageEvent.Message.GetExtendedTextMessage().GetInviteLinkGroupTypeV2() > 0
 }
 
 func (msg *Message) GetContextInfo() (*waProto.ContextInfo, bool) {
@@ -227,9 +233,10 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			IsViewOnce:            msg.IsViewOnce,
 			IsDocumentWithCaption: msg.IsDocumentWithCaption,
 			IsEdit:                msg.IsEdit,
+            IsInvite:              msg.IsInvite(),
 			IsForwarded:           isForwarded,
 			ForwardedScore:        forwardedScore,
 		},
-		//OriginalMessage: msg.Message,
+        OriginalMessage: msg.MessageEvent.Message,
 	}, true
 }

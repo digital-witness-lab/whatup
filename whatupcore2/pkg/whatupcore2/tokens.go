@@ -9,7 +9,7 @@ import (
 	jwt "github.com/golang-jwt/jwt/v5"
 )
 
-var (
+const (
 	TOKEN_EXPIRATION  = 7 * 24 * time.Hour
 	TOKEN_VERSION     = "whatupcore2.v0.1"
 	TOKEN_LENGTH      = 64
@@ -53,7 +53,7 @@ func createJWTToken(username string, sessionId string) *jwt.Token {
 	return tokenObj
 }
 
-func parseTokenString(tokenString string, secret []byte) (string, error) {
+func parseTokenString(tokenString string, secret []byte) (*SessionJWTClaims, error) {
 	token, err := jwt.ParseWithClaims(
 		tokenString,
 		&SessionJWTClaims{},
@@ -66,16 +66,16 @@ func parseTokenString(tokenString string, secret []byte) (string, error) {
 		jwt.WithLeeway(EXPIRATION_LEEWAY),
 	)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if !token.Valid {
-		return "", fmt.Errorf("Token Invalid")
+		return nil, fmt.Errorf("Token Invalid")
 	}
 
 	claims, ok := token.Claims.(*SessionJWTClaims)
 	if !ok {
-		return "", fmt.Errorf("Token Invalid: Unparsable claims")
+		return nil, fmt.Errorf("Token Invalid: Unparsable claims")
 	}
 
-	return claims.SessionId, nil
+	return claims, nil
 }
