@@ -73,9 +73,9 @@ func (session *Session) Login(username string, passphrase string) error {
 		return err
 	}
 
-	if err := client.Login(5 * time.Second); err != nil {
-		return err
-	}
+    if err := client.Login(5 * time.Second); err != nil {
+        return err
+    }
 	session.Client = client
 	return nil
 }

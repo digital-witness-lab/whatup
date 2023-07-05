@@ -13,9 +13,13 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"go.mau.fi/whatsmeow"
+	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
+	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -72,10 +76,18 @@ func createDBFilePath(username string, n_subdirs int) (string, error) {
 type WhatsAppClient struct {
 	*whatsmeow.Client
 
+    historyMessages chan *Message
 	dbPath string
 }
 
 func NewWhatsAppClient(username string, passphrase string) (*WhatsAppClient, error) {
+    store.DeviceProps.RequireFullSync = proto.Bool(true)
+    store.DeviceProps.HistorySyncConfig = &waProto.DeviceProps_HistorySyncConfig{
+        FullSyncDaysLimit: proto.Uint32(365 * 3),
+        FullSyncSizeMbLimit: proto.Uint32((1 << 32) - 1),
+        StorageQuotaMb: proto.Uint32((1 << 32) - 1),
+    }
+
 	dbLog := waLog.Stdout("Database", "DEBUG", true)
 	username_safe := hashStringHex(username)
 	passphrase_safe := hashStringHex(passphrase)
@@ -104,6 +116,7 @@ func NewWhatsAppClient(username string, passphrase string) (*WhatsAppClient, err
 	client := &WhatsAppClient{
 		Client: wmClient,
 		dbPath: dbPath,
+        historyMessages: make(chan *Message, 32),
 	}
 
 	return client, nil
@@ -141,6 +154,9 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 	state := NewRegistrationState()
 	isNewDB := wac.Store.ID == nil
 
+    historyCtx, historyCtxClose := context.WithCancel(context.Background())
+    go wac.fillHistoryMessages(historyCtx)
+
 	go func(state *RegistrationState) {
 		for {
 			success := wac.qrCodeLoop(ctx, state)
@@ -158,6 +174,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 				if !wac.IsLoggedIn() && isNewDB {
 					wac.Log.Infof("No login detected. deleteing temporary DB file: %s", wac.dbPath)
 					wac.cleanupDBFile()
+                    historyCtxClose()
 				}
 				return
 			}
@@ -195,7 +212,7 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 				return true
 			} else {
 				wac.Log.Debugf("Unknown event: %v", evt.Event)
-				state.Errors <- fmt.Errorf("Uknown event during login: %d: %s", evt.Code, evt.Event)
+				state.Errors <- fmt.Errorf("Uknown event during login: %v: %s", evt.Code, evt.Event)
 				return false
 			}
 		case <-ctx.Done():
@@ -225,6 +242,57 @@ func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 	}()
 	return msgChan
 }
+
+func (wac *WhatsAppClient) fillHistoryMessages(ctx context.Context) {
+	handlerId := wac.AddEventHandler(func(evt interface{}) {
+		switch message := evt.(type) {
+		case *events.HistorySync:
+            wac.Log.Infof("History Progress: %d", message.Data.GetProgress())
+	        for _, conv := range message.Data.GetConversations() {
+	        	jid, err := types.ParseJID(conv.GetId())
+	        	if err != nil {
+                    wac.Log.Errorf("Error parsing JID from history: %v", err)
+                    continue
+                } else if jid.Server == types.BroadcastServer || jid.Server == types.HiddenUserServer {
+                    wac.Log.Debugf("Skipping history from JID server: %v", jid.Server)
+	        		continue
+	        	}
+
+                chatJID, err := types.ParseJID(conv.GetId())
+                if err != nil {
+                    wac.Log.Errorf("Could not get conversation JID: %v", err)
+                    continue
+                }
+		        for _, rawMsg := range conv.GetMessages() {
+		        	wmMsg, err := wac.ParseWebMessage(chatJID, rawMsg.GetMessage())
+		        	if err != nil {
+                        wac.Log.Errorf("Failed to parse raw history message: %v", err)
+                        continue
+                    }
+
+			        msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
+			        if err != nil {
+                        wac.Log.Errorf("Failed to convert history message: %v", err)
+                        continue
+			        }
+			        wac.historyMessages <- msg
+                }
+            }
+		}
+	})
+	go func() {
+		for range ctx.Done() {
+			wac.RemoveEventHandler(handlerId)
+			return
+		}
+	}()
+	return
+}
+
+func (wac *WhatsAppClient) GetHistoryMessages(ctx context.Context) chan *Message {
+    return wac.historyMessages
+}
+
 
 /*
 func (wac *WhatsAppClient) GetConversationHistory() (chan *Message, error) {

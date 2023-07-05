@@ -10,7 +10,6 @@ option go_package = "github.com/digital-witness-lab/whatup/protos";
 
 service WhatUpCoreAuth {
     rpc Login(WUCredentials) returns (SessionToken) {}
-    rpc LoginWithHistory(WUCredentials) returns (stream LoginHistory) {}
     rpc Register(WUCredentials) returns (stream RegisterMessages) {}
     rpc RenewToken(SessionToken) returns (SessionToken) {}
 }
@@ -23,15 +22,9 @@ service WhatUpCore {
     rpc JoinGroup(InviteCode) returns (GroupInfo) {}
 
     rpc GetMessages(MessagesOptions) returns (stream WUMessage) {}
+    rpc GetPendingHistory(MessagesOptions) returns (stream WUMessage) {}
     // DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
     rpc DownloadMedia(proto.Message) returns (MediaContent) {}
-}
-
-message LoginHistory {
-    oneof payload {
-        SessionToken token = 1;
-        WUMessage historyMsg = 2;
-    }
 }
 
 message InviteCode {
@@ -82,7 +75,8 @@ message ConnectionStatusOptions {
 
 message MessagesOptions {
     // Whether to mark messages as read when they are recieved
-    bool MarkMessagesRead = 1; 
+    bool markMessagesRead = 1; 
+    uint32 historyReadTimeout = 2;
 }
 
 message SessionToken {
