@@ -225,3 +225,18 @@ func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 	}()
 	return msgChan
 }
+
+/*
+func (wac *WhatsAppClient) GetConversationHistory() (chan *Message, error) {
+    groups, err := wac.GetJoinedGroups()
+    if err != nil {
+        return nil, err
+    }
+
+    chatJID, err := types.ParseJID(conv.GetId())
+    for _, historyMsg := range conv.GetMessages() {
+    	evt, err := wac.ParseWebMessage(chatJID, historyMsg.GetMessage())
+        fmt.Println(evt)
+    }
+}
+*/

@@ -1,4 +1,4 @@
-.PHONY: connect clean
+.PHONY: connect clean whatupcore2
 
 whatupcore2:
 	+$(MAKE) -C ../protos/ all

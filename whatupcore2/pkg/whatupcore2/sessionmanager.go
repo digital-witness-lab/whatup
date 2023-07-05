@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-var (
+const (
 	SessionTimeout = 10 * time.Minute // TODO: this should probably be the same as the JWT timeout?
 )
 
@@ -97,7 +97,6 @@ func (sm *SessionManager) addSession(session *Session) error {
 	}
 
 	sm.idToSession[session.sessionId] = session
-	// TODO: add timer to remove stale idToSession (token expiration?)
 	return nil
 }
 
@@ -111,7 +110,11 @@ func (sm *SessionManager) removeSession(session *Session) bool {
 }
 
 func (sm *SessionManager) TokenToSessionId(token string) (string, error) {
-	return parseTokenString(token, sm.secretKey)
+    claims, err := parseTokenString(token, sm.secretKey)
+    if err != nil {
+        return "", err
+    }
+    return claims.SessionId, nil
 }
 
 func (sm *SessionManager) RenewSessionToken(sessionId string) (*Session, error) {

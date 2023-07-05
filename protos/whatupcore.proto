@@ -10,15 +10,32 @@ option go_package = "github.com/digital-witness-lab/whatup/protos";
 
 service WhatUpCoreAuth {
     rpc Login(WUCredentials) returns (SessionToken) {}
+    rpc LoginWithHistory(WUCredentials) returns (stream LoginHistory) {}
     rpc Register(WUCredentials) returns (stream RegisterMessages) {}
     rpc RenewToken(SessionToken) returns (SessionToken) {}
 }
 
 service WhatUpCore {
     rpc GetConnectionStatus(ConnectionStatusOptions) returns (ConnectionStatus) {}
-    rpc GetMessages(MessagesOptions) returns (stream WUMessage) {}
+
     rpc GetGroupInfo(JID) returns (GroupInfo) {}
-    rpc DownloadMedia(MediaMessage) returns (MediaContent) {}
+    rpc GetGroupInfoInvite(InviteCode) returns (GroupInfo) {}
+    rpc JoinGroup(InviteCode) returns (GroupInfo) {}
+
+    rpc GetMessages(MessagesOptions) returns (stream WUMessage) {}
+    // DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
+    rpc DownloadMedia(proto.Message) returns (MediaContent) {}
+}
+
+message LoginHistory {
+    oneof payload {
+        SessionToken token = 1;
+        WUMessage historyMsg = 2;
+    }
+}
+
+message InviteCode {
+    string link = 1;
 }
 
 message GroupName {
@@ -142,6 +159,7 @@ message MessageProperties {
     bool isEdit = 4;
     bool isForwarded = 5;
     uint32 forwardedScore = 6;
+    bool isInvite = 7;
 }
 
 message MediaMessage {
@@ -156,5 +174,5 @@ message MediaMessage {
 }
 
 message MediaContent {
-    bytes Contents = 1;
+    bytes Body = 1;
 }
