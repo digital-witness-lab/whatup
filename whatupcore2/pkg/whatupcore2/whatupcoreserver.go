@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
+	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -52,6 +53,21 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 	return nil
 }
 
+func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, mediaMessage *waProto.Message) (*pb.MediaContent, error) {
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+    // need to do a SendMediaRetryReceipt in some cases
+    body, err := session.Client.DownloadAny(mediaMessage)
+    if err != nil {
+        return nil, status.Errorf(codes.Internal, "Could not download media: %v", err)
+    }
+    
+	return &pb.MediaContent{Body: body}, nil
+}
+
 func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.GroupInfo, error) {
 	session, ok := ctx.Value("session").(*Session)
 	if !ok {
@@ -63,5 +79,36 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, "%v", err)
 	}
+	return GroupInfoToProto(groupInfo), nil
+}
+
+func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context,  inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	groupInfo, err := session.Client.GetGroupInfoFromLink(inviteCode.Link)
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, "%v", err)
+	}
+	return GroupInfoToProto(groupInfo), nil
+}
+
+func (s *WhatUpCoreServer) JoinGroup(ctx context.Context,  inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	groupInfo, err := session.Client.GetGroupInfoFromLink(inviteCode.Link)
+	if err != nil {
+        return nil, status.Errorf(codes.Unknown, "Could not get group metadata: %v", err)
+	}
+
+    _, err = session.Client.JoinGroupWithLink(inviteCode.Link)
+    if err != nil {
+        return nil, status.Errorf(codes.Unknown, "Could not join group: %v", err)
+    }
 	return GroupInfoToProto(groupInfo), nil
 }
