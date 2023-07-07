@@ -3,7 +3,6 @@ package whatupcore2
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
@@ -17,7 +16,7 @@ import (
 )
 
 var (
-	ErrNoThumnails = errors.New("No thumbnail found")
+	ErrNoThumbnails = errors.New("No thumbnail found")
 )
 
 type HasContextInfo interface {
@@ -40,7 +39,7 @@ func NewMessageFromWhatsMeow(client *WhatsAppClient, m *events.Message) (*Messag
 	msgId := m.Info.ID
 	return &Message{
 		client:       client,
-		log:          waLog.Stdout(fmt.Sprintf("Message: %s", msgId), "DEBUG", true),
+        log:          client.Log.Sub(fmt.Sprintf("Message/%s", msgId)),
 		MessageEvent: m,
 	}, nil
 }
@@ -111,7 +110,6 @@ func (msg *Message) downloadableMessageToMediaMessage(extMessage interface{}) *p
 	case *waProto.ReactionMessage:
 		mediaMessage.Payload = &pb.MediaMessage_ReactionMessage{ReactionMessage: v}
 	default:
-		msg.log.Debugf("Could not determine type for: %s", reflect.TypeOf(extMessage))
 		return nil
 	}
 	return mediaMessage
@@ -176,7 +174,7 @@ func (msg *Message) GetThumbnail() ([]byte, error) {
 func (msg *Message) getThumbnail(extMessage interface{}) ([]byte, error) {
 	thumbnailMsg, ok := extMessage.(whatsmeow.DownloadableThumbnail)
 	if !ok {
-		return nil, ErrNoThumnails
+		return nil, ErrNoThumbnails
 	}
 	thumbnail, err := msg.client.DownloadThumbnail(thumbnailMsg)
 	if err == nil {
@@ -186,7 +184,7 @@ func (msg *Message) getThumbnail(extMessage interface{}) ([]byte, error) {
 		thumbnail := msgThumbnail.GetJpegThumbnail()
 		return thumbnail, nil
 	}
-	return nil, ErrNoThumnails
+	return nil, ErrNoThumbnails
 }
 
 func (msg *Message) ToProto() (*pb.WUMessage, bool) {
@@ -206,10 +204,10 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 	if extMessage != nil {
 		forwardedScore, isForwarded = msg.getForwardedScore(extMessage)
 		thumbnail, err = msg.getThumbnail(extMessage)
-		mediaMessage = msg.downloadableMessageToMediaMessage(extMessage)
-		if err != nil {
+		if err != nil && err != ErrNoThumbnails {
 			msg.log.Errorf("Could not download thumbnail: %v", err)
 		}
+		mediaMessage = msg.downloadableMessageToMediaMessage(extMessage)
 	}
 
 	return &pb.WUMessage{

@@ -3,12 +3,12 @@ package whatupcore2
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
+	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -21,6 +21,7 @@ var (
 	TLS_CERT_FILE = "../data/keys/cert.pem"
 	TLS_KEY_FILE  = "../data/keys/key.pem"
 	JWT_SECRET    = []byte("SECRETSECRET")
+    Log waLog.Logger
 )
 
 func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(context.Context) (context.Context, error) {
@@ -39,18 +40,22 @@ func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(cont
 			return nil, status.Errorf(codes.Unauthenticated, "Unregistered auth token")
 		}
 
+        go session.UpdateLastAccessWhileAlive(ctx)
+
 		return context.WithValue(ctx, "session", session), nil
 	}
 }
 
-func StartRPC(port uint32) error {
+func StartRPC(port uint32, logLevel string) error {
+    Log = waLog.Stdout("RPC", logLevel, true)
+
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		Log.Errorf("failed to listen: %v", err)
 		return err
 	}
 
-	sessionManager := NewSessionManager(JWT_SECRET)
+	sessionManager := NewSessionManager(JWT_SECRET, Log.Sub("SessionManager"))
 	sessionManager.Start()
 	authCheck := createAuthCheck(sessionManager, JWT_SECRET)
 	keepAlive := grpc.KeepaliveParams(keepalive.ServerParameters{
@@ -61,7 +66,7 @@ func StartRPC(port uint32) error {
 	if false {
 		creds, err := credentials.NewServerTLSFromFile(TLS_CERT_FILE, TLS_KEY_FILE)
 		if err != nil {
-			log.Fatalf("could not load server credentials: %v", err)
+			Log.Errorf("could not load server credentials: %v", err)
 			return err
 		}
 		s = grpc.NewServer(grpc.Creds(creds), keepAlive)
@@ -76,14 +81,16 @@ func StartRPC(port uint32) error {
 
 	pb.RegisterWhatUpCoreAuthServer(s, &WhatUpCoreAuthServer{
 		sessionManager: sessionManager,
+        log: Log.Sub("AuthServer"),
 	})
 	pb.RegisterWhatUpCoreServer(s, &WhatUpCoreServer{
 		sessionManager: sessionManager,
+        log: Log.Sub("CoreServer"),
 	})
 
-	log.Printf("server listening at %v", lis.Addr())
+	Log.Infof("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		Log.Errorf("failed to serve: %v", err)
 	}
 	return nil
 }

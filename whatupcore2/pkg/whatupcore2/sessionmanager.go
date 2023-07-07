@@ -3,25 +3,38 @@ package whatupcore2
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
+
+	waLog "go.mau.fi/whatsmeow/util/log"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
 	SessionTimeout = 10 * time.Minute // TODO: this should probably be the same as the JWT timeout?
 )
 
+var (
+    ErrSessionManagerInvalidState = status.Error(codes.Internal, "Invalid SessionManager state")
+    ErrInvalidPassphrase = status.Error(codes.Unauthenticated, "Could not authenticate")
+)
+
 type SessionManager struct {
-	idToSession map[string]*Session
+	sessionIdToSession map[string]*Session
+	usernameToSessionId map[string]string
 	secretKey   []byte
+
+    log waLog.Logger
 
 	cancelFunc context.CancelFunc
 }
 
-func NewSessionManager(secretKey []byte) *SessionManager {
+func NewSessionManager(secretKey []byte, log waLog.Logger) *SessionManager {
 	return &SessionManager{
-		idToSession: make(map[string]*Session),
+		sessionIdToSession: make(map[string]*Session),
+		usernameToSessionId: make(map[string]string),
 		secretKey:   secretKey,
+	    log: log,
 	}
 }
 
@@ -51,61 +64,80 @@ func (sm *SessionManager) Stop() {
 func (sm *SessionManager) pruneSessions() {
 	oldest := time.Now().Add(-SessionTimeout)
 	nRemoved := 0
-	for _, session := range sm.idToSession {
-		if oldest.Compare(session.lastAccess) > 0 {
+	for _, session := range sm.sessionIdToSession {
+		if session.IsLastAccessBefore(oldest) {
+            sm.log.Debugf("Removing old session: %v", session.lastAccess)
 			sm.removeSession(session)
 			nRemoved += 1
 		}
 	}
 	if nRemoved > 0 {
-		fmt.Printf("Pruned sessions: %d sessions removed\n", nRemoved)
+		sm.log.Infof("Pruned sessions: %d sessions removed\n", nRemoved)
 	}
 }
 
 func (sm *SessionManager) AddLogin(username string, passphrase string) (*Session, error) {
-	session, err := NewSessionLogin(username, passphrase, sm.secretKey)
+    session, err := sm.GetSessionLogin(username, passphrase)
+    if err != nil {
+        return nil, err
+    } else if session != nil {
+        return session, nil
+    }
+
+	session, err = NewSessionLogin(username, passphrase, sm.secretKey, sm.log.Sub(username))
 	if err != nil {
 		return nil, err
 	}
 
+    session.log.Infof("New Login Session Created")
 	sm.addSession(session)
 	return session, nil
 }
 
 func (sm *SessionManager) AddRegistration(ctx context.Context, username string, passphrase string) (*Session, *RegistrationState, error) {
-	session, state, err := NewSessionRegister(ctx, username, passphrase, sm.secretKey)
+    session, err := sm.GetSessionLogin(username, passphrase)
+    if err != nil {
+        return nil, nil, err
+    } else if session != nil {
+        return session, nil, nil
+    }
+
+	session, state, err := NewSessionRegister(ctx, username, passphrase, sm.secretKey, sm.log.Sub(username))
 	if err != nil {
 		return nil, nil, err
 	}
-
 	if err := sm.addSession(session); err != nil {
 		return nil, nil, err
 	}
+
 	go func(session *Session, state *RegistrationState) {
 		state.Wait()
 		if !state.Success {
-			session.Client.Log.Errorf("Registration session done and not successful. Removing from SessionManager")
+			session.log.Errorf("Registration session done and not successful. Removing from SessionManager")
 			sm.removeSession(session)
 		}
 	}(session, state)
+    session.log.Infof("New Register Session Created")
 	return session, state, nil
 }
 
 func (sm *SessionManager) addSession(session *Session) error {
-	if _, collision := sm.idToSession[session.sessionId]; collision {
+	if _, collision := sm.sessionIdToSession[session.sessionId]; collision {
 		return errors.New("Session ID Collision in SessionManager. Panic.")
 	}
 
-	sm.idToSession[session.sessionId] = session
+	sm.sessionIdToSession[session.sessionId] = session
+    sm.usernameToSessionId[session.Username] = session.sessionId
 	return nil
 }
 
 func (sm *SessionManager) removeSession(session *Session) bool {
-	if _, sessionExists := sm.idToSession[session.sessionId]; !sessionExists {
+	if _, sessionExists := sm.sessionIdToSession[session.sessionId]; !sessionExists {
 		return false
 	}
 	session.Close()
-	delete(sm.idToSession, session.sessionId)
+	delete(sm.sessionIdToSession, session.sessionId)
+	delete(sm.usernameToSessionId, session.Username)
 	return true
 }
 
@@ -127,10 +159,28 @@ func (sm *SessionManager) RenewSessionToken(sessionId string) (*Session, error) 
 }
 
 func (sm *SessionManager) GetSession(sessionId string) (*Session, bool) {
-	session, found := sm.idToSession[sessionId]
+	session, found := sm.sessionIdToSession[sessionId]
 	if !found {
 		return nil, false
 	}
-	session.lastAccess = time.Now()
+    session.UpdateLastAccess()
 	return session, found
+}
+
+func (sm *SessionManager) GetSessionLogin(username, passphrase string) (*Session, error) {
+    sessionId, found := sm.usernameToSessionId[username]
+    if !found {
+        return nil, nil
+    }
+    session, found := sm.GetSession(sessionId)
+    if !found {
+        sm.log.Errorf("Invalid SessionManager state... username found with no corresponding sessionID")
+        return nil, ErrSessionManagerInvalidState
+    }
+    if !session.VerifyPassphrase(passphrase) {
+        sm.log.Warnf("Invalid login attempt for user: %s", username)
+        return nil, ErrInvalidPassphrase
+    }
+    session.log.Infof("User logged in to existing session")
+    return session, nil
 }

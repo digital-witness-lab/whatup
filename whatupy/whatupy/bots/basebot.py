@@ -8,10 +8,9 @@ from collections import defaultdict
 from pathlib import Path
 import typing as T
 
-import aiohttp
-import socketio
+import grpc
 
-from .. import actions, utils
+from .. import utils
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +21,12 @@ COMMAND_PINNING_TTL: int = (
 BOT_REGISTRY = defaultdict(dict)
 
 
-class BaseBot(socketio.AsyncClientNamespace):
+class BaseBot(asyncio.Task):
     def __init__(
         self,
         *args,
         name: str | None = None,
-        session_locator: dict | None = None,
+        credentials: dict | None = None,
         timeout=120,
         allow_unauthenticated=False,
         control_groups: list,

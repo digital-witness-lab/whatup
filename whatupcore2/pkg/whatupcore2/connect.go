@@ -16,7 +16,7 @@ import (
 
 func WhatsAppServe(username string, passphrase string) error {
 	log := waLog.Stdout("WhatsAppServe", "DEBUG", true)
-	client, error := NewWhatsAppClient(username, passphrase)
+	client, error := NewWhatsAppClient(username, passphrase, log.Sub("WAClient"))
 	if error != nil {
 		return error
 	}

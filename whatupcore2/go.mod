@@ -3,6 +3,7 @@ module github.com/digital-witness-lab/whatup/whatupcore2
 go 1.19
 
 require (
+	github.com/alexedwards/argon2id v0.0.0-20230305115115-4b3c3280a736
 	github.com/digital-witness-lab/whatup/protos v0.0.0-00010101000000-000000000000
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.0-rc.5
