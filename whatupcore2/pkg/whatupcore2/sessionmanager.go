@@ -110,11 +110,11 @@ func (sm *SessionManager) removeSession(session *Session) bool {
 }
 
 func (sm *SessionManager) TokenToSessionId(token string) (string, error) {
-    claims, err := parseTokenString(token, sm.secretKey)
-    if err != nil {
-        return "", err
-    }
-    return claims.SessionId, nil
+	claims, err := parseTokenString(token, sm.secretKey)
+	if err != nil {
+		return "", err
+	}
+	return claims.SessionId, nil
 }
 
 func (sm *SessionManager) RenewSessionToken(sessionId string) (*Session, error) {
