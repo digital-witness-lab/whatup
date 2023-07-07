@@ -76,18 +76,18 @@ func createDBFilePath(username string, n_subdirs int) (string, error) {
 type WhatsAppClient struct {
 	*whatsmeow.Client
 
-    historyMessages chan *Message
-    presenceHandler uint32
-	dbPath string
+	historyMessages chan *Message
+	presenceHandler uint32
+	dbPath          string
 }
 
 func NewWhatsAppClient(username string, passphrase string) (*WhatsAppClient, error) {
-    store.DeviceProps.RequireFullSync = proto.Bool(true)
-    store.DeviceProps.HistorySyncConfig = &waProto.DeviceProps_HistorySyncConfig{
-        FullSyncDaysLimit: proto.Uint32(365 * 3),
-        FullSyncSizeMbLimit: proto.Uint32((1 << 32) - 1),
-        StorageQuotaMb: proto.Uint32((1 << 32) - 1),
-    }
+	store.DeviceProps.RequireFullSync = proto.Bool(true)
+	store.DeviceProps.HistorySyncConfig = &waProto.DeviceProps_HistorySyncConfig{
+		FullSyncDaysLimit:   proto.Uint32(365 * 3),
+		FullSyncSizeMbLimit: proto.Uint32((1 << 32) - 1),
+		StorageQuotaMb:      proto.Uint32((1 << 32) - 1),
+	}
 
 	dbLog := waLog.Stdout("Database", "DEBUG", true)
 	username_safe := hashStringHex(username)
@@ -115,23 +115,23 @@ func NewWhatsAppClient(username string, passphrase string) (*WhatsAppClient, err
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 
 	client := &WhatsAppClient{
-		Client: wmClient,
-		dbPath: dbPath,
-        historyMessages: make(chan *Message, 32),
+		Client:          wmClient,
+		dbPath:          dbPath,
+		historyMessages: make(chan *Message, 32),
 	}
-    client.presenceHandler = wmClient.AddEventHandler(client.setConnectPresence)
+	client.presenceHandler = wmClient.AddEventHandler(client.setConnectPresence)
 
 	return client, nil
 }
 
 func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
-    switch evt.(type) {
-    case events.Connected:
-        err := wac.SendPresence(types.PresenceAvailable)
-        if err != nil {
-            wac.Log.Errorf("Could not send presence: %+v", err)
-        }
-    }
+	switch evt.(type) {
+	case events.Connected:
+		err := wac.SendPresence(types.PresenceAvailable)
+		if err != nil {
+			wac.Log.Errorf("Could not send presence: %+v", err)
+		}
+	}
 }
 
 func (wac *WhatsAppClient) cleanupDBFile() error {
@@ -166,8 +166,8 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 	state := NewRegistrationState()
 	isNewDB := wac.Store.ID == nil
 
-    historyCtx, historyCtxClose := context.WithCancel(context.Background())
-    go wac.fillHistoryMessages(historyCtx)
+	historyCtx, historyCtxClose := context.WithCancel(context.Background())
+	go wac.fillHistoryMessages(historyCtx)
 
 	go func(state *RegistrationState) {
 		for {
@@ -186,7 +186,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 				if !wac.IsLoggedIn() && isNewDB {
 					wac.Log.Infof("No login detected. deleting temporary DB file: %s", wac.dbPath)
 					wac.cleanupDBFile()
-                    historyCtxClose()
+					historyCtxClose()
 				}
 				return
 			}
@@ -259,37 +259,37 @@ func (wac *WhatsAppClient) fillHistoryMessages(ctx context.Context) {
 	handlerId := wac.AddEventHandler(func(evt interface{}) {
 		switch message := evt.(type) {
 		case *events.HistorySync:
-            wac.Log.Infof("History Progress: %d", message.Data.GetProgress())
-	        for _, conv := range message.Data.GetConversations() {
-	        	jid, err := types.ParseJID(conv.GetId())
-	        	if err != nil {
-                    wac.Log.Errorf("Error parsing JID from history: %v", err)
-                    continue
-                } else if jid.Server == types.BroadcastServer || jid.Server == types.HiddenUserServer {
-                    wac.Log.Debugf("Skipping history from JID server: %v", jid.Server)
-	        		continue
-	        	}
+			wac.Log.Infof("History Progress: %d", message.Data.GetProgress())
+			for _, conv := range message.Data.GetConversations() {
+				jid, err := types.ParseJID(conv.GetId())
+				if err != nil {
+					wac.Log.Errorf("Error parsing JID from history: %v", err)
+					continue
+				} else if jid.Server == types.BroadcastServer || jid.Server == types.HiddenUserServer {
+					wac.Log.Debugf("Skipping history from JID server: %v", jid.Server)
+					continue
+				}
 
-                chatJID, err := types.ParseJID(conv.GetId())
-                if err != nil {
-                    wac.Log.Errorf("Could not get conversation JID: %v", err)
-                    continue
-                }
-		        for _, rawMsg := range conv.GetMessages() {
-		        	wmMsg, err := wac.ParseWebMessage(chatJID, rawMsg.GetMessage())
-		        	if err != nil {
-                        wac.Log.Errorf("Failed to parse raw history message: %v", err)
-                        continue
-                    }
+				chatJID, err := types.ParseJID(conv.GetId())
+				if err != nil {
+					wac.Log.Errorf("Could not get conversation JID: %v", err)
+					continue
+				}
+				for _, rawMsg := range conv.GetMessages() {
+					wmMsg, err := wac.ParseWebMessage(chatJID, rawMsg.GetMessage())
+					if err != nil {
+						wac.Log.Errorf("Failed to parse raw history message: %v", err)
+						continue
+					}
 
-			        msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
-			        if err != nil {
-                        wac.Log.Errorf("Failed to convert history message: %v", err)
-                        continue
-			        }
-			        wac.historyMessages <- msg
-                }
-            }
+					msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
+					if err != nil {
+						wac.Log.Errorf("Failed to convert history message: %v", err)
+						continue
+					}
+					wac.historyMessages <- msg
+				}
+			}
 		}
 	})
 	go func() {
@@ -302,31 +302,30 @@ func (wac *WhatsAppClient) fillHistoryMessages(ctx context.Context) {
 }
 
 func (wac *WhatsAppClient) GetHistoryMessages(ctx context.Context) chan *Message {
-    return wac.historyMessages
+	return wac.historyMessages
 }
 
 func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Duration) {
-    finishTimer := time.NewTimer(timeout)
-    resendTimer := time.NewTicker(5 * time.Second)
-    for {
-        err := wac.Client.SendChatPresence(jid, types.ChatPresenceComposing, types.ChatPresenceMediaText)
-        if err != nil {
-            wac.Log.Errorf("Could not send composing presence to JID: %v: %v", jid, err)
-        }
-        select {
-            case <-resendTimer.C:
-                continue
-            case <-finishTimer.C:
-                resendTimer.Stop()
-                err := wac.Client.SendChatPresence(jid, types.ChatPresencePaused, types.ChatPresenceMediaText)
-                if err != nil {
-                    wac.Log.Errorf("Could not send paused presence to JID: %v: %v", jid, err)
-                }
-                return
-        }
-    }
+	finishTimer := time.NewTimer(timeout)
+	resendTimer := time.NewTicker(5 * time.Second)
+	for {
+		err := wac.Client.SendChatPresence(jid, types.ChatPresenceComposing, types.ChatPresenceMediaText)
+		if err != nil {
+			wac.Log.Errorf("Could not send composing presence to JID: %v: %v", jid, err)
+		}
+		select {
+		case <-resendTimer.C:
+			continue
+		case <-finishTimer.C:
+			resendTimer.Stop()
+			err := wac.Client.SendChatPresence(jid, types.ChatPresencePaused, types.ChatPresenceMediaText)
+			if err != nil {
+				wac.Log.Errorf("Could not send paused presence to JID: %v: %v", jid, err)
+			}
+			return
+		}
+	}
 }
-
 
 /*
 func (wac *WhatsAppClient) GetConversationHistory() (chan *Message, error) {

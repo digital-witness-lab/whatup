@@ -36,32 +36,32 @@ func (s *WhatUpCoreServer) SendMessage(ctx context.Context, messageOptions *pb.S
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-    jid := ProtoToJID(messageOptions.Recipient)
-    if messageOptions.ComposingTime > 0 {
-        typingTime := time.Duration(messageOptions.ComposingTime) * time.Second
-        session.Client.SendComposingPresence(jid, typingTime)
-    }
+	jid := ProtoToJID(messageOptions.Recipient)
+	if messageOptions.ComposingTime > 0 {
+		typingTime := time.Duration(messageOptions.ComposingTime) * time.Second
+		session.Client.SendComposingPresence(jid, typingTime)
+	}
 
-    var message *waProto.Message
-    switch payload := messageOptions.GetPayload().(type) {
-        case *pb.SendMessageOptions_SimpleText:
-            message = &waProto.Message{
-                Conversation: proto.String(payload.SimpleText),
-            }
-        case *pb.SendMessageOptions_RawMessage:
-            message = payload.RawMessage
-    }
+	var message *waProto.Message
+	switch payload := messageOptions.GetPayload().(type) {
+	case *pb.SendMessageOptions_SimpleText:
+		message = &waProto.Message{
+			Conversation: proto.String(payload.SimpleText),
+		}
+	case *pb.SendMessageOptions_RawMessage:
+		message = payload.RawMessage
+	}
 
-    reciept, err := session.Client.SendMessage(ctx, jid, message)
-    if err != nil {
-        return nil, err
-    }
+	reciept, err := session.Client.SendMessage(ctx, jid, message)
+	if err != nil {
+		return nil, err
+	}
 
-    recieptProto := &pb.SendMessageReceipt{
-        SentAt: timestamppb.New(reciept.Timestamp),
-        MessageId: reciept.ID,
-    }
-    return recieptProto, nil
+	recieptProto := &pb.SendMessageReceipt{
+		SentAt:    timestamppb.New(reciept.Timestamp),
+		MessageId: reciept.ID,
+	}
+	return recieptProto, nil
 }
 
 func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, server pb.WhatUpCore_GetMessagesServer) error {
@@ -95,7 +95,7 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second * time.Duration(historyOptions.HistoryReadTimeout))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(historyOptions.HistoryReadTimeout))
 	defer cancel()
 	msgChan := session.Client.GetHistoryMessages(ctx)
 
@@ -117,12 +117,12 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, mediaMessage *waPr
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-    // need to do a SendMediaRetryReceipt in some cases
-    body, err := session.Client.DownloadAny(mediaMessage)
-    if err != nil {
-        return nil, status.Errorf(codes.Internal, "Could not download media: %v", err)
-    }
-    
+	// need to do a SendMediaRetryReceipt in some cases
+	body, err := session.Client.DownloadAny(mediaMessage)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Could not download media: %v", err)
+	}
+
 	return &pb.MediaContent{Body: body}, nil
 }
 
@@ -140,7 +140,7 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 	return GroupInfoToProto(groupInfo), nil
 }
 
-func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context,  inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
+func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context, inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
 	session, ok := ctx.Value("session").(*Session)
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
@@ -153,7 +153,7 @@ func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context,  inviteCode *pb
 	return GroupInfoToProto(groupInfo), nil
 }
 
-func (s *WhatUpCoreServer) JoinGroup(ctx context.Context,  inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
+func (s *WhatUpCoreServer) JoinGroup(ctx context.Context, inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
 	session, ok := ctx.Value("session").(*Session)
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
@@ -161,12 +161,12 @@ func (s *WhatUpCoreServer) JoinGroup(ctx context.Context,  inviteCode *pb.Invite
 
 	groupInfo, err := session.Client.GetGroupInfoFromLink(inviteCode.Link)
 	if err != nil {
-        return nil, status.Errorf(codes.Unknown, "Could not get group metadata: %v", err)
+		return nil, status.Errorf(codes.Unknown, "Could not get group metadata: %v", err)
 	}
 
-    _, err = session.Client.JoinGroupWithLink(inviteCode.Link)
-    if err != nil {
-        return nil, status.Errorf(codes.Unknown, "Could not join group: %v", err)
-    }
+	_, err = session.Client.JoinGroupWithLink(inviteCode.Link)
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, "Could not join group: %v", err)
+	}
 	return GroupInfoToProto(groupInfo), nil
 }
