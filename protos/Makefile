@@ -1,4 +1,4 @@
-all: whatupcore.pb.go whatupcore_pb2.py
+all: whatupcore.pb.go ../whatupy/whatupy/whatupcore_pb2_grpc.py
 .PHONY: all clean client client-ssl evans
 
 EVANS_PARAMS := --host 127.0.0.1 --port 3447 --proto whatupcore.proto
@@ -13,10 +13,9 @@ whatupcore.pb.go: whatupcore.proto
 		whatupcore.proto 
 	go mod tidy
 
-whatupcore_pb2.py: whatupcore.proto
-	protoc \
-		--python_out=. \
-		whatupcore.proto 
+../whatupy/whatupy/whatupcore_pb2_grpc.py: whatupcore.proto
+	pip install grpcio-tools
+	python -m grpc_tools.protoc -I . --python_out=../whatupy/whatupy/ --grpc_python_out=../whatupy/whatupy/ ./whatupcore.proto ./whatsappweb.proto
 
 evans:
 	go install github.com/ktr0731/evans@v0.10.11
