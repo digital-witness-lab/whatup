@@ -5,12 +5,14 @@ import (
 	"fmt"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
+	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type WhatUpCoreAuthServer struct {
 	sessionManager *SessionManager
+    log waLog.Logger
 	pb.UnimplementedWhatUpCoreAuthServer
 }
 
@@ -55,7 +57,13 @@ func (s *WhatUpCoreAuthServer) Register(credentials *pb.WUCredentials, qrStream 
 	session, regState, err := s.sessionManager.AddRegistration(ctx, credentials.Username, credentials.Passphrase)
 	if err != nil {
 		return err
-	}
+	} else if regState == nil && session != nil {
+		qrStream.Send(&pb.RegisterMessages{
+			LoggedIn: true,
+			Token:    session.ToProto(),
+		})
+		return nil
+    }
 
 	for !regState.Completed {
 		select {

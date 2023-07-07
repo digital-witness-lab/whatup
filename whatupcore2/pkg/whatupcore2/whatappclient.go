@@ -81,7 +81,7 @@ type WhatsAppClient struct {
 	dbPath          string
 }
 
-func NewWhatsAppClient(username string, passphrase string) (*WhatsAppClient, error) {
+func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*WhatsAppClient, error) {
 	store.DeviceProps.RequireFullSync = proto.Bool(true)
 	store.DeviceProps.HistorySyncConfig = &waProto.DeviceProps_HistorySyncConfig{
 		FullSyncDaysLimit:   proto.Uint32(365 * 3),
@@ -89,7 +89,7 @@ func NewWhatsAppClient(username string, passphrase string) (*WhatsAppClient, err
 		StorageQuotaMb:      proto.Uint32((1 << 32) - 1),
 	}
 
-	dbLog := waLog.Stdout("Database", "DEBUG", true)
+	dbLog := log.Sub("DB")
 	username_safe := hashStringHex(username)
 	passphrase_safe := hashStringHex(passphrase)
 	dbPath, err := createDBFilePath(username_safe, 4)
@@ -106,9 +106,7 @@ func NewWhatsAppClient(username string, passphrase string) (*WhatsAppClient, err
 	if err != nil {
 		return nil, err
 	}
-	clientLog := waLog.Stdout("Client", "DEBUG", true)
-	wmClient := whatsmeow.NewClient(deviceStore, clientLog)
-
+	wmClient := whatsmeow.NewClient(deviceStore, log.Sub("WMC"))
 	wmClient.EnableAutoReconnect = true
 	wmClient.EmitAppStateEventsOnFullSync = true
 	wmClient.AutoTrustIdentity = true // don't do this for non-bot accounts

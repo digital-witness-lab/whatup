@@ -6,6 +6,7 @@ import (
 
 	pb "github.com/digital-witness-lab/whatup/protos"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
+	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -14,6 +15,7 @@ import (
 
 type WhatUpCoreServer struct {
 	sessionManager *SessionManager
+    log waLog.Logger
 	pb.UnimplementedWhatUpCoreServer
 }
 
@@ -80,12 +82,12 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		}
 		msgProto, ok := msg.ToProto()
 		if !ok {
-			session.Client.Log.Errorf("Could not convert message to WUMessage proto: %v", msg)
+			msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
 		} else if err := server.Send(msgProto); err != nil {
 			return nil
 		}
 	}
-	session.Client.Log.Debugf("Ending GetMessages")
+	session.log.Debugf("Ending GetMessages")
 	return nil
 }
 
@@ -102,12 +104,12 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 	for msg := range msgChan {
 		msgProto, ok := msg.ToProto()
 		if !ok {
-			session.Client.Log.Errorf("Could not convert message to WUMessage proto: %v", msg)
+			msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
 		} else if err := server.Send(msgProto); err != nil {
 			return nil
 		}
 	}
-	session.Client.Log.Debugf("Ending GetMessages")
+	session.log.Debugf("Ending GetMessages")
 	return nil
 }
 
