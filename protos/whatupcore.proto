@@ -22,9 +22,31 @@ service WhatUpCore {
     rpc JoinGroup(InviteCode) returns (GroupInfo) {}
 
     rpc GetMessages(MessagesOptions) returns (stream WUMessage) {}
-    rpc GetPendingHistory(MessagesOptions) returns (stream WUMessage) {}
+    rpc GetPendingHistory(PendingHistoryOptions) returns (stream WUMessage) {}
     // DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
     rpc DownloadMedia(proto.Message) returns (MediaContent) {}
+
+    rpc SendMessage(SendMessageOptions) returns (SendMessageReceipt) {}
+}
+
+message SendMessageOptions {
+    JID recipient = 1;
+    
+    oneof payload {
+        string simpleText = 2;
+        proto.Message rawMessage = 3;
+    }
+
+    uint32 composingTime = 4; // seconds
+}
+
+message PendingHistoryOptions {
+    uint32 historyReadTimeout = 1;
+}
+
+message SendMessageReceipt {
+    google.protobuf.Timestamp sentAt = 1;
+    string messageId = 2;
 }
 
 message InviteCode {
@@ -76,7 +98,6 @@ message ConnectionStatusOptions {
 message MessagesOptions {
     // Whether to mark messages as read when they are recieved
     bool markMessagesRead = 1; 
-    uint32 historyReadTimeout = 2;
 }
 
 message SessionToken {
