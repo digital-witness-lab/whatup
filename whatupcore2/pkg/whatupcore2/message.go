@@ -39,8 +39,8 @@ type Message struct {
 func NewMessageFromWhatsMeow(client *WhatsAppClient, m *events.Message) (*Message, error) {
 	msgId := m.Info.ID
 	return &Message{
-		client:  client,
-		log:     waLog.Stdout(fmt.Sprintf("Message: %s", msgId), "DEBUG", true),
+		client:       client,
+		log:          waLog.Stdout(fmt.Sprintf("Message: %s", msgId), "DEBUG", true),
 		MessageEvent: m,
 	}, nil
 }
@@ -65,9 +65,9 @@ func (msg *Message) GetExtendedMessage() interface{} {
 		return nil
 	}
 	m := msg.MessageEvent.Message
-    if m == nil {
-        return nil
-    }
+	if m == nil {
+		return nil
+	}
 	switch {
 	case m.GetImageMessage() != nil:
 		return m.GetImageMessage()
@@ -144,7 +144,7 @@ func (msg *Message) GetLink() string {
 }
 
 func (msg *Message) IsInvite() bool {
-    return msg.MessageEvent.Message.GetExtendedTextMessage().GetInviteLinkGroupTypeV2() > 0
+	return msg.MessageEvent.Message.GetExtendedTextMessage().GetInviteLinkGroupTypeV2() > 0
 }
 
 func (msg *Message) GetContextInfo() (*waProto.ContextInfo, bool) {
@@ -174,10 +174,10 @@ func (msg *Message) GetThumbnail() ([]byte, error) {
 }
 
 func (msg *Message) getThumbnail(extMessage interface{}) ([]byte, error) {
-    thumbnailMsg, ok := extMessage.(whatsmeow.DownloadableThumbnail)
-    if !ok {
-        return nil, ErrNoThumnails
-    }
+	thumbnailMsg, ok := extMessage.(whatsmeow.DownloadableThumbnail)
+	if !ok {
+		return nil, ErrNoThumnails
+	}
 	thumbnail, err := msg.client.DownloadThumbnail(thumbnailMsg)
 	if err == nil {
 		return thumbnail, err
@@ -240,10 +240,10 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			IsViewOnce:            msg.IsViewOnce,
 			IsDocumentWithCaption: msg.IsDocumentWithCaption,
 			IsEdit:                msg.IsEdit,
-            IsInvite:              msg.IsInvite(),
+			IsInvite:              msg.IsInvite(),
 			IsForwarded:           isForwarded,
 			ForwardedScore:        forwardedScore,
 		},
-        OriginalMessage: msg.MessageEvent.Message,
+		OriginalMessage: msg.MessageEvent.Message,
 	}, true
 }
