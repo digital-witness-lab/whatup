@@ -77,6 +77,7 @@ type WhatsAppClient struct {
 	*whatsmeow.Client
 
     historyMessages chan *Message
+    presenceHandler uint32
 	dbPath string
 }
 
@@ -118,8 +119,19 @@ func NewWhatsAppClient(username string, passphrase string) (*WhatsAppClient, err
 		dbPath: dbPath,
         historyMessages: make(chan *Message, 32),
 	}
+    client.presenceHandler = wmClient.AddEventHandler(client.setConnectPresence)
 
 	return client, nil
+}
+
+func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
+    switch evt.(type) {
+    case events.Connected:
+        err := wac.SendPresence(types.PresenceAvailable)
+        if err != nil {
+            wac.Log.Errorf("Could not send presence: %+v", err)
+        }
+    }
 }
 
 func (wac *WhatsAppClient) cleanupDBFile() error {
@@ -172,7 +184,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 				wac.Log.Infof("LoginOrRegister flow complete. success = %v, completed = %v", state.Success, state.Completed)
 				state.Close()
 				if !wac.IsLoggedIn() && isNewDB {
-					wac.Log.Infof("No login detected. deleteing temporary DB file: %s", wac.dbPath)
+					wac.Log.Infof("No login detected. deleting temporary DB file: %s", wac.dbPath)
 					wac.cleanupDBFile()
                     historyCtxClose()
 				}
@@ -212,7 +224,7 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 				return true
 			} else {
 				wac.Log.Debugf("Unknown event: %v", evt.Event)
-				state.Errors <- fmt.Errorf("Uknown event during login: %v: %s", evt.Code, evt.Event)
+				state.Errors <- fmt.Errorf("Unknown event during login: %v: %s", evt.Code, evt.Event)
 				return false
 			}
 		case <-ctx.Done():
@@ -291,6 +303,28 @@ func (wac *WhatsAppClient) fillHistoryMessages(ctx context.Context) {
 
 func (wac *WhatsAppClient) GetHistoryMessages(ctx context.Context) chan *Message {
     return wac.historyMessages
+}
+
+func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Duration) {
+    finishTimer := time.NewTimer(timeout)
+    resendTimer := time.NewTicker(5 * time.Second)
+    for {
+        err := wac.Client.SendChatPresence(jid, types.ChatPresenceComposing, types.ChatPresenceMediaText)
+        if err != nil {
+            wac.Log.Errorf("Could not send composing presence to JID: %v: %v", jid, err)
+        }
+        select {
+            case <-resendTimer.C:
+                continue
+            case <-finishTimer.C:
+                resendTimer.Stop()
+                err := wac.Client.SendChatPresence(jid, types.ChatPresencePaused, types.ChatPresenceMediaText)
+                if err != nil {
+                    wac.Log.Errorf("Could not send paused presence to JID: %v: %v", jid, err)
+                }
+                return
+        }
+    }
 }
 
 

@@ -8,6 +8,7 @@ import (
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -27,6 +28,40 @@ func (s *WhatUpCoreServer) GetConnectionStatus(ctx context.Context, credentials 
 		IsLoggedIn:  session.Client.IsLoggedIn(),
 		Timestamp:   timestamppb.New(session.Client.LastSuccessfulConnect),
 	}, nil
+}
+
+func (s *WhatUpCoreServer) SendMessage(ctx context.Context, messageOptions *pb.SendMessageOptions) (*pb.SendMessageReceipt, error) {
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+    jid := ProtoToJID(messageOptions.Recipient)
+    if messageOptions.ComposingTime > 0 {
+        typingTime := time.Duration(messageOptions.ComposingTime) * time.Second
+        session.Client.SendComposingPresence(jid, typingTime)
+    }
+
+    var message *waProto.Message
+    switch payload := messageOptions.GetPayload().(type) {
+        case *pb.SendMessageOptions_SimpleText:
+            message = &waProto.Message{
+                Conversation: proto.String(payload.SimpleText),
+            }
+        case *pb.SendMessageOptions_RawMessage:
+            message = payload.RawMessage
+    }
+
+    reciept, err := session.Client.SendMessage(ctx, jid, message)
+    if err != nil {
+        return nil, err
+    }
+
+    recieptProto := &pb.SendMessageReceipt{
+        SentAt: timestamppb.New(reciept.Timestamp),
+        MessageId: reciept.ID,
+    }
+    return recieptProto, nil
 }
 
 func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, server pb.WhatUpCore_GetMessagesServer) error {
@@ -54,13 +89,13 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 	return nil
 }
 
-func (s *WhatUpCoreServer) GetPendingHistory(messageOptions *pb.MessagesOptions, server pb.WhatUpCore_GetPendingHistoryServer) error {
+func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOptions, server pb.WhatUpCore_GetPendingHistoryServer) error {
 	session, ok := server.Context().Value("session").(*Session)
 	if !ok {
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second * time.Duration(messageOptions.HistoryReadTimeout))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second * time.Duration(historyOptions.HistoryReadTimeout))
 	defer cancel()
 	msgChan := session.Client.GetHistoryMessages(ctx)
 
