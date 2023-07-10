@@ -8,6 +8,7 @@ import (
 	pb "github.com/digital-witness-lab/whatup/protos"
 	jwt "github.com/golang-jwt/jwt/v5"
 	waLog "go.mau.fi/whatsmeow/util/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Session struct {
@@ -78,7 +79,8 @@ func (session *Session) Close() {
 }
 
 func (session *Session) ToProto() *pb.SessionToken {
-	return &pb.SessionToken{Token: session.TokenString()}
+    expirationTime, _ := session.GetExpirationTime()
+    return &pb.SessionToken{Token: session.TokenString(), ExpirationTime: timestamppb.New(expirationTime)}
 }
 
 func (session *Session) Login(username string, passphrase string) error {
@@ -118,11 +120,19 @@ func (session *Session) RenewToken(secretKey []byte) error {
 	return nil
 }
 
-func (session *Session) IsExpired() bool {
+func (session *Session) GetExpirationTime() (time.Time, bool) {
 	exp, err := session.token.Claims.GetExpirationTime()
 	if err != nil {
-		return true
+		return time.Time{}, false
 	}
+    return exp.Time, true
+}
+
+func (session *Session) IsExpired() bool {
+    exp, ok := session.GetExpirationTime()
+    if !ok {
+        return false
+    }
 	return exp.Before(time.Now())
 }
 

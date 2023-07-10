@@ -24,7 +24,7 @@ service WhatUpCore {
     rpc GetMessages(MessagesOptions) returns (stream WUMessage) {}
     rpc GetPendingHistory(PendingHistoryOptions) returns (stream WUMessage) {}
     // DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
-    rpc DownloadMedia(proto.Message) returns (MediaContent) {}
+    rpc DownloadMedia(DownloadMediaOptions) returns (MediaContent) {}
 
     rpc SendMessage(SendMessageOptions) returns (SendMessageReceipt) {}
 }
@@ -38,6 +38,11 @@ message SendMessageOptions {
     }
 
     uint32 composingTime = 4; // seconds
+}
+
+message DownloadMediaOptions {
+    proto.Message mediaMessage = 1;
+    MessageInfo info = 2;
 }
 
 message PendingHistoryOptions {
@@ -102,6 +107,7 @@ message MessagesOptions {
 
 message SessionToken {
     string token = 1;
+    google.protobuf.Timestamp expirationTime = 2;
 }
 
 message RegisterMessages {

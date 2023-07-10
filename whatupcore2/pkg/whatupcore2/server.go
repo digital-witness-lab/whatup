@@ -21,6 +21,7 @@ var (
 	TLS_CERT_FILE = "../data/keys/cert.pem"
 	TLS_KEY_FILE  = "../data/keys/key.pem"
 	JWT_SECRET    = []byte("SECRETSECRET")
+    USE_SSL       = true
     Log waLog.Logger
 )
 
@@ -63,13 +64,18 @@ func StartRPC(port uint32, logLevel string) error {
 	})
 
 	var s *grpc.Server
-	if false {
+	if USE_SSL {
 		creds, err := credentials.NewServerTLSFromFile(TLS_CERT_FILE, TLS_KEY_FILE)
 		if err != nil {
 			Log.Errorf("could not load server credentials: %v", err)
 			return err
 		}
-		s = grpc.NewServer(grpc.Creds(creds), keepAlive)
+		s = grpc.NewServer(
+			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
+			grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
+            grpc.Creds(creds),
+            keepAlive,
+        )
 	} else {
 		s = grpc.NewServer(
 			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),

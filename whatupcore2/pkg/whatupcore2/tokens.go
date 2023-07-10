@@ -3,10 +3,16 @@ package whatupcore2
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"
+)
+
+var (
+    ErrInvalidToken = errors.New("Invalid Token")
+    ErrUnparsableClaim = errors.New("Token Invalid: Unparsable claims")
 )
 
 const (
@@ -69,12 +75,12 @@ func parseTokenString(tokenString string, secret []byte) (*SessionJWTClaims, err
 		return nil, err
 	}
 	if !token.Valid {
-		return nil, fmt.Errorf("Token Invalid")
+		return nil, ErrInvalidToken
 	}
 
 	claims, ok := token.Claims.(*SessionJWTClaims)
 	if !ok {
-		return nil, fmt.Errorf("Token Invalid: Unparsable claims")
+		return nil, ErrUnparsableClaim
 	}
 
 	return claims, nil
