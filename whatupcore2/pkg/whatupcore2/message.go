@@ -12,7 +12,6 @@ import (
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
@@ -59,11 +58,7 @@ func (msg *Message) MarkRead() error {
 	)
 }
 
-func (msg *Message) GetExtendedMessage() interface{} {
-	if msg == nil {
-		return nil
-	}
-	m := msg.MessageEvent.Message
+func ExtractMediaMessage(m *waProto.Message) interface{} {
 	if m == nil {
 		return nil
 	}
@@ -85,6 +80,14 @@ func (msg *Message) GetExtendedMessage() interface{} {
 	default:
 		return nil
 	}
+}
+
+func (msg *Message) GetExtendedMessage() interface{} {
+	if msg == nil {
+		return nil
+	}
+	m := msg.MessageEvent.Message
+    return ExtractMediaMessage(m)
 }
 
 func (msg *Message) downloadableMessageToMediaMessage(extMessage interface{}) *pb.MediaMessage {
@@ -218,21 +221,7 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			Thumbnail:    thumbnail,
 			MediaMessage: mediaMessage,
 		},
-		Info: &pb.MessageInfo{
-			Source: &pb.MessageSource{
-				Chat:               JIDToProto(msg.Info.Chat),
-				Sender:             JIDToProto(msg.Info.Sender),
-				BroadcastListOwner: JIDToProto(msg.Info.BroadcastListOwner),
-				IsFromMe:           msg.Info.IsFromMe,
-				IsGroup:            msg.Info.IsGroup,
-			},
-			Timestamp: timestamppb.New(msg.Info.Timestamp),
-			Id:        msg.Info.ID,
-			PushName:  msg.Info.PushName,
-			Type:      msg.Info.Type,
-			Category:  msg.Info.Category,
-			Multicast: msg.Info.Multicast,
-		},
+        Info: MessageInfoToProto(msg.Info),
 		MessageProperties: &pb.MessageProperties{
 			IsEphemeral:           msg.IsEphemeral,
 			IsViewOnce:            msg.IsViewOnce,

@@ -9,9 +9,30 @@ import hashlib
 from functools import wraps
 
 import qrcode
+from .protos import whatupcore_pb2 as wuc
 
 WORDLIST_SIZE = None
 RANDOM_SALT = random.randbytes(32)
+
+
+def protobuf_to_dict(proto_obj) -> dict[str, T.Any]:
+    key_list = proto_obj.DESCRIPTOR.fields_by_name.keys()
+    d = {}
+    for key in key_list:
+        # d[key] = getattr(proto_obj, key)
+        obj = getattr(proto_obj, key)
+        if hasattr(obj, "DESCRIPTOR"):
+            obj = protobuf_to_dict(obj)
+        d[key] = obj
+    return d
+
+
+def jid_to_str(jid: wuc.JID) -> str:
+    return f"{jid.user}@{jid.server}"
+
+
+def same_jid(a: wuc.JID, b: wuc.JID) -> bool:
+    return a.user == b.user and a.server == b.server
 
 
 def random_words(n_words=3) -> T.List[str]:
@@ -56,32 +77,6 @@ def async_cli(fxn):
     return wrapper
 
 
-def get_message_sender(message) -> str | None:
-    return message["key"].get("participant") or message["key"]["remoteJid"]
-
-
-def get_message_text(message) -> str | None:
-    try:
-        # Normal text message
-        return message["message"]["conversation"]
-    except KeyError:
-        pass
-    try:
-        # Disappearing message
-        return message["message"]["extendedTextMessage"]["text"]
-    except KeyError:
-        pass
-    return None
-
-
-def is_media_message(message) -> bool:
-    return any("mediaKey" in m for m in message["message"].values())
-
-
-def is_groupchat(message) -> bool:
-    return message["key"].get("remoteJid", "").endswith("@g.us")
-
-
 def mimetype_to_ext(mtype: str) -> str | None:
     if not mimetypes.inited:
         mimetypes.init()
@@ -90,7 +85,8 @@ def mimetype_to_ext(mtype: str) -> str | None:
 
 
 def media_message_filename(message) -> str | None:
-    mid = message["key"]["id"]
+    # TODO: rewrite
+    mid = message.info.id
     for media_type, media in message["message"].items():
         if ext := mimetype_to_ext(media.get("mimetype", "")):
             return f"{mid}_{media_type}{ext}"

@@ -21,69 +21,38 @@ class ArchiveBot(BaseBot):
         self.archive_dir = archive_dir
         super().__init__(*args, **kwargs)
 
-    async def on_connection_ready(self, *args, **kwargs):
-        self.logger.info(f"Subscribing to messages: {args}: {kwargs}")
-        await self.messages_subscribe()
-
-    async def on_read_messages_control(self, message):
-        if message["key"]["fromMe"]:
-            return
-        try:
-            command = utils.get_message_text(message) or ""
-            self.logger.info(f"Got command: {command}")
-        except KeyError:
-            self.logger.debug(f"Could not find command in control message: {message}")
-            return
-        sender = utils.get_message_sender(message)
-        if not sender:
-            self.logger.debug(f"Could not identify sender of command: {message}")
-            return
-        if match := re.match("/archive-download", command):
-            self.logger.info("Sending archive json")
-            buffer = BytesIO()
-            with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
-                tar.add(self.archive_dir, arcname=self.archive_dir.name)
-            async with self.disappearing_messages(sender, message_ttl=60 * 60 * 12):
-                await self.send_message(
-                    sender,
-                    {
-                        "fileName": "archive.tar.gz",
-                        "mimetype": "application/gzip",
-                        "document": buffer.getvalue(),
-                        "caption": "[[ some interesting stats ]]",
-                    },
-                    vamp_max_seconds=10,
-                )
-        elif match := re.match("/archive-list-chats", command):
-            self.logger.info("Sending chat list")
-            chats = [chat.name for chat in self.archive_dir.iterdir()]
-            message = f"I'm currently tracking the following chats: {', '.join(chats)}"
-            await self.send_message(sender, {"text": message})
-
-    async def on_read_messages(self, message):
-        if "messageStubType" in message:
-            return
-        elif message["key"]["fromMe"]:
+    async def on_message(self, message):
+        if message.info.source.isFromMe:
             return
 
-        chatid = message["key"]["remoteJid"]
+        chatid = utils.jid_to_str(message.info.source.chat)
         conversation_dir: Path = self.archive_dir / chatid
         conversation_dir.mkdir(parents=True, exist_ok=True)
-        message_id = f"{message['messageTimestamp']}_{message['key']['id']}"
-        message["archive_id"] = message_id
+
+        timestamp = message.info.timestamp.ToSeconds()
+        messageId = message.info.id
+        message_id = f"{timestamp}_{messageId}"
+
+        message_dict = utils.protobuf_to_dict(message)
+        message_dict["archive_id"] = message_id
 
         with open(conversation_dir / f"{message_id}.json", "w+") as fd:
-            json.dump(message, fd)
+            json.dump(message_dict, fd)
 
         meta_path = conversation_dir / "metadata.json"
-        if utils.is_groupchat(message) and not meta_path.exists():
-            metadata = await self.group_metadata(chatid)
+        if message.info.source.isGroup and not meta_path.exists():
+            group = message.info.source.chat
+            metadata = await self.core_client.GetGroupInfo(group)
+            metadata_dict = utils.protobuf_to_dict(metadata)
             with meta_path.open("w+") as fd:
-                json.dump(metadata, fd)
+                json.dump(metadata_dict, fd)
 
-        if utils.is_media_message(message):
+        if message.content.mediaMessage is not None:
             media_dir: Path = conversation_dir / "media"
             media_dir.mkdir(parents=True, exist_ok=True)
+
+            message.content.mediaMessage.WhichOneof()
+
             media_filename = utils.media_message_filename(message) or "meida.unk"
             media_bytes = await self.download_message_media(message)
             with open(media_dir / f"{message_id}-{media_filename}", "wb+") as fd:

@@ -8,7 +8,6 @@ package protos
 
 import (
 	context "context"
-	proto "go.mau.fi/whatsmeow/binary/proto"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -216,7 +215,7 @@ type WhatUpCoreClient interface {
 	GetMessages(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetMessagesClient, error)
 	GetPendingHistory(ctx context.Context, in *PendingHistoryOptions, opts ...grpc.CallOption) (WhatUpCore_GetPendingHistoryClient, error)
 	// DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
-	DownloadMedia(ctx context.Context, in *proto.Message, opts ...grpc.CallOption) (*MediaContent, error)
+	DownloadMedia(ctx context.Context, in *DownloadMediaOptions, opts ...grpc.CallOption) (*MediaContent, error)
 	SendMessage(ctx context.Context, in *SendMessageOptions, opts ...grpc.CallOption) (*SendMessageReceipt, error)
 }
 
@@ -328,7 +327,7 @@ func (x *whatUpCoreGetPendingHistoryClient) Recv() (*WUMessage, error) {
 	return m, nil
 }
 
-func (c *whatUpCoreClient) DownloadMedia(ctx context.Context, in *proto.Message, opts ...grpc.CallOption) (*MediaContent, error) {
+func (c *whatUpCoreClient) DownloadMedia(ctx context.Context, in *DownloadMediaOptions, opts ...grpc.CallOption) (*MediaContent, error) {
 	out := new(MediaContent)
 	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/DownloadMedia", in, out, opts...)
 	if err != nil {
@@ -357,7 +356,7 @@ type WhatUpCoreServer interface {
 	GetMessages(*MessagesOptions, WhatUpCore_GetMessagesServer) error
 	GetPendingHistory(*PendingHistoryOptions, WhatUpCore_GetPendingHistoryServer) error
 	// DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
-	DownloadMedia(context.Context, *proto.Message) (*MediaContent, error)
+	DownloadMedia(context.Context, *DownloadMediaOptions) (*MediaContent, error)
 	SendMessage(context.Context, *SendMessageOptions) (*SendMessageReceipt, error)
 	mustEmbedUnimplementedWhatUpCoreServer()
 }
@@ -384,7 +383,7 @@ func (UnimplementedWhatUpCoreServer) GetMessages(*MessagesOptions, WhatUpCore_Ge
 func (UnimplementedWhatUpCoreServer) GetPendingHistory(*PendingHistoryOptions, WhatUpCore_GetPendingHistoryServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetPendingHistory not implemented")
 }
-func (UnimplementedWhatUpCoreServer) DownloadMedia(context.Context, *proto.Message) (*MediaContent, error) {
+func (UnimplementedWhatUpCoreServer) DownloadMedia(context.Context, *DownloadMediaOptions) (*MediaContent, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DownloadMedia not implemented")
 }
 func (UnimplementedWhatUpCoreServer) SendMessage(context.Context, *SendMessageOptions) (*SendMessageReceipt, error) {
@@ -518,7 +517,7 @@ func (x *whatUpCoreGetPendingHistoryServer) Send(m *WUMessage) error {
 }
 
 func _WhatUpCore_DownloadMedia_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(proto.Message)
+	in := new(DownloadMediaOptions)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -530,7 +529,7 @@ func _WhatUpCore_DownloadMedia_Handler(srv interface{}, ctx context.Context, dec
 		FullMethod: "/protos.WhatUpCore/DownloadMedia",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WhatUpCoreServer).DownloadMedia(ctx, req.(*proto.Message))
+		return srv.(WhatUpCoreServer).DownloadMedia(ctx, req.(*DownloadMediaOptions))
 	}
 	return interceptor(ctx, in, info, handler)
 }

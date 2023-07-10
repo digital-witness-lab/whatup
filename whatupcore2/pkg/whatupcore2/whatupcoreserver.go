@@ -113,14 +113,19 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 	return nil
 }
 
-func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, mediaMessage *waProto.Message) (*pb.MediaContent, error) {
+func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptions *pb.DownloadMediaOptions) (*pb.MediaContent, error) {
 	session, ok := ctx.Value("session").(*Session)
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-	// need to do a SendMediaRetryReceipt in some cases
-	body, err := session.Client.DownloadAny(mediaMessage)
+    info := ProtoToMessageInfo(downloadMediaOptions.GetInfo())
+    mediaMessage := downloadMediaOptions.GetMediaMessage()
+    if mediaMessage == nil {
+        return nil, status.Errorf(codes.InvalidArgument, "Message not downloadable")
+    }
+
+	body, err := session.Client.DownloadAnyRetry(ctx, mediaMessage, &info)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not download media: %v", err)
 	}

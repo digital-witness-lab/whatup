@@ -1,3 +1,4 @@
 grpcio-tools
 qrcode
 click
+types_protobuf
