@@ -8,6 +8,50 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+func MessageInfoToProto(info types.MessageInfo) *pb.MessageInfo {
+    return &pb.MessageInfo{
+        Source: MessageSourceToProto(info.MessageSource),
+        Timestamp: timestamppb.New(info.Timestamp),
+        Id:        info.ID,
+        PushName:  info.PushName,
+        Type:      info.Type,
+        Category:  info.Category,
+        Multicast: info.Multicast,
+    }
+}
+
+func ProtoToMessageInfo(mi *pb.MessageInfo) types.MessageInfo {
+    return types.MessageInfo{
+        MessageSource: ProtoToMessageSource(mi.Source),
+        Timestamp: mi.Timestamp.AsTime(),
+        ID:        mi.Id,
+        PushName:  mi.PushName,
+        Type:      mi.Type,
+        Category:  mi.Category,
+        Multicast: mi.Multicast,
+    }
+}
+
+func MessageSourceToProto(source types.MessageSource) *pb.MessageSource {
+    return &pb.MessageSource{
+        Chat:               JIDToProto(source.Chat),
+        Sender:             JIDToProto(source.Sender),
+        BroadcastListOwner: JIDToProto(source.BroadcastListOwner),
+        IsFromMe:           source.IsFromMe,
+        IsGroup:            source.IsGroup,
+    }
+}
+
+func ProtoToMessageSource(ms *pb.MessageSource) types.MessageSource {
+    return types.MessageSource{
+        Chat:               ProtoToJID(ms.Chat),
+        Sender:ProtoToJID(ms.Sender),
+        BroadcastListOwner:ProtoToJID(ms.BroadcastListOwner),
+        IsFromMe:           ms.IsFromMe,
+        IsGroup:            ms.IsGroup,
+    }
+}
+
 func JIDToProto(JID types.JID) *pb.JID {
 	return &pb.JID{
 		User:   JID.User,
@@ -78,12 +122,16 @@ func valuesFilterZero(values []reflect.Value) []reflect.Value {
 	return filtered
 }
 
+func valueToType(value reflect.Value) interface{} {
+    vp := reflect.New(value.Type())
+    vp.Elem().Set(value)
+    return vp.Interface()
+}
+
 func valuesToType(values []reflect.Value) []interface{} {
 	interfaces := make([]interface{}, len(values))
 	for i, value := range values {
-		vp := reflect.New(value.Type())
-		vp.Elem().Set(value)
-		interfaces[i] = vp.Interface()
+		interfaces[i] = valueToType(value)
 	}
 	return interfaces
 }

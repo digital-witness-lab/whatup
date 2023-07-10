@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	SessionTimeout = 10 * time.Minute // TODO: this should probably be the same as the JWT timeout?
+	SessionExpirationTick = 10 * time.Minute
 )
 
 var (
@@ -43,7 +43,7 @@ func (sm *SessionManager) Start() {
 	sm.cancelFunc = cancel
 
 	go func(ctx context.Context) {
-		ticker := time.NewTicker(SessionTimeout)
+		ticker := time.NewTicker(SessionExpirationTick)
 		for {
 			select {
 			case <-ticker.C:
@@ -62,10 +62,9 @@ func (sm *SessionManager) Stop() {
 }
 
 func (sm *SessionManager) pruneSessions() {
-	oldest := time.Now().Add(-SessionTimeout)
 	nRemoved := 0
 	for _, session := range sm.sessionIdToSession {
-		if session.IsLastAccessBefore(oldest) {
+		if session.IsExpired() {
             sm.log.Debugf("Removing old session: %v", session.lastAccess)
 			sm.removeSession(session)
 			nRemoved += 1
