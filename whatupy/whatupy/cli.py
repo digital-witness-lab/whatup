@@ -7,27 +7,29 @@ from pathlib import Path
 
 import click
 
-from .bots import BaseBot, BotType, ArchiveBot, ChatBot, OnboardBot
-from .utils import async_cli
+from .bots import BotType, ArchiveBot, ChatBot, OnboardBot
+from .utils import async_cli, str_to_jid
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
-logging.basicConfig(format=FORMAT, level=logging.INFO)
+logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
 DEFAULT_CERT = Path(str(files("whatupy").joinpath("whatupcore/static/cert.pem")))
 
 
 async def run_multi_bots(
-    bot: T.Type[BotType], locators: T.List[T.TextIO], bot_args: dict
+    bot: T.Type[BotType], credentials: T.List[T.TextIO], bot_args: dict
 ):
-    session_locators: T.List[dict] = []
-    for locator in locators:
+    whatup_credentials: T.List[dict] = []
+    for credential in credentials:
         try:
-            session_locators.append(json.load(locator))
+            whatup_credentials.append(json.load(credential))
         except ValueError:
-            raise Exception(f"Could not parse locator: {locator}")
+            raise Exception(f"Could not parse credential: {credential}")
     async with asyncio.TaskGroup() as tg:
-        for session_locator in session_locators:
-            coro = bot.start(session_locator=session_locator, **bot_args)
+        for whatup_credential in whatup_credentials:
+            b = bot(**bot_args)
+            coro = b.start(**whatup_credential)
             tg.create_task(coro)
 
 
@@ -42,7 +44,7 @@ async def run_multi_bots(
     default=["c+c-prod@g.us"],
 )
 @click.option("--host", "-H", type=str, default="localhost")
-@click.option("--port", "-p", type=int, default=3000)
+@click.option("--port", "-p", type=int, default=3447)
 @click.option(
     "--cert",
     type=click.Path(dir_okay=False, readable=True, path_type=Path),
@@ -53,11 +55,12 @@ def cli(ctx, debug, host, port, control_groups: list, cert: Path):
     ctx.obj = {"debug": debug}
     if debug:
         logging.basicConfig(format=FORMAT, level=logging.DEBUG)
+    control_groups_jid = [str_to_jid(cg) for cg in control_groups]
     ctx.obj["connection_params"] = {
         "host": host,
         "port": port,
         "cert": cert,
-        "control_groups": control_groups,
+        "control_groups": control_groups_jid,
     }
     logger.debug(f"Command Context: {ctx.obj}")
 
@@ -74,9 +77,9 @@ def cli(ctx, debug, host, port, control_groups: list, cert: Path):
     default=15,
     help="Response time sigma (seconds)",
 )
-@click.argument("locators", type=click.File(), nargs=-1)
+@click.argument("credentials", type=click.File(), nargs=-1)
 @click.pass_context
-async def chatbot(ctx, locators, response_time, response_time_sigma, friend):
+async def chatbot(ctx, credentials, response_time, response_time_sigma, friend):
     """
     Create a bot-evasion chat-bot. Multiple bots can be turned into this mode
     and they will communicate with one-another so as to simulate real users
@@ -87,50 +90,50 @@ async def chatbot(ctx, locators, response_time, response_time_sigma, friend):
         "response_time_sigma": response_time_sigma,
         **ctx.obj["connection_params"],
     }
-    await run_multi_bots(ChatBot, locators, params)
+    await run_multi_bots(ChatBot, credentials, params)
 
 
 @cli.command
 @async_cli
 @click.option(
-    "--session-dir",
+    "--credentials-dir",
     type=click.Path(file_okay=False, writable=True, path_type=Path),
-    default=Path("./sessions/"),
+    default=Path("./credentials/"),
 )
 @click.argument("name", type=str)
 @click.pass_context
-async def onboard(ctx, name, session_dir: Path):
+async def onboard(ctx, name, credentials_dir: Path):
     """
     Creates a QR code for provided bot. The command will exit on a sucessful QR
-    code scan. The session file will be saved to <session-dir>/<name>.json
+    code scan. The credential file will be saved to <credential-dir>/<name>.json
     """
-    session_dir.mkdir(parents=True, exist_ok=True)
-    session_file = session_dir / f"{name}.json"
-    await OnboardBot.start(name, session_file, **ctx.obj["connection_params"])
+    credentials_dir.mkdir(parents=True, exist_ok=True)
+    credential_file = credentials_dir / f"{name}.json"
+    await OnboardBot.start(name, credential_file, **ctx.obj["connection_params"])
 
 
 @cli.command()
 @async_cli
 @click.option(
-    "--session-dir",
+    "--credentials-dir",
     type=click.Path(file_okay=False, writable=True, path_type=Path),
-    default=Path("./sessions/"),
+    default=Path("./credentials/"),
 )
 @click.pass_context
-async def onboard_bulk(ctx, session_dir: Path):
+async def onboard_bulk(ctx, credentials_dir: Path):
     """
     Starts an interaction to simplify onboarding multiple bots. You will be
     prompted for a name to provide the bot and then be shown a QR code to scan.
     Once the scan is successful, the process will restart so you can onboard
-    another bot. The locator file will be saved to the session-dir directory
+    another bot. The credential file will be saved to the credentials-dir directory
     with the following format,
 
         \b
-        <session-dir>/
+        <credentials-dir>/
         ├── <bot-name1>.json
         └── <bot-name2>.json
     """
-    session_dir.mkdir(parents=True, exist_ok=True)
+    credentials_dir.mkdir(parents=True, exist_ok=True)
     while True:
         name: str = click.prompt(
             "Enter name for the next user to be onboarded", type=str
@@ -138,8 +141,8 @@ async def onboard_bulk(ctx, session_dir: Path):
         if not name:
             print("No name provided... exiting.")
             return
-        session_file = session_dir / f"{name}.json"
-        await OnboardBot.start(name, session_file, **ctx.obj["connection_params"])
+        credential_file = credentials_dir / f"{name}.json"
+        await OnboardBot.start(name, credential_file, **ctx.obj["connection_params"])
 
 
 @cli.command()
@@ -149,12 +152,12 @@ async def onboard_bulk(ctx, session_dir: Path):
     type=click.Path(file_okay=False, writable=True, path_type=Path),
     default=Path("./archive/"),
 )
-@click.argument("locators", type=click.File(), nargs=-1)
+@click.argument("credentials", type=click.File(), nargs=-1)
 @click.pass_context
-async def archivebot(ctx, locators, archive_dir: Path):
+async def archivebot(ctx, credentials, archive_dir: Path):
     """
     Bot to archive all the data the provided bots have access to. Give as many
-    locators to specify which bots should be listened to. Data gets saved in
+    credentials to specify which bots should be listened to. Data gets saved in
     the archive-dir with the following structure,
 
         \b
@@ -167,7 +170,7 @@ async def archivebot(ctx, locators, archive_dir: Path):
     """
     archive_dir.mkdir(parents=True, exist_ok=True)
     params = {"archive_dir": archive_dir, **ctx.obj["connection_params"]}
-    await run_multi_bots(ArchiveBot, locators, params)
+    await run_multi_bots(ArchiveBot, credentials, params)
 
 
 def main():

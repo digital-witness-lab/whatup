@@ -1,4 +1,6 @@
 import asyncio
+import base64
+import json
 import mimetypes
 import random
 import re
@@ -15,20 +17,68 @@ WORDLIST_SIZE = None
 RANDOM_SALT = random.randbytes(32)
 
 
+class WhatUpyJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, bytes):
+            return {
+                "encoding": "base64_urlsafe",
+                "type": "bytes",
+                "value": bytes_to_base64(obj),
+            }
+        return obj
+
+
+def bytes_to_base64(b):
+    return base64.urlsafe_b64encode(b).decode("utf8")
+
+
+def convert_protobuf(target_type, proto_obj):
+    target_keys = set(target_type.DESCRIPTOR.fields_by_name.keys())
+    obj_keys = set(proto_obj.DESCRIPTOR.fields_by_name.keys())
+    params = {
+        key: getattr(proto_obj, key) for key in target_keys.intersection(obj_keys)
+    }
+    return target_type(**params)
+
+
+def protobuf_find_key(proto_obj, key_name) -> T.Any:
+    key_list = proto_obj.DESCRIPTOR.fields_by_name.keys()
+    for key in key_list:
+        obj = getattr(proto_obj, key)
+        if key == key_name:
+            return obj
+        if hasattr(obj, "ByteSize") and obj.ByteSize() > 0:
+            result = protobuf_find_key(obj, key_name)
+            if result:
+                return result
+    return None
+
+
+def protobuf_to_json(proto_obj) -> str:
+    data = protobuf_to_dict(proto_obj)
+    return json.dumps(data, cls=WhatUpyJSONEncoder)
+
+
 def protobuf_to_dict(proto_obj) -> dict[str, T.Any]:
     key_list = proto_obj.DESCRIPTOR.fields_by_name.keys()
     d = {}
     for key in key_list:
-        # d[key] = getattr(proto_obj, key)
         obj = getattr(proto_obj, key)
-        if hasattr(obj, "DESCRIPTOR"):
-            obj = protobuf_to_dict(obj)
-        d[key] = obj
+        if hasattr(obj, "ByteSize"):
+            if obj.ByteSize() > 0:
+                d[key] = protobuf_to_dict(obj)
+        elif obj:
+            d[key] = obj
     return d
 
 
 def jid_to_str(jid: wuc.JID) -> str:
     return f"{jid.user}@{jid.server}"
+
+
+def str_to_jid(sjid: str) -> wuc.JID:
+    user, server = sjid.split("@", 1)
+    return wuc.JID(user=user, server=server)
 
 
 def same_jid(a: wuc.JID, b: wuc.JID) -> bool:
@@ -77,20 +127,25 @@ def async_cli(fxn):
     return wrapper
 
 
-def mimetype_to_ext(mtype: str) -> str | None:
+def mime_type_to_ext(mtype: str) -> str | None:
     if not mimetypes.inited:
         mimetypes.init()
         mimetypes.add_type("image/webp", ".webp")
     return mimetypes.guess_extension(mtype)
 
 
-def media_message_filename(message) -> str | None:
+def media_message_filename(message: wuc.WUMessage) -> str | None:
     # TODO: rewrite
-    mid = message.info.id
-    for media_type, media in message["message"].items():
-        if ext := mimetype_to_ext(media.get("mimetype", "")):
-            return f"{mid}_{media_type}{ext}"
-    return None
+    payload = message.content.mediaMessage.WhichOneof("payload")
+    if payload is None:
+        return None
+    media = getattr(message.content.mediaMessage, payload)
+    fileShaBytes = media.fileSha256
+    fileSha: str = bytes_to_base64(fileShaBytes)
+    mime_type = media.mimetype
+    if ext := mime_type_to_ext(mime_type or ""):
+        return f"{fileSha}{ext}"
+    return f"{fileSha}.unk"
 
 
 def qrcode_gen(data, version=1) -> str:

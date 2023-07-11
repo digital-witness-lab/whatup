@@ -172,7 +172,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 	historyCtx, historyCtxClose := context.WithCancel(context.Background())
 	go wac.fillHistoryMessages(historyCtx)
 
-	go func(state *RegistrationState) {
+	go func(wac *WhatsAppClient, ctx context.Context, state *RegistrationState, historyCtxClose context.CancelFunc) {
 		for {
 			success := wac.qrCodeLoop(ctx, state)
 			// we stop the registration flow if either:
@@ -194,7 +194,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 				return
 			}
 		}
-	}(state)
+	}(wac, ctx, state, historyCtxClose)
 	return state
 }
 
@@ -243,18 +243,21 @@ func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 		case *events.Message:
 			msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
 			if err != nil {
+                wac.Log.Errorf("Error converting message from whatsmeow: %+v", err)
 				return
 			}
+            wac.Log.Debugf("Sending message to client")
 			msgChan <- msg
 		}
 	})
-	go func() {
+	go func(wac *WhatsAppClient, ctx context.Context, msgChan chan *Message) {
 		for range ctx.Done() {
+            wac.Log.Debugf("GetMessages completed. Closing")
 			wac.RemoveEventHandler(handlerId)
 			close(msgChan)
 			return
 		}
-	}()
+	}(wac, ctx, msgChan)
 	return msgChan
 }
 
@@ -383,14 +386,14 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
         }
     })
 
-    go func() {
+    go func(wac *WhatsAppClient, ctx context.Context) {
         for {
             select {
                 case <-ctx.Done():
                     wac.Client.RemoveEventHandler(evtHandler)
             }
         }
-    }()
+    }(wac, ctx)
 
     retryWait.Wait()
     return body, retryError
