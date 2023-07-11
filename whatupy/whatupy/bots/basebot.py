@@ -8,6 +8,7 @@ import typing as T
 from ..connection import create_whatupcore_clients
 from ..protos.whatupcore_pb2_grpc import WhatUpCoreStub
 from ..protos import whatupcore_pb2 as wuc
+from ..protos import whatsappweb_pb2 as waw
 from .. import utils
 
 
@@ -25,23 +26,30 @@ class BaseBot:
 
     def __init__(
         self,
-        cert_path: Path,
+        host: str,
+        port: int,
+        cert: Path,
         mark_messages_read: bool = False,
         read_historical_messages: bool = False,
         control_groups: T.List[wuc.JID] = [],
         logger=logger,
+        **kwargs
     ):
-        self.cert_path = cert_path
-        self.mark_messages_read = mark_messages_read
+        self.host = host
+        self.port = port
+        self.cert = cert
+
         self.control_groups = control_groups
+        self.mark_messages_read = mark_messages_read
         self.read_historical_messages = read_historical_messages
+
         self.logger = logger.getChild(self.__class__.__name__)
 
-    async def start(self, username: str, passphrase: str):
+    async def start(self, username: str, passphrase: str, **kwargs):
         self.logger.info("Starting bot for user: %s", username)
         self.logger = self.logger.getChild(username)
         self.core_client, self.authenticator = create_whatupcore_clients(
-            username, passphrase, self.cert_path
+            self.host, self.port, self.cert
         )
         await self.authenticator.login(username, passphrase)
 
@@ -70,7 +78,7 @@ class BaseBot:
 
     async def listen_messages(self):
         while True:
-            self.logger.info("Reading message")
+            self.logger.info("Reading messages")
             messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetMessages(
                 wuc.MessagesOptions(markMessagesRead=self.mark_messages_read)
             )
@@ -118,6 +126,20 @@ class BaseBot:
         if id(self) == pinned_bot.bot_id:
             CONTROL_CACHE.append(message_id)
             return await self.on_control(message)
+
+    async def download_message_media(self, message: wuc.WUMessage) -> bytes:
+        mm = message.content.mediaMessage
+        payload = mm.WhichOneof("payload")
+        if payload is None:
+            return b""
+        media_message = utils.convert_protobuf(waw.Message, mm)
+        media_content: wuc.MediaContent = await self.core_client.DownloadMedia(
+            wuc.DownloadMediaOptions(
+                mediaMessage=media_message,
+                info=message.info,
+            )
+        )
+        return media_content.Body
 
     async def on_control(self, message: wuc.WUMessage):
         raise NotImplementedError
