@@ -77,6 +77,7 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 	msgChan := session.Client.GetMessages(ctx)
 
 	for msg := range msgChan {
+        msg.log.Debugf("Recieved message for client: %v", msg.Info)
 		if messageOptions.MarkMessagesRead {
 			msg.MarkRead()
 		}
@@ -118,6 +119,9 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+    if downloadMediaOptions.GetInfo() == nil || downloadMediaOptions.GetMediaMessage() == nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "info and mediaMessage are required fields")
+    }
 
     info := ProtoToMessageInfo(downloadMediaOptions.GetInfo())
     mediaMessage := downloadMediaOptions.GetMediaMessage()

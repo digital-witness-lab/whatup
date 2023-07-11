@@ -12,12 +12,11 @@ from .protos import whatupcore_pb2 as wuc
 logger = logging.getLogger(__name__)
 
 
-def create_whatupcore_clients(host: str, port: str, cert_path: Path):
+def create_whatupcore_clients(host: str, port: int, cert_path: Path):
     authenticator = WhatUpAuthentication()
 
     with cert_path.open("rb") as f:
         cert = f.read()
-
     channel = grpc.aio.secure_channel(
         f"{host}:{port}",
         grpc.composite_channel_credentials(
@@ -28,7 +27,6 @@ def create_whatupcore_clients(host: str, port: str, cert_path: Path):
 
     auth_client = WhatUpCoreAuthStub(channel)
     core_client = WhatUpCoreStub(channel)
-
     authenticator.set_auth_client(auth_client)
 
     return core_client, authenticator
@@ -76,17 +74,19 @@ class WhatUpAuthentication:
         if not self.session_token:
             raise Exception("Must be authenticated before starting")
         while True:
-            sleep_time = self.session_token.expiration_time - time.time - 60
+            sleep_time = (
+                self.session_token.expirationTime.ToSeconds() - time.time() - 60
+            )
             self.logger.debug(
                 "Renewing token in: %s: %s",
                 sleep_time,
-                self.session_token.expiration_time,
+                self.session_token.expirationTime.ToSeconds(),
             )
             await asyncio.sleep(sleep_time)
             session_token = await self.auth_client.RenewToken(self.session_token)
             self.logger.debug(
                 "Got new session token: %s: %s",
-                self.session_token.expiration_time,
+                self.session_token.expirationTime.ToSeconds(),
                 session_token.expiration_time,
             )
             self.session_token = session_token
