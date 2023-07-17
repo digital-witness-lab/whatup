@@ -6,15 +6,66 @@ import builtins
 import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
+import google.protobuf.internal.enum_type_wrapper
 import google.protobuf.message
 import google.protobuf.timestamp_pb2
 import sys
+import typing
 from . import whatsappweb_pb2
-if sys.version_info >= (3, 8):
+if sys.version_info >= (3, 10):
     import typing as typing_extensions
 else:
     import typing_extensions
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
+
+@typing_extensions.final
+class DisappearingMessageOptions(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    class _DISAPPEARING_TIME:
+        ValueType = typing.NewType('ValueType', builtins.int)
+        V: typing_extensions.TypeAlias = ValueType
+
+    class _DISAPPEARING_TIMEEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[DisappearingMessageOptions._DISAPPEARING_TIME.ValueType], builtins.type):
+        DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+        TIMER_OFF: DisappearingMessageOptions._DISAPPEARING_TIME.ValueType
+        TIMER_24HOUR: DisappearingMessageOptions._DISAPPEARING_TIME.ValueType
+        TIMER_7DAYS: DisappearingMessageOptions._DISAPPEARING_TIME.ValueType
+        TIMER_90DAYS: DisappearingMessageOptions._DISAPPEARING_TIME.ValueType
+
+    class DISAPPEARING_TIME(_DISAPPEARING_TIME, metaclass=_DISAPPEARING_TIMEEnumTypeWrapper):
+        ...
+    TIMER_OFF: DisappearingMessageOptions.DISAPPEARING_TIME.ValueType
+    TIMER_24HOUR: DisappearingMessageOptions.DISAPPEARING_TIME.ValueType
+    TIMER_7DAYS: DisappearingMessageOptions.DISAPPEARING_TIME.ValueType
+    TIMER_90DAYS: DisappearingMessageOptions.DISAPPEARING_TIME.ValueType
+    RECIPIENT_FIELD_NUMBER: builtins.int
+    DISAPPEARINGTIME_FIELD_NUMBER: builtins.int
+    AUTOCLEARTIME_FIELD_NUMBER: builtins.int
+
+    @property
+    def recipient(self) -> global___JID:
+        ...
+    disappearingTime: global___DisappearingMessageOptions.DISAPPEARING_TIME.ValueType
+    autoClearTime: builtins.int
+
+    def __init__(self, *, recipient: global___JID | None=..., disappearingTime: global___DisappearingMessageOptions.DISAPPEARING_TIME.ValueType=..., autoClearTime: builtins.int=...) -> None:
+        ...
+
+    def HasField(self, field_name: typing_extensions.Literal['recipient', b'recipient']) -> builtins.bool:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['autoClearTime', b'autoClearTime', 'disappearingTime', b'disappearingTime', 'recipient', b'recipient']) -> None:
+        ...
+global___DisappearingMessageOptions = DisappearingMessageOptions
+
+@typing_extensions.final
+class DisappearingMessageResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(self) -> None:
+        ...
+global___DisappearingMessageResponse = DisappearingMessageResponse
 
 @typing_extensions.final
 class SendMessageOptions(google.protobuf.message.Message):

@@ -130,10 +130,12 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
 	switch evt.(type) {
 	case events.Connected:
-		err := wac.SendPresence(types.PresenceAvailable)
-		if err != nil {
-			wac.Log.Errorf("Could not send presence: %+v", err)
-		}
+        wac.Log.Debugf("Setting presence and active delivery")
+        err := wac.SendPresence(types.PresenceUnavailable)
+	    if err != nil {
+	        wac.Log.Errorf("Could not send presence: %+v", err)
+	    }
+        wac.SetForceActiveDeliveryReceipts(false)
 	}
 }
 
@@ -169,10 +171,10 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 	state := NewRegistrationState()
 	isNewDB := wac.Store.ID == nil
 
-	historyCtx, historyCtxClose := context.WithCancel(context.Background())
+	historyCtx, historyCtxClose := context.WithCancel(ctx)
 	go wac.fillHistoryMessages(historyCtx)
 
-	go func(wac *WhatsAppClient, ctx context.Context, state *RegistrationState, historyCtxClose context.CancelFunc) {
+	go func(state *RegistrationState) {
 		for {
 			success := wac.qrCodeLoop(ctx, state)
 			// we stop the registration flow if either:
@@ -194,7 +196,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 				return
 			}
 		}
-	}(wac, ctx, state, historyCtxClose)
+	}(state)
 	return state
 }
 
@@ -239,8 +241,10 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 	msgChan := make(chan *Message)
 	handlerId := wac.AddEventHandler(func(evt interface{}) {
+        wac.Log.Debugf("GetMessages handler got something")
 		switch wmMsg := evt.(type) {
 		case *events.Message:
+            wac.Log.Debugf("Got new message for client")
 			msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
 			if err != nil {
                 wac.Log.Errorf("Error converting message from whatsmeow: %+v", err)
@@ -250,14 +254,13 @@ func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 			msgChan <- msg
 		}
 	})
-	go func(wac *WhatsAppClient, ctx context.Context, msgChan chan *Message) {
-		for range ctx.Done() {
-            wac.Log.Debugf("GetMessages completed. Closing")
-			wac.RemoveEventHandler(handlerId)
-			close(msgChan)
-			return
-		}
-	}(wac, ctx, msgChan)
+	go func() {
+		<- ctx.Done()
+        wac.Log.Debugf("GetMessages completed. Closing")
+		wac.RemoveEventHandler(handlerId)
+		close(msgChan)
+		return
+	}()
 	return msgChan
 }
 
@@ -299,10 +302,9 @@ func (wac *WhatsAppClient) fillHistoryMessages(ctx context.Context) {
 		}
 	})
 	go func() {
-		for range ctx.Done() {
-			wac.RemoveEventHandler(handlerId)
-			return
-		}
+		<-ctx.Done()
+		wac.RemoveEventHandler(handlerId)
+		return
 	}()
 	return
 }
@@ -334,10 +336,13 @@ func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Dur
 }
 
 func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
+    wac.Log.Debugf("Downloading message: %v", msg)
     data, err := wac.Client.DownloadAny(msg)
 
     if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) {
         return wac.RetryDownload(ctx, msg, msgInfo)
+    } else if err != nil {
+        wac.Log.Errorf("Error trying to download message: %v", err)
     }
     return data, err
 }
@@ -386,30 +391,14 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
         }
     })
 
-    go func(wac *WhatsAppClient, ctx context.Context) {
-        for {
-            select {
-                case <-ctx.Done():
-                    wac.Client.RemoveEventHandler(evtHandler)
-            }
-        }
-    }(wac, ctx)
+    go func() {
+        <-ctx.Done()
+        wac.Client.RemoveEventHandler(evtHandler)
+    }()
 
     retryWait.Wait()
+    if retryError != nil {
+        wac.Log.Errorf("Error in retry handler: %v", retryError)
+    }
     return body, retryError
 }
-
-/*
-func (wac *WhatsAppClient) GetConversationHistory() (chan *Message, error) {
-    groups, err := wac.GetJoinedGroups()
-    if err != nil {
-        return nil, err
-    }
-
-    chatJID, err := types.ParseJID(conv.GetId())
-    for _, historyMsg := range conv.GetMessages() {
-    	evt, err := wac.ParseWebMessage(chatJID, historyMsg.GetMessage())
-        fmt.Println(evt)
-    }
-}
-*/

@@ -10,6 +10,8 @@ import warnings
 import hashlib
 from functools import wraps
 
+from google.protobuf.json_format import MessageToDict
+
 import qrcode
 from .protos import whatupcore_pb2 as wuc
 
@@ -32,12 +34,19 @@ def bytes_to_base64(b):
     return base64.urlsafe_b64encode(b).decode("utf8")
 
 
+def is_filled_pbuf(pbuf_obj):
+    return bool(hasattr(pbuf_obj, "ByteSize") and pbuf_obj.ByteSize() > 0)
+
+
 def convert_protobuf(target_type, proto_obj):
     target_keys = set(target_type.DESCRIPTOR.fields_by_name.keys())
     obj_keys = set(proto_obj.DESCRIPTOR.fields_by_name.keys())
-    params = {
-        key: getattr(proto_obj, key) for key in target_keys.intersection(obj_keys)
-    }
+    params = {}
+    for key in target_keys.intersection(obj_keys):
+        value = getattr(proto_obj, key, None)
+        if getattr(value, "DESCRIPTOR") and not is_filled_pbuf(value):
+            continue
+        params[key] = value
     return target_type(**params)
 
 
@@ -47,7 +56,7 @@ def protobuf_find_key(proto_obj, key_name) -> T.Any:
         obj = getattr(proto_obj, key)
         if key == key_name:
             return obj
-        if hasattr(obj, "ByteSize") and obj.ByteSize() > 0:
+        if is_filled_pbuf(obj):
             result = protobuf_find_key(obj, key_name)
             if result:
                 return result
@@ -60,16 +69,7 @@ def protobuf_to_json(proto_obj) -> str:
 
 
 def protobuf_to_dict(proto_obj) -> dict[str, T.Any]:
-    key_list = proto_obj.DESCRIPTOR.fields_by_name.keys()
-    d = {}
-    for key in key_list:
-        obj = getattr(proto_obj, key)
-        if hasattr(obj, "ByteSize"):
-            if obj.ByteSize() > 0:
-                d[key] = protobuf_to_dict(obj)
-        elif obj:
-            d[key] = obj
-    return d
+    return MessageToDict(proto_obj, including_default_value_fields=False)
 
 
 def jid_to_str(jid: wuc.JID) -> str:
@@ -135,7 +135,6 @@ def mime_type_to_ext(mtype: str) -> str | None:
 
 
 def media_message_filename(message: wuc.WUMessage) -> str | None:
-    # TODO: rewrite
     payload = message.content.mediaMessage.WhichOneof("payload")
     if payload is None:
         return None
