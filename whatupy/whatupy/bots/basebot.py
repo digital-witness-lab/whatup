@@ -38,21 +38,24 @@ class BaseBot:
         self.host = host
         self.port = port
         self.cert = cert
+        self.logger = logger.getChild(self.__class__.__name__)
 
         self.control_groups = control_groups
         self.mark_messages_read = mark_messages_read
         self.read_historical_messages = read_historical_messages
 
-        self.logger = logger.getChild(self.__class__.__name__)
-
-    async def start(self, username: str, passphrase: str, **kwargs):
-        self.logger.info("Starting bot for user: %s", username)
-        self.logger = self.logger.getChild(username)
         self.core_client, self.authenticator = create_whatupcore_clients(
             self.host, self.port, self.cert
         )
-        await self.authenticator.login(username, passphrase)
 
+    async def login(self, username: str, passphrase: str) -> T.Self:
+        self.logger = self.logger.getChild(username)
+        self.logger.info("Logging in")
+        await self.authenticator.login(username, passphrase)
+        return self
+
+    async def start(self, **kwargs):
+        self.logger.info("Starting bot for user")
         BOT_REGISTRY[self.__class__.__name__][id(self)] = self
         async with asyncio.TaskGroup() as tg:
             self.logger.info("Starting bot")
@@ -106,7 +109,7 @@ class BaseBot:
         message_id = message.info.id
         if message_id in CONTROL_CACHE:
             return
-        source_hash = utils.random_hash(message.info.source.user)
+        source_hash = utils.random_hash(message.info.source.sender.user)
         pinned_bot = COMMAND_PINNING.get(source_hash)
         registry = BOT_REGISTRY[self.__class__.__name__]
         t = int(time.time())

@@ -30,6 +30,11 @@ class WhatUpyJSONEncoder(json.JSONEncoder):
         return obj
 
 
+def random_passphrase(words=5):
+    words = random_words(words)
+    return "-".join(f"{word.title()}{random.randint(10,99)}" for word in words)
+
+
 def bytes_to_base64(b):
     return base64.urlsafe_b64encode(b).decode("utf8")
 

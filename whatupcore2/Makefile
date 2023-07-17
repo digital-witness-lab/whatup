@@ -3,7 +3,7 @@
 whatupcore2:
 	+$(MAKE) -C ../protos/ all
 	go mod tidy
-	go build -tags=sqlcipher .
+	go build -tags=sqlcipher main.go
 
 connect: whatupcore2
 	./whatupcore2 connect

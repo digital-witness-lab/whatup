@@ -33,4 +33,4 @@ require (
 
 replace github.com/mattn/go-sqlite3 => github.com/mynameisfiber/go-sqlite3 v1.14.17-sqlcypher
 
-replace github.com/digital-witness-lab/whatup/protos => ../protos
+replace github.com/digital-witness-lab/whatup/protos => ./protos/
