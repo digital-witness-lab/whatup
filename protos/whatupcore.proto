@@ -27,6 +27,22 @@ service WhatUpCore {
     rpc DownloadMedia(DownloadMediaOptions) returns (MediaContent) {}
 
     rpc SendMessage(SendMessageOptions) returns (SendMessageReceipt) {}
+    rpc SetDisappearingMessageTime(DisappearingMessageOptions) returns (DisappearingMessageResponse) {}
+}
+
+message DisappearingMessageOptions {
+    enum DISAPPEARING_TIME {
+        TIMER_OFF = 0;
+        TIMER_24HOUR = 1;
+        TIMER_7DAYS = 2;
+        TIMER_90DAYS = 3;
+    }
+    JID recipient = 1;
+    DISAPPEARING_TIME disappearingTime = 2;
+    uint32 autoClearTime = 3;
+}
+
+message DisappearingMessageResponse {
 }
 
 message SendMessageOptions {

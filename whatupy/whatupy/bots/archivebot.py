@@ -46,9 +46,9 @@ class ArchiveBot(BaseBot):
         if message.info.source.isGroup and not meta_path.exists():
             group: wuc.JID = message.info.source.chat
             metadata: wuc.GroupInfo = await self.core_client.GetGroupInfo(group)
-            metadata_dict = utils.protobuf_to_dict(metadata)
+            self.logger.debug("Got metadata: %s", metadata)
             with meta_path.open("w+") as fd:
-                json.dump(metadata_dict, fd)
+                fd.write(utils.protobuf_to_json(metadata))
 
         if media_filename := utils.media_message_filename(message):
             self.logger.debug("Found media. Saving to %s", media_filename)
