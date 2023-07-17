@@ -18,8 +18,8 @@ import (
 )
 
 var (
-	TLS_CERT_FILE = "../data/keys/cert.pem"
-	TLS_KEY_FILE  = "../data/keys/key.pem"
+	TLS_CERT_FILE = "/run/secrets/ssl-cert"
+	TLS_KEY_FILE  = "/run/secrets/ssl-key"
 	JWT_SECRET    = []byte("SECRETSECRET")
     USE_SSL       = true
     Log waLog.Logger
