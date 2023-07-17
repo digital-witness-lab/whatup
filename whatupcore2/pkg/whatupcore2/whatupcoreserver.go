@@ -5,6 +5,7 @@ import (
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
+	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/grpc/codes"
@@ -66,18 +67,56 @@ func (s *WhatUpCoreServer) SendMessage(ctx context.Context, messageOptions *pb.S
 	return recieptProto, nil
 }
 
+func (s *WhatUpCoreServer) SetDisappearingMessageTime(ctx context.Context, disappearingMessageOptions *pb.DisappearingMessageOptions) (*pb.DisappearingMessageResponse, error) {
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+    var disappearingTime time.Duration
+    recipient := ProtoToJID(disappearingMessageOptions.Recipient)
+    autoClearTime := disappearingMessageOptions.AutoClearTime
+    switch disappearingMessageOptions.DisappearingTime.String() {
+        case "TIMER_OFF":
+            disappearingTime = whatsmeow.DisappearingTimerOff
+        case "TIMER_24HOUR":
+            disappearingTime = whatsmeow.DisappearingTimer24Hours
+        case "TIMER_7DAYS":
+            disappearingTime = whatsmeow.DisappearingTimer7Days
+        case "TIMER_90DAYS":
+            disappearingTime = whatsmeow.DisappearingTimer90Days
+        default:
+            return nil, status.Errorf(codes.FailedPrecondition, "Invalid disappearingTime duration")
+    }
+    if autoClearTime > 600 {
+        return nil, status.Errorf(codes.FailedPrecondition, "AutoClearTime must be less than 600 (10 minutes)")
+    }
+
+    err := session.Client.SetDisappearingTimer(recipient, disappearingTime)
+    if err != nil {
+        return nil, err
+    }
+
+    if autoClearTime > 0 {
+        time.AfterFunc(time.Duration(autoClearTime) * time.Second, func() {
+            session.Client.SetDisappearingTimer(recipient, whatsmeow.DisappearingTimerOff)
+        })
+    }
+    return &pb.DisappearingMessageResponse{}, nil
+}
+
 func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, server pb.WhatUpCore_GetMessagesServer) error {
-	session, ok := server.Context().Value("session").(*Session)
+    ctx := server.Context()
+	session, ok := ctx.Value("session").(*Session)
 	if !ok {
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	msgChan := session.Client.GetMessages(ctx)
 
 	for msg := range msgChan {
-        msg.log.Debugf("Recieved message for client: %v", msg.Info)
+        msg.log.Debugf("Recieved message for gRPC client")
 		if messageOptions.MarkMessagesRead {
 			msg.MarkRead()
 		}
@@ -85,6 +124,7 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		if !ok {
 			msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
 		} else if err := server.Send(msgProto); err != nil {
+            s.log.Errorf("Could not send message to client: %v", err)
 			return nil
 		}
 	}
@@ -93,12 +133,13 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 }
 
 func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOptions, server pb.WhatUpCore_GetPendingHistoryServer) error {
-	session, ok := server.Context().Value("session").(*Session)
+    ctx := server.Context()
+	session, ok := ctx.Value("session").(*Session)
 	if !ok {
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(historyOptions.HistoryReadTimeout))
+	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(historyOptions.HistoryReadTimeout))
 	defer cancel()
 	msgChan := session.Client.GetHistoryMessages(ctx)
 

@@ -141,6 +141,14 @@ class BaseBot:
         )
         return media_content.Body
 
+    async def send_text_message(
+        self, recipient: wuc.JID, text: str, composing_time: int = 5
+    ) -> wuc.SendMessageReceipt:
+        options = wuc.SendMessageOptions(
+            recipient=recipient, simpleText=text, composingTime=composing_time
+        )
+        return await self.core_client.SendMessage(options)
+
     async def on_control(self, message: wuc.WUMessage):
         raise NotImplementedError
 
