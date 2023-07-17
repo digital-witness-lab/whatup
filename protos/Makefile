@@ -7,12 +7,12 @@ EVANS_SSL_PARAMS := --tls --cert ../data/keys/cert.pem --certkey ../data/keys/ke
 
 whatupcore.pb.go: whatupcore.proto
 	protoc \
-		--go_out=. \
+		--go_out=../whatupcore2/protos/ \
 		--go_opt paths=source_relative \
-		--go-grpc_out=. \
+		--go-grpc_out=../whatupcore2/protos/ \
 		--go-grpc_opt=paths=source_relative \
 		whatupcore.proto 
-	go mod tidy
+	cd ../whatupcore2/protos/ ; go mod tidy
 
 ../whatupy/whatupy/whatupcore_pb2_grpc.py: whatupcore.proto
 	pip install protoletariat grpclib protobuf grpcio-tools mypy mypy-protobuf

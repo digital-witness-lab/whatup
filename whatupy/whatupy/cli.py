@@ -28,8 +28,8 @@ async def run_multi_bots(
             raise Exception(f"Could not parse credential: {credential}")
     async with asyncio.TaskGroup() as tg:
         for whatup_credential in whatup_credentials:
-            b = bot(**bot_args)
-            coro = b.start(**whatup_credential)
+            b: BotType = await bot(**bot_args).login(**whatup_credential)
+            coro = b.start()
             tg.create_task(coro)
 
 
@@ -109,7 +109,8 @@ async def onboard(ctx, name, credentials_dir: Path):
     """
     credentials_dir.mkdir(parents=True, exist_ok=True)
     credential_file = credentials_dir / f"{name}.json"
-    await OnboardBot.start(name, credential_file, **ctx.obj["connection_params"])
+    bot = OnboardBot(**ctx.obj["connection_params"])
+    await bot.register(name, credential_file)
 
 
 @cli.command()

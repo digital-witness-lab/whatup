@@ -12,6 +12,10 @@ from .protos import whatupcore_pb2 as wuc
 logger = logging.getLogger(__name__)
 
 
+class NotRegisteredError(Exception):
+    pass
+
+
 def create_whatupcore_clients(host: str, port: int, cert_path: Path):
     authenticator = WhatUpAuthentication()
 
@@ -57,9 +61,9 @@ class WhatUpAuthentication:
     async def register(self, username: str, passphrase: str) -> T.AsyncIterator[str]:
         if not self.auth_client:
             raise Exception("Must set an auth client")
-        self.logger = self.logger.getChild(f"u:{username}")
+        self.logger = self.logger.getChild(username)
         credentials = wuc.WUCredentials(username=username, passphrase=passphrase)
-        registerStream = self.auth_client.Register.future(credentials)
+        registerStream = self.auth_client.Register(credentials)
         async for msg in registerStream:
             if msg.qrcode:
                 yield msg.qrcode
@@ -67,6 +71,7 @@ class WhatUpAuthentication:
                 self.session_token = msg.token
                 registerStream.cancel()
                 return
+        raise NotRegisteredError("Could not register user")
 
     async def start(self):
         if not self.auth_client:
