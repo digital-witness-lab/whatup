@@ -144,9 +144,12 @@ def media_message_filename(message: wuc.WUMessage) -> str | None:
     if payload is None:
         return None
     media = getattr(message.content.mediaMessage, payload)
-    fileShaBytes = media.fileSha256
+    try:
+        fileShaBytes = media.fileSha256
+        mime_type = media.mimetype
+    except AttributeError:
+        return None
     fileSha: str = bytes_to_base64(fileShaBytes)
-    mime_type = media.mimetype
     if ext := mime_type_to_ext(mime_type or ""):
         return f"{fileSha}{ext}"
     return f"{fileSha}.unk"

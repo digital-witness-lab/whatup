@@ -1,8 +1,9 @@
 import json
 import logging
 from pathlib import Path
+from datetime import datetime
 
-from .. import utils
+from .. import utils, __version__
 from . import BaseBot
 from ..protos import whatupcore_pb2 as wuc
 from ..protos import whatsappweb_pb2 as waw
@@ -38,34 +39,34 @@ class ArchiveBot(BaseBot):
         timestamp = message.info.timestamp.ToSeconds()
         message_id = message.info.id
         archive_id = f"{timestamp}_{message_id}"
+        self.logger.debug("Archiving message to: %s", archive_id)
 
-        message_dict = utils.protobuf_to_dict(message)
-        message_dict["archive_id"] = archive_id
+        message.provenance["archivebot__timestamp"] = datetime.now().isoformat()
+        message.provenance["archivebot__version"] = __version__
+        message.provenance["archivebot__archiveId"] = archive_id
 
         meta_path = conversation_dir / "metadata.json"
         if message.info.source.isGroup and not meta_path.exists():
             group: wuc.JID = message.info.source.chat
             metadata: wuc.GroupInfo = await self.core_client.GetGroupInfo(group)
-            self.logger.debug("Got metadata: %s", metadata)
+            self.logger.debug("Got metadata for group: %s", chat_id)
             with meta_path.open("w+") as fd:
                 fd.write(utils.protobuf_to_json(metadata))
 
         if media_filename := utils.media_message_filename(message):
-            self.logger.debug("Found media. Saving to %s", media_filename)
             media_dir: Path = conversation_dir / "media"
             media_dir.mkdir(parents=True, exist_ok=True)
             media_path = media_dir / f"{media_filename}"
-            message_dict["media_path"] = str(media_path.relative_to(self.archive_dir))
+            message.provenance["archivebot__mediaPath"] = str(
+                media_path.relative_to(self.archive_dir)
+            )
 
             if not media_path.exists():
-                self.logger.debug(
-                    "Sending download request: %s: %s",
-                    message.content.mediaMessage,
-                    message.info,
-                )
+                self.logger.debug("Found media. Saving to %s", media_filename)
                 media_bytes = await self.download_message_media(message)
                 with media_path.open("wb+") as fd:
                     fd.write(media_bytes)
 
+        message_dict = utils.protobuf_to_dict(message)
         with open(conversation_dir / f"{archive_id}.json", "w+") as fd:
             json.dump(message_dict, fd, cls=utils.WhatUpyJSONEncoder)

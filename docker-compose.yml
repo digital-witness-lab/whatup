@@ -3,6 +3,8 @@ secrets:
     file: ./data/keys/key.pem
   ssl-cert:
     file: ./data/keys/cert.pem
+  postgres-passwd:
+    file: ./postgres-passwd-dev
 
 services:
   whatup:
@@ -15,6 +17,17 @@ services:
       - ssl-key
     volumes:
       - ./data/whatupcore2/db/:/db/
+    command: rpc --log-level=DEBUG
+
+  db:
+    image: postgres:15-alpine
+    secrets:
+      - postgres-passwd
+    env_file:
+      - ./docker-compose.env
+    volumes:
+      - ./data/db/:/var/lib/postgresql/data
+      - ./scripts/postgres-multi-databases.sh:/docker-entrypoint-initdb.d/postgres-multi-databases.sh
 
   bot-archive:
     image: whatup/whatupy

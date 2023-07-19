@@ -100,7 +100,7 @@ class BaseBot:
                 self.logger.debug("Got control message: %s", message.info)
                 await self._dispatch_control(message)
         else:
-            self.logger.debug("Got normal message: %s", message.info)
+            self.logger.debug("Got normal message: %s", message.info.id)
             await self.on_message(message)
 
     async def _dispatch_control(self, message):
@@ -153,7 +153,7 @@ class BaseBot:
         return await self.core_client.SendMessage(options)
 
     async def on_control(self, message: wuc.WUMessage):
-        raise NotImplementedError
+        pass
 
     async def on_message(self, message: wuc.WUMessage):
-        raise NotImplementedError
+        pass

@@ -3,7 +3,6 @@ package whatupcore2
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
@@ -58,10 +57,11 @@ func (msg *Message) MarkRead() error {
 	)
 }
 
-func ExtractMediaMessage(m *waProto.Message) interface{} {
-	if m == nil {
+func (msg *Message) GetExtendedMessage() interface{} {
+	if msg == nil {
 		return nil
 	}
+	m := msg.MessageEvent.Message
 	switch {
 	case m.GetImageMessage() != nil:
 		return m.GetImageMessage()
@@ -75,19 +75,13 @@ func ExtractMediaMessage(m *waProto.Message) interface{} {
 		return m.GetStickerMessage()
 	case m.GetExtendedTextMessage() != nil:
 		return m.GetExtendedTextMessage()
-	case m.GetAudioMessage() != nil:
+	case m.GetReactionMessage() != nil:
 		return m.GetReactionMessage()
+    case m.GetProtocolMessage() != nil:
+        return m.GetProtocolMessage()
 	default:
 		return nil
 	}
-}
-
-func (msg *Message) GetExtendedMessage() interface{} {
-	if msg == nil {
-		return nil
-	}
-	m := msg.MessageEvent.Message
-    return ExtractMediaMessage(m)
 }
 
 func (msg *Message) downloadableMessageToMediaMessage(extMessage interface{}) *pb.MediaMessage {
@@ -95,6 +89,11 @@ func (msg *Message) downloadableMessageToMediaMessage(extMessage interface{}) *p
 	if extMessage == nil {
 		return nil
 	}
+    _, canDownload := extMessage.(whatsmeow.DownloadableMessage)
+    if !canDownload {
+        return nil
+    }
+
 	mediaMessage := &pb.MediaMessage{}
 	switch v := extMessage.(type) {
 	case *waProto.ImageMessage:
@@ -110,9 +109,10 @@ func (msg *Message) downloadableMessageToMediaMessage(extMessage interface{}) *p
 		mediaMessage.Payload = &pb.MediaMessage_DocumentMessage{DocumentMessage: v}
 	case *waProto.StickerMessage:
 		mediaMessage.Payload = &pb.MediaMessage_StickerMessage{StickerMessage: v}
-	case *waProto.ReactionMessage:
-		mediaMessage.Payload = &pb.MediaMessage_ReactionMessage{ReactionMessage: v}
 	default:
+        if canDownload {
+            msg.log.Warnf("Downloadable message not handled by WhatUpCore2: %T", v)
+        }
 		return nil
 	}
 	return mediaMessage
@@ -129,7 +129,10 @@ func (msg *Message) MessageFieldsToStr(fields []string) string {
 			return false
 		})
 	texts := valuesToStrings(valuesFilterZero(values))
-	return strings.Join(texts, "; ")
+    if len(texts) > 0 {
+	    return texts[0]
+    }
+    return ""
 }
 
 func (msg *Message) MessageText() string {
@@ -146,6 +149,10 @@ func (msg *Message) GetLink() string {
 
 func (msg *Message) IsInvite() bool {
 	return msg.MessageEvent.Message.GetExtendedTextMessage().GetInviteLinkGroupTypeV2() > 0
+}
+
+func (msg *Message) IsDelete() bool {
+    return msg.MessageEvent.Message.GetProtocolMessage().GetType() == waProto.ProtocolMessage_REVOKE
 }
 
 func (msg *Message) GetContextInfo() (*waProto.ContextInfo, bool) {
@@ -172,6 +179,26 @@ func (msg *Message) getForwardedScore(extMessage interface{}) (uint32, bool) {
 
 func (msg *Message) GetThumbnail() ([]byte, error) {
 	return msg.getThumbnail(msg.GetExtendedMessage())
+}
+
+func (msg *Message) GetReferenceMessageId() (string, bool) {
+    return msg.getReferenceMessageId(msg.GetExtendedMessage())
+}
+
+func (msg *Message) getReferenceMessageId(extMessage interface{}) (string, bool) {
+	if extMessage == nil {
+		return "", false
+	}
+    switch v := extMessage.(type) {
+    case *waProto.ReactionMessage:
+        return v.GetKey().GetId(), true
+    case *waProto.ExtendedTextMessage:
+        return v.GetContextInfo().GetStanzaId(), true
+    case *waProto.ProtocolMessage:
+        return v.GetKey().GetId(), true
+    default:
+        return "", false
+    }
 }
 
 func (msg *Message) getThumbnail(extMessage interface{}) ([]byte, error) {
@@ -201,6 +228,7 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 		isForwarded    bool
 		mediaMessage   *pb.MediaMessage
 		err            error
+        inReferenceToId  string
 	)
 
 	extMessage := msg.GetExtendedMessage()
@@ -211,6 +239,7 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			msg.log.Errorf("Could not download thumbnail: %v", err)
 		}
 		mediaMessage = msg.downloadableMessageToMediaMessage(extMessage)
+        inReferenceToId, _ = msg.getReferenceMessageId(extMessage)
 	}
 
 	return &pb.WUMessage{
@@ -220,6 +249,7 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			Link:         msg.GetLink(),
 			Thumbnail:    thumbnail,
 			MediaMessage: mediaMessage,
+            InReferenceToId: inReferenceToId,
 		},
         Info: MessageInfoToProto(msg.Info),
 		MessageProperties: &pb.MessageProperties{
@@ -227,10 +257,15 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			IsViewOnce:            msg.IsViewOnce,
 			IsDocumentWithCaption: msg.IsDocumentWithCaption,
 			IsEdit:                msg.IsEdit,
+            IsDelete:              msg.IsDelete(),
 			IsInvite:              msg.IsInvite(),
 			IsForwarded:           isForwarded,
 			ForwardedScore:        forwardedScore,
 		},
+        Provenance : map[string]string{
+            "whatupcore__version": WhatUpCoreVersion,
+            "whatupcore__timestamp": time.Now().Format(time.RFC3339),
+        },
 		OriginalMessage: msg.MessageEvent.Message,
 	}, true
 }

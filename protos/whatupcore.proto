@@ -156,7 +156,8 @@ message WUMessage {
     MessageContent content = 2;
     MessageProperties messageProperties = 3;
 
-    proto.Message originalMessage = 4;
+    map<string, string> provenance = 90;
+    proto.Message originalMessage = 100;
 }
 
 message MessageSource {
@@ -184,9 +185,10 @@ message MessageContent {
     string text = 2;
     string link = 3;
 
-    map<string, string> properties = 4;
     bytes thumbnail = 5;
     MediaMessage mediaMessage = 6;
+
+    string inReferenceToId = 7;
 }
 
 message MessageProperties {
@@ -194,9 +196,10 @@ message MessageProperties {
     bool isViewOnce = 2;
     bool isDocumentWithCaption = 3;
     bool isEdit = 4;
-    bool isForwarded = 5;
-    uint32 forwardedScore = 6;
-    bool isInvite = 7;
+    bool isDelete = 5;
+    bool isForwarded = 6;
+    uint32 forwardedScore = 7;
+    bool isInvite = 8;
 }
 
 message MediaMessage {
