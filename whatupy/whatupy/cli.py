@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from .bots import BotType, ArchiveBot, ChatBot, OnboardBot
+from .bots import BotType, ArchiveBot, ChatBot, OnboardBot, DatabaseBot
 from .utils import async_cli, str_to_jid
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
@@ -172,6 +172,29 @@ async def archivebot(ctx, credentials, archive_dir: Path):
     archive_dir.mkdir(parents=True, exist_ok=True)
     params = {"archive_dir": archive_dir, **ctx.obj["connection_params"]}
     await run_multi_bots(ArchiveBot, credentials, params)
+
+
+@cli.command()
+@async_cli
+@click.option("--postgres-host", type=str, default="db")
+@click.option("--postgres-user", type=str, default="whatupdb")
+@click.option("--postgres-password-file", type=click.File(), required=True)
+@click.option("--postgres-database", type=str, default="messages")
+@click.argument("credentials", type=click.File(), nargs=-1)
+@click.pass_context
+async def databasebot(
+    ctx,
+    credentials,
+    postgres_host,
+    postgres_user,
+    postgres_password_file,
+    postgres_database,
+):
+    # TODO: docstring
+    postgres_password = postgres_password_file.read().strip()
+    postgres_url = f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}/{postgres_database}"
+    params = {"postgres_url": postgres_url, **ctx.obj["connection_params"]}
+    await run_multi_bots(DatabaseBot, credentials, params)
 
 
 def main():

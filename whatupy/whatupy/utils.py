@@ -39,8 +39,16 @@ def bytes_to_base64(b):
     return base64.urlsafe_b64encode(b).decode("utf8")
 
 
+def is_pbuf(pbuf_obj) -> bool:
+    return hasattr(pbuf_obj, "ByteSize")
+
+
 def is_filled_pbuf(pbuf_obj):
     return bool(hasattr(pbuf_obj, "ByteSize") and pbuf_obj.ByteSize() > 0)
+
+
+def is_empty_pbuf(pbuf_obj):
+    return bool(hasattr(pbuf_obj, "ByteSize") and pbuf_obj.ByteSize() == 0)
 
 
 def convert_protobuf(target_type, proto_obj):
@@ -77,7 +85,9 @@ def protobuf_to_dict(proto_obj) -> dict[str, T.Any]:
     return MessageToDict(proto_obj, including_default_value_fields=False)
 
 
-def jid_to_str(jid: wuc.JID) -> str:
+def jid_to_str(jid: wuc.JID) -> T.Optional[str]:
+    if not (jid.user or jid.server):
+        return None
     return f"{jid.user}@{jid.server}"
 
 
