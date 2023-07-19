@@ -8,4 +8,4 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt ; mkdir /usr/src/whatupy-data/
 
 COPY . .
-RUN pip install .
+RUN pip install -e .

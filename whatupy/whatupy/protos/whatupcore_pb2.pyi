@@ -433,9 +433,24 @@ global___ConnectionStatus = ConnectionStatus
 @typing_extensions.final
 class WUMessage(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class ProvenanceEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+
+        def __init__(self, *, key: builtins.str=..., value: builtins.str=...) -> None:
+            ...
+
+        def ClearField(self, field_name: typing_extensions.Literal['key', b'key', 'value', b'value']) -> None:
+            ...
     INFO_FIELD_NUMBER: builtins.int
     CONTENT_FIELD_NUMBER: builtins.int
     MESSAGEPROPERTIES_FIELD_NUMBER: builtins.int
+    PROVENANCE_FIELD_NUMBER: builtins.int
     ORIGINALMESSAGE_FIELD_NUMBER: builtins.int
 
     @property
@@ -451,16 +466,20 @@ class WUMessage(google.protobuf.message.Message):
         ...
 
     @property
+    def provenance(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        ...
+
+    @property
     def originalMessage(self) -> whatsappweb_pb2.Message:
         ...
 
-    def __init__(self, *, info: global___MessageInfo | None=..., content: global___MessageContent | None=..., messageProperties: global___MessageProperties | None=..., originalMessage: whatsappweb_pb2.Message | None=...) -> None:
+    def __init__(self, *, info: global___MessageInfo | None=..., content: global___MessageContent | None=..., messageProperties: global___MessageProperties | None=..., provenance: collections.abc.Mapping[builtins.str, builtins.str] | None=..., originalMessage: whatsappweb_pb2.Message | None=...) -> None:
         ...
 
     def HasField(self, field_name: typing_extensions.Literal['content', b'content', 'info', b'info', 'messageProperties', b'messageProperties', 'originalMessage', b'originalMessage']) -> builtins.bool:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['content', b'content', 'info', b'info', 'messageProperties', b'messageProperties', 'originalMessage', b'originalMessage']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['content', b'content', 'info', b'info', 'messageProperties', b'messageProperties', 'originalMessage', b'originalMessage', 'provenance', b'provenance']) -> None:
         ...
 global___WUMessage = WUMessage
 
@@ -536,46 +555,29 @@ global___MessageInfo = MessageInfo
 @typing_extensions.final
 class MessageContent(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    @typing_extensions.final
-    class PropertiesEntry(google.protobuf.message.Message):
-        DESCRIPTOR: google.protobuf.descriptor.Descriptor
-        KEY_FIELD_NUMBER: builtins.int
-        VALUE_FIELD_NUMBER: builtins.int
-        key: builtins.str
-        value: builtins.str
-
-        def __init__(self, *, key: builtins.str=..., value: builtins.str=...) -> None:
-            ...
-
-        def ClearField(self, field_name: typing_extensions.Literal['key', b'key', 'value', b'value']) -> None:
-            ...
     TITLE_FIELD_NUMBER: builtins.int
     TEXT_FIELD_NUMBER: builtins.int
     LINK_FIELD_NUMBER: builtins.int
-    PROPERTIES_FIELD_NUMBER: builtins.int
     THUMBNAIL_FIELD_NUMBER: builtins.int
     MEDIAMESSAGE_FIELD_NUMBER: builtins.int
+    INREFERENCETOID_FIELD_NUMBER: builtins.int
     title: builtins.str
     text: builtins.str
     link: builtins.str
-
-    @property
-    def properties(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        ...
     thumbnail: builtins.bytes
 
     @property
     def mediaMessage(self) -> global___MediaMessage:
         ...
+    inReferenceToId: builtins.str
 
-    def __init__(self, *, title: builtins.str=..., text: builtins.str=..., link: builtins.str=..., properties: collections.abc.Mapping[builtins.str, builtins.str] | None=..., thumbnail: builtins.bytes=..., mediaMessage: global___MediaMessage | None=...) -> None:
+    def __init__(self, *, title: builtins.str=..., text: builtins.str=..., link: builtins.str=..., thumbnail: builtins.bytes=..., mediaMessage: global___MediaMessage | None=..., inReferenceToId: builtins.str=...) -> None:
         ...
 
     def HasField(self, field_name: typing_extensions.Literal['mediaMessage', b'mediaMessage']) -> builtins.bool:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['link', b'link', 'mediaMessage', b'mediaMessage', 'properties', b'properties', 'text', b'text', 'thumbnail', b'thumbnail', 'title', b'title']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['inReferenceToId', b'inReferenceToId', 'link', b'link', 'mediaMessage', b'mediaMessage', 'text', b'text', 'thumbnail', b'thumbnail', 'title', b'title']) -> None:
         ...
 global___MessageContent = MessageContent
 
@@ -586,6 +588,7 @@ class MessageProperties(google.protobuf.message.Message):
     ISVIEWONCE_FIELD_NUMBER: builtins.int
     ISDOCUMENTWITHCAPTION_FIELD_NUMBER: builtins.int
     ISEDIT_FIELD_NUMBER: builtins.int
+    ISDELETE_FIELD_NUMBER: builtins.int
     ISFORWARDED_FIELD_NUMBER: builtins.int
     FORWARDEDSCORE_FIELD_NUMBER: builtins.int
     ISINVITE_FIELD_NUMBER: builtins.int
@@ -593,14 +596,15 @@ class MessageProperties(google.protobuf.message.Message):
     isViewOnce: builtins.bool
     isDocumentWithCaption: builtins.bool
     isEdit: builtins.bool
+    isDelete: builtins.bool
     isForwarded: builtins.bool
     forwardedScore: builtins.int
     isInvite: builtins.bool
 
-    def __init__(self, *, isEphemeral: builtins.bool=..., isViewOnce: builtins.bool=..., isDocumentWithCaption: builtins.bool=..., isEdit: builtins.bool=..., isForwarded: builtins.bool=..., forwardedScore: builtins.int=..., isInvite: builtins.bool=...) -> None:
+    def __init__(self, *, isEphemeral: builtins.bool=..., isViewOnce: builtins.bool=..., isDocumentWithCaption: builtins.bool=..., isEdit: builtins.bool=..., isDelete: builtins.bool=..., isForwarded: builtins.bool=..., forwardedScore: builtins.int=..., isInvite: builtins.bool=...) -> None:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['forwardedScore', b'forwardedScore', 'isDocumentWithCaption', b'isDocumentWithCaption', 'isEdit', b'isEdit', 'isEphemeral', b'isEphemeral', 'isForwarded', b'isForwarded', 'isInvite', b'isInvite', 'isViewOnce', b'isViewOnce']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['forwardedScore', b'forwardedScore', 'isDelete', b'isDelete', 'isDocumentWithCaption', b'isDocumentWithCaption', 'isEdit', b'isEdit', 'isEphemeral', b'isEphemeral', 'isForwarded', b'isForwarded', 'isInvite', b'isInvite', 'isViewOnce', b'isViewOnce']) -> None:
         ...
 global___MessageProperties = MessageProperties
 
