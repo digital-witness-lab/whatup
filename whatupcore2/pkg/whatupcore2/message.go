@@ -144,7 +144,11 @@ func (msg *Message) MessageTitle() string {
 }
 
 func (msg *Message) GetLink() string {
-	return msg.MessageEvent.Message.GetExtendedTextMessage().GetCanonicalUrl()
+	return msg.MessageFieldsToStr([]string{"CanonicalUrl"})
+}
+
+func (msg *Message) IsReaction() bool {
+    return msg.MessageEvent.Message.Info.Type == "reaction"
 }
 
 func (msg *Message) IsInvite() bool {
@@ -152,7 +156,10 @@ func (msg *Message) IsInvite() bool {
 }
 
 func (msg *Message) IsDelete() bool {
-    return msg.MessageEvent.Message.GetProtocolMessage().GetType() == waProto.ProtocolMessage_REVOKE
+    if m := msg.MessageEvent.Message.GetProtocolMessage() ; m != nil {
+        return m.GetType() == waProto.ProtocolMessage_REVOKE
+    }
+    return false
 }
 
 func (msg *Message) GetContextInfo() (*waProto.ContextInfo, bool) {
@@ -260,6 +267,8 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
             IsDelete:              msg.IsDelete(),
 			IsInvite:              msg.IsInvite(),
 			IsForwarded:           isForwarded,
+            IsReaction:            msg.IsReaction(),
+            IsMedia:               mediaMessage != nil,
 			ForwardedScore:        forwardedScore,
 		},
         Provenance : map[string]string{

@@ -2,3 +2,7 @@ grpcio-tools
 qrcode
 click
 types_protobuf
+
+# databasebot
+dataset
+psycopg2_binary

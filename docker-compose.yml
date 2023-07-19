@@ -44,6 +44,24 @@ services:
       - ./data/message-archive/:/usr/src/whatupy-data/message-archive/
     command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/*"
 
+  bot-database:
+    image: whatup/whatupy
+    build: ./whatupy/
+    links:
+      - whatup
+      - db
+    environment:
+      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CONTROL_GROUPS=120363104970691776@g.us  # cool friends
+    env_file:
+      - ./docker-compose.env
+    secrets:
+      - ssl-cert
+      - postgres-passwd
+    volumes:
+      - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
+    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert databasebot --postgres-host db --postgres-user $${POSTGRES_USER} --postgres-password-file $${POSTGRES_PASSWORD_FILE} --postgres-database messages /usr/src/whatupy-data/sessions/*"
+
   bot-onboard:
     image: whatup/whatupy
     build: ./whatupy/
