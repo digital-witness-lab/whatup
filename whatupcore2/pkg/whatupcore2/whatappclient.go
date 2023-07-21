@@ -29,7 +29,7 @@ const (
 )
 
 var (
-    ErrInvalidMediaMessage = errors.New("Invalid MediaMessage")
+	ErrInvalidMediaMessage = errors.New("Invalid MediaMessage")
 )
 
 type RegistrationState struct {
@@ -87,8 +87,8 @@ type WhatsAppClient struct {
 }
 
 func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*WhatsAppClient, error) {
-    store.SetOSInfo("WhatUp by DWL", [3]uint32{0, 1, 0})
-    store.DeviceProps.RequireFullSync = proto.Bool(true)
+	store.SetOSInfo("WhatUp by DWL", [3]uint32{0, 1, 0})
+	store.DeviceProps.RequireFullSync = proto.Bool(true)
 	dbLog := log.Sub("DB")
 	username_safe := hashStringHex(username)
 	passphrase_safe := hashStringHex(passphrase)
@@ -125,12 +125,12 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
 	switch evt.(type) {
 	case events.Connected:
-        wac.Log.Debugf("Setting presence and active delivery")
-        err := wac.SendPresence(types.PresenceUnavailable)
-	    if err != nil {
-	        wac.Log.Errorf("Could not send presence: %+v", err)
-	    }
-        wac.SetForceActiveDeliveryReceipts(false)
+		wac.Log.Debugf("Setting presence and active delivery")
+		err := wac.SendPresence(types.PresenceUnavailable)
+		if err != nil {
+			wac.Log.Errorf("Could not send presence: %+v", err)
+		}
+		wac.SetForceActiveDeliveryReceipts(false)
 	}
 }
 
@@ -167,7 +167,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 	isNewDB := wac.Store.ID == nil
 
 	historyCtx, historyCtxClose := context.WithCancel(ctx)
-    go wac.fillHistoryMessages(historyCtx)
+	go wac.fillHistoryMessages(historyCtx)
 
 	go func(state *RegistrationState) {
 		for {
@@ -237,22 +237,22 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 	msgChan := make(chan *Message)
 	handlerId := wac.AddEventHandler(func(evt interface{}) {
-        wac.Log.Debugf("GetMessages handler got something")
+		wac.Log.Debugf("GetMessages handler got something")
 		switch wmMsg := evt.(type) {
 		case *events.Message:
-            wac.Log.Debugf("Got new message for client")
+			wac.Log.Debugf("Got new message for client")
 			msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
 			if err != nil {
-                wac.Log.Errorf("Error converting message from whatsmeow: %+v", err)
+				wac.Log.Errorf("Error converting message from whatsmeow: %+v", err)
 				return
 			}
-            wac.Log.Debugf("Sending message to client")
+			wac.Log.Debugf("Sending message to client")
 			msgChan <- msg
 		}
 	})
 	go func() {
-		<- ctx.Done()
-        wac.Log.Debugf("GetMessages completed. Closing")
+		<-ctx.Done()
+		wac.Log.Debugf("GetMessages completed. Closing")
 		wac.RemoveEventHandler(handlerId)
 		close(msgChan)
 		return
@@ -295,8 +295,8 @@ func (wac *WhatsAppClient) fillHistoryMessages(ctx context.Context) {
 					wac.historyMessages <- msg
 				}
 			}
-        default:
-            wac.Log.Infof("History sync got message of type: %T", message)
+		default:
+			wac.Log.Infof("History sync got message of type: %T", message)
 		}
 	})
 	go func() {
@@ -334,69 +334,69 @@ func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Dur
 }
 
 func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
-    wac.Log.Debugf("Downloading message: %v", msg)
-    data, err := wac.Client.DownloadAny(msg)
+	wac.Log.Debugf("Downloading message: %v", msg)
+	data, err := wac.Client.DownloadAny(msg)
 
-    if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) {
-        return wac.RetryDownload(ctx, msg, msgInfo)
-    } else if err != nil {
-        wac.Log.Errorf("Error trying to download message: %v", err)
-    }
-    return data, err
+	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) {
+		return wac.RetryDownload(ctx, msg, msgInfo)
+	} else if err != nil {
+		wac.Log.Errorf("Error trying to download message: %v", err)
+	}
+	return data, err
 }
 
 func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
-    mediaKeyCandidates := valuesFilterZero(findFieldName(msg, "MediaKey"))
-    if len(mediaKeyCandidates) == 0 {
-        wac.Log.Errorf("Could not find MediaKey: %+v", msg)
-        return nil, ErrInvalidMediaMessage
-    }
-    mediaKey := valueToType(mediaKeyCandidates[0]).([]byte)
-    if len(mediaKey) == 0 {
-        wac.Log.Errorf("Could not convert MediaKey: %+v", msg)
-        return nil, ErrInvalidMediaMessage
-    }
-    err := wac.Client.SendMediaRetryReceipt(msgInfo, mediaKey)
-    if err != nil {
-        wac.Log.Errorf("Could not send media retry: %+v", err)
-        return nil, err
-    }
+	mediaKeyCandidates := valuesFilterZero(findFieldName(msg, "MediaKey"))
+	if len(mediaKeyCandidates) == 0 {
+		wac.Log.Errorf("Could not find MediaKey: %+v", msg)
+		return nil, ErrInvalidMediaMessage
+	}
+	mediaKey := valueToType(mediaKeyCandidates[0]).([]byte)
+	if len(mediaKey) == 0 {
+		wac.Log.Errorf("Could not convert MediaKey: %+v", msg)
+		return nil, ErrInvalidMediaMessage
+	}
+	err := wac.Client.SendMediaRetryReceipt(msgInfo, mediaKey)
+	if err != nil {
+		wac.Log.Errorf("Could not send media retry: %+v", err)
+		return nil, err
+	}
 
-    directPathValues := valuesFilterZero(findFieldName(msg, "DirectPath"))
-    if len(directPathValues) == 0 {
-        wac.Log.Errorf("Could not extract DirectPath field: %+v", msg)
-        return nil, ErrInvalidMediaMessage
-    }
+	directPathValues := valuesFilterZero(findFieldName(msg, "DirectPath"))
+	if len(directPathValues) == 0 {
+		wac.Log.Errorf("Could not extract DirectPath field: %+v", msg)
+		return nil, ErrInvalidMediaMessage
+	}
 
-    var body []byte
-    var retryError error
-    var retryWait sync.WaitGroup
+	var body []byte
+	var retryError error
+	var retryWait sync.WaitGroup
 
-    retryWait.Add(1)
-    evtHandler := wac.Client.AddEventHandler(func(evt interface{}) {
-        switch retry := evt.(type) {
-        case *events.MediaRetry:
-            if retry.MessageID == msgInfo.ID {
-                retryData, err := whatsmeow.DecryptMediaRetryNotification(retry, mediaKey)
-                if err != nil || retryData.GetResult() != waProto.MediaRetryNotification_SUCCESS {
-                    retryError = err
-                    retryWait.Done()
-                }
-                directPathValues[0].SetString(*retryData.DirectPath)
-                body, retryError = wac.Client.DownloadAny(msg)
-                retryWait.Done()
-            }
-        }
-    })
+	retryWait.Add(1)
+	evtHandler := wac.Client.AddEventHandler(func(evt interface{}) {
+		switch retry := evt.(type) {
+		case *events.MediaRetry:
+			if retry.MessageID == msgInfo.ID {
+				retryData, err := whatsmeow.DecryptMediaRetryNotification(retry, mediaKey)
+				if err != nil || retryData.GetResult() != waProto.MediaRetryNotification_SUCCESS {
+					retryError = err
+					retryWait.Done()
+				}
+				directPathValues[0].SetString(*retryData.DirectPath)
+				body, retryError = wac.Client.DownloadAny(msg)
+				retryWait.Done()
+			}
+		}
+	})
 
-    go func() {
-        <-ctx.Done()
-        wac.Client.RemoveEventHandler(evtHandler)
-    }()
+	go func() {
+		<-ctx.Done()
+		wac.Client.RemoveEventHandler(evtHandler)
+	}()
 
-    retryWait.Wait()
-    if retryError != nil {
-        wac.Log.Errorf("Error in retry handler: %v", retryError)
-    }
-    return body, retryError
+	retryWait.Wait()
+	if retryError != nil {
+		wac.Log.Errorf("Error in retry handler: %v", retryError)
+	}
+	return body, retryError
 }

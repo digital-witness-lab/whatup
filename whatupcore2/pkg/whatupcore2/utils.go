@@ -11,63 +11,63 @@ import (
 )
 
 func ProtoToMediaType(mediaType pb.SendMessageMedia_MediaType) (whatsmeow.MediaType, bool) {
-    switch m := mediaType.String(); m {
-    case "MediaImage":
-        return whatsmeow.MediaImage, true
-    case "MediaVideo":
-        return whatsmeow.MediaVideo, true
-    case "MediaAudio":
-        return whatsmeow.MediaAudio, true
-    case "MediaDocument":
-        return whatsmeow.MediaDocument, true
-    }
-    return "", false
+	switch m := mediaType.String(); m {
+	case "MediaImage":
+		return whatsmeow.MediaImage, true
+	case "MediaVideo":
+		return whatsmeow.MediaVideo, true
+	case "MediaAudio":
+		return whatsmeow.MediaAudio, true
+	case "MediaDocument":
+		return whatsmeow.MediaDocument, true
+	}
+	return "", false
 }
 
 func MessageInfoToProto(info types.MessageInfo, contactStore store.ContactStore) *pb.MessageInfo {
-    return &pb.MessageInfo{
-        Source: MessageSourceToProto(info.MessageSource, contactStore),
-        Timestamp: timestamppb.New(info.Timestamp),
-        Id:        info.ID,
-        PushName:  info.PushName,
-        Type:      info.Type,
-        Category:  info.Category,
-        Multicast: info.Multicast,
-    }
+	return &pb.MessageInfo{
+		Source:    MessageSourceToProto(info.MessageSource, contactStore),
+		Timestamp: timestamppb.New(info.Timestamp),
+		Id:        info.ID,
+		PushName:  info.PushName,
+		Type:      info.Type,
+		Category:  info.Category,
+		Multicast: info.Multicast,
+	}
 }
 
 func ProtoToMessageInfo(mi *pb.MessageInfo) types.MessageInfo {
-    return types.MessageInfo{
-        MessageSource: ProtoToMessageSource(mi.Source),
-        Timestamp: mi.Timestamp.AsTime(),
-        ID:        mi.Id,
-        PushName:  mi.PushName,
-        Type:      mi.Type,
-        Category:  mi.Category,
-        Multicast: mi.Multicast,
-    }
+	return types.MessageInfo{
+		MessageSource: ProtoToMessageSource(mi.Source),
+		Timestamp:     mi.Timestamp.AsTime(),
+		ID:            mi.Id,
+		PushName:      mi.PushName,
+		Type:          mi.Type,
+		Category:      mi.Category,
+		Multicast:     mi.Multicast,
+	}
 }
 
 func MessageSourceToProto(source types.MessageSource, contactStore store.ContactStore) *pb.MessageSource {
-    contact, _ := contactStore.GetContact(source.Sender)
-    return &pb.MessageSource{
-        Chat:               JIDToProto(source.Chat),
-        Sender:             JIDToProto(source.Sender),
-        SenderContact:      ContactToProto(&contact),
-        BroadcastListOwner: JIDToProto(source.BroadcastListOwner),
-        IsFromMe:           source.IsFromMe,
-        IsGroup:            source.IsGroup,
-    }
+	contact, _ := contactStore.GetContact(source.Sender)
+	return &pb.MessageSource{
+		Chat:               JIDToProto(source.Chat),
+		Sender:             JIDToProto(source.Sender),
+		SenderContact:      ContactToProto(&contact),
+		BroadcastListOwner: JIDToProto(source.BroadcastListOwner),
+		IsFromMe:           source.IsFromMe,
+		IsGroup:            source.IsGroup,
+	}
 }
 
 func ProtoToMessageSource(ms *pb.MessageSource) types.MessageSource {
-    return types.MessageSource{
-        Chat:               ProtoToJID(ms.Chat),
-        Sender:             ProtoToJID(ms.Sender),
-        BroadcastListOwner: ProtoToJID(ms.BroadcastListOwner),
-        IsFromMe:           ms.IsFromMe,
-        IsGroup:            ms.IsGroup,
-    }
+	return types.MessageSource{
+		Chat:               ProtoToJID(ms.Chat),
+		Sender:             ProtoToJID(ms.Sender),
+		BroadcastListOwner: ProtoToJID(ms.BroadcastListOwner),
+		IsFromMe:           ms.IsFromMe,
+		IsGroup:            ms.IsGroup,
+	}
 }
 
 func JIDToProto(JID types.JID) *pb.JID {
@@ -91,24 +91,24 @@ func ProtoToJID(pJID *pb.JID) types.JID {
 }
 
 func ContactToProto(contact *types.ContactInfo) *pb.Contact {
-    if contact == nil || !contact.Found {
-        return nil
-    }
-    return &pb.Contact{
-        FirstName: contact.FirstName,
-        FullName: contact.FullName,
-        PushName: contact.PushName,
-        BusinessName: contact.BusinessName,
-    }
+	if contact == nil || !contact.Found {
+		return nil
+	}
+	return &pb.Contact{
+		FirstName:    contact.FirstName,
+		FullName:     contact.FullName,
+		PushName:     contact.PushName,
+		BusinessName: contact.BusinessName,
+	}
 }
 
 func GroupInfoToProto(gi *types.GroupInfo, contactStore store.ContactStore) *pb.GroupInfo {
 	participants := make([]*pb.GroupParticipant, len(gi.Participants))
 	for i, p := range gi.Participants {
-        contact, _ := contactStore.GetContact(p.JID)
+		contact, _ := contactStore.GetContact(p.JID)
 		participants[i] = &pb.GroupParticipant{
 			JID:          JIDToProto(p.JID),
-            Contact:      ContactToProto(&contact),
+			Contact:      ContactToProto(&contact),
 			IsAdmin:      p.IsAdmin,
 			IsSuperAdmin: p.IsSuperAdmin,
 			JoinError:    uint32(p.Error),
@@ -155,9 +155,9 @@ func valuesFilterZero(values []reflect.Value) []reflect.Value {
 }
 
 func valueToType(value reflect.Value) interface{} {
-    vp := reflect.New(value.Type())
-    vp.Elem().Set(value)
-    return vp.Interface()
+	vp := reflect.New(value.Type())
+	vp.Elem().Set(value)
+	return vp.Interface()
 }
 
 func valuesToType(values []reflect.Value) []interface{} {

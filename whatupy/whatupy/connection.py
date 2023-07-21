@@ -1,13 +1,13 @@
 import asyncio
 import logging
-from pathlib import Path
 import time
 import typing as T
+from pathlib import Path
 
 import grpc
 
-from .protos.whatupcore_pb2_grpc import WhatUpCoreStub, WhatUpCoreAuthStub
 from .protos import whatupcore_pb2 as wuc
+from .protos.whatupcore_pb2_grpc import WhatUpCoreAuthStub, WhatUpCoreStub
 
 logger = logging.getLogger(__name__)
 

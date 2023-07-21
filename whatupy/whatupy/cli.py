@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from .bots import BotType, ArchiveBot, ChatBot, OnboardBot, DatabaseBot
+from .bots import ArchiveBot, BotType, ChatBot, DatabaseBot, OnboardBot
 from .utils import async_cli, str_to_jid
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"

@@ -12,7 +12,7 @@ import (
 
 type WhatUpCoreAuthServer struct {
 	sessionManager *SessionManager
-    log waLog.Logger
+	log            waLog.Logger
 	pb.UnimplementedWhatUpCoreAuthServer
 }
 
@@ -63,7 +63,7 @@ func (s *WhatUpCoreAuthServer) Register(credentials *pb.WUCredentials, qrStream 
 			Token:    session.ToProto(),
 		})
 		return nil
-    }
+	}
 
 	for !regState.Completed {
 		select {
