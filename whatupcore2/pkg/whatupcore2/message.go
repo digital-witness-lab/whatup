@@ -148,7 +148,7 @@ func (msg *Message) GetLink() string {
 }
 
 func (msg *Message) IsReaction() bool {
-    return msg.MessageEvent.Message.Info.Type == "reaction"
+    return msg.MessageEvent.Info.Type == "reaction"
 }
 
 func (msg *Message) IsInvite() bool {
@@ -258,7 +258,7 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			MediaMessage: mediaMessage,
             InReferenceToId: inReferenceToId,
 		},
-        Info: MessageInfoToProto(msg.Info),
+        Info: MessageInfoToProto(msg.Info, msg.client.Store.Contacts),
 		MessageProperties: &pb.MessageProperties{
 			IsEphemeral:           msg.IsEphemeral,
 			IsViewOnce:            msg.IsViewOnce,

@@ -74,6 +74,13 @@ message InviteCode {
     string link = 1;
 }
 
+message Contact {
+    string firstName = 1;
+    string fullName = 2;
+    string pushName = 3;
+    string businessName = 4;
+}
+
 message GroupName {
     string name = 1;
     google.protobuf.Timestamp updatedAt = 2;
@@ -90,9 +97,11 @@ message GroupTopic {
 
 message GroupParticipant {
     JID JID = 1;
-    bool isAdmin = 2;
-    bool isSuperAdmin = 3;
-    uint32 joinError = 4;
+    Contact contact = 2;
+
+    bool isAdmin = 50;
+    bool isSuperAdmin = 51;
+    uint32 joinError = 52;
 }
 
 message GroupInfo {
@@ -163,10 +172,12 @@ message WUMessage {
 message MessageSource {
     JID chat = 1;
     JID sender = 2;
-    JID broadcastListOwner = 3;
+    Contact senderContact = 3;
 
-    bool isFromMe = 4;
-    bool isGroup = 5;
+    JID broadcastListOwner = 20;
+
+    bool isFromMe = 50;
+    bool isGroup = 51;
 }
 
 message MessageInfo {

@@ -1,1 +1,0 @@
-postgres-passwd-dev filter=git-crypt diff=git-crypt

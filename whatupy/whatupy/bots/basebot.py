@@ -1,4 +1,6 @@
 import asyncio
+import argparse
+import shlex
 import logging
 from collections import defaultdict, namedtuple, deque
 from pathlib import Path
@@ -21,6 +23,28 @@ BOT_REGISTRY = defaultdict(dict)
 CONTROL_CACHE = deque(maxlen=1028)
 
 
+class BotCommandArgsException(Exception):
+    def __init__(self, error_msg, help_text, *args, **kwargs):
+        self.help_text = help_text
+        self.error_msg = error_msg
+        super().__init__(*args, **kwargs)
+
+    def message(self):
+        if self.error_msg:
+            return f"{self.error_msg}\n\n{self.help_text}"
+        return self.help_text
+
+
+class BotCommandArgs(argparse.ArgumentParser):
+    def error(self, message):
+        help_text = self.format_help()
+        raise BotCommandArgsException(message, help_text)
+
+    def exit(self, status=0, message=None):
+        help_text = self.format_help()
+        raise BotCommandArgsException(message, help_text)
+
+
 class BaseBot:
     core_client: WhatUpCoreStub
 
@@ -33,7 +57,7 @@ class BaseBot:
         read_historical_messages: bool = False,
         control_groups: T.List[wuc.JID] = [],
         logger=logger,
-        **kwargs
+        **kwargs,
     ):
         self.host = host
         self.port = port
@@ -47,6 +71,24 @@ class BaseBot:
         self.core_client, self.authenticator = create_whatupcore_clients(
             self.host, self.port, self.cert
         )
+        self.arg_parser = self.setup_command_args()
+
+    def setup_command_args(self) -> T.Optional[BotCommandArgs]:
+        return None
+
+    async def parse_command(
+        self, message: wuc.WUMessage
+    ) -> T.Optional[argparse.Namespace]:
+        if not self.arg_parser:
+            return None
+        try:
+            text = message.content.text
+            (_, *args) = shlex.split(text)
+            return self.arg_parser.parse_args(args)
+        except BotCommandArgsException as e:
+            sender = message.info.source.sender
+            await self.send_text_message(sender, e.message())
+            return None
 
     async def login(self, username: str, passphrase: str) -> T.Self:
         self.logger = self.logger.getChild(username)
@@ -77,7 +119,9 @@ class BaseBot:
                 wuc.PendingHistoryOptions(historyReadTimeout=60)
             )
             async for message in messages:
-                await self._dispatch_message(message, skip_control=True)
+                await self._dispatch_message(
+                    message, skip_control=True, is_history=True
+                )
 
     async def listen_messages(self):
         while True:
@@ -88,7 +132,9 @@ class BaseBot:
             async for message in messages:
                 await self._dispatch_message(message)
 
-    async def _dispatch_message(self, message: wuc.WUMessage, skip_control=False):
+    async def _dispatch_message(
+        self, message: wuc.WUMessage, skip_control=False, is_history: bool = False
+    ):
         jid_from: wuc.JID = message.info.source.chat
         is_control = any(
             utils.same_jid(jid_from, control) for control in self.control_groups
@@ -97,17 +143,20 @@ class BaseBot:
             if skip_control:
                 self.logger.debug("Skipping control message: %s", message.info)
             else:
-                self.logger.debug("Got control message: %s", message.info)
+                self.logger.debug("Got control message: %s", utils.jid_to_str(jid_from))
                 await self._dispatch_control(message)
         else:
             self.logger.debug("Got normal message: %s", message.info.id)
-            await self.on_message(message)
+            await self.on_message(message, is_history=is_history)
 
     async def _dispatch_control(self, message):
         if message.info.source.isFromMe:
             return
         message_id = message.info.id
         if message_id in CONTROL_CACHE:
+            return
+        text = message.content.text
+        if not text.startswith(f"@{self.__class__.__name__}"):
             return
         source_hash = utils.random_hash(message.info.source.sender.user)
         pinned_bot = COMMAND_PINNING.get(source_hash)
@@ -147,13 +196,14 @@ class BaseBot:
     async def send_text_message(
         self, recipient: wuc.JID, text: str, composing_time: int = 5
     ) -> wuc.SendMessageReceipt:
+        recipient_nonad = wuc.JID(user=recipient.user, server=recipient.server)
         options = wuc.SendMessageOptions(
-            recipient=recipient, simpleText=text, composingTime=composing_time
+            recipient=recipient_nonad, simpleText=text, composingTime=composing_time
         )
         return await self.core_client.SendMessage(options)
 
     async def on_control(self, message: wuc.WUMessage):
         pass
 
-    async def on_message(self, message: wuc.WUMessage):
+    async def on_message(self, message: wuc.WUMessage, is_history: bool = False):
         pass

@@ -1,7 +1,6 @@
 .PHONY: connect clean whatupcore2
 
 whatupcore2:
-	+$(MAKE) -C ../protos/ all
 	go mod tidy
 	go build -tags=sqlcipher main.go
 

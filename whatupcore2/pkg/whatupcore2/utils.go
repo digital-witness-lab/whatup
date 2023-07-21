@@ -5,12 +5,13 @@ import (
 
 	pb "github.com/digital-witness-lab/whatup/protos"
 	"go.mau.fi/whatsmeow/types"
+	"go.mau.fi/whatsmeow/store"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func MessageInfoToProto(info types.MessageInfo) *pb.MessageInfo {
+func MessageInfoToProto(info types.MessageInfo, contactStore store.ContactStore) *pb.MessageInfo {
     return &pb.MessageInfo{
-        Source: MessageSourceToProto(info.MessageSource),
+        Source: MessageSourceToProto(info.MessageSource, contactStore),
         Timestamp: timestamppb.New(info.Timestamp),
         Id:        info.ID,
         PushName:  info.PushName,
@@ -32,10 +33,12 @@ func ProtoToMessageInfo(mi *pb.MessageInfo) types.MessageInfo {
     }
 }
 
-func MessageSourceToProto(source types.MessageSource) *pb.MessageSource {
+func MessageSourceToProto(source types.MessageSource, contactStore store.ContactStore) *pb.MessageSource {
+    contact, _ := contactStore.GetContact(source.Sender)
     return &pb.MessageSource{
         Chat:               JIDToProto(source.Chat),
         Sender:             JIDToProto(source.Sender),
+        SenderContact:      ContactToProto(&contact),
         BroadcastListOwner: JIDToProto(source.BroadcastListOwner),
         IsFromMe:           source.IsFromMe,
         IsGroup:            source.IsGroup,
@@ -45,8 +48,8 @@ func MessageSourceToProto(source types.MessageSource) *pb.MessageSource {
 func ProtoToMessageSource(ms *pb.MessageSource) types.MessageSource {
     return types.MessageSource{
         Chat:               ProtoToJID(ms.Chat),
-        Sender:ProtoToJID(ms.Sender),
-        BroadcastListOwner:ProtoToJID(ms.BroadcastListOwner),
+        Sender:             ProtoToJID(ms.Sender),
+        BroadcastListOwner: ProtoToJID(ms.BroadcastListOwner),
         IsFromMe:           ms.IsFromMe,
         IsGroup:            ms.IsGroup,
     }
@@ -72,11 +75,25 @@ func ProtoToJID(pJID *pb.JID) types.JID {
 	}
 }
 
-func GroupInfoToProto(gi *types.GroupInfo) *pb.GroupInfo {
+func ContactToProto(contact *types.ContactInfo) *pb.Contact {
+    if contact == nil || !contact.Found {
+        return nil
+    }
+    return &pb.Contact{
+        FirstName: contact.FirstName,
+        FullName: contact.FullName,
+        PushName: contact.PushName,
+        BusinessName: contact.BusinessName,
+    }
+}
+
+func GroupInfoToProto(gi *types.GroupInfo, contactStore store.ContactStore) *pb.GroupInfo {
 	participants := make([]*pb.GroupParticipant, len(gi.Participants))
 	for i, p := range gi.Participants {
+        contact, _ := contactStore.GetContact(p.JID)
 		participants[i] = &pb.GroupParticipant{
 			JID:          JIDToProto(p.JID),
+            Contact:      ContactToProto(&contact),
 			IsAdmin:      p.IsAdmin,
 			IsSuperAdmin: p.IsSuperAdmin,
 			JoinError:    uint32(p.Error),
