@@ -4,10 +4,25 @@ import (
 	"reflect"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
-	"go.mau.fi/whatsmeow/types"
+	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store"
+	"go.mau.fi/whatsmeow/types"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+func ProtoToMediaType(mediaType pb.SendMessageMedia_MediaType) (whatsmeow.MediaType, bool) {
+    switch m := mediaType.String(); m {
+    case "MediaImage":
+        return whatsmeow.MediaImage, true
+    case "MediaVideo":
+        return whatsmeow.MediaVideo, true
+    case "MediaAudio":
+        return whatsmeow.MediaAudio, true
+    case "MediaDocument":
+        return whatsmeow.MediaDocument, true
+    }
+    return "", false
+}
 
 func MessageInfoToProto(info types.MessageInfo, contactStore store.ContactStore) *pb.MessageInfo {
     return &pb.MessageInfo{

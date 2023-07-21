@@ -87,13 +87,8 @@ type WhatsAppClient struct {
 }
 
 func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*WhatsAppClient, error) {
-	store.DeviceProps.RequireFullSync = proto.Bool(true)
-	store.DeviceProps.HistorySyncConfig = &waProto.DeviceProps_HistorySyncConfig{
-		FullSyncDaysLimit:   proto.Uint32(365 * 3),
-		FullSyncSizeMbLimit: proto.Uint32((1 << 32) - 1),
-		StorageQuotaMb:      proto.Uint32((1 << 32) - 1),
-	}
-
+    store.SetOSInfo("WhatUp by DWL", [3]uint32{0, 1, 0})
+    store.DeviceProps.RequireFullSync = proto.Bool(true)
 	dbLog := log.Sub("DB")
 	username_safe := hashStringHex(username)
 	passphrase_safe := hashStringHex(passphrase)
@@ -120,7 +115,7 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	client := &WhatsAppClient{
 		Client:          wmClient,
 		dbPath:          dbPath,
-		historyMessages: make(chan *Message, 32),
+		historyMessages: make(chan *Message, 512),
 	}
 	client.presenceHandler = wmClient.AddEventHandler(client.setConnectPresence)
 
@@ -172,7 +167,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 	isNewDB := wac.Store.ID == nil
 
 	historyCtx, historyCtxClose := context.WithCancel(ctx)
-	go wac.fillHistoryMessages(historyCtx)
+    go wac.fillHistoryMessages(historyCtx)
 
 	go func(state *RegistrationState) {
 		for {
@@ -187,6 +182,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 				state.Success = wac.IsLoggedIn()
 				state.Completed = true
 				wac.Log.Infof("LoginOrRegister flow complete. success = %v, completed = %v", state.Success, state.Completed)
+
 				state.Close()
 				if !wac.IsLoggedIn() && isNewDB {
 					wac.Log.Infof("No login detected. deleting temporary DB file: %s", wac.dbPath)
@@ -299,6 +295,8 @@ func (wac *WhatsAppClient) fillHistoryMessages(ctx context.Context) {
 					wac.historyMessages <- msg
 				}
 			}
+        default:
+            wac.Log.Infof("History sync got message of type: %T", message)
 		}
 	})
 	go func() {

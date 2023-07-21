@@ -3,6 +3,8 @@ qrcode
 click
 types_protobuf
 
+packaging
+
 # databasebot
 dataset
 psycopg2_binary

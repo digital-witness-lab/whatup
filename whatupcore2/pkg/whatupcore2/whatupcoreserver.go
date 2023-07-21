@@ -2,9 +2,12 @@ package whatupcore2
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
+	"github.com/mitchellh/mapstructure"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	waLog "go.mau.fi/whatsmeow/util/log"
@@ -18,6 +21,58 @@ type WhatUpCoreServer struct {
 	sessionManager *SessionManager
     log waLog.Logger
 	pb.UnimplementedWhatUpCoreServer
+}
+
+func prepareOutboundMediaMessage(ctx context.Context, client *WhatsAppClient, sendMessageMedia *pb.SendMessageMedia) (*waProto.Message, error) {
+    mediaType, found := ProtoToMediaType(sendMessageMedia.GetMediaType())
+    if !found {
+        return nil, fmt.Errorf("Did not understand intended media type")
+    }
+
+    resp, err := client.Upload(ctx, sendMessageMedia.GetContent(), mediaType)
+    if err != nil {
+        return nil, fmt.Errorf("Could not upload message: %v", err)
+    }
+    var mimetype string
+    if mimetype = sendMessageMedia.GetMimetype(); mimetype == "" {
+        mimetype = http.DetectContentType(sendMessageMedia.GetContent())
+    }
+    messageData := map[string]interface{}{
+    	"Caption":  proto.String(sendMessageMedia.GetCaption()),
+    	"Mimetype": proto.String(mimetype),
+    	"Url":           &resp.URL,
+    	"DirectPath":    &resp.DirectPath,
+    	"MediaKey":      resp.MediaKey,
+    	"FileEncSha256": resp.FileEncSHA256,
+    	"FileSha256":    resp.FileSHA256,
+    	"FileLength":    &resp.FileLength,
+    }
+    if title := sendMessageMedia.GetTitle(); title != "" {
+        messageData["Title"] = proto.String(title)
+    }
+    if filename := sendMessageMedia.GetFilename(); filename != "" {
+        messageData["Filename"] = proto.String(filename)
+    }
+
+    switch mediaType {
+    case whatsmeow.MediaImage:
+        imageMessage := &waProto.ImageMessage{}
+        mapstructure.Decode(messageData, imageMessage)
+        return &waProto.Message{ImageMessage: imageMessage}, nil
+    case whatsmeow.MediaVideo:
+        videoMessage := &waProto.VideoMessage{}
+        mapstructure.Decode(messageData, videoMessage)
+        return &waProto.Message{VideoMessage: videoMessage}, nil
+    case whatsmeow.MediaAudio:
+        audioMessage := &waProto.AudioMessage{}
+        mapstructure.Decode(messageData, audioMessage)
+        return &waProto.Message{AudioMessage: audioMessage}, nil
+    case whatsmeow.MediaDocument:
+        documentMessage := &waProto.DocumentMessage{}
+        mapstructure.Decode(messageData, documentMessage)
+        return &waProto.Message{DocumentMessage: documentMessage}, nil
+    }
+    return nil, fmt.Errorf("Could not create media message")
 }
 
 func (s *WhatUpCoreServer) GetConnectionStatus(ctx context.Context, credentials *pb.ConnectionStatusOptions) (*pb.ConnectionStatus, error) {
@@ -53,6 +108,12 @@ func (s *WhatUpCoreServer) SendMessage(ctx context.Context, messageOptions *pb.S
 		}
 	case *pb.SendMessageOptions_RawMessage:
 		message = payload.RawMessage
+    case *pb.SendMessageOptions_SendMessageMedia:
+        var err error
+        message, err = prepareOutboundMediaMessage(ctx, session.Client, payload.SendMessageMedia)
+        if err != nil {
+            return nil, status.Errorf(codes.Internal, "Could not prepare uploaded message: %v", err)
+        }
 	}
 
 	reciept, err := session.Client.SendMessage(ctx, jid, message)

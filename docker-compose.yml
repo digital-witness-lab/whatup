@@ -19,7 +19,7 @@ services:
       - ssl-key
     volumes:
       - ./data/whatupcore2/db/:/db/
-    command: rpc --log-level=DEBUG
+    command: rpc --log-level=INFO
 
   db:
     image: postgres:15-alpine
@@ -56,7 +56,7 @@ services:
       - db
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
-      - WHATUPY_CONTROL_GROUPS=33671714377@s.whatsapp.net # cool friends + micha
+      - WHATUPY_CONTROL_GROUPS=120363104970691776@g.us 120363086723362196@g.us # cool friends + test
     env_file:
       - ./docker-compose.env
     secrets:
@@ -64,9 +64,28 @@ services:
       - postgres-passwd
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
+      - ./data/message-archive/:/archive/:ro
     command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert databasebot --postgres-host db --postgres-user $${POSTGRES_USER} --postgres-password-file $${POSTGRES_PASSWORD_FILE} --postgres-database messages /usr/src/whatupy-data/sessions/*"
 
-  bot-onboard:
+  bot-database-load-archive:
+    image: whatup/whatupy
+    build: ./whatupy/
+    links:
+      - whatup
+      - db
+    environment:
+      - WHATUPY_CERT=/run/secrets/ssl-cert
+    env_file:
+      - ./docker-compose.env
+    secrets:
+      - postgres-passwd
+    profiles:
+      - donotstart
+    volumes:
+      - ./data/message-archive/:/archive/:ro
+    command: sh -c "whatupy databasebot-load-archive --postgres-host db --postgres-user $${POSTGRES_USER} --postgres-password-file $${POSTGRES_PASSWORD_FILE} --postgres-database messages '/archive/*@*/*_*.json'"
+
+  bot-onboard-bulk:
     image: whatup/whatupy
     build: ./whatupy/
     links:
@@ -80,4 +99,4 @@ services:
       - donotstart
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-    entrypoint: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --credentials-dir /usr/src/whatupy-data/sessions/
+    entrypoint: whatupy --host whatup --cert /run/secrets/ssl-cert onboard-bulk --credentials-dir /usr/src/whatupy-data/sessions/

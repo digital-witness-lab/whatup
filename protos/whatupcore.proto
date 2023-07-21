@@ -49,11 +49,28 @@ message SendMessageOptions {
     JID recipient = 1;
     
     oneof payload {
-        string simpleText = 2;
-        proto.Message rawMessage = 3;
+        string simpleText = 20;
+        SendMessageMedia sendMessageMedia = 21;
+        proto.Message rawMessage = 22;
     }
 
-    uint32 composingTime = 4; // seconds
+    uint32 composingTime = 60; // seconds
+}
+
+message SendMessageMedia {
+    enum MediaType {
+        MediaImage = 0;
+        MediaVideo = 1;
+        MediaAudio = 2;
+        MediaDocument = 3;
+    }
+    MediaType mediaType = 20;
+    bytes content = 21;
+    string caption = 22;
+    string title = 23;
+    string filename = 24;
+
+    string mimetype = 40;
 }
 
 message DownloadMediaOptions {
