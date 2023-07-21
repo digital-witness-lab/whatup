@@ -189,7 +189,7 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, "%v", err)
 	}
-	return GroupInfoToProto(groupInfo), nil
+	return GroupInfoToProto(groupInfo, session.Client.Store.Contacts), nil
 }
 
 func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context, inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
@@ -202,7 +202,7 @@ func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context, inviteCode *pb.
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, "%v", err)
 	}
-	return GroupInfoToProto(groupInfo), nil
+	return GroupInfoToProto(groupInfo,session.Client.Store.Contacts), nil
 }
 
 func (s *WhatUpCoreServer) JoinGroup(ctx context.Context, inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
@@ -220,5 +220,5 @@ func (s *WhatUpCoreServer) JoinGroup(ctx context.Context, inviteCode *pb.InviteC
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, "Could not join group: %v", err)
 	}
-	return GroupInfoToProto(groupInfo), nil
+	return GroupInfoToProto(groupInfo,session.Client.Store.Contacts), nil
 }

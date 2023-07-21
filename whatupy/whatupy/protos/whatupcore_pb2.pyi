@@ -171,6 +171,25 @@ class InviteCode(google.protobuf.message.Message):
 global___InviteCode = InviteCode
 
 @typing_extensions.final
+class Contact(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    FIRSTNAME_FIELD_NUMBER: builtins.int
+    FULLNAME_FIELD_NUMBER: builtins.int
+    PUSHNAME_FIELD_NUMBER: builtins.int
+    BUSINESSNAME_FIELD_NUMBER: builtins.int
+    firstName: builtins.str
+    fullName: builtins.str
+    pushName: builtins.str
+    businessName: builtins.str
+
+    def __init__(self, *, firstName: builtins.str=..., fullName: builtins.str=..., pushName: builtins.str=..., businessName: builtins.str=...) -> None:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['businessName', b'businessName', 'firstName', b'firstName', 'fullName', b'fullName', 'pushName', b'pushName']) -> None:
+        ...
+global___Contact = Contact
+
+@typing_extensions.final
 class GroupName(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     NAME_FIELD_NUMBER: builtins.int
@@ -230,6 +249,7 @@ global___GroupTopic = GroupTopic
 class GroupParticipant(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     JID_FIELD_NUMBER: builtins.int
+    CONTACT_FIELD_NUMBER: builtins.int
     ISADMIN_FIELD_NUMBER: builtins.int
     ISSUPERADMIN_FIELD_NUMBER: builtins.int
     JOINERROR_FIELD_NUMBER: builtins.int
@@ -237,17 +257,21 @@ class GroupParticipant(google.protobuf.message.Message):
     @property
     def JID(self) -> global___JID:
         ...
+
+    @property
+    def contact(self) -> global___Contact:
+        ...
     isAdmin: builtins.bool
     isSuperAdmin: builtins.bool
     joinError: builtins.int
 
-    def __init__(self, *, JID: global___JID | None=..., isAdmin: builtins.bool=..., isSuperAdmin: builtins.bool=..., joinError: builtins.int=...) -> None:
+    def __init__(self, *, JID: global___JID | None=..., contact: global___Contact | None=..., isAdmin: builtins.bool=..., isSuperAdmin: builtins.bool=..., joinError: builtins.int=...) -> None:
         ...
 
-    def HasField(self, field_name: typing_extensions.Literal['JID', b'JID']) -> builtins.bool:
+    def HasField(self, field_name: typing_extensions.Literal['JID', b'JID', 'contact', b'contact']) -> builtins.bool:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['JID', b'JID', 'isAdmin', b'isAdmin', 'isSuperAdmin', b'isSuperAdmin', 'joinError', b'joinError']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['JID', b'JID', 'contact', b'contact', 'isAdmin', b'isAdmin', 'isSuperAdmin', b'isSuperAdmin', 'joinError', b'joinError']) -> None:
         ...
 global___GroupParticipant = GroupParticipant
 
@@ -488,6 +512,7 @@ class MessageSource(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     CHAT_FIELD_NUMBER: builtins.int
     SENDER_FIELD_NUMBER: builtins.int
+    SENDERCONTACT_FIELD_NUMBER: builtins.int
     BROADCASTLISTOWNER_FIELD_NUMBER: builtins.int
     ISFROMME_FIELD_NUMBER: builtins.int
     ISGROUP_FIELD_NUMBER: builtins.int
@@ -501,18 +526,22 @@ class MessageSource(google.protobuf.message.Message):
         ...
 
     @property
+    def senderContact(self) -> global___Contact:
+        ...
+
+    @property
     def broadcastListOwner(self) -> global___JID:
         ...
     isFromMe: builtins.bool
     isGroup: builtins.bool
 
-    def __init__(self, *, chat: global___JID | None=..., sender: global___JID | None=..., broadcastListOwner: global___JID | None=..., isFromMe: builtins.bool=..., isGroup: builtins.bool=...) -> None:
+    def __init__(self, *, chat: global___JID | None=..., sender: global___JID | None=..., senderContact: global___Contact | None=..., broadcastListOwner: global___JID | None=..., isFromMe: builtins.bool=..., isGroup: builtins.bool=...) -> None:
         ...
 
-    def HasField(self, field_name: typing_extensions.Literal['broadcastListOwner', b'broadcastListOwner', 'chat', b'chat', 'sender', b'sender']) -> builtins.bool:
+    def HasField(self, field_name: typing_extensions.Literal['broadcastListOwner', b'broadcastListOwner', 'chat', b'chat', 'sender', b'sender', 'senderContact', b'senderContact']) -> builtins.bool:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['broadcastListOwner', b'broadcastListOwner', 'chat', b'chat', 'isFromMe', b'isFromMe', 'isGroup', b'isGroup', 'sender', b'sender']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['broadcastListOwner', b'broadcastListOwner', 'chat', b'chat', 'isFromMe', b'isFromMe', 'isGroup', b'isGroup', 'sender', b'sender', 'senderContact', b'senderContact']) -> None:
         ...
 global___MessageSource = MessageSource
 
@@ -592,6 +621,8 @@ class MessageProperties(google.protobuf.message.Message):
     ISFORWARDED_FIELD_NUMBER: builtins.int
     FORWARDEDSCORE_FIELD_NUMBER: builtins.int
     ISINVITE_FIELD_NUMBER: builtins.int
+    ISMEDIA_FIELD_NUMBER: builtins.int
+    ISREACTION_FIELD_NUMBER: builtins.int
     isEphemeral: builtins.bool
     isViewOnce: builtins.bool
     isDocumentWithCaption: builtins.bool
@@ -600,11 +631,13 @@ class MessageProperties(google.protobuf.message.Message):
     isForwarded: builtins.bool
     forwardedScore: builtins.int
     isInvite: builtins.bool
+    isMedia: builtins.bool
+    isReaction: builtins.bool
 
-    def __init__(self, *, isEphemeral: builtins.bool=..., isViewOnce: builtins.bool=..., isDocumentWithCaption: builtins.bool=..., isEdit: builtins.bool=..., isDelete: builtins.bool=..., isForwarded: builtins.bool=..., forwardedScore: builtins.int=..., isInvite: builtins.bool=...) -> None:
+    def __init__(self, *, isEphemeral: builtins.bool=..., isViewOnce: builtins.bool=..., isDocumentWithCaption: builtins.bool=..., isEdit: builtins.bool=..., isDelete: builtins.bool=..., isForwarded: builtins.bool=..., forwardedScore: builtins.int=..., isInvite: builtins.bool=..., isMedia: builtins.bool=..., isReaction: builtins.bool=...) -> None:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['forwardedScore', b'forwardedScore', 'isDelete', b'isDelete', 'isDocumentWithCaption', b'isDocumentWithCaption', 'isEdit', b'isEdit', 'isEphemeral', b'isEphemeral', 'isForwarded', b'isForwarded', 'isInvite', b'isInvite', 'isViewOnce', b'isViewOnce']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['forwardedScore', b'forwardedScore', 'isDelete', b'isDelete', 'isDocumentWithCaption', b'isDocumentWithCaption', 'isEdit', b'isEdit', 'isEphemeral', b'isEphemeral', 'isForwarded', b'isForwarded', 'isInvite', b'isInvite', 'isMedia', b'isMedia', 'isReaction', b'isReaction', 'isViewOnce', b'isViewOnce']) -> None:
         ...
 global___MessageProperties = MessageProperties
 

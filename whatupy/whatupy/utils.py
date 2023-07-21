@@ -9,6 +9,7 @@ import typing as T
 import warnings
 import hashlib
 from functools import wraps
+from collections import namedtuple
 
 from google.protobuf.json_format import MessageToDict
 
@@ -17,6 +18,8 @@ from .protos import whatupcore_pb2 as wuc
 
 WORDLIST_SIZE = None
 RANDOM_SALT = random.randbytes(32)
+
+CommandQuery = namedtuple("CommandQuery", "namespace command params".split(" "))
 
 
 class WhatUpyJSONEncoder(json.JSONEncoder):
@@ -147,6 +150,18 @@ def mime_type_to_ext(mtype: str) -> str | None:
         mimetypes.init()
         mimetypes.add_type("image/webp", ".webp")
     return mimetypes.guess_extension(mtype)
+
+
+def media_message_mimetype(message: wuc.WUMessage) -> str | None:
+    payload = message.content.mediaMessage.WhichOneof("payload")
+    if payload is None:
+        return None
+    media = getattr(message.content.mediaMessage, payload)
+    try:
+        return media.mimetype
+    except AttributeError:
+        pass
+    return None
 
 
 def media_message_filename(message: wuc.WUMessage) -> str | None:

@@ -28,7 +28,7 @@ class ArchiveBot(BaseBot):
         kwargs["mark_messages_read"] = True
         super().__init__(*args, **kwargs)
 
-    async def on_message(self, message: wuc.WUMessage):
+    async def on_message(self, message: wuc.WUMessage, is_history: bool):
         chat_id = utils.jid_to_str(message.info.source.chat)
         conversation_dir: Path = self.archive_dir / chat_id
         conversation_dir.mkdir(parents=True, exist_ok=True)
