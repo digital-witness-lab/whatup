@@ -37,7 +37,7 @@ func NewMessageFromWhatsMeow(client *WhatsAppClient, m *events.Message) (*Messag
 	msgId := m.Info.ID
 	return &Message{
 		client:       client,
-        log:          client.Log.Sub(fmt.Sprintf("Message/%s", msgId)),
+		log:          client.Log.Sub(fmt.Sprintf("Message/%s", msgId)),
 		MessageEvent: m,
 	}, nil
 }
@@ -77,8 +77,8 @@ func (msg *Message) GetExtendedMessage() interface{} {
 		return m.GetExtendedTextMessage()
 	case m.GetReactionMessage() != nil:
 		return m.GetReactionMessage()
-    case m.GetProtocolMessage() != nil:
-        return m.GetProtocolMessage()
+	case m.GetProtocolMessage() != nil:
+		return m.GetProtocolMessage()
 	default:
 		return nil
 	}
@@ -89,10 +89,10 @@ func (msg *Message) downloadableMessageToMediaMessage(extMessage interface{}) *p
 	if extMessage == nil {
 		return nil
 	}
-    _, canDownload := extMessage.(whatsmeow.DownloadableMessage)
-    if !canDownload {
-        return nil
-    }
+	_, canDownload := extMessage.(whatsmeow.DownloadableMessage)
+	if !canDownload {
+		return nil
+	}
 
 	mediaMessage := &pb.MediaMessage{}
 	switch v := extMessage.(type) {
@@ -110,9 +110,9 @@ func (msg *Message) downloadableMessageToMediaMessage(extMessage interface{}) *p
 	case *waProto.StickerMessage:
 		mediaMessage.Payload = &pb.MediaMessage_StickerMessage{StickerMessage: v}
 	default:
-        if canDownload {
-            msg.log.Warnf("Downloadable message not handled by WhatUpCore2: %T", v)
-        }
+		if canDownload {
+			msg.log.Warnf("Downloadable message not handled by WhatUpCore2: %T", v)
+		}
 		return nil
 	}
 	return mediaMessage
@@ -129,10 +129,10 @@ func (msg *Message) MessageFieldsToStr(fields []string) string {
 			return false
 		})
 	texts := valuesToStrings(valuesFilterZero(values))
-    if len(texts) > 0 {
-	    return texts[0]
-    }
-    return ""
+	if len(texts) > 0 {
+		return texts[0]
+	}
+	return ""
 }
 
 func (msg *Message) MessageText() string {
@@ -148,7 +148,7 @@ func (msg *Message) GetLink() string {
 }
 
 func (msg *Message) IsReaction() bool {
-    return msg.MessageEvent.Info.Type == "reaction"
+	return msg.MessageEvent.Info.Type == "reaction"
 }
 
 func (msg *Message) IsInvite() bool {
@@ -156,10 +156,10 @@ func (msg *Message) IsInvite() bool {
 }
 
 func (msg *Message) IsDelete() bool {
-    if m := msg.MessageEvent.Message.GetProtocolMessage() ; m != nil {
-        return m.GetType() == waProto.ProtocolMessage_REVOKE
-    }
-    return false
+	if m := msg.MessageEvent.Message.GetProtocolMessage(); m != nil {
+		return m.GetType() == waProto.ProtocolMessage_REVOKE
+	}
+	return false
 }
 
 func (msg *Message) GetContextInfo() (*waProto.ContextInfo, bool) {
@@ -189,23 +189,23 @@ func (msg *Message) GetThumbnail() ([]byte, error) {
 }
 
 func (msg *Message) GetReferenceMessageId() (string, bool) {
-    return msg.getReferenceMessageId(msg.GetExtendedMessage())
+	return msg.getReferenceMessageId(msg.GetExtendedMessage())
 }
 
 func (msg *Message) getReferenceMessageId(extMessage interface{}) (string, bool) {
 	if extMessage == nil {
 		return "", false
 	}
-    switch v := extMessage.(type) {
-    case *waProto.ReactionMessage:
-        return v.GetKey().GetId(), true
-    case *waProto.ExtendedTextMessage:
-        return v.GetContextInfo().GetStanzaId(), true
-    case *waProto.ProtocolMessage:
-        return v.GetKey().GetId(), true
-    default:
-        return "", false
-    }
+	switch v := extMessage.(type) {
+	case *waProto.ReactionMessage:
+		return v.GetKey().GetId(), true
+	case *waProto.ExtendedTextMessage:
+		return v.GetContextInfo().GetStanzaId(), true
+	case *waProto.ProtocolMessage:
+		return v.GetKey().GetId(), true
+	default:
+		return "", false
+	}
 }
 
 func (msg *Message) getThumbnail(extMessage interface{}) ([]byte, error) {
@@ -230,12 +230,12 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 	// https://github.com/tulir/whatsmeow/blob/12cd3cdb2257c2f87a520b6b90dfd43c5fd1b36c/types/events/events.go#L226
 	// https://github.com/tulir/whatsmeow/blob/12cd3cdb2257c2f87a520b6b90dfd43c5fd1b36c/mdtest/main.go#L793
 	var (
-		thumbnail      []byte
-		forwardedScore uint32
-		isForwarded    bool
-		mediaMessage   *pb.MediaMessage
-		err            error
-        inReferenceToId  string
+		thumbnail       []byte
+		forwardedScore  uint32
+		isForwarded     bool
+		mediaMessage    *pb.MediaMessage
+		err             error
+		inReferenceToId string
 	)
 
 	extMessage := msg.GetExtendedMessage()
@@ -246,35 +246,35 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			msg.log.Errorf("Could not download thumbnail: %v", err)
 		}
 		mediaMessage = msg.downloadableMessageToMediaMessage(extMessage)
-        inReferenceToId, _ = msg.getReferenceMessageId(extMessage)
+		inReferenceToId, _ = msg.getReferenceMessageId(extMessage)
 	}
 
 	return &pb.WUMessage{
 		Content: &pb.MessageContent{
-			Title:        msg.MessageTitle(),
-			Text:         msg.MessageText(),
-			Link:         msg.GetLink(),
-			Thumbnail:    thumbnail,
-			MediaMessage: mediaMessage,
-            InReferenceToId: inReferenceToId,
+			Title:           msg.MessageTitle(),
+			Text:            msg.MessageText(),
+			Link:            msg.GetLink(),
+			Thumbnail:       thumbnail,
+			MediaMessage:    mediaMessage,
+			InReferenceToId: inReferenceToId,
 		},
-        Info: MessageInfoToProto(msg.Info, msg.client.Store.Contacts),
+		Info: MessageInfoToProto(msg.Info, msg.client.Store.Contacts),
 		MessageProperties: &pb.MessageProperties{
 			IsEphemeral:           msg.IsEphemeral,
 			IsViewOnce:            msg.IsViewOnce,
 			IsDocumentWithCaption: msg.IsDocumentWithCaption,
 			IsEdit:                msg.IsEdit,
-            IsDelete:              msg.IsDelete(),
+			IsDelete:              msg.IsDelete(),
 			IsInvite:              msg.IsInvite(),
 			IsForwarded:           isForwarded,
-            IsReaction:            msg.IsReaction(),
-            IsMedia:               mediaMessage != nil,
+			IsReaction:            msg.IsReaction(),
+			IsMedia:               mediaMessage != nil,
 			ForwardedScore:        forwardedScore,
 		},
-        Provenance : map[string]string{
-            "whatupcore__version": WhatUpCoreVersion,
-            "whatupcore__timestamp": time.Now().Format(time.RFC3339),
-        },
+		Provenance: map[string]string{
+			"whatupcore__version":   WhatUpCoreVersion,
+			"whatupcore__timestamp": time.Now().Format(time.RFC3339),
+		},
 		OriginalMessage: msg.MessageEvent.Message,
 	}, true
 }

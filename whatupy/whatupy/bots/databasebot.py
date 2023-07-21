@@ -1,17 +1,17 @@
 import logging
+import typing as T
 from collections import defaultdict
 from datetime import datetime, timedelta
 from functools import partial
-import typing as T
 
 import dataset
 from dataset.util import DatasetException
-from sqlalchemy.sql import func
 from google.protobuf.timestamp_pb2 import Timestamp
+from sqlalchemy.sql import func
 
-from .. import utils, __version__
-from . import BaseBot, BotCommandArgs, MediaType, ArchiveData
+from .. import __version__, utils
 from ..protos import whatupcore_pb2 as wuc
+from . import ArchiveData, BaseBot, BotCommandArgs, MediaType
 
 logger = logging.getLogger(__name__)
 

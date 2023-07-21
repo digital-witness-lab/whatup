@@ -21,8 +21,8 @@ var (
 	TLS_CERT_FILE = "/run/secrets/ssl-cert"
 	TLS_KEY_FILE  = "/run/secrets/ssl-key"
 	JWT_SECRET    = []byte("SECRETSECRET")
-    USE_SSL       = true
-    Log waLog.Logger
+	USE_SSL       = true
+	Log           waLog.Logger
 )
 
 func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(context.Context) (context.Context, error) {
@@ -41,14 +41,14 @@ func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(cont
 			return nil, status.Errorf(codes.Unauthenticated, "Unregistered auth token")
 		}
 
-        go session.UpdateLastAccessWhileAlive(ctx)
+		go session.UpdateLastAccessWhileAlive(ctx)
 
 		return context.WithValue(ctx, "session", session), nil
 	}
 }
 
 func StartRPC(port uint32, logLevel string) error {
-    Log = waLog.Stdout("RPC", logLevel, true)
+	Log = waLog.Stdout("RPC", logLevel, true)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
@@ -73,9 +73,9 @@ func StartRPC(port uint32, logLevel string) error {
 		s = grpc.NewServer(
 			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
 			grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
-            grpc.Creds(creds),
-            keepAlive,
-        )
+			grpc.Creds(creds),
+			keepAlive,
+		)
 	} else {
 		s = grpc.NewServer(
 			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
@@ -87,11 +87,11 @@ func StartRPC(port uint32, logLevel string) error {
 
 	pb.RegisterWhatUpCoreAuthServer(s, &WhatUpCoreAuthServer{
 		sessionManager: sessionManager,
-        log: Log.Sub("AuthServer"),
+		log:            Log.Sub("AuthServer"),
 	})
 	pb.RegisterWhatUpCoreServer(s, &WhatUpCoreServer{
 		sessionManager: sessionManager,
-        log: Log.Sub("CoreServer"),
+		log:            Log.Sub("CoreServer"),
 	})
 
 	Log.Infof("server listening at %v", lis.Addr())

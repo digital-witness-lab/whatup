@@ -12,38 +12,38 @@ import (
 )
 
 type Session struct {
-	Username    string
-    passphraseHash string
-	sessionId   string
-	token       *jwt.Token
-	tokenString string
+	Username       string
+	passphraseHash string
+	sessionId      string
+	token          *jwt.Token
+	tokenString    string
 
-    clients uint64
+	clients uint64
 
 	createdAt  time.Time
 	renewedAt  time.Time
 	lastAccess time.Time
 
-    log waLog.Logger
+	log    waLog.Logger
 	Client *WhatsAppClient
 }
 
 func NewSessionDisconnected(username, passphrase string, secretKey []byte, log waLog.Logger) (*Session, error) {
 	now := time.Now()
 
-    hash, err := argon2id.CreateHash(passphrase, argon2id.DefaultParams)
-    if err != nil {
-        panic(err)
-    }
+	hash, err := argon2id.CreateHash(passphrase, argon2id.DefaultParams)
+	if err != nil {
+		panic(err)
+	}
 
 	session := &Session{
-		Username:   username,
-        passphraseHash: hash,
-		sessionId:  username,
-		createdAt:  now,
-		renewedAt:  now,
-		lastAccess: now,
-        log: log,
+		Username:       username,
+		passphraseHash: hash,
+		sessionId:      username,
+		createdAt:      now,
+		renewedAt:      now,
+		lastAccess:     now,
+		log:            log,
 	}
 	session.RenewToken(secretKey)
 	return session, nil
@@ -79,8 +79,8 @@ func (session *Session) Close() {
 }
 
 func (session *Session) ToProto() *pb.SessionToken {
-    expirationTime, _ := session.GetExpirationTime()
-    return &pb.SessionToken{Token: session.TokenString(), ExpirationTime: timestamppb.New(expirationTime)}
+	expirationTime, _ := session.GetExpirationTime()
+	return &pb.SessionToken{Token: session.TokenString(), ExpirationTime: timestamppb.New(expirationTime)}
 }
 
 func (session *Session) Login(username string, passphrase string) error {
@@ -125,14 +125,14 @@ func (session *Session) GetExpirationTime() (time.Time, bool) {
 	if err != nil {
 		return time.Time{}, false
 	}
-    return exp.Time, true
+	return exp.Time, true
 }
 
 func (session *Session) IsExpired() bool {
-    exp, ok := session.GetExpirationTime()
-    if !ok {
-        return false
-    }
+	exp, ok := session.GetExpirationTime()
+	if !ok {
+		return false
+	}
 	return exp.Before(time.Now())
 }
 
@@ -141,8 +141,8 @@ func (session *Session) TokenString() string {
 }
 
 func (session *Session) VerifyPassphrase(passphrase string) bool {
-    match, _ := argon2id.ComparePasswordAndHash(passphrase, session.passphraseHash)
-    return match
+	match, _ := argon2id.ComparePasswordAndHash(passphrase, session.passphraseHash)
+	return match
 }
 
 func (session *Session) UpdateLastAccess() {
@@ -150,21 +150,21 @@ func (session *Session) UpdateLastAccess() {
 }
 
 func (session *Session) UpdateLastAccessWhileAlive(ctx context.Context) {
-    session.log.Debugf("Starting session last-access refresher")
-    ticker := time.NewTicker(time.Minute)
-    for {
-        session.UpdateLastAccess()
-        select {
-        case <-ticker.C:
-            session.log.Debugf("Updating session last-access")
-            continue
-        case <-ctx.Done():
-            session.log.Debugf("Stopping last-access refresher")
-            return
-        }
-    }
+	session.log.Debugf("Starting session last-access refresher")
+	ticker := time.NewTicker(time.Minute)
+	for {
+		session.UpdateLastAccess()
+		select {
+		case <-ticker.C:
+			session.log.Debugf("Updating session last-access")
+			continue
+		case <-ctx.Done():
+			session.log.Debugf("Stopping last-access refresher")
+			return
+		}
+	}
 }
 
 func (session *Session) IsLastAccessBefore(t time.Time) bool {
-    return session.lastAccess.Compare(t) < 0
+	return session.lastAccess.Compare(t) < 0
 }

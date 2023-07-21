@@ -11,8 +11,8 @@ import (
 )
 
 var (
-    ErrInvalidToken = errors.New("Invalid Token")
-    ErrUnparsableClaim = errors.New("Token Invalid: Unparsable claims")
+	ErrInvalidToken    = errors.New("Invalid Token")
+	ErrUnparsableClaim = errors.New("Token Invalid: Unparsable claims")
 )
 
 const (

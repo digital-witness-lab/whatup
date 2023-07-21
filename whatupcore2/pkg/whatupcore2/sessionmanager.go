@@ -15,26 +15,26 @@ const (
 )
 
 var (
-    ErrSessionManagerInvalidState = status.Error(codes.Internal, "Invalid SessionManager state")
-    ErrInvalidPassphrase = status.Error(codes.Unauthenticated, "Could not authenticate")
+	ErrSessionManagerInvalidState = status.Error(codes.Internal, "Invalid SessionManager state")
+	ErrInvalidPassphrase          = status.Error(codes.Unauthenticated, "Could not authenticate")
 )
 
 type SessionManager struct {
-	sessionIdToSession map[string]*Session
+	sessionIdToSession  map[string]*Session
 	usernameToSessionId map[string]string
-	secretKey   []byte
+	secretKey           []byte
 
-    log waLog.Logger
+	log waLog.Logger
 
 	cancelFunc context.CancelFunc
 }
 
 func NewSessionManager(secretKey []byte, log waLog.Logger) *SessionManager {
 	return &SessionManager{
-		sessionIdToSession: make(map[string]*Session),
+		sessionIdToSession:  make(map[string]*Session),
 		usernameToSessionId: make(map[string]string),
-		secretKey:   secretKey,
-	    log: log,
+		secretKey:           secretKey,
+		log:                 log,
 	}
 }
 
@@ -65,7 +65,7 @@ func (sm *SessionManager) pruneSessions() {
 	nRemoved := 0
 	for _, session := range sm.sessionIdToSession {
 		if session.IsExpired() {
-            sm.log.Debugf("Removing old session: %v", session.lastAccess)
+			sm.log.Debugf("Removing old session: %v", session.lastAccess)
 			sm.removeSession(session)
 			nRemoved += 1
 		}
@@ -76,30 +76,30 @@ func (sm *SessionManager) pruneSessions() {
 }
 
 func (sm *SessionManager) AddLogin(username string, passphrase string) (*Session, error) {
-    session, err := sm.GetSessionLogin(username, passphrase)
-    if err != nil {
-        return nil, err
-    } else if session != nil {
-        return session, nil
-    }
+	session, err := sm.GetSessionLogin(username, passphrase)
+	if err != nil {
+		return nil, err
+	} else if session != nil {
+		return session, nil
+	}
 
 	session, err = NewSessionLogin(username, passphrase, sm.secretKey, sm.log.Sub(username))
 	if err != nil {
 		return nil, err
 	}
 
-    session.log.Infof("New Login Session Created")
+	session.log.Infof("New Login Session Created")
 	sm.addSession(session)
 	return session, nil
 }
 
 func (sm *SessionManager) AddRegistration(ctx context.Context, username string, passphrase string) (*Session, *RegistrationState, error) {
-    session, err := sm.GetSessionLogin(username, passphrase)
-    if err != nil {
-        return nil, nil, err
-    } else if session != nil {
-        return session, nil, nil
-    }
+	session, err := sm.GetSessionLogin(username, passphrase)
+	if err != nil {
+		return nil, nil, err
+	} else if session != nil {
+		return session, nil, nil
+	}
 
 	session, state, err := NewSessionRegister(ctx, username, passphrase, sm.secretKey, sm.log.Sub(username))
 	if err != nil {
@@ -116,7 +116,7 @@ func (sm *SessionManager) AddRegistration(ctx context.Context, username string, 
 			sm.removeSession(session)
 		}
 	}(session, state)
-    session.log.Infof("New Register Session Created")
+	session.log.Infof("New Register Session Created")
 	return session, state, nil
 }
 
@@ -126,7 +126,7 @@ func (sm *SessionManager) addSession(session *Session) error {
 	}
 
 	sm.sessionIdToSession[session.sessionId] = session
-    sm.usernameToSessionId[session.Username] = session.sessionId
+	sm.usernameToSessionId[session.Username] = session.sessionId
 	return nil
 }
 
@@ -162,24 +162,24 @@ func (sm *SessionManager) GetSession(sessionId string) (*Session, bool) {
 	if !found {
 		return nil, false
 	}
-    session.UpdateLastAccess()
+	session.UpdateLastAccess()
 	return session, found
 }
 
 func (sm *SessionManager) GetSessionLogin(username, passphrase string) (*Session, error) {
-    sessionId, found := sm.usernameToSessionId[username]
-    if !found {
-        return nil, nil
-    }
-    session, found := sm.GetSession(sessionId)
-    if !found {
-        sm.log.Errorf("Invalid SessionManager state... username found with no corresponding sessionID")
-        return nil, ErrSessionManagerInvalidState
-    }
-    if !session.VerifyPassphrase(passphrase) {
-        sm.log.Warnf("Invalid login attempt for user: %s", username)
-        return nil, ErrInvalidPassphrase
-    }
-    session.log.Infof("User logged in to existing session")
-    return session, nil
+	sessionId, found := sm.usernameToSessionId[username]
+	if !found {
+		return nil, nil
+	}
+	session, found := sm.GetSession(sessionId)
+	if !found {
+		sm.log.Errorf("Invalid SessionManager state... username found with no corresponding sessionID")
+		return nil, ErrSessionManagerInvalidState
+	}
+	if !session.VerifyPassphrase(passphrase) {
+		sm.log.Warnf("Invalid login attempt for user: %s", username)
+		return nil, ErrInvalidPassphrase
+	}
+	session.log.Infof("User logged in to existing session")
+	return session, nil
 }

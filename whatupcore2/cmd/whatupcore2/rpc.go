@@ -9,7 +9,7 @@ import (
 
 var (
 	Port          uint32
-    LogLevel string
+	LogLevel      string
 	whatsUpRPCCmd = &cobra.Command{
 		Use:     "rpc",
 		Aliases: []string{"r"},

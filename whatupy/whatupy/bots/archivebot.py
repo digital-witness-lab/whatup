@@ -1,15 +1,15 @@
 import json
 import logging
-from pathlib import Path
 from datetime import datetime
 from functools import partial
+from pathlib import Path
 
 from packaging import version
 
-from .. import utils, __version__
-from . import BaseBot
-from ..protos import whatupcore_pb2 as wuc
+from .. import __version__, utils
 from ..protos import whatsappweb_pb2 as waw
+from ..protos import whatupcore_pb2 as wuc
+from . import BaseBot
 
 logger = logging.getLogger(__name__)
 

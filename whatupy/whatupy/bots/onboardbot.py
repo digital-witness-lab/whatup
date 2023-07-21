@@ -1,9 +1,8 @@
 import json
 from pathlib import Path
 
+from .. import NotRegisteredError, utils
 from . import BaseBot
-from .. import utils
-from .. import NotRegisteredError
 
 
 class OnboardBot(BaseBot):
