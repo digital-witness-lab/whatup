@@ -72,6 +72,7 @@ class SendMessageOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     RECIPIENT_FIELD_NUMBER: builtins.int
     SIMPLETEXT_FIELD_NUMBER: builtins.int
+    SENDMESSAGEMEDIA_FIELD_NUMBER: builtins.int
     RAWMESSAGE_FIELD_NUMBER: builtins.int
     COMPOSINGTIME_FIELD_NUMBER: builtins.int
 
@@ -81,23 +82,68 @@ class SendMessageOptions(google.protobuf.message.Message):
     simpleText: builtins.str
 
     @property
+    def sendMessageMedia(self) -> global___SendMessageMedia:
+        ...
+
+    @property
     def rawMessage(self) -> whatsappweb_pb2.Message:
         ...
     composingTime: builtins.int
     'seconds'
 
-    def __init__(self, *, recipient: global___JID | None=..., simpleText: builtins.str=..., rawMessage: whatsappweb_pb2.Message | None=..., composingTime: builtins.int=...) -> None:
+    def __init__(self, *, recipient: global___JID | None=..., simpleText: builtins.str=..., sendMessageMedia: global___SendMessageMedia | None=..., rawMessage: whatsappweb_pb2.Message | None=..., composingTime: builtins.int=...) -> None:
         ...
 
-    def HasField(self, field_name: typing_extensions.Literal['payload', b'payload', 'rawMessage', b'rawMessage', 'recipient', b'recipient', 'simpleText', b'simpleText']) -> builtins.bool:
+    def HasField(self, field_name: typing_extensions.Literal['payload', b'payload', 'rawMessage', b'rawMessage', 'recipient', b'recipient', 'sendMessageMedia', b'sendMessageMedia', 'simpleText', b'simpleText']) -> builtins.bool:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['composingTime', b'composingTime', 'payload', b'payload', 'rawMessage', b'rawMessage', 'recipient', b'recipient', 'simpleText', b'simpleText']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['composingTime', b'composingTime', 'payload', b'payload', 'rawMessage', b'rawMessage', 'recipient', b'recipient', 'sendMessageMedia', b'sendMessageMedia', 'simpleText', b'simpleText']) -> None:
         ...
 
-    def WhichOneof(self, oneof_group: typing_extensions.Literal['payload', b'payload']) -> typing_extensions.Literal['simpleText', 'rawMessage'] | None:
+    def WhichOneof(self, oneof_group: typing_extensions.Literal['payload', b'payload']) -> typing_extensions.Literal['simpleText', 'sendMessageMedia', 'rawMessage'] | None:
         ...
 global___SendMessageOptions = SendMessageOptions
+
+@typing_extensions.final
+class SendMessageMedia(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    class _MediaType:
+        ValueType = typing.NewType('ValueType', builtins.int)
+        V: typing_extensions.TypeAlias = ValueType
+
+    class _MediaTypeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[SendMessageMedia._MediaType.ValueType], builtins.type):
+        DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+        MediaImage: SendMessageMedia._MediaType.ValueType
+        MediaVideo: SendMessageMedia._MediaType.ValueType
+        MediaAudio: SendMessageMedia._MediaType.ValueType
+        MediaDocument: SendMessageMedia._MediaType.ValueType
+
+    class MediaType(_MediaType, metaclass=_MediaTypeEnumTypeWrapper):
+        ...
+    MediaImage: SendMessageMedia.MediaType.ValueType
+    MediaVideo: SendMessageMedia.MediaType.ValueType
+    MediaAudio: SendMessageMedia.MediaType.ValueType
+    MediaDocument: SendMessageMedia.MediaType.ValueType
+    MEDIATYPE_FIELD_NUMBER: builtins.int
+    CONTENT_FIELD_NUMBER: builtins.int
+    CAPTION_FIELD_NUMBER: builtins.int
+    TITLE_FIELD_NUMBER: builtins.int
+    FILENAME_FIELD_NUMBER: builtins.int
+    MIMETYPE_FIELD_NUMBER: builtins.int
+    mediaType: global___SendMessageMedia.MediaType.ValueType
+    content: builtins.bytes
+    caption: builtins.str
+    title: builtins.str
+    filename: builtins.str
+    mimetype: builtins.str
+
+    def __init__(self, *, mediaType: global___SendMessageMedia.MediaType.ValueType=..., content: builtins.bytes=..., caption: builtins.str=..., title: builtins.str=..., filename: builtins.str=..., mimetype: builtins.str=...) -> None:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['caption', b'caption', 'content', b'content', 'filename', b'filename', 'mediaType', b'mediaType', 'mimetype', b'mimetype', 'title', b'title']) -> None:
+        ...
+global___SendMessageMedia = SendMessageMedia
 
 @typing_extensions.final
 class DownloadMediaOptions(google.protobuf.message.Message):

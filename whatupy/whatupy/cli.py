@@ -143,7 +143,8 @@ async def onboard_bulk(ctx, credentials_dir: Path):
             print("No name provided... exiting.")
             return
         credential_file = credentials_dir / f"{name}.json"
-        await OnboardBot.start(name, credential_file, **ctx.obj["connection_params"])
+        bot = OnboardBot(**ctx.obj["connection_params"])
+        await bot.register(name, credential_file)
 
 
 @cli.command()
@@ -180,6 +181,12 @@ async def archivebot(ctx, credentials, archive_dir: Path):
 @click.option("--postgres-user", type=str, default="whatupdb")
 @click.option("--postgres-password-file", type=click.File(), required=True)
 @click.option("--postgres-database", type=str, default="messages")
+@click.option(
+    "--archive-files",
+    type=str,
+    default=None,
+    help="File glob for archived messages to load. Will load the messages then quit",
+)
 @click.argument("credentials", type=click.File(), nargs=-1)
 @click.pass_context
 async def databasebot(
@@ -189,12 +196,50 @@ async def databasebot(
     postgres_user,
     postgres_password_file,
     postgres_database,
+    archive_files,
 ):
     # TODO: docstring
     postgres_password = postgres_password_file.read().strip()
     postgres_url = f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}/{postgres_database}"
+
     params = {"postgres_url": postgres_url, **ctx.obj["connection_params"]}
+    if archive_files:
+        db = DatabaseBot(connect=False, **params)
+        await db.process_archive(archive_files)
+        return
     await run_multi_bots(DatabaseBot, credentials, params)
+
+
+@cli.command("databasebot-load-archive")
+@async_cli
+@click.option("--postgres-host", type=str, default="db")
+@click.option("--postgres-user", type=str, default="whatupdb")
+@click.option("--postgres-password-file", type=click.File(), required=True)
+@click.option("--postgres-database", type=str, default="messages")
+@click.argument(
+    "archive-files",
+    type=str,
+    nargs=-1,
+)
+@click.pass_context
+async def databasebot_load_archive(
+    ctx,
+    postgres_host,
+    postgres_user,
+    postgres_password_file,
+    postgres_database,
+    archive_files,
+):
+    """
+    desc="File glob for archived messages to load. Will load the messages then quit",
+    """
+    postgres_password = postgres_password_file.read().strip()
+    postgres_url = f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}/{postgres_database}"
+
+    params = {"postgres_url": postgres_url, **ctx.obj["connection_params"]}
+    db = DatabaseBot(connect=False, **params)
+    for archive_file in archive_files:
+        await db.process_archive(archive_file)
 
 
 def main():

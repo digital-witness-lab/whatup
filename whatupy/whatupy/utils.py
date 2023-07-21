@@ -1,4 +1,6 @@
 import asyncio
+import csv
+import io
 import base64
 import json
 import mimetypes
@@ -11,7 +13,7 @@ import hashlib
 from functools import wraps
 from collections import namedtuple
 
-from google.protobuf.json_format import MessageToDict
+from google.protobuf.json_format import MessageToDict, ParseDict
 
 import qrcode
 from .protos import whatupcore_pb2 as wuc
@@ -33,6 +35,24 @@ class WhatUpyJSONEncoder(json.JSONEncoder):
         return obj
 
 
+class WhatUpyJSONDecoder(json.JSONDecoder):
+    def object_hook(self, dct):
+        if "type" in dct and dct["type"] == "bytes":
+            return base64_to_bytes(dct)
+        return dct
+
+
+def dict_to_csv_bytes(data: T.List[dict]) -> bytes:
+    if not data:
+        return b""
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=data[0].keys())
+    writer.writeheader()
+    writer.writerows(data)
+    buffer.seek(0)
+    return buffer.read().encode("utf8")
+
+
 def random_passphrase(words=5):
     words = random_words(words)
     return "-".join(f"{word.title()}{random.randint(10,99)}" for word in words)
@@ -40,6 +60,10 @@ def random_passphrase(words=5):
 
 def bytes_to_base64(b):
     return base64.urlsafe_b64encode(b).decode("utf8")
+
+
+def base64_to_bytes(b64: str) -> bytes:
+    return base64.urlsafe_b64decode(b64)
 
 
 def is_pbuf(pbuf_obj) -> bool:
@@ -82,6 +106,11 @@ def protobuf_find_key(proto_obj, key_name) -> T.Any:
 def protobuf_to_json(proto_obj) -> str:
     data = protobuf_to_dict(proto_obj)
     return json.dumps(data, cls=WhatUpyJSONEncoder)
+
+
+def jsons_to_protobuf(jsons, proto_type):
+    data = json.loads(jsons, cls=WhatUpyJSONDecoder)
+    return ParseDict(data, proto_type)
 
 
 def protobuf_to_dict(proto_obj) -> dict[str, T.Any]:

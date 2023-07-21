@@ -1,6 +1,12 @@
 from typing import TypeVar
 
-from .basebot import BaseBot, BotCommandArgs, BotCommandArgsException
+from .basebot import (
+    BaseBot,
+    BotCommandArgs,
+    BotCommandArgsException,
+    MediaType,
+    ArchiveData,
+)
 from .archivebot import ArchiveBot
 from .chatbot import ChatBot
 from .onboardbot import OnboardBot

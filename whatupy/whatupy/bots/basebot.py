@@ -1,9 +1,14 @@
 import asyncio
+import glob
 import argparse
+import enum
 import shlex
+import json
 import logging
+from datetime import datetime, timedelta
 from collections import defaultdict, namedtuple, deque
 from pathlib import Path
+import random
 import time
 import typing as T
 
@@ -16,11 +21,15 @@ from .. import utils
 
 logger = logging.getLogger(__name__)
 PinningEntry = namedtuple("PinningEntry", "bot_id expiration_time".split(" "))
+ArchiveData = namedtuple("ArchiveData", "GroupInfo MediaContent".split(" "))
 
-COMMAND_PINNING_TTL = 60 * 60
+COMMAND_PINNING_TTL = timedelta(seconds=60 * 60)
 COMMAND_PINNING: T.Dict[bytes, PinningEntry] = {}
 BOT_REGISTRY = defaultdict(dict)
 CONTROL_CACHE = deque(maxlen=1028)
+
+DownloadMediaCallback = T.Type[T.Callable[[wuc.WUMessage, bytes], T.Awaitable[None]]]
+MediaType = enum.Enum("MediaType", wuc.SendMessageMedia.MediaType.items())
 
 
 class BotCommandArgsException(Exception):
@@ -56,6 +65,8 @@ class BaseBot:
         mark_messages_read: bool = False,
         read_historical_messages: bool = False,
         control_groups: T.List[wuc.JID] = [],
+        archive_files: T.Optional[str] = None,
+        connect: bool = True,
         logger=logger,
         **kwargs,
     ):
@@ -67,10 +78,13 @@ class BaseBot:
         self.control_groups = control_groups
         self.mark_messages_read = mark_messages_read
         self.read_historical_messages = read_historical_messages
+        self.archive_files = archive_files
 
-        self.core_client, self.authenticator = create_whatupcore_clients(
-            self.host, self.port, self.cert
-        )
+        self.download_queue = asyncio.Queue()
+        if connect:
+            self.core_client, self.authenticator = create_whatupcore_clients(
+                self.host, self.port, self.cert
+            )
         self.arg_parser = self.setup_command_args()
 
     def setup_command_args(self) -> T.Optional[BotCommandArgs]:
@@ -103,6 +117,7 @@ class BaseBot:
             self.logger.info("Starting bot")
             tg.create_task(self.authenticator.start())
             tg.create_task(self.listen_messages())
+            tg.create_task(self._download_messages_background())
             if self.read_historical_messages:
                 tg.create_task(self.listen_historical_messages())
         self.stop()
@@ -119,6 +134,7 @@ class BaseBot:
                 wuc.PendingHistoryOptions(historyReadTimeout=60)
             )
             async for message in messages:
+                self.logger.debug("Got historical message: %s", message)
                 await self._dispatch_message(
                     message, skip_control=True, is_history=True
                 )
@@ -133,23 +149,38 @@ class BaseBot:
                 await self._dispatch_message(message)
 
     async def _dispatch_message(
-        self, message: wuc.WUMessage, skip_control=False, is_history: bool = False
+        self,
+        message: wuc.WUMessage,
+        skip_control=False,
+        is_history: bool = False,
+        is_archive: bool = False,
+        archive_data: T.Optional[ArchiveData] = None,
     ):
+        now = datetime.now()
         jid_from: wuc.JID = message.info.source.chat
+        source_hash = utils.random_hash(message.info.source.sender.user)
         is_control = any(
             utils.same_jid(jid_from, control) for control in self.control_groups
+        ) or any(
+            source_hash == sa and pb.expiration_time > now
+            for sa, pb in COMMAND_PINNING.items()
         )
         if is_control:
             if skip_control:
-                self.logger.debug("Skipping control message: %s", message.info)
+                self.logger.debug("Skipping control message: %s", message.info.id)
             else:
                 self.logger.debug("Got control message: %s", utils.jid_to_str(jid_from))
-                await self._dispatch_control(message)
+                await self._dispatch_control(message, source_hash)
         else:
             self.logger.debug("Got normal message: %s", message.info.id)
-            await self.on_message(message, is_history=is_history)
+            await self.on_message(
+                message,
+                is_history=is_history,
+                is_archive=is_archive,
+                archive_data=archive_data,
+            )
 
-    async def _dispatch_control(self, message):
+    async def _dispatch_control(self, message, source_hash):
         if message.info.source.isFromMe:
             return
         message_id = message.info.id
@@ -158,17 +189,19 @@ class BaseBot:
         text = message.content.text
         if not text.startswith(f"@{self.__class__.__name__}"):
             return
-        source_hash = utils.random_hash(message.info.source.sender.user)
         pinned_bot = COMMAND_PINNING.get(source_hash)
         registry = BOT_REGISTRY[self.__class__.__name__]
-        t = int(time.time())
+        t = datetime.now()
+        new_pin = False
         if (
             pinned_bot is None
             or pinned_bot.bot_id not in registry
             or pinned_bot.expiration_time > t
         ):
-            idx: int = (
-                message.info.timestamp.ToSeconds() // COMMAND_PINNING_TTL
+            new_pin = True
+            idx: int = int(
+                message.info.timestamp.ToSeconds()
+                // COMMAND_PINNING_TTL.total_seconds()
             ) % len(registry)
             bot_id = list(registry.keys())[idx]
             pinned_bot = PinningEntry(
@@ -177,6 +210,11 @@ class BaseBot:
             COMMAND_PINNING[source_hash] = pinned_bot
         if id(self) == pinned_bot.bot_id:
             CONTROL_CACHE.append(message_id)
+            if new_pin:
+                await self.send_text_message(
+                    message.info.source.sender,
+                    f"In command mode for the next {COMMAND_PINNING_TTL.total_seconds()} seconds. I will respond to commands for the {self.__class__.__name__} bot until {t + COMMAND_PINNING_TTL} UTC",
+                )
             return await self.on_control(message)
 
     async def download_message_media(self, message: wuc.WUMessage) -> bytes:
@@ -193,6 +231,30 @@ class BaseBot:
         )
         return media_content.Body
 
+    async def _download_messages_background(self):
+        while True:
+            message, callback = await self.download_queue.get()
+            self.logger.info(
+                "Download queue processing message: %s: messages left: %d",
+                message.info.id,
+                self.download_queue.qsize(),
+            )
+            content = await self.download_message_media(message)
+            try:
+                await callback(message, content)
+            except Exception:
+                self.logger.exception(
+                    "Exception calling download_media_message_eventually callback: %s",
+                    message.info.id,
+                )
+            sleep_time = random.randint(1, 10)
+            await asyncio.sleep(sleep_time)
+
+    async def download_message_media_eventually(
+        self, message: wuc.WUMessage, callback: DownloadMediaCallback
+    ):
+        await self.download_queue.put((message, callback))
+
     async def send_text_message(
         self, recipient: wuc.JID, text: str, composing_time: int = 5
     ) -> wuc.SendMessageReceipt:
@@ -202,8 +264,82 @@ class BaseBot:
         )
         return await self.core_client.SendMessage(options)
 
+    async def send_media_message(
+        self,
+        recipient: wuc.JID,
+        media_type: MediaType,
+        content: bytes,
+        title: T.Optional[str] = None,
+        caption: T.Optional[str] = None,
+        mimetype: T.Optional[str] = None,
+        filename: T.Optional[str] = None,
+        composing_time: int = 5,
+    ) -> wuc.SendMessageReceipt:
+        recipient_nonad = wuc.JID(user=recipient.user, server=recipient.server)
+        options = wuc.SendMessageOptions(
+            recipient=recipient_nonad,
+            composingTime=composing_time,
+            sendMessageMedia=wuc.SendMessageMedia(
+                mediaType=media_type.name,
+                caption=caption or "",
+                content=content,
+                mimetype=mimetype or "",
+                title=title or "",
+                filename=filename or "",
+            ),
+        )
+        return await self.core_client.SendMessage(options)
+
     async def on_control(self, message: wuc.WUMessage):
         pass
 
-    async def on_message(self, message: wuc.WUMessage, is_history: bool = False):
+    async def on_message(
+        self,
+        message: wuc.WUMessage,
+        is_history: bool = False,
+        is_archive: bool = False,
+        archive_data: T.Optional[ArchiveData] = None,
+    ):
         pass
+
+    async def process_archive(self, archive_glob):
+        # TODO: this is tightly coupled to ArchiveBot... decouple it somehow
+        group_infos = {}
+        filenames = list(glob.glob(archive_glob, recursive=True))
+        filenames.sort()
+        for filename in filenames:
+            try:
+                await self._process_archive_file(filename, group_infos)
+            except Exception:
+                self.logger.exception(
+                    f"Could not load file: {filename}... trying to continue"
+                )
+
+    async def _process_archive_file(self, filename, group_infos):
+        self.logger.info("Loading archive file: %s", filename)
+        filename_path = Path(filename)
+        group_path = filename_path.parent / "metadata.json"
+        with filename_path.open() as fd:
+            message: wuc.WUMessage = utils.jsons_to_protobuf(fd.read(), wuc.WUMessage())
+        metadata = {"GroupInfo": None, "MediaContent": None}
+        if group_info := group_infos.get(group_path):
+            metadata["GroupInfo"] = group_info
+        elif group_path.exists():
+            with group_path.open() as fd:
+                group_info = utils.jsons_to_protobuf(fd.read(), wuc.GroupInfo())
+            metadata["GroupInfo"] = group_info
+            group_infos[group_path] = group_info
+
+        if media_filename := message.provenance.get("archivebot__mediaPath"):
+            media_path = filename.parent.parent / media_filename
+            with media_path.open("rb") as fd:
+                media_content = fd.read()
+            metadata["MediaContent"] = media_content
+        archive_data = ArchiveData(**metadata)
+        await self._dispatch_message(
+            message,
+            is_history=False,
+            is_archive=True,
+            archive_data=archive_data,
+            skip_control=True,
+        )

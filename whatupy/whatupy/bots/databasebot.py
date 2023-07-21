@@ -1,7 +1,7 @@
 import logging
-import re
 from collections import defaultdict
 from datetime import datetime, timedelta
+from functools import partial
 import typing as T
 
 import dataset
@@ -10,7 +10,7 @@ from sqlalchemy.sql import func
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from .. import utils, __version__
-from . import BaseBot, BotCommandArgs
+from . import BaseBot, BotCommandArgs, MediaType, ArchiveData
 from ..protos import whatupcore_pb2 as wuc
 
 logger = logging.getLogger(__name__)
@@ -87,9 +87,19 @@ def query_column_count_unique(db, column):
     return None
 
 
-def query_unique_groups(db):
+def query_column_min(db, column):
+    results = db.query(func.min(column))
+    for result in results:
+        if "min_1" in result:
+            return result["min_1"]
+    return None
+
+
+def query_num_groups(db):
     table = db["groupInfo"]
-    return query_column_count_unique(db, table.table.columns.JID)
+    n_groups = query_column_count_unique(db, table.table.columns.JID)
+    start_time = query_column_min(db, table.table.columns.firstSeen)
+    return start_time, n_groups
 
 
 class DatabaseBot(BaseBot):
@@ -161,15 +171,21 @@ class DatabaseBot(BaseBot):
             prog=self.__class__.__name__,
             description="Bot dealing with the clean database representation of our whatsapp data",
         )
-        sub_parser = parser.add_subparsers()
+        sub_parser = parser.add_subparsers(dest="command")
 
-        num_groups = sub_parser.add_parser("num-groups")
-        group_info = sub_parser.add_parser("group-info")
+        num_groups = sub_parser.add_parser(
+            "num-groups",
+            description="Returns the number of unique groups monitored by the bot",
+        )
+        group_info = sub_parser.add_parser(
+            "group-info",
+            description="Returns metadata about a given group",
+        )
         group_info.add_argument(
             "jid", type=str, help="JID of the group you want info about"
         )
         group_info.add_argument(
-            "--format", choices=["csv", "json", "human"], default="human"
+            "--format", choices=["csv", "json", "human"], default="csv"
         )
 
         return parser
@@ -179,8 +195,40 @@ class DatabaseBot(BaseBot):
         self.logger.info("Got command: %s", params)
         if params is None:
             return
+        sender = message.info.source.sender
 
-    async def on_message(self, message: wuc.WUMessage):
+        if params.command == "num-groups":
+            start_time, n_groups = query_num_groups(self.db)
+            await self.send_text_message(
+                sender,
+                f"I've been tracking {n_groups} groups since {start_time.date()}",
+            )
+        elif params.command == "group-info":
+            jid = params.jid
+            metadata = self.db["groupInfo"].find_one(JID=jid)
+            if metadata is None:
+                await self.send_text_message(
+                    sender, "I couldn't find that group in our database"
+                )
+                return
+            content = utils.dict_to_csv_bytes([metadata])
+            group_name = metadata["groupName_name"]
+            await self.send_media_message(
+                sender,
+                MediaType.MediaDocument,
+                content=content,
+                caption=f"Information for group {jid} (titled: {group_name})",
+                mimetype="text/csv",
+                filename=f"group-info_{jid}.csv",
+            )
+
+    async def on_message(
+        self,
+        message: wuc.WUMessage,
+        is_archive: bool,
+        archive_data: ArchiveData,
+        **kwargs,
+    ):
         message.provenance["databasebot__timestamp"] = datetime.now().isoformat()
         message.provenance["databasebot__version"] = __version__
         if message.messageProperties.isReaction:
@@ -192,32 +240,52 @@ class DatabaseBot(BaseBot):
             with self.db as db:
                 db["messages"].upsert({"id": source_message_id, "isDelete": True})
         else:
-            await self._update_message(message)
+            await self._update_message(message, is_archive, archive_data)
 
-    async def _update_message(self, message: wuc.WUMessage):
+    async def _update_message(
+        self, message: wuc.WUMessage, is_archive: bool, archive_data: ArchiveData
+    ):
         message_flat = flatten_proto_message(message)
-        if media_filename := utils.media_message_filename(message):
-            media_content = await self.download_message_media(message)
-        else:
-            media_content = None
+        media_filename = utils.media_message_filename(message)
         with self.db as db:
             if message.info.source.isGroup:
-                await self._update_group(db, message.info.source.chat)
-            if media_filename and media_content:
-                mimetype = utils.media_message_mimetype(message)
-                file_extension = media_filename.rsplit(".", 1)[-1]
-                db["media"].insert(
-                    {
+                await self._update_group(
+                    db, message.info.source.chat, is_archive, archive_data
+                )
+            if media_filename:
+                message_flat["mediaFilename"] = media_filename
+                existingMedia = db["media"].count(filename=media_filename)
+                if not existingMedia:
+                    mimetype = utils.media_message_mimetype(message)
+                    file_extension = media_filename.rsplit(".", 1)[-1]
+                    datum = {
                         "filename": media_filename,
-                        "content": media_content,
+                        "content": None,
                         "mimetype": mimetype,
                         "fileExtension": file_extension,
+                        "timestamp": message.info.timestamp,
                     }
-                )
-                message_flat["mediaFilename"] = media_filename
+                    callback = partial(self._handle_media_content, datum=datum)
+                    if is_archive:
+                        if archive_data.MediaContent:
+                            await callback(message, archive_data.MediaContent)
+                    else:
+                        await self.download_message_media_eventually(message, callback)
             db["messages"].upsert(message_flat, ["id"])
 
-    async def _update_group(self, db: dataset.Database, chat: wuc.JID, is_history: bool):
+    async def _handle_media_content(
+        self, message: wuc.WUMessage, content: bytes, datum: dict
+    ):
+        datum["content"] = content
+        self.db["media"].insert(datum)
+
+    async def _update_group(
+        self,
+        db: dataset.Database,
+        chat: wuc.JID,
+        is_archive: bool,
+        archive_data: ArchiveData,
+    ):
         chat_jid = utils.jid_to_str(chat)
         logger = self.logger.getChild(chat_jid)
         now = datetime.now()
@@ -228,7 +296,12 @@ class DatabaseBot(BaseBot):
             return
         logger.debug("Need to update group info")
 
-        group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
+        if is_archive:
+            if archive_data.GroupInfo is None:
+                return
+            group_info = archive_data.GroupInfo
+        else:
+            group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
         group_info_flat = flatten_proto_message(
             group_info,
             preface_keys=True,
@@ -263,7 +336,8 @@ class DatabaseBot(BaseBot):
         db["groupParticipants"].upsert_many(group_participants, ["JID", "chat_jid"])
         db["groupInfo"].upsert(group_info_flat, ["JID"])
 
-        if group_info.parentJID.ByteSize() > 0:
+        if group_info.parentJID.ByteSize() > 0 and not is_archive:
+            # TODO: this in archive mode
             logger.debug("Updating chat's parent")
             await self._update_group(db, group_info.parentJID)
 
