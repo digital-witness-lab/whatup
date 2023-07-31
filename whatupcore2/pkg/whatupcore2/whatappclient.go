@@ -87,7 +87,7 @@ type WhatsAppClient struct {
 }
 
 func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*WhatsAppClient, error) {
-	store.SetOSInfo("WhatUp by DWL", [3]uint32{0, 1, 0})
+	store.SetOSInfo("WhatsAppWatch by DWL", WhatUpCoreVersionInts)
 	store.DeviceProps.RequireFullSync = proto.Bool(true)
 	dbLog := log.Sub("DB")
 	username_safe := hashStringHex(username)
