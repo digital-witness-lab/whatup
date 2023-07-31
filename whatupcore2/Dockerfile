@@ -1,6 +1,6 @@
 FROM golang:1.20-bullseye AS builder
 
-WORKDIR /app
+WORKDIR /build
 
 RUN apt update \
     && apt upgrade -y \
@@ -19,16 +19,13 @@ COPY protos/ ./
 RUN go mod download
 
 COPY . .
-RUN GOOS=linux go build \
-    -tags "sqlite3 sqlcipher sqlite_secure_delete" \
-    -o /whatupcore2 \
-    main.go
+RUN make whatupcore2
 
 
 FROM gcr.io/distroless/base-debian11:debug AS run
 WORKDIR /
 
-COPY --from=builder /whatupcore2 /whatupcore2
+COPY --from=builder /build/whatupcore2 /whatupcore2
 
 EXPOSE 3447
 
