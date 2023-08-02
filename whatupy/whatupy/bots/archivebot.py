@@ -47,9 +47,9 @@ class ArchiveBot(BaseBot):
         if archive_filename.exists():
             with archive_filename.open() as fd:
                 data = json.load(fd)
-            if version(data["provenance"]["archivebot__version"]) >= version(
-                __version__
-            ):
+            if version.parse(
+                data["provenance"]["archivebot__version"]
+            ) >= version.parse(__version__):
                 self.logger.debug(
                     "Message already archived.. skipping: %s", archive_filename
                 )
@@ -63,6 +63,7 @@ class ArchiveBot(BaseBot):
         message.provenance["archivebot__timestamp"] = datetime.now().isoformat()
         message.provenance["archivebot__version"] = __version__
         message.provenance["archivebot__archiveId"] = archive_id
+        message.provenance["archivebot__isHistory"] = "true" if is_history else "false"
 
         meta_path = conversation_dir / "metadata.json"
         if message.info.source.isGroup and not meta_path.exists():
@@ -71,13 +72,16 @@ class ArchiveBot(BaseBot):
             self.logger.debug("Got metadata for group: %s", chat_id)
             with meta_path.open("w+") as fd:
                 fd.write(utils.protobuf_to_json(metadata))
+            message.provenance["archivebot__groupInfoPath"] = str(
+                meta_path.relative_to(archive_filename.parent)
+            )
 
         if media_filename := utils.media_message_filename(message):
             media_dir: Path = conversation_dir / "media"
             media_dir.mkdir(parents=True, exist_ok=True)
             media_path = media_dir / f"{media_filename}"
             message.provenance["archivebot__mediaPath"] = str(
-                media_path.relative_to(self.archive_dir)
+                media_path.relative_to(archive_filename.parent)
             )
 
             if not media_path.exists():
@@ -99,6 +103,11 @@ class ArchiveBot(BaseBot):
         media_path: Path,
         media_filename: str,
     ):
+        if not media_bytes:
+            self.logger.critical(
+                "Empty media body... skipping writing to archive: %s", media_filename
+            )
+            return
         self.logger.debug("Found media. Saving to %s", media_filename)
         with media_path.open("wb+") as fd:
             fd.write(media_bytes)

@@ -26,6 +26,7 @@ import (
 const (
 	DB_ROOT         = "db"
 	CONNECT_TIMEOUT = 5 * time.Second
+    HISTORY_TIMEOUT = 10 * time.Minute  // time to wait for a request for history messages before getting rid of the history event handler
 )
 
 var (
@@ -82,12 +83,14 @@ type WhatsAppClient struct {
 	*whatsmeow.Client
 
 	historyMessages chan *Message
+    historyMessagesActive bool
 	presenceHandler uint32
 	dbPath          string
 }
 
 func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*WhatsAppClient, error) {
-	store.SetOSInfo("WhatsAppWatch by DWL", WhatUpCoreVersionInts)
+	//store.SetOSInfo("Mac OS", [3]uint32{10, 15, 7})
+	store.SetOSInfo("WA by DWL", WhatUpCoreVersionInts)
 	store.DeviceProps.RequireFullSync = proto.Bool(true)
 	dbLog := log.Sub("DB")
 	username_safe := hashStringHex(username)
@@ -151,6 +154,7 @@ func (wac *WhatsAppClient) IsLoggedIn() bool {
 }
 
 func (wac *WhatsAppClient) Login(timeout time.Duration) error {
+    wac.Log.Debugf("Connecting to WhatsApp from Login()")
 	err := wac.Client.Connect()
 	if err != nil {
 		return err
@@ -166,7 +170,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 	state := NewRegistrationState()
 	isNewDB := wac.Store.ID == nil
 
-	historyCtx, historyCtxClose := context.WithCancel(ctx)
+	historyCtx, historyCtxClose := context.WithTimeout(context.Background(), HISTORY_TIMEOUT)
 	go wac.fillHistoryMessages(historyCtx)
 
 	go func(state *RegistrationState) {
@@ -197,6 +201,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationSta
 }
 
 func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationState) bool {
+    wac.Log.Debugf("Connecting to WhatsApp from qrCodeLoop() to check login status")
 	err := wac.Connect()
 	if err != nil {
 		state.Errors <- err
@@ -210,6 +215,7 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 	wac.Log.Infof("User not logged in, starting registration flow")
 	wac.Disconnect()
 	inQrChan, _ := wac.GetQRChannel(context.Background())
+    wac.Log.Debugf("Connecting to WhatsApp from qrCodeLoop() to start registration")
 	err = wac.Connect()
 	if err != nil {
 		state.Errors <- err
@@ -308,6 +314,7 @@ func (wac *WhatsAppClient) fillHistoryMessages(ctx context.Context) {
 }
 
 func (wac *WhatsAppClient) GetHistoryMessages(ctx context.Context) chan *Message {
+    wac.historyMessagesActive = true
 	return wac.historyMessages
 }
 
@@ -351,9 +358,9 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 		wac.Log.Errorf("Could not find MediaKey: %+v", msg)
 		return nil, ErrInvalidMediaMessage
 	}
-	mediaKey := valueToType(mediaKeyCandidates[0]).([]byte)
+	mediaKey := valueToBytes(mediaKeyCandidates[0])
 	if len(mediaKey) == 0 {
-		wac.Log.Errorf("Could not convert MediaKey: %+v", msg)
+        wac.Log.Errorf("Could not convert MediaKey: %+v: %+v", msg, mediaKeyCandidates)
 		return nil, ErrInvalidMediaMessage
 	}
 	err := wac.Client.SendMediaRetryReceipt(msgInfo, mediaKey)
@@ -391,7 +398,12 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 
 	go func() {
 		<-ctx.Done()
-		wac.Client.RemoveEventHandler(evtHandler)
+        if ! wac.historyMessagesActive {
+            wac.Log.Infof("Disconnecting history event handler due to inactivity")
+		    wac.Client.RemoveEventHandler(evtHandler)
+        } else {
+            wac.Log.Infof("Maintaining history event handler because of active reading")
+        }
 	}()
 
 	retryWait.Wait()

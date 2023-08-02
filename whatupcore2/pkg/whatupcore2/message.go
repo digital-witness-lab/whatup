@@ -258,7 +258,7 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			MediaMessage:    mediaMessage,
 			InReferenceToId: inReferenceToId,
 		},
-		Info: MessageInfoToProto(msg.Info, msg.client.Store.Contacts),
+		Info: MessageInfoToProto(msg.Info, msg.client.Store),
 		MessageProperties: &pb.MessageProperties{
 			IsEphemeral:           msg.IsEphemeral,
 			IsViewOnce:            msg.IsViewOnce,

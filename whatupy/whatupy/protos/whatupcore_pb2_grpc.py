@@ -1,8 +1,6 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
-
 from . import whatupcore_pb2 as whatupcore__pb2
-
 
 class WhatUpCoreAuthStub(object):
     """Missing associated documentation comment in .proto file."""

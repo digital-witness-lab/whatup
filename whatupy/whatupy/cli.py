@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_CERT = Path(str(files("whatupy").joinpath("whatupcore/static/cert.pem")))
 
 
+"""
 async def run_multi_bots(
     bot: T.Type[BotType], credentials: T.List[T.TextIO], bot_args: dict
 ):
@@ -31,6 +32,42 @@ async def run_multi_bots(
             b: BotType = await bot(**bot_args).login(**whatup_credential)
             coro = b.start()
             tg.create_task(coro)
+        """
+
+
+async def run_multi_bots(bot: T.Type[BotType], paths: T.List[Path], bot_args: dict):
+    bots_loaded: T.Dict[str, BotType] = {}
+    async with asyncio.TaskGroup() as tg:
+        while True:
+            credentials = []
+            for path in paths:
+                if path.is_file():
+                    credentials.append(path)
+                elif path.is_dir():
+                    credentials.extend(
+                        path / filename for filename in path.glob("*.json")
+                    )
+            for credential_file in credentials:
+                try:
+                    credential = json.load(credential_file.open())
+                    if not all(f in credential for f in ("username", "passphrase")):
+                        logger.critical("Invalid credentials file: %s", credential_file)
+                        continue
+                    username = credential["username"]
+                    if username not in bots_loaded:
+                        logger.info(
+                            "Found new credential to connect to: %s: %s",
+                            username,
+                            credential_file,
+                        )
+                        b: BotType = await bot(**bot_args).login(**credential)
+                        bots_loaded[username] = b
+                        coro = b.start()
+                        tg.create_task(coro)
+                except ValueError:
+                    logger.exception(f"Could not parse credential: {credential_file}")
+                    continue
+            await asyncio.sleep(10)
 
 
 @click.group()
@@ -154,7 +191,7 @@ async def onboard_bulk(ctx, credentials_dir: Path):
     type=click.Path(file_okay=False, writable=True, path_type=Path),
     default=Path("./archive/"),
 )
-@click.argument("credentials", type=click.File(), nargs=-1)
+@click.argument("credentials", type=click.Path(path_type=Path), nargs=-1)
 @click.pass_context
 async def archivebot(ctx, credentials, archive_dir: Path):
     """
@@ -187,7 +224,7 @@ async def archivebot(ctx, credentials, archive_dir: Path):
     default=None,
     help="File glob for archived messages to load. Will load the messages then quit",
 )
-@click.argument("credentials", type=click.File(), nargs=-1)
+@click.argument("credentials", type=click.Path(path_type=Path), nargs=-1)
 @click.pass_context
 async def databasebot(
     ctx,
