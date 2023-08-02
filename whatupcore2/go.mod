@@ -11,7 +11,7 @@ require (
 	github.com/mdp/qrterminal/v3 v3.1.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/spf13/cobra v1.7.0
-	go.mau.fi/whatsmeow v0.0.0-20230718190209-efef6f1cec8e
+	go.mau.fi/whatsmeow v0.0.0-20230731181932-ca4054bed975
 	golang.org/x/term v0.10.0
 	google.golang.org/grpc v1.56.0
 	google.golang.org/protobuf v1.31.0

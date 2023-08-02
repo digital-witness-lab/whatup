@@ -263,7 +263,7 @@ class DatabaseBot(BaseBot):
                         "content": None,
                         "mimetype": mimetype,
                         "fileExtension": file_extension,
-                        "timestamp": message.info.timestamp,
+                        "timestamp": message.info.timestamp.ToDatetime(),
                     }
                     callback = partial(self._handle_media_content, datum=datum)
                     if is_archive:
@@ -276,6 +276,11 @@ class DatabaseBot(BaseBot):
     async def _handle_media_content(
         self, message: wuc.WUMessage, content: bytes, datum: dict
     ):
+        if not content:
+            self.logger.critical(
+                "Empty media body... skipping writing to database: %s", datum
+            )
+            return
         datum["content"] = content
         self.db["media"].insert(datum)
 
@@ -348,8 +353,8 @@ class DatabaseBot(BaseBot):
         with self.db as db:
             source_message = db["messages"].find_one(id=source_message_id)
             if source_message:
-                source_message.setdefault("nEdits", 0)
-                N = message_flat["nEdits"] = source_message["nEdits"] + 1
+                n_edits: int = source_message.get("nEdits", 0) or 0
+                N = message_flat["nEdits"] = n_edits + 1
                 id_ = source_message["id"] = f"{source_message_id}-{N:03d}"
                 message_flat["previousVersionId"] = id_
                 message_flat["previousVersionText"] = source_message["text"]

@@ -189,7 +189,8 @@ message WUMessage {
 message MessageSource {
     JID chat = 1;
     JID sender = 2;
-    Contact senderContact = 3;
+    JID reciever = 3;
+    Contact senderContact = 4;
 
     JID broadcastListOwner = 20;
 

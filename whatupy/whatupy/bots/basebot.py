@@ -133,7 +133,12 @@ class BaseBot:
                 wuc.PendingHistoryOptions(historyReadTimeout=60)
             )
             async for message in messages:
-                self.logger.debug("Got historical message: %s", message)
+                jid_from: wuc.JID = message.info.source.chat
+                self.logger.debug(
+                    "Got historical message: %s: %s",
+                    utils.jid_to_str(jid_from),
+                    message.info.id,
+                )
                 await self._dispatch_message(
                     message, skip_control=True, is_history=True
                 )
@@ -238,7 +243,11 @@ class BaseBot:
                 message.info.id,
                 self.download_queue.qsize(),
             )
-            content = await self.download_message_media(message)
+            content: bytes = b""
+            try:
+                content = await self.download_message_media(message)
+            except Exception:
+                callback(message, b"")
             try:
                 await callback(message, content)
             except Exception:
@@ -314,26 +323,42 @@ class BaseBot:
                     f"Could not load file: {filename}... trying to continue"
                 )
 
-    async def _process_archive_file(self, filename, group_infos):
+    async def _process_archive_file(
+        self, filename, group_infos: T.Dict[str, wuc.GroupInfo]
+    ):
         self.logger.info("Loading archive file: %s", filename)
         filename_path = Path(filename)
-        group_path = filename_path.parent / "metadata.json"
         with filename_path.open() as fd:
             message: wuc.WUMessage = utils.jsons_to_protobuf(fd.read(), wuc.WUMessage())
+        chat_id = utils.jid_to_str(message.info.source.chat)
         metadata = {"GroupInfo": None, "MediaContent": None}
-        if group_info := group_infos.get(group_path):
-            metadata["GroupInfo"] = group_info
-        elif group_path.exists():
-            with group_path.open() as fd:
-                group_info = utils.jsons_to_protobuf(fd.read(), wuc.GroupInfo())
-            metadata["GroupInfo"] = group_info
-            group_infos[group_path] = group_info
+        if chat_id:
+            if chat_id in group_infos:
+                metadata["GroupInfo"] = group_infos[chat_id]
+            elif group_info_filename := message.provenance.get(
+                "archivebot__groupInfoPath"
+            ):
+                group_info_path = filename_path.parent / group_info_filename
+                try:
+                    with group_info_path.open() as fd:
+                        group_info: wuc.GroupInfo = utils.jsons_to_protobuf(
+                            fd.read(), wuc.GroupInfo()
+                        )
+                    metadata["GroupInfo"] = group_info
+                    group_infos[chat_id] = group_info
+                except FileNotFoundError:
+                    self.logger.critical(
+                        "Could not find group info in path: %s", group_info_path
+                    )
 
         if media_filename := message.provenance.get("archivebot__mediaPath"):
-            media_path = filename.parent.parent / media_filename
-            with media_path.open("rb") as fd:
-                media_content = fd.read()
-            metadata["MediaContent"] = media_content
+            media_path = filename_path.parent / media_filename
+            try:
+                with media_path.open("rb") as fd:
+                    media_content = fd.read()
+                metadata["MediaContent"] = media_content
+            except FileNotFoundError:
+                self.logger.critical("Could not find media in path: %s", media_path)
         archive_data = ArchiveData(**metadata)
         await self._dispatch_message(
             message,

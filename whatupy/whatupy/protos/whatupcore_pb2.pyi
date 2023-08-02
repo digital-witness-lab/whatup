@@ -558,6 +558,7 @@ class MessageSource(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     CHAT_FIELD_NUMBER: builtins.int
     SENDER_FIELD_NUMBER: builtins.int
+    RECIEVER_FIELD_NUMBER: builtins.int
     SENDERCONTACT_FIELD_NUMBER: builtins.int
     BROADCASTLISTOWNER_FIELD_NUMBER: builtins.int
     ISFROMME_FIELD_NUMBER: builtins.int
@@ -572,6 +573,10 @@ class MessageSource(google.protobuf.message.Message):
         ...
 
     @property
+    def reciever(self) -> global___JID:
+        ...
+
+    @property
     def senderContact(self) -> global___Contact:
         ...
 
@@ -581,13 +586,13 @@ class MessageSource(google.protobuf.message.Message):
     isFromMe: builtins.bool
     isGroup: builtins.bool
 
-    def __init__(self, *, chat: global___JID | None=..., sender: global___JID | None=..., senderContact: global___Contact | None=..., broadcastListOwner: global___JID | None=..., isFromMe: builtins.bool=..., isGroup: builtins.bool=...) -> None:
+    def __init__(self, *, chat: global___JID | None=..., sender: global___JID | None=..., reciever: global___JID | None=..., senderContact: global___Contact | None=..., broadcastListOwner: global___JID | None=..., isFromMe: builtins.bool=..., isGroup: builtins.bool=...) -> None:
         ...
 
-    def HasField(self, field_name: typing_extensions.Literal['broadcastListOwner', b'broadcastListOwner', 'chat', b'chat', 'sender', b'sender', 'senderContact', b'senderContact']) -> builtins.bool:
+    def HasField(self, field_name: typing_extensions.Literal['broadcastListOwner', b'broadcastListOwner', 'chat', b'chat', 'reciever', b'reciever', 'sender', b'sender', 'senderContact', b'senderContact']) -> builtins.bool:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['broadcastListOwner', b'broadcastListOwner', 'chat', b'chat', 'isFromMe', b'isFromMe', 'isGroup', b'isGroup', 'sender', b'sender', 'senderContact', b'senderContact']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['broadcastListOwner', b'broadcastListOwner', 'chat', b'chat', 'isFromMe', b'isFromMe', 'isGroup', b'isGroup', 'reciever', b'reciever', 'sender', b'sender', 'senderContact', b'senderContact']) -> None:
         ...
 global___MessageSource = MessageSource
 

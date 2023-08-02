@@ -24,9 +24,9 @@ func ProtoToMediaType(mediaType pb.SendMessageMedia_MediaType) (whatsmeow.MediaT
 	return "", false
 }
 
-func MessageInfoToProto(info types.MessageInfo, contactStore store.ContactStore) *pb.MessageInfo {
+func MessageInfoToProto(info types.MessageInfo, device *store.Device) *pb.MessageInfo {
 	return &pb.MessageInfo{
-		Source:    MessageSourceToProto(info.MessageSource, contactStore),
+		Source:    MessageSourceToProto(info.MessageSource, device),
 		Timestamp: timestamppb.New(info.Timestamp),
 		Id:        info.ID,
 		PushName:  info.PushName,
@@ -48,11 +48,12 @@ func ProtoToMessageInfo(mi *pb.MessageInfo) types.MessageInfo {
 	}
 }
 
-func MessageSourceToProto(source types.MessageSource, contactStore store.ContactStore) *pb.MessageSource {
-	contact, _ := contactStore.GetContact(source.Sender)
+func MessageSourceToProto(source types.MessageSource, device *store.Device) *pb.MessageSource {
+	contact, _ := device.Contacts.GetContact(source.Sender)
 	return &pb.MessageSource{
 		Chat:               JIDToProto(source.Chat),
 		Sender:             JIDToProto(source.Sender),
+        Reciever:           JIDToProto(*device.ID),
 		SenderContact:      ContactToProto(&contact),
 		BroadcastListOwner: JIDToProto(source.BroadcastListOwner),
 		IsFromMe:           source.IsFromMe,
@@ -102,10 +103,10 @@ func ContactToProto(contact *types.ContactInfo) *pb.Contact {
 	}
 }
 
-func GroupInfoToProto(gi *types.GroupInfo, contactStore store.ContactStore) *pb.GroupInfo {
+func GroupInfoToProto(gi *types.GroupInfo, device *store.Device) *pb.GroupInfo {
 	participants := make([]*pb.GroupParticipant, len(gi.Participants))
 	for i, p := range gi.Participants {
-		contact, _ := contactStore.GetContact(p.JID)
+		contact, _ := device.Contacts.GetContact(p.JID)
 		participants[i] = &pb.GroupParticipant{
 			JID:          JIDToProto(p.JID),
 			Contact:      ContactToProto(&contact),
@@ -166,6 +167,19 @@ func valuesToType(values []reflect.Value) []interface{} {
 		interfaces[i] = valueToType(value)
 	}
 	return interfaces
+}
+
+func valueToBytes(value reflect.Value) (result []byte) {
+	for value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
+    defer func() {
+        if p := recover(); p != nil {
+            result = []byte{}
+        }
+    }()
+	return value.Bytes()
+	
 }
 
 func valuesToStrings(values []reflect.Value) []string {

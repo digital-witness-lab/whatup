@@ -22,6 +22,7 @@ WORDLIST_SIZE = None
 RANDOM_SALT = random.randbytes(32)
 
 CommandQuery = namedtuple("CommandQuery", "namespace command params".split(" "))
+Generic = T.TypeVar("Generic")
 
 
 class WhatUpyJSONEncoder(json.JSONEncoder):
@@ -108,7 +109,7 @@ def protobuf_to_json(proto_obj) -> str:
     return json.dumps(data, cls=WhatUpyJSONEncoder)
 
 
-def jsons_to_protobuf(jsons, proto_type):
+def jsons_to_protobuf(jsons: str, proto_type: Generic) -> Generic:
     data = json.loads(jsons, cls=WhatUpyJSONDecoder)
     return ParseDict(data, proto_type)
 
