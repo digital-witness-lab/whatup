@@ -419,7 +419,9 @@ class DatabaseBot(BaseBot):
             if not source_message:
                 reaction_counts = defaultdict(int)
             else:
-                reaction_counts = source_message.get("reactionCounts", defaultdict(int))
+                reaction_counts = defaultdict(
+                    int, source_message.get("reactionCounts", {})
+                )
             reaction_counts[message.content.text] += 1
             db["reactions"].upsert(message_flat, ["id"])
             db["messages"].upsert(
