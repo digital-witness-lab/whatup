@@ -5,11 +5,12 @@ from datetime import datetime, timedelta
 from functools import partial
 
 import dataset
+import phonenumbers
 from dataset.util import DatasetException
 from google.protobuf.timestamp_pb2 import Timestamp
 from sqlalchemy.sql import func
 
-from .. import __version__, utils
+from .. import utils
 from ..protos import whatupcore_pb2 as wuc
 from . import ArchiveData, BaseBot, BotCommandArgs, MediaType
 
@@ -32,13 +33,27 @@ def flatten_proto_message(
     key_list = proto_obj.DESCRIPTOR.fields_by_name.keys()
     key: str
     for key in key_list:
-        if key in skip_keys:
+        key_proto = key
+        if key_proto in skip_keys:
             continue
-        obj: T.Any = getattr(proto_obj, key)
+        if preface_keys:
+            key = sep.join((*prev_keys, key))
+
+        obj: T.Any = getattr(proto_obj, key_proto)
         if isinstance(obj, wuc.JID):
-            obj = utils.jid_to_str(obj)
-            if "jid" not in key.lower():
-                key = f"{key}_jid"
+            jid_key = key
+            if "jid" not in jid_key.lower():
+                jid_key = f"{jid_key}_jid"
+            flat[jid_key] = utils.jid_to_str(obj)
+            if obj.server != "g.us" and obj.user:
+                jid_phone = phonenumbers.parse(f"+{obj.user}")
+                flat.update(
+                    {
+                        f"{key}_country_code": jid_phone.country_code,
+                        f"{key}_national_number": jid_phone.national_number,
+                    }
+                )
+            continue
         elif isinstance(obj, Timestamp):
             obj = obj.ToDatetime()
         elif hasattr(obj, "items"):
@@ -50,8 +65,9 @@ def flatten_proto_message(
                     item = flatten_proto_message(
                         item,
                         preface_keys=preface_keys,
-                        prev_keys=(*prev_keys, key),
+                        prev_keys=(*prev_keys, key_proto),
                         sep=sep,
+                        skip_keys=skip_keys,
                     )
                 elif utils.is_empty_pbuf(item):
                     continue
@@ -66,15 +82,14 @@ def flatten_proto_message(
                 flatten_proto_message(
                     obj,
                     preface_keys=preface_keys,
-                    prev_keys=(*prev_keys, key),
+                    prev_keys=(*prev_keys, key_proto),
                     sep=sep,
+                    skip_keys=skip_keys,
                 )
             )
         elif utils.is_empty_pbuf(obj):
             continue
         elif obj:
-            if preface_keys:
-                key = sep.join((*prev_keys, key))
             flat[key] = obj
     return flat
 
@@ -102,7 +117,27 @@ def query_num_groups(db):
     return start_time, n_groups
 
 
+def query_group_country_codes(db):
+    query = """
+    SELECT 
+        data.*, gi.* 
+    FROM (
+        SELECT
+            chat_jid,
+            "JID_country_code" AS country_code,
+            COUNT(*) AS count
+        FROM "groupParticipants"
+        GROUP BY chat_jid, "JID_country_code"
+    ) AS data
+    JOIN "groupInfo" as gi ON gi."JID" = chat_jid
+    """
+    results = db.query(query)
+    return [dict(row) for row in results]
+
+
 class DatabaseBot(BaseBot):
+    __version__ = "1.1.0"
+
     def __init__(
         self,
         postgres_url: str,
@@ -188,6 +223,10 @@ class DatabaseBot(BaseBot):
             "--format", choices=["csv", "json", "human"], default="csv"
         )
 
+        country_code_distribution = sub_parser.add_parser(
+            "country-codes",
+            description="Gives the distribution of country codes per group monitored in CSV format",
+        )
         return parser
 
     async def on_control(self, message):
@@ -221,6 +260,17 @@ class DatabaseBot(BaseBot):
                 mimetype="text/csv",
                 filename=f"group-info_{jid}.csv",
             )
+        elif params.command == "country-codes":
+            data = query_group_country_codes(self.db)
+            content = utils.dict_to_csv_bytes(data)
+            await self.send_media_message(
+                sender,
+                MediaType.MediaDocument,
+                content=content,
+                caption="Distribution of country codes by group",
+                mimetype="text/csv",
+                filename="group-country-codes.csv",
+            )
 
     async def on_message(
         self,
@@ -230,7 +280,7 @@ class DatabaseBot(BaseBot):
         **kwargs,
     ):
         message.provenance["databasebot__timestamp"] = datetime.now().isoformat()
-        message.provenance["databasebot__version"] = __version__
+        message.provenance["databasebot__version"] = self.__version__
         if message.messageProperties.isReaction:
             await self._update_reaction(message)
         elif message.messageProperties.isEdit:

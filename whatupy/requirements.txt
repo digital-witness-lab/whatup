@@ -8,3 +8,4 @@ packaging
 # databasebot
 dataset
 psycopg2_binary
+phonenumbers
