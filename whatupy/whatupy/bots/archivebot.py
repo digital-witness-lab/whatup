@@ -6,7 +6,7 @@ from pathlib import Path
 
 from packaging import version
 
-from .. import __version__, utils
+from .. import utils
 from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
 from . import BaseBot
@@ -21,6 +21,8 @@ def to_message(mediaMessage: wuc.MediaMessage) -> waw.Message:
 
 
 class ArchiveBot(BaseBot):
+    __version__ = "1.0.0"
+
     def __init__(
         self,
         archive_dir: Path,
@@ -49,7 +51,7 @@ class ArchiveBot(BaseBot):
                 data = json.load(fd)
             if version.parse(
                 data["provenance"]["archivebot__version"]
-            ) >= version.parse(__version__):
+            ) >= version.parse(self.__version__):
                 self.logger.debug(
                     "Message already archived.. skipping: %s", archive_filename
                 )
@@ -61,7 +63,7 @@ class ArchiveBot(BaseBot):
         self.logger.debug("Archiving message to: %s", archive_id)
 
         message.provenance["archivebot__timestamp"] = datetime.now().isoformat()
-        message.provenance["archivebot__version"] = __version__
+        message.provenance["archivebot__version"] = self.__version__
         message.provenance["archivebot__archiveId"] = archive_id
         message.provenance["archivebot__isHistory"] = "true" if is_history else "false"
 
