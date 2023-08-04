@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import partial
 from pathlib import Path
 
@@ -26,10 +26,12 @@ class ArchiveBot(BaseBot):
     def __init__(
         self,
         archive_dir: Path,
+        group_info_refresh_time: timedelta = timedelta(days=1),
         *args,
         **kwargs,
     ):
         self.archive_dir = archive_dir
+        self.group_info_refresh_time = group_info_refresh_time
         kwargs["mark_messages_read"] = True
         kwargs["read_historical_messages"] = True
         super().__init__(*args, **kwargs)
@@ -41,6 +43,7 @@ class ArchiveBot(BaseBot):
             return
         conversation_dir: Path = self.archive_dir / chat_id
         conversation_dir.mkdir(parents=True, exist_ok=True)
+        now = datetime.now()
 
         timestamp = message.info.timestamp.ToSeconds()
         message_id = message.info.id
@@ -62,15 +65,25 @@ class ArchiveBot(BaseBot):
                 )
         self.logger.debug("Archiving message to: %s", archive_id)
 
-        message.provenance["archivebot__timestamp"] = datetime.now().isoformat()
-        message.provenance["archivebot__version"] = self.__version__
-        message.provenance["archivebot__archiveId"] = archive_id
-        message.provenance["archivebot__isHistory"] = "true" if is_history else "false"
+        provenance = {
+            "archivebot__timestamp": now.isoformat(),
+            "archivebot__version": self.__version__,
+            "archivebot__archiveId": archive_id,
+            "archivebot__isHistory": "true" if is_history else "false",
+        }
+        message.provenance.update(provenance)
 
-        meta_path = conversation_dir / "metadata.json"
+        refresh_dt = self.group_info_refresh_time.total_seconds()
+        group_timestamp = int((now.timestamp() // refresh_dt) * refresh_dt)
+        meta_path = (
+            conversation_dir / "group-info" / f"group-info_{group_timestamp}.json"
+        )
+        meta_path.parent.mkdir(exist_ok=True, parents=True)
         if message.info.source.isGroup and not meta_path.exists():
             group: wuc.JID = message.info.source.chat
             metadata: wuc.GroupInfo = await self.core_client.GetGroupInfo(group)
+            metadata.provenance.update(provenance)
+            metadata.provenance["archivebot__groupInfoRefreshTime"] = str(refresh_dt)
             self.logger.debug("Got metadata for group: %s", chat_id)
             with meta_path.open("w+") as fd:
                 fd.write(utils.protobuf_to_json(metadata))
