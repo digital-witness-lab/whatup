@@ -6,6 +6,7 @@ from functools import partial
 
 import dataset
 import phonenumbers
+from phonenumbers.phonenumberutil import region_code_for_number
 from dataset.util import DatasetException
 from google.protobuf.timestamp_pb2 import Timestamp
 from sqlalchemy.sql import func
@@ -51,6 +52,7 @@ def flatten_proto_message(
                     flat.update(
                         {
                             f"{key}_country_code": jid_phone.country_code,
+                            f"{key}_country_iso": region_code_for_number(jid_phone),
                             f"{key}_national_number": jid_phone.national_number,
                         }
                     )
@@ -114,7 +116,7 @@ def query_column_min(db, column):
 
 
 def query_num_groups(db):
-    table = db["groupInfo"]
+    table = db["group_info"]
     n_groups = query_column_count_unique(db, table.table.columns.JID)
     start_time = query_column_min(db, table.table.columns.firstSeen)
     return start_time, n_groups
@@ -127,12 +129,12 @@ def query_group_country_codes(db):
     FROM (
         SELECT
             chat_jid,
-            "JID_country_code" AS country_code,
+            "JID_country_iso" AS country_iso,
             COUNT(*) AS count
-        FROM "groupParticipants"
-        GROUP BY chat_jid, "JID_country_code"
+        FROM "group_participants"
+        GROUP BY chat_jid, "JID_country_iso"
     ) AS data
-    JOIN "groupInfo" as gi ON gi."JID" = chat_jid
+    JOIN "group_info" as gi ON gi.id = chat_jid
     """
     results = db.query(query)
     return [dict(row) for row in results]
@@ -144,7 +146,7 @@ class DatabaseBot(BaseBot):
     def __init__(
         self,
         postgres_url: str,
-        group_info_refresh_time: timedelta = timedelta(days=1),
+        group_info_refresh_time: timedelta = timedelta(hours=6),
         *args,
         **kwargs,
     ):
@@ -152,12 +154,17 @@ class DatabaseBot(BaseBot):
         super().__init__(*args, **kwargs)
         self.postgres_url = postgres_url
         self.group_info_refresh_time = group_info_refresh_time
-        self.db: dataset.Database = dataset.connect(postgres_url)
+        self.db: dataset.Database = dataset.connect(
+            postgres_url,
+            engine_kwargs={
+                "connect_args": {"options": "-c statement_timeout=300"},
+            },
+        )
         self.init_database(self.db)
 
     def init_database(self, db):
         group_info = db.create_table(
-            "groupInfo",
+            "group_info",
             primary_id="id",
             primary_type=db.types.text,
             primary_increment=False,
@@ -166,21 +173,21 @@ class DatabaseBot(BaseBot):
             group_info.create_index(["JID"])
         except DatasetException:
             self.logger.warn(
-                "Could not create groupParticipants indicies because table doesn't exist yet"
+                "Could not create group_participants indicies because table doesn't exist yet"
             )
-        db["groupInfo"].create_column(
+        db["group_info"].create_column(
             "firstSeen", type=db.types.datetime, server_default=func.now()
         )
-        db["groupInfo"].create_column(
+        db["group_info"].create_column(
             "lastUpdate", type=db.types.datetime, server_default=func.now()
         )
-        group_participants = db.create_table("groupParticipants")
+        group_participants = db.create_table("group_participants")
         try:
             group_participants.create_index(["chat_jid"])
             group_participants.create_index(["JID", "chat_jid"])
         except DatasetException:
             self.logger.warn(
-                "Could not create groupParticipants indicies because table doesn't exist yet"
+                "Could not create group_participants indicies because table doesn't exist yet"
             )
         group_participants.create_column(
             "firstSeen", type=db.types.datetime, server_default=func.now()
@@ -247,7 +254,7 @@ class DatabaseBot(BaseBot):
             )
         elif params.command == "group-info":
             jid = params.jid
-            metadata = self.db["groupInfo"].find_one(JID=jid)
+            metadata = self.db["group_info"].find_one(JID=jid)
             if metadata is None:
                 await self.send_text_message(
                     sender, "I couldn't find that group in our database"
@@ -302,10 +309,13 @@ class DatabaseBot(BaseBot):
         media_filename = utils.media_message_filename(message)
         with self.db as db:
             if message.info.source.isGroup:
+                self.logger.debug("Updating group: %s", message.info.id)
                 await self._update_group(
                     db, message.info.source.chat, is_archive, archive_data
                 )
+                self.logger.debug("Done upading group: %s", message.info.id)
             if media_filename:
+                self.logger.debug("Getting media: %s", message.info.id)
                 message_flat["mediaFilename"] = media_filename
                 existingMedia = db["media"].count(filename=media_filename)
                 if not existingMedia:
@@ -325,6 +335,7 @@ class DatabaseBot(BaseBot):
                     else:
                         await self.download_message_media_eventually(message, callback)
             db["messages"].upsert(message_flat, ["id"])
+        self.logger.debug("Done upading message: %s", message.info.id)
 
     async def _handle_media_content(
         self, message: wuc.WUMessage, content: bytes, datum: dict
@@ -356,7 +367,7 @@ class DatabaseBot(BaseBot):
                 archive_data.GroupInfo.provenance.get("archivebot__timestamp")
             )
 
-        group_info_prev = db["groupInfo"].find_one(JID=chat_jid) or {}
+        group_info_prev = db["group_info"].find_one(JID=chat_jid) or {}
         last_update: datetime = group_info_prev.get("lastUpdate", datetime.min)
         if last_update + self.group_info_refresh_time > now:
             return
@@ -382,7 +393,7 @@ class DatabaseBot(BaseBot):
             group_info_flat.get(k) != group_info_prev.get(k) for k in keys
         ):
             logger.debug("Found previous out-of-date entry, updating")
-            db["groupInfo"]
+            db["group_info"]
             group_info_prev.setdefault("nVersions", 0)
             prev_id = group_info_prev["id"]
             N = group_info_flat["nVersions"] = group_info_prev["nVersions"] + 1
@@ -391,17 +402,17 @@ class DatabaseBot(BaseBot):
             group_info_flat["previousVersionId"] = id_
             if first_seen := group_info_prev.get("firstSeen"):
                 group_info_flat["firstSeen"] = first_seen
-            db["groupInfo"].insert(group_info_prev)
-            db["groupInfo"].delete(id=prev_id)
+            db["group_info"].insert(group_info_prev)
+            db["group_info"].delete(id=prev_id)
         group_info_flat["lastUpdate"] = now
-        db["groupInfo"].insert(group_info_flat)
+        db["group_info"].insert(group_info_flat)
 
         for participant in group_participants:
             participant["lastSeen"] = now
             participant["chat_jid"] = chat_jid
 
-        db["groupParticipants"].upsert_many(group_participants, ["JID", "chat_jid"])
-        db["groupInfo"].upsert(group_info_flat, ["JID"])
+        db["group_participants"].upsert_many(group_participants, ["JID", "chat_jid"])
+        db["group_info"].upsert(group_info_flat, ["JID"])
 
         if group_info.parentJID.ByteSize() > 0 and not is_archive:
             # TODO: this in archive mode
@@ -432,7 +443,7 @@ class DatabaseBot(BaseBot):
                 reaction_counts = defaultdict(int)
             else:
                 reaction_counts = defaultdict(
-                    int, source_message.get("reactionCounts", {})
+                    int, source_message.get("reactionCounts") or {}
                 )
             reaction_counts[message.content.text] += 1
             db["reactions"].upsert(message_flat, ["id"])
