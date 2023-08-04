@@ -26,7 +26,7 @@ class ArchiveBot(BaseBot):
     def __init__(
         self,
         archive_dir: Path,
-        group_info_refresh_time: timedelta = timedelta(days=1),
+        group_info_refresh_time: timedelta = timedelta(hours=6),
         *args,
         **kwargs,
     ):
