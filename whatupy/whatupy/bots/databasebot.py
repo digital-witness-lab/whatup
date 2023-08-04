@@ -46,13 +46,16 @@ def flatten_proto_message(
                 jid_key = f"{jid_key}_jid"
             flat[jid_key] = utils.jid_to_str(obj)
             if obj.server != "g.us" and obj.user:
-                jid_phone = phonenumbers.parse(f"+{obj.user}")
-                flat.update(
-                    {
-                        f"{key}_country_code": jid_phone.country_code,
-                        f"{key}_national_number": jid_phone.national_number,
-                    }
-                )
+                try:
+                    jid_phone = phonenumbers.parse(f"+{obj.user}")
+                    flat.update(
+                        {
+                            f"{key}_country_code": jid_phone.country_code,
+                            f"{key}_national_number": jid_phone.national_number,
+                        }
+                    )
+                except phonenumbers.NumberParseException:
+                    logger.warning("Could not parse phone number: +%s", obj.user)
             continue
         elif isinstance(obj, Timestamp):
             obj = obj.ToDatetime()
@@ -344,6 +347,14 @@ class DatabaseBot(BaseBot):
         chat_jid = utils.jid_to_str(chat)
         logger = self.logger.getChild(chat_jid)
         now = datetime.now()
+        if (
+            is_archive
+            and archive_data.GroupInfo
+            and archive_data.GroupInfo.provenance.get("archivebot__timestamp")
+        ):
+            now = datetime.fromisoformat(
+                archive_data.GroupInfo.provenance.get("archivebot__timestamp")
+            )
 
         group_info_prev = db["groupInfo"].find_one(JID=chat_jid) or {}
         last_update: datetime = group_info_prev.get("lastUpdate", datetime.min)
@@ -363,6 +374,7 @@ class DatabaseBot(BaseBot):
             skip_keys=set(["participants", "participantVersionId"]),
         )
         group_info_flat["id"] = chat_jid
+        group_info_flat["firstSeen"] = now
         group_participants = [flatten_proto_message(p) for p in group_info.participants]
 
         keys = set(group_info_prev.keys()).union(group_info_flat.keys())

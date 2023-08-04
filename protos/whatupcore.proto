@@ -137,6 +137,8 @@ message GroupInfo {
     repeated GroupParticipant participants = 10;
 
     JID parentJID = 11;
+
+    map<string, string> provenance = 90;
 }
 
 message ConnectionStatusOptions {
