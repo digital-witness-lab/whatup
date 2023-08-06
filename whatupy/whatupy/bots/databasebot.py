@@ -298,7 +298,7 @@ class DatabaseBot(BaseBot):
         elif message.messageProperties.isDelete:
             source_message_id = message.content.inReferenceToId
             with self.db as db:
-                db["messages"].upsert({"id": source_message_id, "isDelete": True})
+                db["messages"].upsert({"id": source_message_id, "isDelete": True}, ['id'])
         else:
             await self._update_message(message, is_archive, archive_data)
 
@@ -371,7 +371,6 @@ class DatabaseBot(BaseBot):
         last_update: datetime = group_info_prev.get("lastUpdate", datetime.min)
         if last_update + self.group_info_refresh_time > now:
             return
-        logger.debug("Need to update group info")
 
         if is_archive:
             if archive_data.GroupInfo is None:
@@ -392,9 +391,9 @@ class DatabaseBot(BaseBot):
         if group_info_prev and any(
             group_info_flat.get(k) != group_info_prev.get(k) for k in keys
         ):
-            logger.debug("Found previous out-of-date entry, updating")
+            logger.debug("Found previous out-of-date entry, updating: %s", chat_jid)
             db["group_info"]
-            group_info_prev.setdefault("nVersions", 0)
+            group_info_prev["nVersions"] = group_info_prev.get("nVersions") or 0
             prev_id = group_info_prev["id"]
             N = group_info_flat["nVersions"] = group_info_prev["nVersions"] + 1
             id_ = group_info_prev["id"] = f"{prev_id}-{N:06d}"
@@ -405,19 +404,24 @@ class DatabaseBot(BaseBot):
             db["group_info"].insert(group_info_prev)
             db["group_info"].delete(id=prev_id)
         group_info_flat["lastUpdate"] = now
-        db["group_info"].insert(group_info_flat)
 
         for participant in group_participants:
             participant["lastSeen"] = now
             participant["chat_jid"] = chat_jid
 
+        logger.debug("Updating group info: %s", chat_jid)
         db["group_participants"].upsert_many(group_participants, ["JID", "chat_jid"])
         db["group_info"].upsert(group_info_flat, ["JID"])
 
         if group_info.parentJID.ByteSize() > 0 and not is_archive:
             # TODO: this in archive mode
-            logger.debug("Updating chat's parent")
-            await self._update_group(db, group_info.parentJID)
+            logger.debug("Updating chat's parent: %s", chat_jid)
+            await self._update_group(
+                db,
+                group_info.parentJID,
+                is_archive=is_archive,
+                archive_data=archive_data,
+            )
 
     async def _update_edit(self, message: wuc.WUMessage):
         message_flat = flatten_proto_message(message)
