@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --out ./deploy/ -f docker-compose.yml -f ./deploy/docker-compose.override.yml
+    kompose.version: 1.30.0 (9d8dcb518)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: bot-database
+  name: bot-database
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: bot-database
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --out ./deploy/ -f docker-compose.yml -f ./deploy/docker-compose.override.yml
+        kompose.version: 1.30.0 (9d8dcb518)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/whatup-default: "true"
+        io.kompose.service: bot-database
+    spec:
+      containers:
+        - args:
+            - sh
+            - -c
+            - whatupy --host whatup --cert /run/secrets/ssl-cert databasebot --postgres-host db --postgres-user $(){POSTGRES_USER} --postgres-password-file $(){POSTGRES_PASSWORD_FILE} --postgres-database messages /usr/src/whatupy-data/sessions/
+          env:
+            - name: WHATUPY_CERT
+              value: /run/secrets/ssl-cert
+            - name: WHATUPY_CONTROL_GROUPS
+              value: 120363104970691776@g.us 120363086723362196@g.us
+          image: whatup/whatupy
+          name: bot-database
+          resources: {}
+          volumeMounts:
+            - mountPath: /run/secrets/ssl-cert
+              name: ssl-cert
+            - mountPath: /run/secrets/postgres-passwd
+              name: postgres-passwd
+            - mountPath: /usr/src/whatupy-data/sessions
+              name: sessions
+              readOnly: true
+            - mountPath: /archive
+              name: message-archive
+              readOnly: true
+      restartPolicy: Always
+      volumes:
+        - name: ssl-cert
+          secret:
+            items:
+              - key: ssl-cert
+                path: ssl-cert
+            secretName: ssl-cert
+        - name: postgres-passwd
+          secret:
+            items:
+              - key: postgres-passwd
+                path: postgres-passwd
+            secretName: postgres-passwd
+        - name: sessions
+          persistentVolumeClaim:
+            claimName: sessions
+            readOnly: true
+        - name: message-archive
+          persistentVolumeClaim:
+            claimName: message-archive
+            readOnly: true
+status: {}

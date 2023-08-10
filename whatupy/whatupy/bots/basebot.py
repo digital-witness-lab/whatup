@@ -171,12 +171,24 @@ class BaseBot:
         )
         if is_control:
             if skip_control:
-                self.logger.info("Skipping control message: %s: %s", utils.jid_to_str(jid_from), message.info.id)
+                self.logger.info(
+                    "Skipping control message: %s: %s",
+                    utils.jid_to_str(jid_from),
+                    message.info.id,
+                )
             else:
-                self.logger.info("Got control message: %s: %s", utils.jid_to_str(jid_from), message.info.id)
+                self.logger.info(
+                    "Got control message: %s: %s",
+                    utils.jid_to_str(jid_from),
+                    message.info.id,
+                )
                 await self._dispatch_control(message, source_hash)
         else:
-                self.logger.info("Got normal message: %s: %s", utils.jid_to_str(jid_from), message.info.id)
+            self.logger.info(
+                "Got normal message: %s: %s",
+                utils.jid_to_str(jid_from),
+                message.info.id,
+            )
             await self.on_message(
                 message,
                 is_history=is_history,

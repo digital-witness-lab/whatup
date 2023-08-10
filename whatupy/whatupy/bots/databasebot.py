@@ -298,7 +298,9 @@ class DatabaseBot(BaseBot):
         elif message.messageProperties.isDelete:
             source_message_id = message.content.inReferenceToId
             with self.db as db:
-                db["messages"].upsert({"id": source_message_id, "isDelete": True}, ['id'])
+                db["messages"].upsert(
+                    {"id": source_message_id, "isDelete": True}, ["id"]
+                )
         else:
             await self._update_message(message, is_archive, archive_data)
 
@@ -392,7 +394,6 @@ class DatabaseBot(BaseBot):
             group_info_flat.get(k) != group_info_prev.get(k) for k in keys
         ):
             logger.debug("Found previous out-of-date entry, updating: %s", chat_jid)
-            db["group_info"]
             group_info_prev["nVersions"] = group_info_prev.get("nVersions") or 0
             prev_id = group_info_prev["id"]
             N = group_info_flat["nVersions"] = group_info_prev["nVersions"] + 1
@@ -401,8 +402,8 @@ class DatabaseBot(BaseBot):
             group_info_flat["previousVersionId"] = id_
             if first_seen := group_info_prev.get("firstSeen"):
                 group_info_flat["firstSeen"] = first_seen
-            db["group_info"].insert(group_info_prev)
             db["group_info"].delete(id=prev_id)
+            db["group_info"].insert(group_info_prev)
         group_info_flat["lastUpdate"] = now
 
         for participant in group_participants:
@@ -411,7 +412,7 @@ class DatabaseBot(BaseBot):
 
         logger.debug("Updating group info: %s", chat_jid)
         db["group_participants"].upsert_many(group_participants, ["JID", "chat_jid"])
-        db["group_info"].upsert(group_info_flat, ["JID"])
+        db["group_info"].upsert(group_info_flat, ["id"])
 
         if group_info.parentJID.ByteSize() > 0 and not is_archive:
             # TODO: this in archive mode

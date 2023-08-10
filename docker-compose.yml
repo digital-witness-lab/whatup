@@ -5,12 +5,10 @@ secrets:
     file: ./data/keys/cert.pem
   postgres-passwd:
     file: ./data/static/dev/postgres-passwd.secret
-  pgadmin-passwd:
-    file: ./data/static/dev/pgadmin-passwd.secret
 
 services:
   whatup:
-    image: whatup/whatupcore2
+    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupcore2
     build: ./whatupcore2/
     environment:
       - STORAGE_DIR=/usr/src/whatupcore-data/storage/
@@ -26,7 +24,7 @@ services:
     secrets:
       - postgres-passwd
     env_file:
-      - ./docker-compose.env
+      - .env
     volumes:
       - ./data/db/:/var/lib/postgresql/data
       - ./scripts/postgres-multi-databases.sh:/docker-entrypoint-initdb.d/postgres-multi-databases.sh
@@ -34,7 +32,7 @@ services:
       - 5432:5432
 
   bot-archive:
-    image: whatup/whatupy
+    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - whatup
@@ -49,36 +47,36 @@ services:
     command: whatupy --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
 
   bot-database:
-    image: whatup/whatupy
+    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - whatup
       - db
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
-      - WHATUPY_CONTROL_GROUPS=120363104970691776@g.us 120363086723362196@g.us # cool friends + test
-    env_file:
-      - ./docker-compose.env
+      - WHATUPY_CONTROL_GROUPS=120363104970691776@g.us 33671714377@s.whatsapp.net # cool friends + micha
     secrets:
       - ssl-cert
       - postgres-passwd
+    env_file:
+      - .env
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
       - ./data/message-archive/:/archive/:ro
     command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert databasebot --postgres-host db --postgres-user $${POSTGRES_USER} --postgres-password-file $${POSTGRES_PASSWORD_FILE} --postgres-database messages /usr/src/whatupy-data/sessions/"
 
   bot-database-load-archive:
-    image: whatup/whatupy
+    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - whatup
       - db
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
-    env_file:
-      - ./docker-compose.env
     secrets:
       - postgres-passwd
+    env_file:
+      - .env
     profiles:
       - donotstart
     volumes:
@@ -86,7 +84,7 @@ services:
     command: sh -c "whatupy databasebot-load-archive --postgres-host db --postgres-user $${POSTGRES_USER} --postgres-password-file $${POSTGRES_PASSWORD_FILE} --postgres-database messages '/archive/*@*/*_*.json'"
 
   bot-onboard-bulk:
-    image: whatup/whatupy
+    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - whatup

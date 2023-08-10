@@ -8,4 +8,5 @@ packaging
 # databasebot
 dataset
 psycopg2_binary
+sqlalchemy-bigquery[bqstorage]
 phonenumbers
