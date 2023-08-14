@@ -1,4 +1,5 @@
-sessions/
-message-archive/
-whatupcore2/
+sessions
+message-archive
+whatupcore2
+state
 db/
