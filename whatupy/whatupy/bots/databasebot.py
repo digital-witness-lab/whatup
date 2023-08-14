@@ -145,21 +145,15 @@ class DatabaseBot(BaseBot):
 
     def __init__(
         self,
-        postgres_url: str,
+        database_url: str,
         group_info_refresh_time: timedelta = timedelta(hours=6),
         *args,
         **kwargs,
     ):
         kwargs["mark_messages_read"] = True
         super().__init__(*args, **kwargs)
-        self.postgres_url = postgres_url
         self.group_info_refresh_time = group_info_refresh_time
-        self.db: dataset.Database = dataset.connect(
-            postgres_url,
-            engine_kwargs={
-                "connect_args": {"options": "-c statement_timeout=300"},
-            },
-        )
+        self.db: dataset.Database = dataset.connect(database_url)
         self.init_database(self.db)
 
     def init_database(self, db):
