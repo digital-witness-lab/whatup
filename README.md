@@ -2,7 +2,15 @@
 
 > Core mono-repo for the WhatsApp Watch project
 
-## Contents
+## What this doc is and what it isn't
+
+This document focuses on the code, infrastructure and design principles of the WhatUp system.
+
+To learn more about the high-level data philosophy, refer to the [Proto-Methodoloy](https://docs.google.com/document/d/1SoX5UF4min79bdZumQNDmKPVbIa0Rs73JBnTGG5qvzk/edit) doc.
+
+To learn about the data schema for the archive files and the BigQuery database, refer to the [Whatup Data Dictionaries](https://docs.google.com/document/d/1_UG-n_O-XAoBRWyWIBttgG6ligJpnScX0NWB81sp_8I) doc.
+
+## Repo Contents
 
 ### Architecture Philosophy
 
@@ -80,8 +88,6 @@ More information about gRPC can be found [here](https://grpc.io/docs/what-is-grp
  *------*               ||                          ||   *---*
  |device| =={WhatsApp}==``                          ``== |bot|
  *------*                                                *---*
-
-
 ```
 
 
