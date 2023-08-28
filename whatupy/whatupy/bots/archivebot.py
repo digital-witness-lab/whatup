@@ -90,6 +90,7 @@ class ArchiveBot(BaseBot):
             message.provenance["archivebot__groupInfoPath"] = str(
                 meta_path.relative_to(archive_filename.parent)
             )
+            # TODO do this again for the parent chat
 
         if media_filename := utils.media_message_filename(message):
             media_dir: Path = conversation_dir / "media"
