@@ -118,7 +118,7 @@ def query_column_min(db, column):
 def query_num_groups(db):
     table = db["group_info"]
     n_groups = query_column_count_unique(db, table.table.columns.JID)
-    start_time = query_column_min(db, table.table.columns.firstSeen)
+    start_time = query_column_min(db, table.table.columns.first_seen)
     return start_time, n_groups
 
 
@@ -170,10 +170,10 @@ class DatabaseBot(BaseBot):
                 "Could not create group_participants indicies because table doesn't exist yet"
             )
         db["group_info"].create_column(
-            "firstSeen", type=db.types.datetime, server_default=func.now()
+            "first_seen", type=db.types.datetime, server_default=func.now()
         )
         db["group_info"].create_column(
-            "lastUpdate", type=db.types.datetime, server_default=func.now()
+            "last_update", type=db.types.datetime, server_default=func.now()
         )
         group_participants = db.create_table("group_participants")
         try:
@@ -184,7 +184,7 @@ class DatabaseBot(BaseBot):
                 "Could not create group_participants indicies because table doesn't exist yet"
             )
         group_participants.create_column(
-            "firstSeen", type=db.types.datetime, server_default=func.now()
+            "first_seen", type=db.types.datetime, server_default=func.now()
         )
         db.create_table(
             "messages",
@@ -201,6 +201,12 @@ class DatabaseBot(BaseBot):
         db.create_table(
             "media",
             primary_id="filename",
+            primary_type=db.types.text,
+            primary_increment=False,
+        )
+        db.create_table(
+            "messages_seen",
+            primary_id="id",
             primary_type=db.types.text,
             primary_increment=False,
         )
@@ -283,8 +289,14 @@ class DatabaseBot(BaseBot):
         archive_data: ArchiveData,
         **kwargs,
     ):
+        msg_id = message.info.id
+        if self.db["messages_seen"].find_one(id=msg_id) is not None:
+            self.logger.info("Already seen messages, skipping: %s", msg_id)
+            return
         message.provenance["databasebot__timestamp"] = datetime.now().isoformat()
         message.provenance["databasebot__version"] = self.__version__
+        self.db["messages_seen"].insert({"id": msg_id, **message.provenance})
+
         if message.messageProperties.isReaction:
             await self._update_reaction(message)
         elif message.messageProperties.isEdit:
@@ -354,23 +366,22 @@ class DatabaseBot(BaseBot):
         chat_jid = utils.jid_to_str(chat)
         logger = self.logger.getChild(chat_jid)
         now = datetime.now()
-        if (
-            is_archive
-            and archive_data.GroupInfo
-            and archive_data.GroupInfo.provenance.get("archivebot__timestamp")
-        ):
-            now = datetime.fromisoformat(
-                archive_data.GroupInfo.provenance.get("archivebot__timestamp")
-            )
-
-        group_info_prev = db["group_info"].find_one(JID=chat_jid) or {}
-        last_update: datetime = group_info_prev.get("lastUpdate", datetime.min)
-        if last_update + self.group_info_refresh_time > now:
-            return
-
         if is_archive:
             if archive_data.GroupInfo is None:
                 return
+            archive_isotime = archive_data.GroupInfo.provenance.get(
+                "archivebot__timestamp"
+            )
+            if archive_isotime is not None:
+                # TODO: this doesn't seem to be working... unit testing passes though? 0_o
+                now = datetime.fromisoformat(archive_isotime)
+
+        group_info_prev = db["group_info"].find_one(JID=chat_jid) or {}
+        last_update: datetime = group_info_prev.get("last_update", datetime.min)
+        if not is_archive and last_update + self.group_info_refresh_time > now:
+            return
+
+        if is_archive:
             group_info = archive_data.GroupInfo
         else:
             group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
@@ -380,28 +391,29 @@ class DatabaseBot(BaseBot):
             skip_keys=set(["participants", "participantVersionId"]),
         )
         group_info_flat["id"] = chat_jid
-        group_info_flat["firstSeen"] = now
         group_participants = [flatten_proto_message(p) for p in group_info.participants]
 
-        keys = set(group_info_prev.keys()).union(group_info_flat.keys())
+        keys = set(group_info_prev.keys()).intersection(group_info_flat.keys())
         if group_info_prev and any(
             group_info_flat.get(k) != group_info_prev.get(k) for k in keys
         ):
             logger.debug("Found previous out-of-date entry, updating: %s", chat_jid)
-            group_info_prev["nVersions"] = group_info_prev.get("nVersions") or 0
+            group_info_prev["n_versions"] = group_info_prev.get("n_versions") or 0
             prev_id = group_info_prev["id"]
-            N = group_info_flat["nVersions"] = group_info_prev["nVersions"] + 1
-            id_ = group_info_prev["id"] = f"{prev_id}-{N:06d}"
-            group_info_prev["lastUpdate"] = now
-            group_info_flat["previousVersionId"] = id_
-            if first_seen := group_info_prev.get("firstSeen"):
-                group_info_flat["firstSeen"] = first_seen
+            N = group_info_flat["n_versions"] = group_info_prev["n_versions"] + 1
+            id_ = group_info_prev["id"] = f"{chat_jid}-{N:06d}"
+            group_info_prev["last_update"] = now
+            group_info_flat["previous_version_id"] = id_
+            if first_seen := group_info_prev.get("first_seen"):
+                group_info_flat["first_seen"] = first_seen
             db["group_info"].delete(id=prev_id)
             db["group_info"].insert(group_info_prev)
-        group_info_flat["lastUpdate"] = now
+        elif not group_info_prev:
+            group_info_flat["first_seen"] = now
+        group_info_flat["last_update"] = now
 
         for participant in group_participants:
-            participant["lastSeen"] = now
+            participant["last_seen"] = now
             participant["chat_jid"] = chat_jid
 
         logger.debug("Updating group info: %s", chat_jid)
@@ -425,11 +437,11 @@ class DatabaseBot(BaseBot):
         with self.db as db:
             source_message = db["messages"].find_one(id=source_message_id)
             if source_message:
-                n_edits: int = source_message.get("nEdits", 0) or 0
-                N = message_flat["nEdits"] = n_edits + 1
+                n_edits: int = source_message.get("n_edits", 0) or 0
+                N = message_flat["n_edits"] = n_edits + 1
                 id_ = source_message["id"] = f"{source_message_id}-{N:03d}"
-                message_flat["previousVersionId"] = id_
-                message_flat["previousVersionText"] = source_message["text"]
+                message_flat["previous_version_id"] = id_
+                message_flat["previous_version_text"] = source_message["text"]
                 db["messages"].insert(source_message)
             db["messages"].upsert(message_flat, ["id"])
 
@@ -442,11 +454,11 @@ class DatabaseBot(BaseBot):
                 reaction_counts = defaultdict(int)
             else:
                 reaction_counts = defaultdict(
-                    int, source_message.get("reactionCounts") or {}
+                    int, source_message.get("reaction_counts") or {}
                 )
             reaction_counts[message.content.text] += 1
             db["reactions"].upsert(message_flat, ["id"])
             db["messages"].upsert(
-                {"id": source_message_id, "reactionCounts": reaction_counts},
+                {"id": source_message_id, "reaction_counts": reaction_counts},
                 ["id"],
             )

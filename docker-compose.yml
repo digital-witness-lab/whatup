@@ -69,10 +69,10 @@ services:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
-      - whatup
       - db
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
+      - POSTGRES_DATABASE=messages
     secrets:
       - postgres-passwd
     env_file:
@@ -81,7 +81,7 @@ services:
       - donotstart
     volumes:
       - ./data/message-archive/:/archive/:ro
-    command: sh -c "whatupy databasebot-load-archive --database-url \"postgresql://$${POSTGRES_USER}:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" /archive/*@*/*_*.json'"
+    command: sh -c "whatupy databasebot-load-archive --database-url \"postgresql://$${POSTGRES_USER}:$$( cat $${POSTGRES_PASSWORD_FILE})@db/$${POSTGRES_DATABASE}\" '/archive/*@*/*_*.json'"
 
   bot-onboard-bulk:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy

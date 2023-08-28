@@ -94,7 +94,7 @@ class WhatUpAuthentication:
             self.logger.debug(
                 "Got new session token: %s: %s",
                 self.session_token.expirationTime.ToSeconds(),
-                session_token.expiration_time,
+                session_token.expirationTime,
             )
             self.session_token = session_token
 
