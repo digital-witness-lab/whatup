@@ -1,12 +1,16 @@
 from pathlib import Path
-from datetime import datetime
+import itertools as IT
+import csv
+from datetime import datetime, timedelta
 import typing as T
+import random
+import asyncio
 
 import dataset
 
 from ..protos import whatupcore_pb2 as wuc
 from .. import NotRegisteredError, utils
-from . import BaseBot, BotCommandArgs
+from . import BaseBot, BotCommandArgs, MediaType
 
 
 MAX_GROUPS_PER_BOT = 256
@@ -29,19 +33,30 @@ class GroupManagerBot(BaseBot):
         self,
         database_url: str,
         group_join_replication: int = 2,
+        resync_interval: timedelta = timedelta(minutes=10),
         *args,
         **kwargs,
     ):
         kwargs["mark_messages_read"] = True
         super().__init__(*args, **kwargs)
         self.group_join_replication = group_join_replication
+        self.resync_interval = resync_interval
         self.db: dataset.Database = dataset.connect(database_url)
         self.init_database(self.db)
 
     def init_database(self, db):
-        db["device_sync"]
-        db["device_groups"]
+        # TODO: ensure indicies here
+        db["device_sync"]  # device name as PK
+        db["device_groups"]  # jid as PK, device_name as index?
+        db["group_metadata"]  # id as PK, jid as index
         return
+
+    async def on_start(self, **kwargs):
+        while True:
+            self.logger.info("Triggering automatic re-syncing of groups")
+            await self.sync_groups()
+            dt = self.resync_interval.total_seconds() * random.uniform(0.9, 1.1)
+            await asyncio.sleep(dt)
 
     async def sync_groups(self):
         now = datetime.now()
@@ -49,13 +64,6 @@ class GroupManagerBot(BaseBot):
         device_name = self.authenticator.username
         db["device_sync"].insert_ignore(
             {"device_name": device_name, "first_update": now}
-        )
-        db["device_sync"].update(
-            {
-                "device_name": device_name,
-                "last_update": now,
-            },
-            ["device_name"],
         )
         current_group_infos = list(await self.core_client.GetJoinedGroups())
         current_group_jids: T.Set[str | None] = {
@@ -82,14 +90,12 @@ class GroupManagerBot(BaseBot):
         for jid in groups_to_join:
             self.logger.info("Joining group from sync: %s", jid)
             # TODO: handle expired invite url
-            datum = (
-                {
-                    "record_joined": now,
-                    "device_name": device_name,
-                    "jid": jid,
-                    "last_checked": now,
-                },
-            )
+            datum = {
+                "record_joined": now,
+                "device_name": device_name,
+                "jid": jid,
+                "last_checked": now,
+            }
             try:
                 await self.core_client.JoinGroup(
                     wuc.InviteCode(link=required_group_jids[jid])
@@ -99,7 +105,7 @@ class GroupManagerBot(BaseBot):
                     {**datum, "valid": True},
                     ["device_name", "jid"],
                 )
-            except:
+            except InvalidInviteLink:
                 results["groups_joined_error"].append(jid)
                 self.logger.exception(
                     "Could not join group: %s: %s", jid, required_group_jids[jid]
@@ -113,6 +119,16 @@ class GroupManagerBot(BaseBot):
             self.logger.info("Leaving group because of sync: %s", jid)
             results["groups_left"].append(jid)
             # TODO: leave groups?!?!
+
+        db["device_sync"].update(
+            {
+                "device_name": device_name,
+                "last_update": now,
+                "last_sync_log": results,
+            },
+            ["device_name"],
+        )
+        return results
 
     async def join_group(self, invite_link, group_join_replication=None, force=False):
         now = datetime.now()
@@ -248,26 +264,41 @@ class GroupManagerBot(BaseBot):
         )
         sub_parser = parser.add_subparsers(dest="command")
 
-        group_info = sub_parser.add_parser(
+        join_group = sub_parser.add_parser(
             "join-group",
-            description="Join a group given an invite link",
+            description="Join a group given an invite link. Alternativvely, attach a valid CSV file for a column 'invite_link' to builk-join",
         )
-        group_info.add_argument(
+        join_group.add_argument(
             "--N",
             type=int,
             default=None,
             help="Number of devices that should join this group (optional, default = server preference)",
         )
-        group_info.add_argument(
+        join_group.add_argument(
             "--force",
             action="store_true",
             help="Whether to force joining the group even if existing devices have already joined",
         )
-        group_info.add_argument("link", type=str, help="Valid invite link")
+        join_group.add_argument("link", type=str, help="Valid invite link", nargs=-1)
 
         rebalance_groups = sub_parser.add_parser(
             "rebalance-groups",
             description="Rebalance which devices are in which groups in order to target desired redundancy in group membership",
+        )
+        rebalance_groups.add_argument(
+            "--N",
+            type=int,
+            default=None,
+            help="Number of devices that should join this group (optional, default = server preference)",
+        )
+
+        device_status = sub_parser.add_parser(
+            "device-status",
+            description="Status of devices",
+        )
+        groups_status = sub_parser.add_parser(
+            "groups-status",
+            description="Status of groupss",
         )
 
         return parser
@@ -284,22 +315,95 @@ class GroupManagerBot(BaseBot):
         sender = message.info.source.sender
 
         if params.command == "join-group":
-            link = params.link
+            links = params.link
+            if utils.media_message_filename(message):
+                data_bytes = await self.download_message_media(message)
+                data = list(csv.DictReader(data_bytes.decode("utf8").splitlines()))
+            else:
+                data = []
 
-            try:
-                result = await self.join_group(
-                    link, group_join_replication=params.N, force=params.force
-                )
-                msg = (
-                    "Group «{result['group_info'].groupName.name}» joined by the following devices:\n"
-                    "\n".join(list(self._format_device_membership(result["devices"])))
-                )
-                await self.send_text_message(sender, msg)
+            link_meta_iter = IT.chain(
+                IT.zip_longest(links, [{}], fillvalue={}),
+                ((d.pop("invite_link"), d) for d in data),
+            )
 
-            except InvalidInviteLink:
-                await self.send_text_message(
+            statuses: T.List[str] = []
+            for link, metadata in link_meta_iter:
+                try:
+                    result = await self.join_group(
+                        link, group_join_replication=params.N, force=params.force
+                    )
+                    statuses.append(
+                        "Group «{result['group_info'].groupName.name}» joined by the following devices:\n"
+                        "\n".join(
+                            list(self._format_device_membership(result["devices"]))
+                        )
+                    )
+                    self.db["group_metadata"].insert(
+                        {
+                            "jid": result["group_info"].JID,
+                            "invite_link": link,
+                            "metadata": metadata,
+                        }
+                    )
+                except InvalidInviteLink:
+                    statuses.append(f"Invite code invalid: {link}")
+            if len(statuses) < 5:
+                await self.send_text_message(sender, "\n---\n".join(statuses))
+            else:
+                await self.send_media_message(
                     sender,
-                    "The invite code you provided is invalid. Sorry, I can't join this group. :(",
+                    MediaType.MediaDocument,
+                    content="\n---\n".join(statuses).encode("utf8"),
+                    caption=f"Results of joining groups.",
+                    mimetype="text/txt",
+                    filename=f"group-join-result-{datetime.now().isoformat(timespec='minutes')}.csv",
                 )
-        elif params.command == "repalance-groups":
-            pass
+        elif params.command == "rebalance-groups":
+            data: T.List[dict] = await self.rebalance_groups(
+                group_join_replication=params.N
+            )
+            content = utils.dict_to_csv_bytes(data)
+            n_no_invite = sum(d.get("error", "") == "no_invite_link" for d in data)
+            summary = (
+                f"{len(data)} groups affected, {n_no_invite} have no valid invite link."
+            )
+            await self.send_media_message(
+                sender,
+                MediaType.MediaDocument,
+                content=content,
+                caption=f"Results of group rebalancing. {summary}",
+                mimetype="text/csv",
+                filename=f"group-rebalancing-{datetime.now().isoformat(timespec='minutes')}.csv",
+            )
+        elif params.command == "device-status":
+            data: T.List[dict] = list(self.db["device_sync"].all())
+            content = utils.dict_to_csv_bytes(data)
+            n_devices = len(set(d["device_name"] for d in data))
+            oldest_sync, oldest_sync_name = min(
+                (d["last_update"], d["device_name"]) for d in data
+            )
+            summary = f"{n_devices} devices synced. {oldest_sync_name} hasn't synced since {oldest_sync}"
+            await self.send_media_message(
+                sender,
+                MediaType.MediaDocument,
+                content=content,
+                caption=f"Current device sync status. {summary}",
+                mimetype="text/csv",
+                filename=f"device-status-{datetime.now().isoformat(timespec='minutes')}.csv",
+            )
+        elif params.command == "groups-status":
+            data: T.List[dict] = list(self.db["device_groups"].all())
+            content = utils.dict_to_csv_bytes(data)
+            n_devices = len(set(d["device_name"] for d in data))
+            n_chats = len(set(d["jid"] for d in data))
+            n_invalid = sum(not d["valid"] for d in data)
+            summary = f"{n_devices} connected to {n_chats} groups (avg {n_chats/n_devices:0.2f} groups/device). {n_invalid} groups don't have a valid invite code"
+            await self.send_media_message(
+                sender,
+                MediaType.MediaDocument,
+                content=content,
+                caption=f"Current device sync status. {summary}",
+                mimetype="text/csv",
+                filename=f"group-status-{datetime.now().isoformat(timespec='minutes')}.csv",
+            )

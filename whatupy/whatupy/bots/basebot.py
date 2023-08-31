@@ -109,6 +109,9 @@ class BaseBot:
         await self.authenticator.login(username, passphrase)
         return self
 
+    async def on_start(self, **kwargs):
+        return
+
     async def start(self, **kwargs):
         self.logger.info("Starting bot for user")
         BOT_REGISTRY[self.__class__.__name__][id(self)] = self
@@ -117,6 +120,7 @@ class BaseBot:
             tg.create_task(self.authenticator.start())
             tg.create_task(self.listen_messages())
             tg.create_task(self._download_messages_background())
+            tg.create_task(self.on_start(**kwargs))
             if self.read_historical_messages:
                 tg.create_task(self.listen_historical_messages())
         self.stop()

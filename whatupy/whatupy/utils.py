@@ -46,8 +46,9 @@ class WhatUpyJSONDecoder(json.JSONDecoder):
 def dict_to_csv_bytes(data: T.List[dict]) -> bytes:
     if not data:
         return b""
+    keys = {key for item in data for key in item.keys()}
     buffer = io.StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=data[0].keys())
+    writer = csv.DictWriter(buffer, fieldnames=keys)
     writer.writeheader()
     writer.writerows(data)
     buffer.seek(0)
