@@ -68,6 +68,14 @@ class DisappearingMessageResponse(google.protobuf.message.Message):
 global___DisappearingMessageResponse = DisappearingMessageResponse
 
 @typing_extensions.final
+class ListGroupsOptions(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(self) -> None:
+        ...
+global___ListGroupsOptions = ListGroupsOptions
+
+@typing_extensions.final
 class SendMessageOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     RECIPIENT_FIELD_NUMBER: builtins.int
