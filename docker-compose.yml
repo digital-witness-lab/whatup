@@ -46,6 +46,24 @@ services:
       - ./data/message-archive/:/usr/src/whatupy-data/message-archive/
     command: whatupy --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
 
+  bot-groupmanager:
+    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
+    build: ./whatupy/
+    links:
+      - whatup
+      - db
+    environment:
+      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CONTROL_GROUPS=c+c-prod@g.us 33671714377@s.whatsapp.net # c+c-prod + micha
+    secrets:
+      - ssl-cert
+      - postgres-passwd
+    env_file:
+      - .env
+    volumes:
+      - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
+    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert groupmanagerbot --database-url \"postgresql://$${POSTGRES_USER}:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" /usr/src/whatupy-data/sessions/"
+
   bot-database:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/

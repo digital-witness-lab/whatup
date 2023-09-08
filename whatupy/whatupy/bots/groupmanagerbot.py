@@ -70,22 +70,22 @@ class GroupManagerBot(BaseBot):
             utils.jid_to_str(gi.JID) for gi in current_group_infos
         }
 
-        required_groups = db["device_groups"].find(device_name=device_name, valid=True)
-        required_group_jids: T.Dict[str | None, str] = {
-            rg["jid"]: rg["invite_link"] for rg in required_groups
+        required_groups = db["device_groups"].find(device_name=device_name)
+        required_groups_jids = {rg["jid"] for rg in required_groups}
+        required_groups_valid_invites: T.Dict[str | None, str] = {
+            rg["jid"]: rg["invite_link"] for rg in required_groups if rg["valid"]
         }
 
         if len(required_groups) > MAX_GROUPS_PER_BOT:
             raise TooManyGroupsRequested()
 
-        groups_to_leave = current_group_jids.difference(required_group_jids.keys())
-        groups_to_join = set(required_group_jids.keys()) - current_group_jids
+        groups_to_note = current_group_jids.difference(required_groups_jids)
+        groups_to_join = set(required_groups_valid_invites.keys()) - current_group_jids
 
         results = {
             "groups_joined": [],
             "groups_joined_error": [],
-            "groups_left": [],
-            "groups_left_error": [],
+            "groups_noted": [],
         }
         for jid in groups_to_join:
             self.logger.info("Joining group from sync: %s", jid)
@@ -96,10 +96,9 @@ class GroupManagerBot(BaseBot):
                 "jid": jid,
                 "last_checked": now,
             }
+            link = required_groups_valid_invites[jid]
             try:
-                await self.core_client.JoinGroup(
-                    wuc.InviteCode(link=required_group_jids[jid])
-                )
+                await self.core_client.JoinGroup(wuc.InviteCode(link=link))
                 results["groups_joined"].append(jid)
                 self.db["device_groups"].update(
                     {**datum, "valid": True},
@@ -107,17 +106,24 @@ class GroupManagerBot(BaseBot):
                 )
             except InvalidInviteLink:
                 results["groups_joined_error"].append(jid)
-                self.logger.exception(
-                    "Could not join group: %s: %s", jid, required_group_jids[jid]
-                )
+                self.logger.exception("Could not join group: %s: %s", jid, link)
                 self.db["device_groups"].update(
                     {**datum, "valid": False},
                     ["device_name", "jid"],
                 )
 
-        for jid in groups_to_leave:
+        for jid in groups_to_note:
             self.logger.info("Leaving group because of sync: %s", jid)
-            results["groups_left"].append(jid)
+            datum = {
+                "record_joined": now,
+                "device_name": device_name,
+                "jid": jid,
+                "last_checked": now,
+                "valid": False,
+                "invite_link": None,
+            }
+            self.db["device_groups"].insert(datum)
+            results["groups_noted"].append(jid)
             # TODO: leave groups?!?!
 
         db["device_sync"].update(
@@ -143,12 +149,19 @@ class GroupManagerBot(BaseBot):
             raise InvalidInviteLink()
 
         chat_jid = utils.jid_to_str(group_info.JID)
-
-        if not force and self.db["device_groups"].find_one(jid=chat_jid) is not None:
-            # TODO add matching rows to exception
-            raise GroupAlreadyJoined()
-
+        N_devices = self.db["device_groups"].count(jid=chat_jid)
         group_join_replication = group_join_replication or self.group_join_replication
+        self.db["device_groups"].update(
+            {"invite_link": invite_link, "jid": chat_jid, "valid": False},
+            ["chat_jid", "valid"],
+        )
+
+        if not force:
+            if N_devices >= group_join_replication:
+                # TODO add matching rows to exception
+                raise GroupAlreadyJoined()
+            group_join_replication -= N_devices
+
         query = f"""
             SELECT
                 device_name, count

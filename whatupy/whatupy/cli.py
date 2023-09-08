@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from .bots import ArchiveBot, BotType, ChatBot, DatabaseBot, OnboardBot
+from .bots import ArchiveBot, BotType, ChatBot, DatabaseBot, OnboardBot, GroupManagerBot
 from .utils import async_cli, str_to_jid
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
@@ -237,6 +237,23 @@ async def databasebot(
         await db.process_archive(archive_files)
         return
     await run_multi_bots(DatabaseBot, credentials, params)
+
+
+@cli.command()
+@async_cli
+@click.option("--database-url", type=str)
+@click.argument("credentials", type=click.Path(path_type=Path), nargs=-1)
+@click.pass_context
+async def groupmanagerbot(
+    ctx,
+    credentials,
+    database_url,
+    archive_files,
+):
+    # TODO: docstring
+
+    params = {"database_url": database_url, **ctx.obj["connection_params"]}
+    await run_multi_bots(GroupManagerBot, credentials, params)
 
 
 @cli.command("databasebot-load-archive")

@@ -267,6 +267,7 @@ func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context, inviteCode *pb.
 }
 
 func (s *WhatUpCoreServer) ListGroups(listGroupOptions *pb.ListGroupsOptions, server pb.WhatUpCore_ListGroupsServer) error {
+	ctx := server.Context()
 	session, ok := ctx.Value("session").(*Session)
 	if !ok {
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
