@@ -290,7 +290,7 @@ class DatabaseBot(BaseBot):
         **kwargs,
     ):
         msg_id = message.info.id
-        if self.db["messages_seen"].find_one(id=msg_id) is not None:
+        if self.db["messages_seen"].count(id=msg_id) > 0:
             self.logger.info("Already seen messages, skipping: %s", msg_id)
             return
         message.provenance["databasebot__timestamp"] = datetime.now().isoformat()
