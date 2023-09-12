@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import glob
 import typing as T
 from importlib.resources import files
 from pathlib import Path
@@ -258,8 +259,16 @@ async def databasebot_load_archive(
     """
     params = {"database_url": database_url, **ctx.obj["connection_params"]}
     db = DatabaseBot(connect=False, **params)
-    for archive_file in archive_files:
-        await db.process_archive(archive_file)
+
+    filenames = []
+    for archive_blob in archive_files:
+        filenames.extend(
+            Path(p)
+            for p in glob.glob(archive_blob, recursive=True)
+            if p.endswith(".json")
+        )
+    filenames.sort()
+    await db.process_archive(filenames)
 
 
 def main():

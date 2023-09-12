@@ -1,7 +1,6 @@
 import argparse
 import asyncio
 import enum
-import glob
 import json
 import logging
 import random
@@ -20,7 +19,7 @@ from ..protos.whatupcore_pb2_grpc import WhatUpCoreStub
 
 logger = logging.getLogger(__name__)
 PinningEntry = namedtuple("PinningEntry", "bot_id expiration_time".split(" "))
-ArchiveData = namedtuple("ArchiveData", "GroupInfo MediaContent".split(" "))
+ArchiveData = namedtuple("ArchiveData", "WUMessage GroupInfo MediaContent".split(" "))
 
 COMMAND_PINNING_TTL = timedelta(seconds=60 * 60)
 COMMAND_PINNING: T.Dict[bytes, PinningEntry] = {}
@@ -322,10 +321,9 @@ class BaseBot:
     ):
         pass
 
-    async def process_archive(self, archive_glob):
+    async def process_archive(self, filenames: T.List[Path]):
         # TODO: this is tightly coupled to ArchiveBot... decouple it somehow
         group_infos = {}
-        filenames = list(glob.glob(archive_glob, recursive=True))
         filenames.sort()
         for filename in filenames:
             try:
@@ -343,11 +341,9 @@ class BaseBot:
         with filename_path.open() as fd:
             message: wuc.WUMessage = utils.jsons_to_protobuf(fd.read(), wuc.WUMessage())
         chat_id = utils.jid_to_str(message.info.source.chat)
-        metadata = {"GroupInfo": None, "MediaContent": None}
+        metadata = {"WUMessage": message, "GroupInfo": None, "MediaContent": None}
         if chat_id:
-            if chat_id in group_infos:
-                metadata["GroupInfo"] = group_infos[chat_id]
-            elif group_info_filename := message.provenance.get(
+            if group_info_filename := message.provenance.get(
                 "archivebot__groupInfoPath"
             ):
                 group_info_path = filename_path.parent / group_info_filename
@@ -362,6 +358,8 @@ class BaseBot:
                     self.logger.critical(
                         "Could not find group info in path: %s", group_info_path
                     )
+            elif chat_id in group_infos:
+                metadata["GroupInfo"] = group_infos[chat_id]
 
         if media_filename := message.provenance.get("archivebot__mediaPath"):
             media_path = filename_path.parent / media_filename
