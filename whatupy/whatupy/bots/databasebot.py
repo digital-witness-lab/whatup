@@ -369,14 +369,10 @@ class DatabaseBot(BaseBot):
         if is_archive:
             if archive_data.GroupInfo is None:
                 return
-            archive_isotime = archive_data.GroupInfo.provenance.get(
-                "archivebot__timestamp"
-            )
-            if archive_isotime is not None:
-                # TODO: this doesn't seem to be working... unit testing passes though? 0_o
-                now = datetime.fromisoformat(archive_isotime)
+            now = archive_data.WUMessage.info.timestamp.ToDatetime()
+            self.logger.debug("Replacing date with archived message timestamp: %s", now)
 
-        group_info_prev = db["group_info"].find_one(JID=chat_jid) or {}
+        group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
         last_update: datetime = group_info_prev.get("last_update", datetime.min)
         if not is_archive and last_update + self.group_info_refresh_time > now:
             return
@@ -390,27 +386,38 @@ class DatabaseBot(BaseBot):
             preface_keys=True,
             skip_keys=set(["participants", "participantVersionId"]),
         )
+        keys = set(group_info_prev.keys()).intersection(group_info_flat.keys())
+        keys.discard("provenance")
+
         group_info_flat["id"] = chat_jid
+        group_info_flat["last_update"] = now
         group_participants = [flatten_proto_message(p) for p in group_info.participants]
 
-        keys = set(group_info_prev.keys()).intersection(group_info_flat.keys())
-        if group_info_prev and any(
-            group_info_flat.get(k) != group_info_prev.get(k) for k in keys
-        ):
-            logger.debug("Found previous out-of-date entry, updating: %s", chat_jid)
-            group_info_prev["n_versions"] = group_info_prev.get("n_versions") or 0
-            prev_id = group_info_prev["id"]
-            N = group_info_flat["n_versions"] = group_info_prev["n_versions"] + 1
-            id_ = group_info_prev["id"] = f"{chat_jid}-{N:06d}"
-            group_info_prev["last_update"] = now
-            group_info_flat["previous_version_id"] = id_
-            if first_seen := group_info_prev.get("first_seen"):
-                group_info_flat["first_seen"] = first_seen
-            db["group_info"].delete(id=prev_id)
-            db["group_info"].insert(group_info_prev)
+        if group_info_prev:
+            if changed_keys := [
+                k for k in keys if group_info_flat.get(k) != group_info_prev.get(k)
+            ]:
+                logger.debug(
+                    "Found previous out-of-date entry, updating: %s: %s",
+                    chat_jid,
+                    changed_keys,
+                )
+                group_info_prev["n_versions"] = group_info_prev.get("n_versions") or 0
+                prev_id = group_info_prev["id"]
+                N = group_info_flat["n_versions"] = group_info_prev["n_versions"] + 1
+                id_ = group_info_prev["id"] = f"{chat_jid}-{N:06d}"
+                group_info_prev["last_update"] = now
+                group_info_flat["previous_version_id"] = id_
+                if first_seen := group_info_prev.get("first_seen"):
+                    group_info_flat["first_seen"] = first_seen
+                db["group_info"].delete(id=prev_id)
+                db["group_info"].insert(group_info_prev)
+                db["group_info"].upsert(group_info_flat, ["id"])
+            else:
+                db["group_info"].update({"id": chat_jid, "last_update": now}, ["id"])
         elif not group_info_prev:
             group_info_flat["first_seen"] = now
-        group_info_flat["last_update"] = now
+            db["group_info"].insert(group_info_flat)
 
         for participant in group_participants:
             participant["last_seen"] = now
@@ -418,7 +425,6 @@ class DatabaseBot(BaseBot):
 
         logger.debug("Updating group info: %s", chat_jid)
         db["group_participants"].upsert_many(group_participants, ["JID", "chat_jid"])
-        db["group_info"].upsert(group_info_flat, ["id"])
 
         if group_info.parentJID.ByteSize() > 0 and not is_archive:
             # TODO: this in archive mode
