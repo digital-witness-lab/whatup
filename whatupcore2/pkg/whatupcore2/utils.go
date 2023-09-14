@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/nyaruka/phonenumbers"
+
 	pb "github.com/digital-witness-lab/whatup/protos"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store"
@@ -90,12 +92,23 @@ func anonymizeString(user string) string {
 	return fmt.Sprintf("anon.%s.%s", base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), ANON_VERSION)
 }
 
+func UserToCountry(user string) string {
+    num, err := phonenumbers.Parse("+" + user, "")
+    if err != nil {
+        fmt.Println("Couldn't parse phone number: %s: %v", user, err)
+        return ""
+    }
+    return phonenumbers.GetRegionCodeForNumber(num)
+}
+
 func JIDToProto(JID types.JID) *pb.JID {
     user := JID.User
     isAnonymized := false
+    userGeocode := ""
     if JID.Server == types.DefaultUserServer || JID.Server == types.LegacyUserServer {
         user = anonymizeString(JID.User)
         isAnonymized = true
+        userGeocode = UserToCountry(JID.User)
     }
 	return &pb.JID{
 		User:   user,
@@ -104,6 +117,7 @@ func JIDToProto(JID types.JID) *pb.JID {
 		Server: JID.Server,
 		Ad:     JID.AD,
         IsAnonymized: isAnonymized,
+        UserGeocode: userGeocode,
 	}
 }
 
