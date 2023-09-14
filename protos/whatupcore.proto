@@ -171,6 +171,8 @@ message JID {
     uint32 device = 3;
     string server = 4;
     bool ad = 5;
+
+    bool isAnonymized = 20;
 }
 
 message ConnectionStatus {
