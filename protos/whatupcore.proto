@@ -173,6 +173,8 @@ message JID {
     bool ad = 5;
 
     bool isAnonymized = 20;
+
+    string userGeocode = 50;
 }
 
 message ConnectionStatus {
