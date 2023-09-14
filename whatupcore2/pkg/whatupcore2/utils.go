@@ -95,7 +95,6 @@ func anonymizeString(user string) string {
 func UserToCountry(user string) string {
     num, err := phonenumbers.Parse("+" + user, "")
     if err != nil {
-        fmt.Println("Couldn't parse phone number: %s: %v", user, err)
         return ""
     }
     return phonenumbers.GetRegionCodeForNumber(num)

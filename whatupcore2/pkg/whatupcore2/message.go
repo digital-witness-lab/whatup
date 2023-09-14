@@ -261,6 +261,7 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
                         newMentioned[i] = anonUser + rest
                     }
                 }
+                extText.Text = &text
                 extText.ContextInfo.MentionedJid = newMentioned
             }
         }
