@@ -1,6 +1,10 @@
 package whatupcore2
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
 	"reflect"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
@@ -9,6 +13,12 @@ import (
 	"go.mau.fi/whatsmeow/types"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+var (
+    ANON_KEY = []byte("71b8e9c8f7ca3b00936f62db2e2593fd6abd74dd743453e188b7aa7075b8f991")
+    ANON_VERSION = "v001"
+)
+
 
 func ProtoToMediaType(mediaType pb.SendMessageMedia_MediaType) (whatsmeow.MediaType, bool) {
 	switch m := mediaType.String(); m {
@@ -29,7 +39,7 @@ func MessageInfoToProto(info types.MessageInfo, device *store.Device) *pb.Messag
 		Source:    MessageSourceToProto(info.MessageSource, device),
 		Timestamp: timestamppb.New(info.Timestamp),
 		Id:        info.ID,
-		PushName:  info.PushName,
+		PushName:  anonymizeString(info.PushName),
 		Type:      info.Type,
 		Category:  info.Category,
 		Multicast: info.Multicast,
@@ -71,13 +81,29 @@ func ProtoToMessageSource(ms *pb.MessageSource) types.MessageSource {
 	}
 }
 
+func anonymizeString(user string) string {
+	if user == "" {
+		return ""
+	}
+	mac := hmac.New(sha256.New, ANON_KEY)
+	mac.Write([]byte(user))
+	return fmt.Sprintf("anon.%s.%s", base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), ANON_VERSION)
+}
+
 func JIDToProto(JID types.JID) *pb.JID {
+    user := JID.User
+    isAnonymized := false
+    if JID.Server == types.DefaultUserServer || JID.Server == types.LegacyUserServer {
+        user = anonymizeString(JID.User)
+        isAnonymized = true
+    }
 	return &pb.JID{
-		User:   JID.User,
+		User:   user,
 		Agent:  uint32(JID.Agent),
 		Device: uint32(JID.Device),
 		Server: JID.Server,
 		Ad:     JID.AD,
+        IsAnonymized: isAnonymized,
 	}
 }
 
@@ -96,9 +122,9 @@ func ContactToProto(contact *types.ContactInfo) *pb.Contact {
 		return nil
 	}
 	return &pb.Contact{
-		FirstName:    contact.FirstName,
-		FullName:     contact.FullName,
-		PushName:     contact.PushName,
+		FirstName:    anonymizeString(contact.FirstName),
+		FullName:     anonymizeString(contact.FullName),
+		PushName:     anonymizeString(contact.PushName),
 		BusinessName: contact.BusinessName,
 	}
 }
