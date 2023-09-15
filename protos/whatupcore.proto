@@ -126,27 +126,29 @@ message GroupInfo {
     // types.GroupInfo
     google.protobuf.Timestamp createdAt = 1;
     JID JID = 2;
+    JID ownerJID = 3;
     
-    GroupName groupName = 3;
-    GroupTopic groupTopic = 4;
+    GroupName groupName = 20;
+    GroupTopic groupTopic = 21;
 
-    string memberAddMode = 5;
-    bool isLocked = 6;
-    bool isAnnounce = 7;
-    bool isEphemeral = 8;
+    string memberAddMode = 40;
+    bool isLocked = 41;
+    bool isAnnounce = 42;
+    bool isEphemeral = 43;
     
-    bool isCommunity = 12;
-    bool isCommunityDefaultGroup = 13;
-    bool isPartialInfo = 14;
+    bool isCommunity = 44;
+    bool isCommunityDefaultGroup = 45;
+    bool isPartialInfo = 46;
+    bool isIncognito = 47;
 
     // TODO: add profile pic?
 
-    string participantVersionId = 9;
-    repeated GroupParticipant participants = 10;
+    string participantVersionId = 60;
+    repeated GroupParticipant participants = 61;
 
-    JID parentJID = 11;
+    JID parentJID = 80;
 
-    map<string, string> provenance = 90;
+    map<string, string> provenance = 100;
 }
 
 message ConnectionStatusOptions {
@@ -178,7 +180,9 @@ message JID {
     uint32 agent = 2;
     uint32 device = 3;
     string server = 4;
-    bool ad = 5;
+
+    reserved 5;
+    reserved "ad"; //bool ad = 5;
 }
 
 message ConnectionStatus {
