@@ -1,14 +1,15 @@
 import asyncio
+import glob
 import json
 import logging
-import glob
 import typing as T
 from importlib.resources import files
 from pathlib import Path
 
 import click
 
-from .bots import ArchiveBot, BotType, ChatBot, DatabaseBot, DebugBot, OnboardBot
+from .bots import (ArchiveBot, BotType, ChatBot, DatabaseBot, DebugBot,
+                   OnboardBot)
 from .utils import async_cli, str_to_jid
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"

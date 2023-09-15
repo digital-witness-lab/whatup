@@ -6,9 +6,9 @@ from functools import partial
 
 import dataset
 import phonenumbers
-from phonenumbers.phonenumberutil import region_code_for_number
 from dataset.util import DatasetException
 from google.protobuf.timestamp_pb2 import Timestamp
+from phonenumbers.phonenumberutil import region_code_for_number
 from sqlalchemy.sql import func
 
 from .. import utils

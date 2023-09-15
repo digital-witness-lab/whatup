@@ -25,30 +25,29 @@ func ProtoToMediaType(mediaType pb.SendMessageMedia_MediaType) (whatsmeow.MediaT
 }
 
 func mergeGroupParticipants(participants []types.GroupParticipant, jids []types.JID) []types.GroupParticipant {
-    participantsFull := make([]types.GroupParticipant, len(participants))
-    seenJids := make(map[string]bool)
-    for _, jid := range jids {
-        seenJids[jid.String()] = false
-    }
-    
-    for i, participant := range participants {
-        pJID := participant.JID
-        seenJids[pJID.String()] = true
-        participantsFull[i] = participant
-    }
+	participantsFull := make([]types.GroupParticipant, len(participants))
+	seenJids := make(map[string]bool)
+	for _, jid := range jids {
+		seenJids[jid.String()] = false
+	}
 
-    for jids, seen := range seenJids {
-        if !seen {
-            jid, _ := types.ParseJID(jids)
-            participant := types.GroupParticipant{
-                JID: jid,
-            }
-            participantsFull = append(participantsFull, participant)
-        }
-    }
-    return participantsFull
+	for i, participant := range participants {
+		pJID := participant.JID
+		seenJids[pJID.String()] = true
+		participantsFull[i] = participant
+	}
+
+	for jids, seen := range seenJids {
+		if !seen {
+			jid, _ := types.ParseJID(jids)
+			participant := types.GroupParticipant{
+				JID: jid,
+			}
+			participantsFull = append(participantsFull, participant)
+		}
+	}
+	return participantsFull
 }
-
 
 func MessageInfoToProto(info types.MessageInfo, device *store.Device) *pb.MessageInfo {
 	return &pb.MessageInfo{
@@ -79,7 +78,7 @@ func MessageSourceToProto(source types.MessageSource, device *store.Device) *pb.
 	return &pb.MessageSource{
 		Chat:               JIDToProto(source.Chat),
 		Sender:             JIDToProto(source.Sender),
-        Reciever:           JIDToProto(*device.ID),
+		Reciever:           JIDToProto(*device.ID),
 		SenderContact:      ContactToProto(&contact),
 		BroadcastListOwner: JIDToProto(source.BroadcastListOwner),
 		IsFromMe:           source.IsFromMe,
@@ -108,10 +107,10 @@ func JIDToProto(JID types.JID) *pb.JID {
 
 func ProtoToJID(pJID *pb.JID) types.JID {
 	return types.JID{
-		User:   pJID.User,
-		RawAgent:  uint8(pJID.Agent),
-		Device: uint16(pJID.Device),
-		Server: pJID.Server,
+		User:     pJID.User,
+		RawAgent: uint8(pJID.Agent),
+		Device:   uint16(pJID.Device),
+		Server:   pJID.Server,
 	}
 }
 
@@ -142,7 +141,7 @@ func GroupInfoToProto(gi *types.GroupInfo, device *store.Device) *pb.GroupInfo {
 	return &pb.GroupInfo{
 		CreatedAt: timestamppb.New(gi.GroupCreated),
 		JID:       JIDToProto(gi.JID),
-        OwnerJID:  JIDToProto(gi.OwnerJID),
+		OwnerJID:  JIDToProto(gi.OwnerJID),
 
 		GroupName: &pb.GroupName{
 			Name:      gi.GroupName.Name,
@@ -156,13 +155,13 @@ func GroupInfoToProto(gi *types.GroupInfo, device *store.Device) *pb.GroupInfo {
 			UpdatedBy:    JIDToProto(gi.GroupTopic.TopicSetBy),
 			TopicDeleted: gi.GroupTopic.TopicDeleted,
 		},
-		ParentJID:     JIDToProto(gi.LinkedParentJID),
-		MemberAddMode: string(gi.MemberAddMode),
-		IsLocked:      gi.IsLocked,
-		IsAnnounce:    gi.IsAnnounce,
-		IsEphemeral:   gi.IsEphemeral,
-        IsIncognito:   gi.IsIncognito,
-        IsCommunityDefaultGroup: gi.IsDefaultSubGroup,
+		ParentJID:               JIDToProto(gi.LinkedParentJID),
+		MemberAddMode:           string(gi.MemberAddMode),
+		IsLocked:                gi.IsLocked,
+		IsAnnounce:              gi.IsAnnounce,
+		IsEphemeral:             gi.IsEphemeral,
+		IsIncognito:             gi.IsIncognito,
+		IsCommunityDefaultGroup: gi.IsDefaultSubGroup,
 
 		ParticipantVersionId: gi.ParticipantVersionID,
 		Participants:         participants,
@@ -200,13 +199,13 @@ func valueToBytes(value reflect.Value) (result []byte) {
 	for value.Kind() == reflect.Ptr {
 		value = value.Elem()
 	}
-    defer func() {
-        if p := recover(); p != nil {
-            result = []byte{}
-        }
-    }()
+	defer func() {
+		if p := recover(); p != nil {
+			result = []byte{}
+		}
+	}()
 	return value.Bytes()
-	
+
 }
 
 func valuesToStrings(values []reflect.Value) []string {

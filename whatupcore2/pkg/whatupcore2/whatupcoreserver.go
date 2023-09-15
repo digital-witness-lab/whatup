@@ -265,46 +265,46 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
 	defer cancel()
 
 	JID := ProtoToJID(pJID)
-    subgroups, err := session.Client.GetSubGroups(JID)
-    if err != nil {
-        return status.Errorf(codes.InvalidArgument, "Could not get community subgroups: %v", err)
-    }
+	subgroups, err := session.Client.GetSubGroups(JID)
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, "Could not get community subgroups: %v", err)
+	}
 
-    communityInfo, err := session.Client.GetGroupInfo(JID)
-    if err != nil {
-        return status.Errorf(codes.InvalidArgument, "Could not get community metadata: %v", err)
-    }
-    communityParticipants, err := session.Client.GetLinkedGroupsParticipants(JID)
-    if err == nil {
-        communityInfo.Participants = mergeGroupParticipants(communityInfo.Participants, communityParticipants)
-    }
-    communityInfoProto := GroupInfoToProto(communityInfo, session.Client.Store)
-    communityInfoProto.IsCommunity = true
+	communityInfo, err := session.Client.GetGroupInfo(JID)
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, "Could not get community metadata: %v", err)
+	}
+	communityParticipants, err := session.Client.GetLinkedGroupsParticipants(JID)
+	if err == nil {
+		communityInfo.Participants = mergeGroupParticipants(communityInfo.Participants, communityParticipants)
+	}
+	communityInfoProto := GroupInfoToProto(communityInfo, session.Client.Store)
+	communityInfoProto.IsCommunity = true
 	if err := server.Send(communityInfoProto); err != nil {
 		s.log.Errorf("Could not send message to client: %v", err)
 		return nil
 	}
 
-    for _, subgroup := range subgroups {
-        gJID := subgroup.JID
-        groupInfo, err := session.Client.GetGroupInfo(gJID)
-        isPartial := false
-        if err != nil {
-            groupInfo = &types.GroupInfo{
-                JID: gJID,
-                GroupName: subgroup.GroupName,
-            }
-            isPartial = true
-        }
-        groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
-        groupInfoProto.IsCommunityDefaultGroup = subgroup.IsDefaultSubGroup
-        groupInfoProto.IsPartialInfo = isPartial
+	for _, subgroup := range subgroups {
+		gJID := subgroup.JID
+		groupInfo, err := session.Client.GetGroupInfo(gJID)
+		isPartial := false
+		if err != nil {
+			groupInfo = &types.GroupInfo{
+				JID:       gJID,
+				GroupName: subgroup.GroupName,
+			}
+			isPartial = true
+		}
+		groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+		groupInfoProto.IsCommunityDefaultGroup = subgroup.IsDefaultSubGroup
+		groupInfoProto.IsPartialInfo = isPartial
 		if err := server.Send(groupInfoProto); err != nil {
 			s.log.Errorf("Could not send message to client: %v", err)
 			return nil
 		}
-    }
-    return nil
+	}
+	return nil
 }
 
 func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context, inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
