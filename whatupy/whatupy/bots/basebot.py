@@ -118,10 +118,14 @@ class BaseBot:
             tg.create_task(self._download_messages_background())
             if self.read_historical_messages:
                 tg.create_task(self.listen_historical_messages())
+            tg.create_task(self.post_start())
         self.stop()
 
     def stop(self):
         BOT_REGISTRY[self.__class__.__name__].pop(id(self), None)
+
+    async def post_start(self):
+        pass
 
     async def listen_historical_messages(self):
         while True:

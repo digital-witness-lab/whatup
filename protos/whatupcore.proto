@@ -18,6 +18,7 @@ service WhatUpCore {
     rpc GetConnectionStatus(ConnectionStatusOptions) returns (ConnectionStatus) {}
 
     rpc GetGroupInfo(JID) returns (GroupInfo) {}
+    rpc GetCommunityInfo(JID) returns (stream GroupInfo) {}
     rpc GetGroupInfoInvite(InviteCode) returns (GroupInfo) {}
     rpc JoinGroup(InviteCode) returns (GroupInfo) {}
 
@@ -132,6 +133,8 @@ message GroupInfo {
     bool isLocked = 6;
     bool isAnnounce = 7;
     bool isEphemeral = 8;
+
+    // TODO: add profile pic?
 
     string participantVersionId = 9;
     repeated GroupParticipant participants = 10;

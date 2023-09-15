@@ -371,6 +371,7 @@ class GroupInfo(google.protobuf.message.Message):
     isAnnounce: builtins.bool
     isEphemeral: builtins.bool
     participantVersionId: builtins.str
+    'TODO: add profile pic?'
 
     @property
     def participants(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___GroupParticipant]:

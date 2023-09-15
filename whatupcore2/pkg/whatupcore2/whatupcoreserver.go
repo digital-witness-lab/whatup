@@ -253,6 +253,25 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 	return GroupInfoToProto(groupInfo, session.Client.Store), nil
 }
 
+func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_GetCommunityInfoServer) error {
+	ctx := server.Context()
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	JID := ProtoToJID(pJID)
+    subgroups, err := session.Client.GetSubGroups(JID)
+    if err != nil {
+        return status.Errorf(codes.InvalidArgument, "Could not get community subgroups: %v", err)
+    }
+    session.log.Infof("Got subgroups: %v", subgroups)
+    return nil
+}
+
 func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context, inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
 	session, ok := ctx.Value("session").(*Session)
 	if !ok {
