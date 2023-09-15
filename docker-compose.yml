@@ -47,6 +47,27 @@ services:
       - ./data/message-archive/:/usr/src/whatupy-data/message-archive/
     command: whatupy --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
 
+  bot-debug:
+    # run with,
+    #   $ docker compose run --build --service-ports bot-debug  /usr/src/whatupy-data/sessions/<target-session>.json
+    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
+    build: ./whatupy/
+    links:
+      - whatup
+    environment:
+      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CONTROL_GROUPS=120363104970691776@g.us 33671714377@s.whatsapp.net # cool friends + micha
+    secrets:
+      - ssl-cert
+    ports:
+      - 6666:6666
+    volumes:
+      - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
+      - ./data/message-archive/:/usr/src/whatupy-data/message-archive/
+    entrypoint: whatupy --host whatup --cert /run/secrets/ssl-cert debugbot --host 0.0.0.0 --port 6666
+    profiles:
+      - donotstart
+
   bot-database:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/

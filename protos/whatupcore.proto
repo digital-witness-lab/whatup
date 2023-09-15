@@ -171,7 +171,7 @@ message JID {
     uint32 device = 3;
     string server = 4;
 
-    reserved ad;
+    reserved "ad";
     reserved 5;
 
     bool isAnonymized = 20;
