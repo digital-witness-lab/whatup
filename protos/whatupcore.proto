@@ -129,10 +129,15 @@ message GroupInfo {
     
     GroupName groupName = 3;
     GroupTopic groupTopic = 4;
+
     string memberAddMode = 5;
     bool isLocked = 6;
     bool isAnnounce = 7;
     bool isEphemeral = 8;
+    
+    bool isCommunity = 12;
+    bool isCommunityDefaultGroup = 13;
+    bool isPartialInfo = 14;
 
     // TODO: add profile pic?
 

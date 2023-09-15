@@ -10,6 +10,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"go.mau.fi/whatsmeow/types"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -268,7 +269,41 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
     if err != nil {
         return status.Errorf(codes.InvalidArgument, "Could not get community subgroups: %v", err)
     }
-    session.log.Infof("Got subgroups: %v", subgroups)
+
+    communityInfo, err := session.Client.GetGroupInfo(JID)
+    if err != nil {
+        return status.Errorf(codes.InvalidArgument, "Could not get community metadata: %v", err)
+    }
+    communityParticipants, err := session.Client.GetLinkedGroupsParticipants(JID)
+    if err == nil {
+        communityInfo.Participants = mergeGroupParticipants(communityInfo.Participants, communityParticipants)
+    }
+    communityInfoProto := GroupInfoToProto(communityInfo, session.Client.Store)
+    communityInfoProto.IsCommunity = true
+	if err := server.Send(communityInfoProto); err != nil {
+		s.log.Errorf("Could not send message to client: %v", err)
+		return nil
+	}
+
+    for _, subgroup := range subgroups {
+        gJID := subgroup.JID
+        groupInfo, err := session.Client.GetGroupInfo(gJID)
+        isPartial := false
+        if err != nil {
+            groupInfo = &types.GroupInfo{
+                JID: gJID,
+                GroupName: subgroup.GroupName,
+            }
+            isPartial = true
+        }
+        groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+        groupInfoProto.IsCommunityDefaultGroup = subgroup.IsDefaultSubGroup
+        groupInfoProto.IsPartialInfo = isPartial
+		if err := server.Send(groupInfoProto); err != nil {
+			s.log.Errorf("Could not send message to client: %v", err)
+			return nil
+		}
+    }
     return nil
 }
 
