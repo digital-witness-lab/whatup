@@ -119,12 +119,16 @@ class BaseBot:
                 tg.create_task(self._download_messages_background())
                 if self.read_historical_messages:
                     tg.create_task(self.listen_historical_messages())
+                tg.create_task(self.post_start())
         except Exception as e:
             self.logger.exception("Exception in main run loop of bot")
         self.stop()
 
     def stop(self):
         BOT_REGISTRY[self.__class__.__name__].pop(id(self), None)
+
+    async def post_start(self):
+        pass
 
     async def listen_historical_messages(self):
         while True:
@@ -146,7 +150,9 @@ class BaseBot:
                         message, skip_control=True, is_history=True
                     )
                 except Exception:
-                    self.logger.exception("Exception handling historical message... attempting to continue")
+                    self.logger.exception(
+                        "Exception handling historical message... attempting to continue"
+                    )
 
     async def listen_messages(self):
         while True:
@@ -191,7 +197,9 @@ class BaseBot:
                 try:
                     await self._dispatch_control(message, source_hash)
                 except Exception:
-                    self.logger.exception("Exception handling message... attempting to continue")
+                    self.logger.exception(
+                        "Exception handling message... attempting to continue"
+                    )
         else:
             self.logger.info(
                 "Got normal message: %s: %s",
@@ -206,7 +214,9 @@ class BaseBot:
                     archive_data=archive_data,
                 )
             except Exception:
-                    self.logger.exception("Exception handling message... attempting to continue")
+                self.logger.exception(
+                    "Exception handling message... attempting to continue"
+                )
 
     async def _dispatch_control(self, message, source_hash):
         if message.info.source.isFromMe:

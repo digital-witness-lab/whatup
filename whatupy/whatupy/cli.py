@@ -8,7 +8,7 @@ from pathlib import Path
 
 import click
 
-from .bots import ArchiveBot, ChatBot, BotType, DatabaseBot, OnboardBot
+from .bots import ArchiveBot, ChatBot, BotType, DatabaseBot, OnboardBot, DebugBot
 from .utils import async_cli, str_to_jid
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
@@ -90,7 +90,10 @@ def cli(ctx, debug, host, port, control_groups: list, cert: T.Optional[Path]):
 @cli.command()
 @async_cli
 @click.option(
-    "--response-time", type=float, default=60 * 60 * 4, help="Mean response time (seconds)"
+    "--response-time",
+    type=float,
+    default=60 * 60 * 4,
+    help="Mean response time (seconds)",
 )
 @click.option(
     "--response-time-sigma",
@@ -112,6 +115,7 @@ async def chatbot(ctx, credentials, response_time, response_time_sigma):
         **ctx.obj["connection_params"],
     }
     await run_multi_bots(ChatBot, credentials, params)
+
 
 @cli.command
 @async_cli
@@ -165,6 +169,25 @@ async def onboard_bulk(ctx, credentials_dir: Path):
         credential_file = credentials_dir / f"{name}.json"
         bot = OnboardBot(**ctx.obj["connection_params"])
         await bot.register(name, credential_file)
+
+
+@cli.command()
+@async_cli
+@click.option("--host", type=str, default="localhost", help="What host to serve on")
+@click.option("--port", type=int, default=6666, help="What port to serve on")
+@click.argument("credential", type=click.Path(path_type=Path))
+@click.pass_context
+async def debugbot(ctx, host, port, credential):
+    """
+    Bot that takes a single session file and creates an interactive shell accessible on the specified port. You can connect to this shell using nc and optionally rlwrap,
+
+    $ rlwrap nc localhost <port>
+    """
+    await run_multi_bots(
+        DebugBot,
+        [credential],
+        {"debug_host": host, "debug_port": port, **ctx.obj["connection_params"]},
+    )
 
 
 @cli.command()

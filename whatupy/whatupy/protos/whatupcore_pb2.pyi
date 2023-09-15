@@ -482,21 +482,19 @@ class JID(google.protobuf.message.Message):
     AGENT_FIELD_NUMBER: builtins.int
     DEVICE_FIELD_NUMBER: builtins.int
     SERVER_FIELD_NUMBER: builtins.int
-    AD_FIELD_NUMBER: builtins.int
     ISANONYMIZED_FIELD_NUMBER: builtins.int
     USERGEOCODE_FIELD_NUMBER: builtins.int
     user: builtins.str
     agent: builtins.int
     device: builtins.int
     server: builtins.str
-    ad: builtins.bool
     isAnonymized: builtins.bool
     userGeocode: builtins.str
 
-    def __init__(self, *, user: builtins.str=..., agent: builtins.int=..., device: builtins.int=..., server: builtins.str=..., ad: builtins.bool=..., isAnonymized: builtins.bool=..., userGeocode: builtins.str=...) -> None:
+    def __init__(self, *, user: builtins.str=..., agent: builtins.int=..., device: builtins.int=..., server: builtins.str=..., isAnonymized: builtins.bool=..., userGeocode: builtins.str=...) -> None:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['ad', b'ad', 'agent', b'agent', 'device', b'device', 'isAnonymized', b'isAnonymized', 'server', b'server', 'user', b'user', 'userGeocode', b'userGeocode']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['agent', b'agent', 'device', b'device', 'isAnonymized', b'isAnonymized', 'server', b'server', 'user', b'user', 'userGeocode', b'userGeocode']) -> None:
         ...
 global___JID = JID
 

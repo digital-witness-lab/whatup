@@ -4,6 +4,7 @@ click
 types_protobuf
 
 packaging
+aioconsole
 
 # databasebot
 dataset
