@@ -69,6 +69,7 @@ class WhatUpCoreStub(object):
         self.GetGroupInfo = channel.unary_unary('/protos.WhatUpCore/GetGroupInfo', request_serializer=whatupcore__pb2.JID.SerializeToString, response_deserializer=whatupcore__pb2.GroupInfo.FromString)
         self.GetGroupInfoInvite = channel.unary_unary('/protos.WhatUpCore/GetGroupInfoInvite', request_serializer=whatupcore__pb2.InviteCode.SerializeToString, response_deserializer=whatupcore__pb2.GroupInfo.FromString)
         self.JoinGroup = channel.unary_unary('/protos.WhatUpCore/JoinGroup', request_serializer=whatupcore__pb2.InviteCode.SerializeToString, response_deserializer=whatupcore__pb2.GroupInfo.FromString)
+        self.ListGroups = channel.unary_stream('/protos.WhatUpCore/ListGroups', request_serializer=whatupcore__pb2.ListGroupsOptions.SerializeToString, response_deserializer=whatupcore__pb2.GroupInfo.FromString)
         self.GetMessages = channel.unary_stream('/protos.WhatUpCore/GetMessages', request_serializer=whatupcore__pb2.MessagesOptions.SerializeToString, response_deserializer=whatupcore__pb2.WUMessage.FromString)
         self.GetPendingHistory = channel.unary_stream('/protos.WhatUpCore/GetPendingHistory', request_serializer=whatupcore__pb2.PendingHistoryOptions.SerializeToString, response_deserializer=whatupcore__pb2.WUMessage.FromString)
         self.DownloadMedia = channel.unary_unary('/protos.WhatUpCore/DownloadMedia', request_serializer=whatupcore__pb2.DownloadMediaOptions.SerializeToString, response_deserializer=whatupcore__pb2.MediaContent.FromString)
@@ -97,6 +98,12 @@ class WhatUpCoreServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def JoinGroup(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListGroups(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -134,7 +141,7 @@ class WhatUpCoreServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 def add_WhatUpCoreServicer_to_server(servicer, server):
-    rpc_method_handlers = {'GetConnectionStatus': grpc.unary_unary_rpc_method_handler(servicer.GetConnectionStatus, request_deserializer=whatupcore__pb2.ConnectionStatusOptions.FromString, response_serializer=whatupcore__pb2.ConnectionStatus.SerializeToString), 'GetGroupInfo': grpc.unary_unary_rpc_method_handler(servicer.GetGroupInfo, request_deserializer=whatupcore__pb2.JID.FromString, response_serializer=whatupcore__pb2.GroupInfo.SerializeToString), 'GetGroupInfoInvite': grpc.unary_unary_rpc_method_handler(servicer.GetGroupInfoInvite, request_deserializer=whatupcore__pb2.InviteCode.FromString, response_serializer=whatupcore__pb2.GroupInfo.SerializeToString), 'JoinGroup': grpc.unary_unary_rpc_method_handler(servicer.JoinGroup, request_deserializer=whatupcore__pb2.InviteCode.FromString, response_serializer=whatupcore__pb2.GroupInfo.SerializeToString), 'GetMessages': grpc.unary_stream_rpc_method_handler(servicer.GetMessages, request_deserializer=whatupcore__pb2.MessagesOptions.FromString, response_serializer=whatupcore__pb2.WUMessage.SerializeToString), 'GetPendingHistory': grpc.unary_stream_rpc_method_handler(servicer.GetPendingHistory, request_deserializer=whatupcore__pb2.PendingHistoryOptions.FromString, response_serializer=whatupcore__pb2.WUMessage.SerializeToString), 'DownloadMedia': grpc.unary_unary_rpc_method_handler(servicer.DownloadMedia, request_deserializer=whatupcore__pb2.DownloadMediaOptions.FromString, response_serializer=whatupcore__pb2.MediaContent.SerializeToString), 'SendMessage': grpc.unary_unary_rpc_method_handler(servicer.SendMessage, request_deserializer=whatupcore__pb2.SendMessageOptions.FromString, response_serializer=whatupcore__pb2.SendMessageReceipt.SerializeToString), 'SetDisappearingMessageTime': grpc.unary_unary_rpc_method_handler(servicer.SetDisappearingMessageTime, request_deserializer=whatupcore__pb2.DisappearingMessageOptions.FromString, response_serializer=whatupcore__pb2.DisappearingMessageResponse.SerializeToString)}
+    rpc_method_handlers = {'GetConnectionStatus': grpc.unary_unary_rpc_method_handler(servicer.GetConnectionStatus, request_deserializer=whatupcore__pb2.ConnectionStatusOptions.FromString, response_serializer=whatupcore__pb2.ConnectionStatus.SerializeToString), 'GetGroupInfo': grpc.unary_unary_rpc_method_handler(servicer.GetGroupInfo, request_deserializer=whatupcore__pb2.JID.FromString, response_serializer=whatupcore__pb2.GroupInfo.SerializeToString), 'GetGroupInfoInvite': grpc.unary_unary_rpc_method_handler(servicer.GetGroupInfoInvite, request_deserializer=whatupcore__pb2.InviteCode.FromString, response_serializer=whatupcore__pb2.GroupInfo.SerializeToString), 'JoinGroup': grpc.unary_unary_rpc_method_handler(servicer.JoinGroup, request_deserializer=whatupcore__pb2.InviteCode.FromString, response_serializer=whatupcore__pb2.GroupInfo.SerializeToString), 'ListGroups': grpc.unary_stream_rpc_method_handler(servicer.ListGroups, request_deserializer=whatupcore__pb2.ListGroupsOptions.FromString, response_serializer=whatupcore__pb2.GroupInfo.SerializeToString), 'GetMessages': grpc.unary_stream_rpc_method_handler(servicer.GetMessages, request_deserializer=whatupcore__pb2.MessagesOptions.FromString, response_serializer=whatupcore__pb2.WUMessage.SerializeToString), 'GetPendingHistory': grpc.unary_stream_rpc_method_handler(servicer.GetPendingHistory, request_deserializer=whatupcore__pb2.PendingHistoryOptions.FromString, response_serializer=whatupcore__pb2.WUMessage.SerializeToString), 'DownloadMedia': grpc.unary_unary_rpc_method_handler(servicer.DownloadMedia, request_deserializer=whatupcore__pb2.DownloadMediaOptions.FromString, response_serializer=whatupcore__pb2.MediaContent.SerializeToString), 'SendMessage': grpc.unary_unary_rpc_method_handler(servicer.SendMessage, request_deserializer=whatupcore__pb2.SendMessageOptions.FromString, response_serializer=whatupcore__pb2.SendMessageReceipt.SerializeToString), 'SetDisappearingMessageTime': grpc.unary_unary_rpc_method_handler(servicer.SetDisappearingMessageTime, request_deserializer=whatupcore__pb2.DisappearingMessageOptions.FromString, response_serializer=whatupcore__pb2.DisappearingMessageResponse.SerializeToString)}
     generic_handler = grpc.method_handlers_generic_handler('protos.WhatUpCore', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
@@ -156,6 +163,10 @@ class WhatUpCore(object):
     @staticmethod
     def JoinGroup(request, target, options=(), channel_credentials=None, call_credentials=None, insecure=False, compression=None, wait_for_ready=None, timeout=None, metadata=None):
         return grpc.experimental.unary_unary(request, target, '/protos.WhatUpCore/JoinGroup', whatupcore__pb2.InviteCode.SerializeToString, whatupcore__pb2.GroupInfo.FromString, options, channel_credentials, insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ListGroups(request, target, options=(), channel_credentials=None, call_credentials=None, insecure=False, compression=None, wait_for_ready=None, timeout=None, metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/protos.WhatUpCore/ListGroups', whatupcore__pb2.ListGroupsOptions.SerializeToString, whatupcore__pb2.GroupInfo.FromString, options, channel_credentials, insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def GetMessages(request, target, options=(), channel_credentials=None, call_credentials=None, insecure=False, compression=None, wait_for_ready=None, timeout=None, metadata=None):

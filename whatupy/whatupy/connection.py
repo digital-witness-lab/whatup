@@ -40,6 +40,7 @@ def create_whatupcore_clients(host: str, port: int, cert_path: Path):
 
 class WhatUpAuthentication:
     def __init__(self, auth_client: T.Optional[WhatUpCoreAuthStub] = None):
+        self.username: T.Optional[str] = None
         self.auth_client: T.Optional[WhatUpCoreAuthStub] = auth_client
         self.session_token: T.Optional[wuc.SessionToken] = None
         self.logger = logger.getChild("GRPCAuthentication")
@@ -59,6 +60,7 @@ class WhatUpAuthentication:
         credentials = wuc.WUCredentials(username=username, passphrase=passphrase)
         session = await self.auth_client.Login(credentials)
         self.session_token = session
+        self.username = username
 
     async def register(self, username: str, passphrase: str) -> T.AsyncIterator[str]:
         if not self.auth_client:

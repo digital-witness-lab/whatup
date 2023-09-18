@@ -266,6 +266,27 @@ func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context, inviteCode *pb.
 	return GroupInfoToProto(groupInfo, session.Client.Store), nil
 }
 
+func (s *WhatUpCoreServer) ListGroups(listGroupOptions *pb.ListGroupsOptions, server pb.WhatUpCore_ListGroupsServer) error {
+	ctx := server.Context()
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+    joinedGroups, err := session.Client.GetJoinedGroups()
+    if err != nil {
+        return status.Errorf(codes.Unknown, "%v", err)
+    }
+
+    for _, groupInfo := range joinedGroups {
+        groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+	    if err := server.Send(groupInfoProto); err != nil {
+			return nil
+		}
+    }
+    return nil
+}
+
 func (s *WhatUpCoreServer) JoinGroup(ctx context.Context, inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
 	session, ok := ctx.Value("session").(*Session)
 	if !ok {

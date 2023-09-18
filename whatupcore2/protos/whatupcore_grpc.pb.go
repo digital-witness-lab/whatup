@@ -215,6 +215,7 @@ const (
 	WhatUpCore_GetGroupInfo_FullMethodName               = "/protos.WhatUpCore/GetGroupInfo"
 	WhatUpCore_GetGroupInfoInvite_FullMethodName         = "/protos.WhatUpCore/GetGroupInfoInvite"
 	WhatUpCore_JoinGroup_FullMethodName                  = "/protos.WhatUpCore/JoinGroup"
+	WhatUpCore_ListGroups_FullMethodName                 = "/protos.WhatUpCore/ListGroups"
 	WhatUpCore_GetMessages_FullMethodName                = "/protos.WhatUpCore/GetMessages"
 	WhatUpCore_GetPendingHistory_FullMethodName          = "/protos.WhatUpCore/GetPendingHistory"
 	WhatUpCore_DownloadMedia_FullMethodName              = "/protos.WhatUpCore/DownloadMedia"
@@ -230,6 +231,7 @@ type WhatUpCoreClient interface {
 	GetGroupInfo(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupInfo, error)
 	GetGroupInfoInvite(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error)
 	JoinGroup(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error)
+	ListGroups(ctx context.Context, in *ListGroupsOptions, opts ...grpc.CallOption) (WhatUpCore_ListGroupsClient, error)
 	GetMessages(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetMessagesClient, error)
 	GetPendingHistory(ctx context.Context, in *PendingHistoryOptions, opts ...grpc.CallOption) (WhatUpCore_GetPendingHistoryClient, error)
 	// DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
@@ -282,8 +284,40 @@ func (c *whatUpCoreClient) JoinGroup(ctx context.Context, in *InviteCode, opts .
 	return out, nil
 }
 
+func (c *whatUpCoreClient) ListGroups(ctx context.Context, in *ListGroupsOptions, opts ...grpc.CallOption) (WhatUpCore_ListGroupsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[0], WhatUpCore_ListGroups_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &whatUpCoreListGroupsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type WhatUpCore_ListGroupsClient interface {
+	Recv() (*GroupInfo, error)
+	grpc.ClientStream
+}
+
+type whatUpCoreListGroupsClient struct {
+	grpc.ClientStream
+}
+
+func (x *whatUpCoreListGroupsClient) Recv() (*GroupInfo, error) {
+	m := new(GroupInfo)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *whatUpCoreClient) GetMessages(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetMessagesClient, error) {
-	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[0], WhatUpCore_GetMessages_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[1], WhatUpCore_GetMessages_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -315,7 +349,7 @@ func (x *whatUpCoreGetMessagesClient) Recv() (*WUMessage, error) {
 }
 
 func (c *whatUpCoreClient) GetPendingHistory(ctx context.Context, in *PendingHistoryOptions, opts ...grpc.CallOption) (WhatUpCore_GetPendingHistoryClient, error) {
-	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[1], WhatUpCore_GetPendingHistory_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[2], WhatUpCore_GetPendingHistory_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -381,6 +415,7 @@ type WhatUpCoreServer interface {
 	GetGroupInfo(context.Context, *JID) (*GroupInfo, error)
 	GetGroupInfoInvite(context.Context, *InviteCode) (*GroupInfo, error)
 	JoinGroup(context.Context, *InviteCode) (*GroupInfo, error)
+	ListGroups(*ListGroupsOptions, WhatUpCore_ListGroupsServer) error
 	GetMessages(*MessagesOptions, WhatUpCore_GetMessagesServer) error
 	GetPendingHistory(*PendingHistoryOptions, WhatUpCore_GetPendingHistoryServer) error
 	// DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
@@ -405,6 +440,9 @@ func (UnimplementedWhatUpCoreServer) GetGroupInfoInvite(context.Context, *Invite
 }
 func (UnimplementedWhatUpCoreServer) JoinGroup(context.Context, *InviteCode) (*GroupInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method JoinGroup not implemented")
+}
+func (UnimplementedWhatUpCoreServer) ListGroups(*ListGroupsOptions, WhatUpCore_ListGroupsServer) error {
+	return status.Errorf(codes.Unimplemented, "method ListGroups not implemented")
 }
 func (UnimplementedWhatUpCoreServer) GetMessages(*MessagesOptions, WhatUpCore_GetMessagesServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetMessages not implemented")
@@ -504,6 +542,27 @@ func _WhatUpCore_JoinGroup_Handler(srv interface{}, ctx context.Context, dec fun
 		return srv.(WhatUpCoreServer).JoinGroup(ctx, req.(*InviteCode))
 	}
 	return interceptor(ctx, in, info, handler)
+}
+
+func _WhatUpCore_ListGroups_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ListGroupsOptions)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(WhatUpCoreServer).ListGroups(m, &whatUpCoreListGroupsServer{stream})
+}
+
+type WhatUpCore_ListGroupsServer interface {
+	Send(*GroupInfo) error
+	grpc.ServerStream
+}
+
+type whatUpCoreListGroupsServer struct {
+	grpc.ServerStream
+}
+
+func (x *whatUpCoreListGroupsServer) Send(m *GroupInfo) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _WhatUpCore_GetMessages_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -639,6 +698,11 @@ var WhatUpCore_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "ListGroups",
+			Handler:       _WhatUpCore_ListGroups_Handler,
+			ServerStreams: true,
+		},
 		{
 			StreamName:    "GetMessages",
 			Handler:       _WhatUpCore_GetMessages_Handler,
