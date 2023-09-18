@@ -10,6 +10,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/mdp/qrterminal/v3 v3.1.1
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/nyaruka/phonenumbers v1.1.8
 	github.com/spf13/cobra v1.7.0
 	go.mau.fi/whatsmeow v0.0.0-20230731181932-ca4054bed975
 	golang.org/x/term v0.10.0
@@ -22,7 +23,6 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/nyaruka/phonenumbers v1.1.8 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.mau.fi/libsignal v0.1.0 // indirect
 	golang.org/x/crypto v0.11.0 // indirect
