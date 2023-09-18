@@ -7,13 +7,12 @@ import (
 )
 
 func UserToCountry(user string) string {
-    num, err := phonenumbers.Parse("+" + user, "")
-    if err != nil {
-        return ""
-    }
-    return phonenumbers.GetRegionCodeForNumber(num)
+	num, err := phonenumbers.Parse("+"+user, "")
+	if err != nil {
+		return ""
+	}
+	return phonenumbers.GetRegionCodeForNumber(num)
 }
-
 
 func valuesFilterZero(values []reflect.Value) []reflect.Value {
 	filtered := make([]reflect.Value, 0, len(values))
@@ -46,13 +45,13 @@ func valueToBytes(value reflect.Value) (result []byte) {
 	for value.Kind() == reflect.Ptr {
 		value = value.Elem()
 	}
-    defer func() {
-        if p := recover(); p != nil {
-            result = []byte{}
-        }
-    }()
+	defer func() {
+		if p := recover(); p != nil {
+			result = []byte{}
+		}
+	}()
 	return value.Bytes()
-	
+
 }
 
 func valuesToStrings(values []reflect.Value) []string {
@@ -76,18 +75,18 @@ func findRunAction(v interface{}, action func(reflect.Value) []reflect.Value) []
 			output = append(output, action(v)...)
 			v = v.Elem()
 		}
-        switch v.Kind() {
-        case reflect.Struct:
-		    output = append(output, action(v)...)
-		    for i := 0; i < v.NumField(); i++ {
-		    	queue = append(queue, v.Field(i))
-		    }
-        case reflect.Slice, reflect.Array:
-		    output = append(output, action(v)...)
-		    for i := 0; i < v.Len(); i++ {
-		    	queue = append(queue, v.Index(i))
-		    }
-        }
+		switch v.Kind() {
+		case reflect.Struct:
+			output = append(output, action(v)...)
+			for i := 0; i < v.NumField(); i++ {
+				queue = append(queue, v.Field(i))
+			}
+		case reflect.Slice, reflect.Array:
+			output = append(output, action(v)...)
+			for i := 0; i < v.Len(); i++ {
+				queue = append(queue, v.Index(i))
+			}
+		}
 	}
 	return output
 }

@@ -42,7 +42,6 @@ func NewMessageFromWhatsMeow(client *WhatsAppClient, m *events.Message) (*Messag
 	}, nil
 }
 
-
 func (msg *Message) MarkRead() error {
 	now := time.Now()
 	msg.log.Debugf("Marking message as read")
@@ -250,7 +249,7 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 		inReferenceToId, _ = msg.getReferenceMessageId(extMessage)
 	}
 
-    protoMsg := &pb.WUMessage{
+	protoMsg := &pb.WUMessage{
 		Content: &pb.MessageContent{
 			Title:           msg.MessageTitle(),
 			Text:            msg.MessageText(),
@@ -278,5 +277,5 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 		},
 		OriginalMessage: msg.MessageEvent.Message,
 	}
-    return protoMsg, true
+	return protoMsg, true
 }
