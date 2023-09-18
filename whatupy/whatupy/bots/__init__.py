@@ -8,7 +8,7 @@ from .basebot import (
     MediaType,
 )
 from .archivebot import ArchiveBot
-from .chatbot import ChatBot
+from .chatbot2 import ChatBot2
 from .databasebot import DatabaseBot
 from .onboardbot import OnboardBot
 

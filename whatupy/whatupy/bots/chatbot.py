@@ -8,7 +8,6 @@ from . import BaseBot
 
 logger = logging.getLogger(__name__)
 
-
 class ChatBot(BaseBot):
     def __init__(
         self,
@@ -34,7 +33,7 @@ class ChatBot(BaseBot):
             await asyncio.sleep(5)
             await self.send_message(friend, {"text": self.generate_message()})
 
-    def generate_message(self) -> str:
+    def generate_message(self) -> str: # copied to new
         n_words = random.randint(1, 20)
         return " ".join(utils.random_words(n_words))
 
