@@ -3,7 +3,6 @@ package whatupcore2
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
@@ -42,6 +41,7 @@ func NewMessageFromWhatsMeow(client *WhatsAppClient, m *events.Message) (*Messag
 		MessageEvent: m,
 	}, nil
 }
+
 
 func (msg *Message) MarkRead() error {
 	now := time.Now()
@@ -239,8 +239,6 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 		inReferenceToId string
 	)
 
-    text := msg.MessageText()
-
 	extMessage := msg.GetExtendedMessage()
 	if extMessage != nil {
 		forwardedScore, isForwarded = msg.getForwardedScore(extMessage)
@@ -250,27 +248,12 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 		}
 		mediaMessage = msg.downloadableMessageToMediaMessage(extMessage)
 		inReferenceToId, _ = msg.getReferenceMessageId(extMessage)
-
-        if extText, ok := extMessage.(*waProto.ExtendedTextMessage); ok {
-            if mentionedJids := extText.GetContextInfo().GetMentionedJid(); mentionedJids != nil {
-                newMentioned := make([]string, len(mentionedJids))
-                for i, jid := range mentionedJids {
-                    if user, rest, found := strings.Cut(jid, "@"); found {
-                        anonUser := anonymizeString(user)
-                        text = strings.ReplaceAll(text, user, anonUser)
-                        newMentioned[i] = anonUser + rest
-                    }
-                }
-                extText.Text = &text
-                extText.ContextInfo.MentionedJid = newMentioned
-            }
-        }
 	}
 
-	return &pb.WUMessage{
+    protoMsg := &pb.WUMessage{
 		Content: &pb.MessageContent{
 			Title:           msg.MessageTitle(),
-			Text:            text,
+			Text:            msg.MessageText(),
 			Link:            msg.GetLink(),
 			Thumbnail:       thumbnail,
 			MediaMessage:    mediaMessage,
@@ -294,5 +277,6 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			"whatupcore__timestamp": time.Now().Format(time.RFC3339),
 		},
 		OriginalMessage: msg.MessageEvent.Message,
-	}, true
+	}
+    return redactWUMessage(protoMsg), true
 }
