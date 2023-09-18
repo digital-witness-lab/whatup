@@ -27,7 +27,7 @@ func MessageInfoToProto(info types.MessageInfo, device *store.Device) *pb.Messag
 		Source:    MessageSourceToProto(info.MessageSource, device),
 		Timestamp: timestamppb.New(info.Timestamp),
 		Id:        info.ID,
-		PushName:  anonymizeString(info.PushName),
+		PushName:  info.PushName,
 		Type:      info.Type,
 		Category:  info.Category,
 		Multicast: info.Multicast,
@@ -71,22 +71,12 @@ func ProtoToMessageSource(ms *pb.MessageSource) types.MessageSource {
 
 
 func JIDToProto(JID types.JID) *pb.JID {
-    user := JID.User
-    isAnonymized := false
-    userGeocode := ""
-    if JID.Server == types.DefaultUserServer || JID.Server == types.LegacyUserServer {
-        user = anonymizeString(JID.User)
-        isAnonymized = true
-        userGeocode = UserToCountry(JID.User)
-    }
 	return &pb.JID{
-		User:   user,
+		User:   JID.User,
 		Agent:  uint32(JID.Agent),
 		Device: uint32(JID.Device),
 		Server: JID.Server,
 		Ad:     JID.AD,
-        IsAnonymized: isAnonymized,
-        UserGeocode: userGeocode,
 	}
 }
 
@@ -105,9 +95,9 @@ func ContactToProto(contact *types.ContactInfo) *pb.Contact {
 		return nil
 	}
 	return &pb.Contact{
-		FirstName:    anonymizeString(contact.FirstName),
-		FullName:     anonymizeString(contact.FullName),
-		PushName:     anonymizeString(contact.PushName),
+		FirstName:    contact.FirstName,
+		FullName:     contact.FullName,
+		PushName:     contact.PushName,
 		BusinessName: contact.BusinessName,
 	}
 }

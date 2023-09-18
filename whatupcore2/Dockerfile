@@ -18,9 +18,14 @@ COPY protos/ ./
 
 RUN go mod download
 
-COPY . .
-RUN make whatupcore2
+ENV GOCACHE /usr/local/cache/go-build-cache/
+ENV GOMODCACHE /usr/local/cache/go-mod-cache/
 
+COPY . .
+RUN \
+    --mount=type=cache,target=/usr/local/cache/go-build-cache/ \
+    --mount=type=cache,target=/usr/local/cache/go-mod-cache/ \
+    make whatupcore2
 
 FROM gcr.io/distroless/base-debian11:debug AS run
 WORKDIR /

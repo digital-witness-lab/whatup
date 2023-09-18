@@ -278,5 +278,5 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 		},
 		OriginalMessage: msg.MessageEvent.Message,
 	}
-    return redactWUMessage(protoMsg), true
+    return protoMsg, true
 }
