@@ -76,13 +76,18 @@ func findRunAction(v interface{}, action func(reflect.Value) []reflect.Value) []
 			output = append(output, action(v)...)
 			v = v.Elem()
 		}
-		if v.Kind() != reflect.Struct {
-			continue
-		}
-		output = append(output, action(v)...)
-		for i := 0; i < v.NumField(); i++ {
-			queue = append(queue, v.Field(i))
-		}
+        switch v.Kind() {
+        case reflect.Struct:
+		    output = append(output, action(v)...)
+		    for i := 0; i < v.NumField(); i++ {
+		    	queue = append(queue, v.Field(i))
+		    }
+        case reflect.Slice, reflect.Array:
+		    output = append(output, action(v)...)
+		    for i := 0; i < v.Len(); i++ {
+		    	queue = append(queue, v.Index(i))
+		    }
+        }
 	}
 	return output
 }

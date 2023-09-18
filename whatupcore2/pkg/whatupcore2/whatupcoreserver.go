@@ -185,7 +185,7 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		msgProto, ok := msg.ToProto()
 		if !ok {
 			msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
-		} else if err := server.Send(msgProto); err != nil {
+		} else if err := server.Send(RedactInterface(msgProto)); err != nil {
 			s.log.Errorf("Could not send message to client: %v", err)
 			return nil
 		}
@@ -251,7 +251,8 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, "%v", err)
 	}
-	return GroupInfoToProto(groupInfo, session.Client.Store), nil
+    groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+	return RedactInterface(groupInfoProto), nil
 }
 
 func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context, inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
