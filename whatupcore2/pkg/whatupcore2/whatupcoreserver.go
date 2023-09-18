@@ -251,7 +251,7 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, "%v", err)
 	}
-    groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+	groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
 	return RedactInterface(groupInfoProto), nil
 }
 

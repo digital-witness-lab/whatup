@@ -51,7 +51,7 @@ func MessageSourceToProto(source types.MessageSource, device *store.Device) *pb.
 	return &pb.MessageSource{
 		Chat:               JIDToProto(source.Chat),
 		Sender:             JIDToProto(source.Sender),
-        Reciever:           JIDToProto(*device.ID),
+		Reciever:           JIDToProto(*device.ID),
 		SenderContact:      ContactToProto(&contact),
 		BroadcastListOwner: JIDToProto(source.BroadcastListOwner),
 		IsFromMe:           source.IsFromMe,
@@ -68,7 +68,6 @@ func ProtoToMessageSource(ms *pb.MessageSource) types.MessageSource {
 		IsGroup:            ms.IsGroup,
 	}
 }
-
 
 func JIDToProto(JID types.JID) *pb.JID {
 	return &pb.JID{
