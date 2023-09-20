@@ -148,8 +148,9 @@ class BaseBot:
             messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetMessages(
                 wuc.MessagesOptions(markMessagesRead=self.mark_messages_read)
             )
-            async for message in messages:
-                await self._dispatch_message(message)
+            async with asyncio.TaskGroup() as tg:
+                async for message in messages:
+                    tg.create_task(self._dispatch_message(message))
 
     async def _dispatch_message(
         self,

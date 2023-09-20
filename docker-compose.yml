@@ -111,5 +111,5 @@ services:
       - ssl-cert
     profiles:
       - donotstart
-    entrypoint: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot # add friends
+    entrypoint: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot
 
