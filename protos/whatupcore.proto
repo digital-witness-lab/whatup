@@ -177,6 +177,8 @@ message ConnectionStatus {
     bool isConnected = 1;
     bool isLoggedIn = 2;
     google.protobuf.Timestamp timestamp = 3;
+
+    JID JID = 20;
 }
 
 message WUMessage {
