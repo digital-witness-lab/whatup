@@ -8,8 +8,7 @@ from ..protos import whatupcore_pb2 as wuc
 from . import BaseBot
 
 logger = logging.getLogger(__name__)
-
-# do not mark messages as read
+CHATBOT_FRIEND_JIDS: T.List[wuc.JID] = []
 
 class ChatBot(BaseBot):
     __version__ = "1.0.0"
@@ -18,43 +17,40 @@ class ChatBot(BaseBot):
         self,
         response_time: float = 60,
         response_time_sigma: float = 15,
-        friends: T.List[str] = [], # by name? Alice, Bob, etc? JIDs. 
-        # specify the session files.
-        # a running chatbot sees all the other friends
-        # control groups 
         *args,
         **kwargs,
     ):
         self.response_time = response_time
         self.response_time_sigma = response_time_sigma
         self.pending_messages: T.Dict[str, int] = {} 
-        self.friends = friends
+        self.JID = wuc.ConnectionStatus.JID
         super().__init__(*args, **kwargs)
+        CHATBOT_FRIEND_JIDS.append(self.JID)
         self.message_friends()
 
     async def initiate_friend_chats(self, *args, **kwargs):
         self.logger.info("Greeting friends")
-        for friend in self.friends:
+        for friend in CHATBOT_FRIEND_JIDS:
+            if friend == self.JID: continue
             self.logger.info(f"Saying hello to: {friend}")
-            await asyncio.sleep(5)
-            # get JIDs for friends - or will we give them directly? 
+            await asyncio.sleep(5) # this isn't really necessary?
             await self.send_text_message(friend, {"text": self.generate_message()}) 
 
     async def on_message(self, message: wuc.WUMessage):
         if message.info.source.isFromMe or message.info.source.isGroup:
             return
     
-        chat_id = utils.jid_to_str(message.info.source.chat)
-        if chat_id is None:
-            self.logger.critical("Message has no chat_id")
+        chat_JID = message.info.source.chat
+        if chat_JID is None:
+            self.logger.critical("Message has no chat_JID")
             return
-        if chat_id not in self.friends:
+        if chat_JID not in CHATBOT_FRIEND_JIDS:
             return
 
-        if n_pending := self.pending_messages.get(chat_id):
+        if n_pending := self.pending_messages.get(chat_JID):
             if random.random() > 1 / n_pending:
                 self.logger.info(
-                    f"Not responding to this message because there are too many queued for chat {chat_id}: {n_pending}"
+                    f"Not responding to this message because there are too many queued for chat {chat_JID}: {n_pending}"
                 )
                 return
         
@@ -62,18 +58,21 @@ class ChatBot(BaseBot):
         wait_time = max(
             1.0, random.normalvariate(self.response_time, self.response_time_sigma)
         )
-        self.logger.info(f"Sending message in {wait_time}seconds: {chat_id}: {response}")
+        self.logger.info(f"Sending message in {wait_time}seconds: {chat_JID}: {response}")
 
-        self.pending_messages.setdefault(chat_id, 0)
-        self.pending_messages[chat_id] += 1
+        self.pending_messages.setdefault(chat_JID, 0)
+        self.pending_messages[chat_JID] += 1
         await asyncio.sleep(wait_time)
-        self.pending_messages[chat_id] -= 1
+        self.pending_messages[chat_JID] -= 1
 
-        status = await self.send_text_message(chat_id, {"text": response})
+        status = await self.send_text_message(chat_JID, {"text": response})
         self.logger.info(f"Send status: {status}")
-        # any guarantee that this will never end? 
         return
 
     def generate_message(self) -> str:
         n_words = random.randint(1, 20)
         return " ".join(utils.random_words(n_words))
+    
+    def stop(self):
+        CHATBOT_FRIEND_JIDS.remove(self.JID)
+        self.stop()
