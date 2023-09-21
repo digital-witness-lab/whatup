@@ -1,0 +1,62 @@
+package whatupcore2
+
+import (
+	"fmt"
+	"os"
+
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
+
+	"github.com/digital-witness-lab/whatup/whatupcore2/pkg/whatupcore2"
+	"github.com/spf13/cobra"
+)
+
+var (
+	MessageTypeString      string
+	whatsUpRedactCmd = &cobra.Command{
+		Aliases: []string{"r"},
+        Use: "redact [filename]",
+		Short:   "redact JSON files containing WhatUpCore Proto Messages",
+		Long:    "",
+		Args:    cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+            filename := args[0]
+            data, err := os.ReadFile(filename)
+            if err != nil {
+                fmt.Fprintf(os.Stderr, "Could not read file: %s: %s\n", filename, err)
+                return
+            }
+
+            messageTypeAbs := fmt.Sprintf("protos.%s", MessageTypeString)
+            fullName := protoreflect.FullName(messageTypeAbs)
+            t, err := protoregistry.GlobalTypes.FindMessageByName(fullName)
+            if err != nil {
+                fmt.Fprintf(os.Stderr, "Could not find reference to message type: %s: %s: %s\n", MessageTypeString, fullName, err)
+                return
+            }
+
+            message := t.New().Interface()
+            err = protojson.Unmarshal(data, message)
+            if err != nil {
+                fmt.Fprintf(os.Stderr, "Could not parse json file: %s: %s: %s\n", filename, messageTypeAbs, err)
+                return
+            }
+
+            messageRedacted := whatupcore2.RedactInterface(message)
+            messageRedactedBytes, err := protojson.Marshal(messageRedacted)
+            if err != nil {
+                fmt.Fprintf(os.Stderr, "Could not marshal redacted message to json: %s\n", err)
+                return
+            }
+
+            fmt.Print(string(messageRedactedBytes))
+		},
+	}
+)
+
+func init() {
+	whatsUpRedactCmd.Flags().StringVarP(&MessageTypeString, "message-type", "m", "WUMessage", "Type of Message. See whatupcore.proto for available message types.")
+	rootCmd.AddCommand(whatsUpRedactCmd)
+}
+
