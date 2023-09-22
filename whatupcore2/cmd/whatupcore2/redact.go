@@ -14,61 +14,61 @@ import (
 )
 
 var (
-	MessageTypeString      string
-	whatsUpRedactCmd = &cobra.Command{
+	MessageTypeString string
+	whatsUpRedactCmd  = &cobra.Command{
 		Aliases: []string{"r"},
-        Use: "redact [filename]",
+		Use:     "redact [filename]",
 		Short:   "redact JSON files containing WhatUpCore Proto Messages",
-        Long: "filename can either be a valid file or - for stdin",
+		Long:    "filename can either be a valid file or - for stdin",
 		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-            filename := args[0]
+			filename := args[0]
 
-            var data []byte
-            var err error
+			var data []byte
+			var err error
 
-            if filename == "-" {
-                data, err = io.ReadAll(os.Stdin)
-                if err != nil {
-                    fmt.Fprintf(os.Stderr, "Could not from STDIN: %s\n", err)
-                    os.Exit(128)
-                    return
-                }
-            } else {
-                data, err = os.ReadFile(filename)
-                if err != nil {
-                    fmt.Fprintf(os.Stderr, "Could not read file: %s: %s\n", filename, err)
-                    os.Exit(128)
-                    return
-                }
-            }
+			if filename == "-" {
+				data, err = io.ReadAll(os.Stdin)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Could not from STDIN: %s\n", err)
+					os.Exit(128)
+					return
+				}
+			} else {
+				data, err = os.ReadFile(filename)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Could not read file: %s: %s\n", filename, err)
+					os.Exit(128)
+					return
+				}
+			}
 
-            messageTypeAbs := fmt.Sprintf("protos.%s", MessageTypeString)
-            fullName := protoreflect.FullName(messageTypeAbs)
-            t, err := protoregistry.GlobalTypes.FindMessageByName(fullName)
-            if err != nil {
-                fmt.Fprintf(os.Stderr, "Could not find reference to message type: %s: %s: %s\n", MessageTypeString, fullName, err)
-                os.Exit(128)
-                return
-            }
+			messageTypeAbs := fmt.Sprintf("protos.%s", MessageTypeString)
+			fullName := protoreflect.FullName(messageTypeAbs)
+			t, err := protoregistry.GlobalTypes.FindMessageByName(fullName)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not find reference to message type: %s: %s: %s\n", MessageTypeString, fullName, err)
+				os.Exit(128)
+				return
+			}
 
-            message := t.New().Interface()
-            err = protojson.Unmarshal(data, message)
-            if err != nil {
-                fmt.Fprintf(os.Stderr, "Could not parse json file: %s: %s: %s\n", filename, messageTypeAbs, err)
-                os.Exit(128)
-                return
-            }
+			message := t.New().Interface()
+			err = protojson.Unmarshal(data, message)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not parse json file: %s: %s: %s\n", filename, messageTypeAbs, err)
+				os.Exit(128)
+				return
+			}
 
-            messageRedacted := whatupcore2.RedactInterface(message)
-            messageRedactedBytes, err := protojson.Marshal(messageRedacted)
-            if err != nil {
-                fmt.Fprintf(os.Stderr, "Could not marshal redacted message to json: %s\n", err)
-                os.Exit(128)
-                return
-            }
+			messageRedacted := whatupcore2.RedactInterface(message)
+			messageRedactedBytes, err := protojson.Marshal(messageRedacted)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not marshal redacted message to json: %s\n", err)
+				os.Exit(128)
+				return
+			}
 
-            fmt.Print(string(messageRedactedBytes))
+			fmt.Print(string(messageRedactedBytes))
 		},
 	}
 )
@@ -77,4 +77,3 @@ func init() {
 	whatsUpRedactCmd.Flags().StringVarP(&MessageTypeString, "message-type", "m", "WUMessage", "Type of Message. See whatupcore.proto for available message types.")
 	rootCmd.AddCommand(whatsUpRedactCmd)
 }
-

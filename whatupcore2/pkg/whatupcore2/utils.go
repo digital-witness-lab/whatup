@@ -68,7 +68,7 @@ func valuesToStrings(values []reflect.Value) []string {
 func findRunAction(v interface{}, action func(reflect.Value) []reflect.Value) []reflect.Value {
 	output := []reflect.Value{}
 	queue := []reflect.Value{reflect.ValueOf(v)}
-    seenAddr := make(map[uintptr]bool)
+	seenAddr := make(map[uintptr]bool)
 	for len(queue) > 0 {
 		v := queue[0]
 		queue = queue[1:]
@@ -76,24 +76,24 @@ func findRunAction(v interface{}, action func(reflect.Value) []reflect.Value) []
 			output = append(output, action(v)...)
 			v = v.Elem()
 		}
-        if !v.IsValid() {
-            continue
-        }
-        if p := uintptr(v.UnsafeAddr()); !seenAddr[p] {
-            seenAddr[p] = true
-		    switch v.Kind() {
-		    case reflect.Struct:
-		    	output = append(output, action(v)...)
-		    	for i := 0; i < v.NumField(); i++ {
-		    		queue = append(queue, v.Field(i))
-		    	}
-		    case reflect.Slice, reflect.Array:
-		    	output = append(output, action(v)...)
-		    	for i := 0; i < v.Len(); i++ {
-		    		queue = append(queue, v.Index(i))
-		    	}
-		    }
-        }
+		if !v.IsValid() {
+			continue
+		}
+		if p := uintptr(v.UnsafeAddr()); !seenAddr[p] {
+			seenAddr[p] = true
+			switch v.Kind() {
+			case reflect.Struct:
+				output = append(output, action(v)...)
+				for i := 0; i < v.NumField(); i++ {
+					queue = append(queue, v.Field(i))
+				}
+			case reflect.Slice, reflect.Array:
+				output = append(output, action(v)...)
+				for i := 0; i < v.Len(); i++ {
+					queue = append(queue, v.Index(i))
+				}
+			}
+		}
 	}
 	return output
 }
