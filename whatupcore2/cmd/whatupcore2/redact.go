@@ -2,6 +2,7 @@ package whatupcore2
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"google.golang.org/protobuf/encoding/protojson"
@@ -18,14 +19,28 @@ var (
 		Aliases: []string{"r"},
         Use: "redact [filename]",
 		Short:   "redact JSON files containing WhatUpCore Proto Messages",
-		Long:    "",
+        Long: "filename can either be a valid file or - for stdin",
 		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
             filename := args[0]
-            data, err := os.ReadFile(filename)
-            if err != nil {
-                fmt.Fprintf(os.Stderr, "Could not read file: %s: %s\n", filename, err)
-                return
+
+            var data []byte
+            var err error
+
+            if filename == "-" {
+                data, err = io.ReadAll(os.Stdin)
+                if err != nil {
+                    fmt.Fprintf(os.Stderr, "Could not from STDIN: %s\n", err)
+                    os.Exit(128)
+                    return
+                }
+            } else {
+                data, err = os.ReadFile(filename)
+                if err != nil {
+                    fmt.Fprintf(os.Stderr, "Could not read file: %s: %s\n", filename, err)
+                    os.Exit(128)
+                    return
+                }
             }
 
             messageTypeAbs := fmt.Sprintf("protos.%s", MessageTypeString)
@@ -33,6 +48,7 @@ var (
             t, err := protoregistry.GlobalTypes.FindMessageByName(fullName)
             if err != nil {
                 fmt.Fprintf(os.Stderr, "Could not find reference to message type: %s: %s: %s\n", MessageTypeString, fullName, err)
+                os.Exit(128)
                 return
             }
 
@@ -40,6 +56,7 @@ var (
             err = protojson.Unmarshal(data, message)
             if err != nil {
                 fmt.Fprintf(os.Stderr, "Could not parse json file: %s: %s: %s\n", filename, messageTypeAbs, err)
+                os.Exit(128)
                 return
             }
 
@@ -47,6 +64,7 @@ var (
             messageRedactedBytes, err := protojson.Marshal(messageRedacted)
             if err != nil {
                 fmt.Fprintf(os.Stderr, "Could not marshal redacted message to json: %s\n", err)
+                os.Exit(128)
                 return
             }
 

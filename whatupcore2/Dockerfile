@@ -27,7 +27,7 @@ RUN \
     --mount=type=cache,target=/usr/local/cache/go-mod-cache/ \
     make whatupcore2
 
-FROM gcr.io/distroless/base-debian11:debug AS run
+FROM gcr.io/distroless/base-debian11 AS run
 WORKDIR /
 
 COPY --from=builder /build/whatupcore2 /whatupcore2
