@@ -60,7 +60,8 @@ var (
 				return
 			}
 
-			messageRedacted := whatupcore2.RedactInterface(message)
+			anonLookup := whatupcore2.NewAnonLookupFromData(map[string]string{})
+			messageRedacted := whatupcore2.AnonymizeInterface(anonLookup, message)
 			messageRedactedBytes, err := protojson.Marshal(messageRedacted)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Could not marshal redacted message to json: %s\n", err)
