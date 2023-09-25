@@ -50,13 +50,13 @@ func (al *AnonLookup) makeReady() bool {
 	}
 	contacts, err := al.client.Store.Contacts.GetAllContacts()
 	if err != nil {
-		al.client.Log.Errorf("Could not get contacts to initialize annon lookup: %v", err)
+		al.client.Log.Errorf("Could not get contacts to initialize anon lookup: %v", err)
 		return false
 	}
 	al.lookup = make(map[string]string)
 	for jid := range contacts {
-		annonUser := anonymizeString(jid.User)
-		al.lookup[annonUser] = jid.User
+		anonUser := anonymizeString(jid.User)
+		al.lookup[anonUser] = jid.User
 	}
 	al.isReady = true
 	return true
