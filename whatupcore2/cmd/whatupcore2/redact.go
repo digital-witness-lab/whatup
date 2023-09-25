@@ -72,9 +72,21 @@ var (
 			fmt.Print(string(messageRedactedBytes))
 		},
 	}
+	whatsUpRedactStringCmd = &cobra.Command{
+		Aliases: []string{"rs"},
+		Use:     "redact-string [string]",
+		Short:   "Redacts a string",
+		Long:    "",
+		Args:    cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			clear := args[0]
+			fmt.Printf(whatupcore2.AnonymizeString(clear))
+		},
+	}
 )
 
 func init() {
 	whatsUpRedactCmd.Flags().StringVarP(&MessageTypeString, "message-type", "m", "WUMessage", "Type of Message. See whatupcore.proto for available message types.")
 	rootCmd.AddCommand(whatsUpRedactCmd)
+	rootCmd.AddCommand(whatsUpRedactStringCmd)
 }
