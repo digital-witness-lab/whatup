@@ -86,7 +86,7 @@ func (s *WhatUpCoreServer) GetConnectionStatus(ctx context.Context, credentials 
 		IsConnected: session.Client.IsConnected(),
 		IsLoggedIn:  session.Client.IsLoggedIn(),
 		Timestamp:   timestamppb.New(session.Client.LastSuccessfulConnect),
-        JID:         JIDToProto(*session.Client.Store.ID),
+		JID:         JIDToProto(*session.Client.Store.ID),
 	}, nil
 }
 

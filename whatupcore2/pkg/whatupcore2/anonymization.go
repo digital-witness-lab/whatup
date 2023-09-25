@@ -19,7 +19,7 @@ var (
 	ANONYMIZE_FIELDS = [...]string{"FullName", "FirstName", "PushName"}
 )
 
-func anonymizeString(user string) string {
+func AnonymizeString(user string) string {
 	if user == "" {
 		return ""
 	} else if strings.HasPrefix(user, "anon.") {
@@ -55,7 +55,7 @@ func (al *AnonLookup) makeReady() bool {
 	}
 	al.lookup = make(map[string]string)
 	for jid := range contacts {
-		anonUser := anonymizeString(jid.User)
+		anonUser := AnonymizeString(jid.User)
 		al.lookup[anonUser] = jid.User
 	}
 	al.isReady = true
@@ -80,7 +80,7 @@ func (al *AnonLookup) DeAnonString(anonString string) (string, bool) {
 
 func (al *AnonLookup) anonymizeJIDProto(JID *pb.JID) *pb.JID {
 	if !strings.HasPrefix(JID.User, "anon.") && (JID.Server == types.DefaultUserServer || JID.Server == types.LegacyUserServer) {
-		anonUser := anonymizeString(JID.User)
+		anonUser := AnonymizeString(JID.User)
 		al.setAnon(anonUser, JID.User)
 		JID.User = anonUser
 		JID.IsAnonymized = true
@@ -113,7 +113,7 @@ func AnonymizeInterface[T any](al *AnonLookup, object T) T {
 					newMentioned := make([]string, len(mentionedJids))
 					for i, jid := range mentionedJids {
 						if user, rest, found := strings.Cut(jid, "@"); found {
-							anonUser := anonymizeString(user)
+							anonUser := AnonymizeString(user)
 							al.setAnon(anonUser, user)
 							text = strings.ReplaceAll(text, user, anonUser)
 							newMentioned[i] = anonUser + rest
@@ -128,7 +128,7 @@ func AnonymizeInterface[T any](al *AnonLookup, object T) T {
 		if value.Kind() == reflect.Struct {
 			for _, fieldName := range ANONYMIZE_FIELDS {
 				if field := value.FieldByName(fieldName); field.IsValid() && field.CanSet() {
-					field.SetString(anonymizeString(field.String()))
+					field.SetString(AnonymizeString(field.String()))
 				}
 			}
 		}
