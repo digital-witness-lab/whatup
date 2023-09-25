@@ -23,17 +23,21 @@ class ChatBot(BaseBot):
         self.response_time = response_time
         self.response_time_sigma = response_time_sigma
         self.pending_messages: T.Dict[str, int] = {} 
-        self.JID = wuc.ConnectionStatus.JID
+        self.JID: wuc.JID = self.core_client.GetConnectionStatus(wuc.ConnectionStatusOptions()).JID
         super().__init__(*args, **kwargs)
         CHATBOT_FRIEND_JIDS.append(self.JID)
-        self.message_friends()
+
+    async def start(self, **kwargs):
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(super.start())
+            tg.create_task(self.initiate_friend_chats)
 
     async def initiate_friend_chats(self, *args, **kwargs):
         self.logger.info("Greeting friends")
         for friend in CHATBOT_FRIEND_JIDS:
             if friend == self.JID: continue
             self.logger.info(f"Saying hello to: {friend}")
-            await asyncio.sleep(5) # this isn't really necessary?
+            await asyncio.sleep(5)
             await self.send_text_message(friend, {"text": self.generate_message()}) 
 
     async def on_message(self, message: wuc.WUMessage):
