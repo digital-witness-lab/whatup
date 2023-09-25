@@ -111,5 +111,7 @@ services:
       - ssl-cert
     profiles:
       - donotstart
-    entrypoint: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot
+    volumes:
+      - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
+    entrypoint: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot /usr/src/whatupy-data/sessions/
 

@@ -114,7 +114,7 @@ def cli(ctx, debug, host, port, control_groups: list, cert: Path):
     default=15,
     help="Response time sigma (seconds)",
 )
-@click.argument("credentials", type=click.File(), nargs=-1)
+@click.argument("credentials", type=click.Path(path_type=Path), nargs=-1)
 @click.pass_context
 async def chatbot(ctx, credentials, response_time, response_time_sigma):
     """
