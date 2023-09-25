@@ -86,6 +86,8 @@ type WhatsAppClient struct {
 	historyMessagesActive bool
 	presenceHandler       uint32
 	dbPath                string
+
+	anonLookup *AnonLookup
 }
 
 func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*WhatsAppClient, error) {
@@ -120,6 +122,7 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 		dbPath:          dbPath,
 		historyMessages: make(chan *Message, 512),
 	}
+	client.anonLookup = NewAnonLookup(client)
 	client.presenceHandler = wmClient.AddEventHandler(client.setConnectPresence)
 
 	return client, nil
