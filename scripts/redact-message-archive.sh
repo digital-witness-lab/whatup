@@ -7,8 +7,9 @@
 # 
 # parallel --retry-failed --joblog ./<new-archive>/job.log
 
-redact_cmd="docker compose run -T whatup redact -"
-redact_string_cmd="docker compose run -T whatup redact-string "
+redact_cmd="./whatupcore2/whatupcore2 redact -"
+redact_string_cmd="./whatupcore2/whatupcore2 redact-string "
+
 source_archive=$1
 target_archive=$2
 message_type=
@@ -37,10 +38,12 @@ function clean-path() {
     done
 }
 
+N=$( find "$source_archive" -type f -name \*.json -or -type d -name media  | wc -l )
+
 (
 for source in $( find "$source_archive" -type f -name \*.json -or -type d -name media ) ; do
-    source_clean=$( clean-path $source )
-    target_rel=$( realpath --relative-to="$source_archive" "$source_clean" )
+    target_rel_dirty=$( realpath --relative-to="$source_archive" "$source" )
+    target_rel=$( clean-path $target_rel_dirty )
     target_parent=$target_archive/$( dirname "$target_rel" )
     target=$target_archive/$target_rel
 
@@ -49,13 +52,15 @@ for source in $( find "$source_archive" -type f -name \*.json -or -type d -name 
     elif [[ "$source" =~ $find_wumessage ]]; then
         message_type="WUMessage"
     elif [[ "$source" =~ $find_media ]]; then
-        echo -en "cp -r $source $target\0"
+        if [ ! -e $target ]; then
+            echo -en "cp -r $source $target\0"
+        fi
         continue
     else
         # This will fail and will continue to fail if retrying through parallel's joblog.
         message_type="XXXX"
     fi
     mkdir -p "${target_parent}"
-    echo -en "cat $source | $redact_cmd > $target\0"
+    echo -en "cat $source | $redact_cmd -m ${message_type} > $target\0"
 done;
-) | parallel --jobs "200%" --bar --null --joblog $target_archive/job.log
+) | parallel --jobs "200%" --null --total-jobs $N --bar --joblog $target_archive/job.log
