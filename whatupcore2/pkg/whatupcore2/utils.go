@@ -7,7 +7,7 @@ import (
 )
 
 func UserToCountry(user string) string {
-	num, err := phonenumbers.Parse("+"+user, "")
+	num, err := phonenumbers.Parse("+"+user, "IN")
 	if err != nil {
 		return ""
 	}
