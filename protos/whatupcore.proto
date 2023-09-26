@@ -171,12 +171,18 @@ message JID {
     uint32 device = 3;
     string server = 4;
     bool ad = 5;
+
+    bool isAnonymized = 20;
+
+    string userGeocode = 50;
 }
 
 message ConnectionStatus {
     bool isConnected = 1;
     bool isLoggedIn = 2;
     google.protobuf.Timestamp timestamp = 3;
+
+    JID JID = 20;
 }
 
 message WUMessage {

@@ -483,16 +483,20 @@ class JID(google.protobuf.message.Message):
     DEVICE_FIELD_NUMBER: builtins.int
     SERVER_FIELD_NUMBER: builtins.int
     AD_FIELD_NUMBER: builtins.int
+    ISANONYMIZED_FIELD_NUMBER: builtins.int
+    USERGEOCODE_FIELD_NUMBER: builtins.int
     user: builtins.str
     agent: builtins.int
     device: builtins.int
     server: builtins.str
     ad: builtins.bool
+    isAnonymized: builtins.bool
+    userGeocode: builtins.str
 
-    def __init__(self, *, user: builtins.str=..., agent: builtins.int=..., device: builtins.int=..., server: builtins.str=..., ad: builtins.bool=...) -> None:
+    def __init__(self, *, user: builtins.str=..., agent: builtins.int=..., device: builtins.int=..., server: builtins.str=..., ad: builtins.bool=..., isAnonymized: builtins.bool=..., userGeocode: builtins.str=...) -> None:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['ad', b'ad', 'agent', b'agent', 'device', b'device', 'server', b'server', 'user', b'user']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['ad', b'ad', 'agent', b'agent', 'device', b'device', 'isAnonymized', b'isAnonymized', 'server', b'server', 'user', b'user', 'userGeocode', b'userGeocode']) -> None:
         ...
 global___JID = JID
 
@@ -502,6 +506,7 @@ class ConnectionStatus(google.protobuf.message.Message):
     ISCONNECTED_FIELD_NUMBER: builtins.int
     ISLOGGEDIN_FIELD_NUMBER: builtins.int
     TIMESTAMP_FIELD_NUMBER: builtins.int
+    JID_FIELD_NUMBER: builtins.int
     isConnected: builtins.bool
     isLoggedIn: builtins.bool
 
@@ -509,13 +514,17 @@ class ConnectionStatus(google.protobuf.message.Message):
     def timestamp(self) -> google.protobuf.timestamp_pb2.Timestamp:
         ...
 
-    def __init__(self, *, isConnected: builtins.bool=..., isLoggedIn: builtins.bool=..., timestamp: google.protobuf.timestamp_pb2.Timestamp | None=...) -> None:
+    @property
+    def JID(self) -> global___JID:
         ...
 
-    def HasField(self, field_name: typing_extensions.Literal['timestamp', b'timestamp']) -> builtins.bool:
+    def __init__(self, *, isConnected: builtins.bool=..., isLoggedIn: builtins.bool=..., timestamp: google.protobuf.timestamp_pb2.Timestamp | None=..., JID: global___JID | None=...) -> None:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['isConnected', b'isConnected', 'isLoggedIn', b'isLoggedIn', 'timestamp', b'timestamp']) -> None:
+    def HasField(self, field_name: typing_extensions.Literal['JID', b'JID', 'timestamp', b'timestamp']) -> builtins.bool:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['JID', b'JID', 'isConnected', b'isConnected', 'isLoggedIn', b'isLoggedIn', 'timestamp', b'timestamp']) -> None:
         ...
 global___ConnectionStatus = ConnectionStatus
 
