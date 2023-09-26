@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
@@ -32,7 +33,7 @@ func AnonymizeString(user string) string {
 
 type AnonLookup struct {
 	client  *WhatsAppClient
-	lookup  map[string]string
+	lookup  sync.Map
 	isReady bool
 }
 
@@ -40,8 +41,8 @@ func NewAnonLookup(client *WhatsAppClient) *AnonLookup {
 	return &AnonLookup{client: client}
 }
 
-func NewAnonLookupFromData(data map[string]string) *AnonLookup {
-	return &AnonLookup{client: nil, lookup: data, isReady: true}
+func NewAnonLookupEmpty() *AnonLookup {
+	return &AnonLookup{client: nil, isReady: true}
 }
 
 func (al *AnonLookup) makeReady() bool {
@@ -53,10 +54,9 @@ func (al *AnonLookup) makeReady() bool {
 		al.client.Log.Errorf("Could not get contacts to initialize anon lookup: %v", err)
 		return false
 	}
-	al.lookup = make(map[string]string)
 	for jid := range contacts {
 		anonUser := AnonymizeString(jid.User)
-		al.lookup[anonUser] = jid.User
+		al.lookup.Store(anonUser, jid.User)
 	}
 	al.isReady = true
 	return true
@@ -66,7 +66,7 @@ func (al *AnonLookup) setAnon(anon string, clear string) bool {
 	if !al.makeReady() {
 		return false
 	}
-	al.lookup[anon] = clear
+	al.lookup.Store(anon, clear)
 	return true
 }
 
@@ -74,8 +74,8 @@ func (al *AnonLookup) DeAnonString(anonString string) (string, bool) {
 	if !al.makeReady() {
 		return "", false
 	}
-	clear, found := al.lookup[anonString]
-	return clear, found
+	clear, found := al.lookup.Load(anonString)
+	return clear.(string), found
 }
 
 func (al *AnonLookup) anonymizeJIDProto(JID *pb.JID) *pb.JID {
@@ -91,9 +91,9 @@ func (al *AnonLookup) anonymizeJIDProto(JID *pb.JID) *pb.JID {
 
 func (al *AnonLookup) deAnonymizeJIDProto(JID *pb.JID) (*pb.JID, bool) {
 	if strings.HasPrefix(JID.User, "anon.") {
-		user, found := al.lookup[JID.User]
+		user, found := al.lookup.Load(JID.User)
 		if found {
-			JID.User = user
+			JID.User = user.(string)
 			JID.IsAnonymized = false
 			return JID, true
 		}
