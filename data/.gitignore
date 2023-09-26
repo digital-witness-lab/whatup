@@ -4,3 +4,4 @@ whatupcore2
 state
 db/
 export-csv
+./*-backup
