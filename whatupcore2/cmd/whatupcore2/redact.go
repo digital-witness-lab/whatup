@@ -60,7 +60,7 @@ var (
 				return
 			}
 
-			anonLookup := whatupcore2.NewAnonLookupFromData(map[string]string{})
+			anonLookup := whatupcore2.NewAnonLookupEmpty()
 			messageRedacted := whatupcore2.AnonymizeInterface(anonLookup, message)
 			messageRedactedBytes, err := protojson.Marshal(messageRedacted)
 			if err != nil {
