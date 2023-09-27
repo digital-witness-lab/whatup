@@ -111,13 +111,16 @@ class BaseBot:
     async def start(self, **kwargs):
         self.logger.info("Starting bot for user")
         BOT_REGISTRY[self.__class__.__name__][id(self)] = self
-        async with asyncio.TaskGroup() as tg:
-            self.logger.info("Starting bot")
-            tg.create_task(self.authenticator.start())
-            tg.create_task(self.listen_messages())
-            tg.create_task(self._download_messages_background())
-            if self.read_historical_messages:
-                tg.create_task(self.listen_historical_messages())
+        try:
+            async with asyncio.TaskGroup() as tg:
+                self.logger.info("Starting bot")
+                tg.create_task(self.authenticator.start())
+                tg.create_task(self.listen_messages())
+                tg.create_task(self._download_messages_background())
+                if self.read_historical_messages:
+                    tg.create_task(self.listen_historical_messages())
+        except Exception as e:
+            self.logger.exception("Exception in main run loop of bot")
         self.stop()
 
     def stop(self):
@@ -138,9 +141,12 @@ class BaseBot:
                     utils.jid_to_str(jid_from),
                     message.info.id,
                 )
-                await self._dispatch_message(
-                    message, skip_control=True, is_history=True
-                )
+                try:
+                    await self._dispatch_message(
+                        message, skip_control=True, is_history=True
+                    )
+                except Exception:
+                    self.logger.exception("Exception handling historical message... attempting to continue")
 
     async def listen_messages(self):
         while True:
@@ -182,19 +188,25 @@ class BaseBot:
                     utils.jid_to_str(jid_from),
                     message.info.id,
                 )
-                await self._dispatch_control(message, source_hash)
+                try:
+                    await self._dispatch_control(message, source_hash)
+                except Exception:
+                    self.logger.exception("Exception handling message... attempting to continue")
         else:
             self.logger.info(
                 "Got normal message: %s: %s",
                 utils.jid_to_str(jid_from),
                 message.info.id,
             )
-            await self.on_message(
-                message,
-                is_history=is_history,
-                is_archive=is_archive,
-                archive_data=archive_data,
-            )
+            try:
+                await self.on_message(
+                    message,
+                    is_history=is_history,
+                    is_archive=is_archive,
+                    archive_data=archive_data,
+                )
+            except Exception:
+                    self.logger.exception("Exception handling message... attempting to continue")
 
     async def _dispatch_control(self, message, source_hash):
         if message.info.source.isFromMe:
