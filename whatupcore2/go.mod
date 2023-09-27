@@ -10,6 +10,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/mdp/qrterminal/v3 v3.1.1
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/nyaruka/phonenumbers v1.1.8
 	github.com/spf13/cobra v1.7.0
 	go.mau.fi/whatsmeow v0.0.0-20230731181932-ca4054bed975
 	golang.org/x/term v0.10.0

@@ -249,7 +249,7 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 		inReferenceToId, _ = msg.getReferenceMessageId(extMessage)
 	}
 
-	return &pb.WUMessage{
+	protoMsg := &pb.WUMessage{
 		Content: &pb.MessageContent{
 			Title:           msg.MessageTitle(),
 			Text:            msg.MessageText(),
@@ -276,5 +276,6 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			"whatupcore__timestamp": time.Now().Format(time.RFC3339),
 		},
 		OriginalMessage: msg.MessageEvent.Message,
-	}, true
+	}
+	return protoMsg, true
 }

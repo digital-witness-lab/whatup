@@ -4,3 +4,7 @@ whatupcore2
 state
 db/
 export-csv
+./*-backup
+message-archive-backup/
+sessions-backup/
+message-archive-backup.tar.gz
