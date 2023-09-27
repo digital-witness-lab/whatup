@@ -109,9 +109,6 @@ services:
       - WHATUPY_CERT=/run/secrets/ssl-cert
     secrets:
       - ssl-cert
-    profiles:
-      - donotstart
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
     entrypoint: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot /usr/src/whatupy-data/sessions/
-
