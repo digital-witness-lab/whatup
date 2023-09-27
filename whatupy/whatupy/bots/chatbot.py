@@ -28,7 +28,7 @@ class ChatBot(BaseBot):
     async def start(self, **kwargs):
         self.JID = (await self.core_client.GetConnectionStatus(wuc.ConnectionStatusOptions())).JID
         CHATBOT_FRIEND_JIDS.append(self.JID)
-        self.logger.info(CHATBOT_FRIEND_JIDS)
+        self.logger.info("Logged self as an active chatbot.")
         async with asyncio.TaskGroup() as tg:
             tg.create_task(super().start())
             tg.create_task(self.initiate_friend_chats())
@@ -36,7 +36,7 @@ class ChatBot(BaseBot):
     async def initiate_friend_chats(self, *args, **kwargs):
         self.logger.info("Greeting friends")
         for friend in CHATBOT_FRIEND_JIDS:
-            if friend == self.JID: continue
+            if not utils.same_jid(friend, self.JID): continue
             self.logger.info(f"Saying hello to: {friend}")
             await asyncio.sleep(5)
             await self.send_text_message(friend, self.generate_message()) 
