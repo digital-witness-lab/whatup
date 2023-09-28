@@ -141,13 +141,13 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 
 func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
 	switch evt.(type) {
-	case events.Connected:
+	case *events.Connected:
 		wac.Log.Debugf("Setting presence and active delivery")
-		err := wac.SendPresence(types.PresenceUnavailable)
+		wac.SetForceActiveDeliveryReceipts(true)
+		err := wac.SendPresence(types.PresenceAvailable)
 		if err != nil {
 			wac.Log.Errorf("Could not send presence: %+v", err)
 		}
-		wac.SetForceActiveDeliveryReceipts(false)
 	}
 }
 
