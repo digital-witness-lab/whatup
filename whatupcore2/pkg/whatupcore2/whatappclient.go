@@ -66,17 +66,29 @@ func hashStringHex(unhashed string) string {
 	return hash
 }
 
-func createDBFilePath(username string, n_subdirs int) (string, error) {
+func CreateDBFilePath(username string, n_subdirs int) (string, error) {
 	if n_subdirs < 1 {
 		return "", fmt.Errorf("n_subdirs must be >= 1: %d", n_subdirs)
 	}
-	path_username := filepath.Join(strings.Split(username[0:n_subdirs], "")...)
+	username_safe := hashStringHex(username)
+	path_username := filepath.Join(strings.Split(username_safe[0:n_subdirs], "")...)
 	path := filepath.Join(".", DB_ROOT, path_username)
 	err := os.MkdirAll(path, 0700)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(path, fmt.Sprintf("%s.db", username)), nil
+	return filepath.Join(path, fmt.Sprintf("%s.db", username_safe)), nil
+}
+
+func ClearFileAndParents(path string) error {
+	for path != DB_ROOT && path != "." {
+		err := os.Remove(path)
+		if err != nil {
+			return err
+		}
+		path = filepath.Dir(path)
+	}
+	return nil
 }
 
 type WhatsAppClient struct {
@@ -95,9 +107,8 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	store.SetOSInfo("WA by DWL", WhatUpCoreVersionInts)
 	store.DeviceProps.RequireFullSync = proto.Bool(true)
 	dbLog := log.Sub("DB")
-	username_safe := hashStringHex(username)
 	passphrase_safe := hashStringHex(passphrase)
-	dbPath, err := createDBFilePath(username_safe, 4)
+	dbPath, err := CreateDBFilePath(username, 4)
 	if err != nil {
 		return nil, err
 	}
@@ -142,14 +153,7 @@ func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
 
 func (wac *WhatsAppClient) cleanupDBFile() error {
 	path := wac.dbPath
-	for path != DB_ROOT && path != "." {
-		err := os.Remove(path)
-		if err != nil {
-			return err
-		}
-		path = filepath.Dir(path)
-	}
-	return nil
+    return ClearFileAndParents(path)
 }
 
 func (wac *WhatsAppClient) IsLoggedIn() bool {
