@@ -98,6 +98,7 @@ type WhatsAppClient struct {
 	historyMessages       chan *Message
 	historyMessagesActive bool
 	presenceHandler       uint32
+	muteHandler       uint32
 	dbPath                string
 
 	anonLookup *AnonLookup
@@ -137,6 +138,10 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	}
 	client.anonLookup = NewAnonLookup(client)
 	client.presenceHandler = wmClient.AddEventHandler(client.setConnectPresence)
+    if strings.HasSuffix(username, "-m") {
+        client.Log.Warnf("HACK adding mute handler to request history on mute-state change")
+        client.muteHandler = wmClient.AddEventHandler(client.UNSAFEMuteHack_OnMuteGetHistory)
+    }
 
 	return client, nil
 }
@@ -252,28 +257,31 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 func (wac *WhatsAppClient) UNSAFEMuteHack_OnMuteGetHistory(evt interface{}) {
     switch mute := evt.(type) {
 	case *events.Mute:
-        if ! mute.Muted { return }
+        if ! mute.Action.GetMuted() { return }
         if !strings.HasSuffix(wac.username, "-m") { return }
-        wac.Log.Debugf("HACK: new group is muted... getting history")
-
+        wac.Log.Warnf("HACK: new group is muted... getting history")
+        wac.RequestHistoryJID(mute.JID)
 	}
 }
 
-func (wac *WhatsAppClient) UNSAFEMuteHack_ShouldProcess(msg *event.Message) bool {
+func (wac *WhatsAppClient) UNSAFEMuteHack_ShouldProcess(msg *events.Message) bool {
     if strings.HasSuffix(wac.username, "-m") {
-        if !wmMsg.Info.IsGroup {
+        if !msg.Info.IsGroup {
+            wac.Log.Warnf("HACK: chat not in group")
             return false
         }
-        chat_jid := wmMsg.Info.Chat
+        chat_jid := msg.Info.Chat
         groupSettings, err := wac.Store.ChatSettings.GetChatSettings(chat_jid)
         if err != nil {
-            wac.Log.Debugf("HACK: could not get group settings: %v: %s", chat_jid, err)
+            wac.Log.Warnf("HACK: could not get group settings: %v: %s", chat_jid, err)
             return false
         }
-        if !groupSettings.MutedUntil.After(time.Now()) {
+        // year == 1969 implies "always muted"... go figure.
+        if groupSettings.MutedUntil.Year() != 1969 && !groupSettings.MutedUntil.After(time.Now()) {
+            wac.Log.Warnf("HACK: Not muted: %s: %s", groupSettings.MutedUntil, time.Now())
             return false
         }
-        wac.Log.Debugf("HACK: allowing message through: %s", groupSettings.MutedUntil)
+        wac.Log.Warnf("HACK: allowing message through, mute status: %s", groupSettings.MutedUntil)
         return true
     }
     return true
@@ -282,11 +290,14 @@ func (wac *WhatsAppClient) UNSAFEMuteHack_ShouldProcess(msg *event.Message) bool
 func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 	msgChan := make(chan *Message)
 	handlerId := wac.AddEventHandler(func(evt interface{}) {
-		wac.Log.Debugf("GetMessages handler got something")
+        wac.Log.Debugf("GetMessages handler got something: %T", evt)
 		switch wmMsg := evt.(type) {
 		case *events.Message:
             // <HACK>
-            if !wac.UNSAFEMuteHack_ShouldProcess(wmMsg) { return }
+            if !wac.UNSAFEMuteHack_ShouldProcess(wmMsg) { 
+                wac.Log.Warnf("HACK: skipping message")
+                return
+            }
             // </HACK>
 			wac.Log.Debugf("Got new message for client")
 			msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
@@ -339,7 +350,10 @@ func (wac *WhatsAppClient) fillHistoryMessages(ctx context.Context) {
                         oldestMsgInfo = &wmMsg.Info
                     }
                     // <HACK>
-                    if !wac.UNSAFEMuteHack_ShouldProcess(wmMsg) { continue }
+                    if !wac.UNSAFEMuteHack_ShouldProcess(wmMsg) { 
+                        wac.Log.Warnf("HACK: skipping message")
+                        continue
+                    }
                     // </HACK>
 
 					msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
@@ -369,6 +383,23 @@ func (wac *WhatsAppClient) RequestHistoryMsgInfo(msgInfo *types.MessageInfo) {
     meJID := wac.Store.ID
     extras := whatsmeow.SendRequestExtra{Peer: true}
     wac.Client.SendMessage(context.TODO(), *meJID, msg, extras)
+}
+
+func (wac *WhatsAppClient) RequestHistoryJID(chat_jid types.JID) {
+    t, _ := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", "2023-09-29T13:15:10Z")
+    msgInfo := &types.MessageInfo{
+        Timestamp: t,
+        ID: "BB9743B4519768F848D7CCEE39F5AE72",
+        MessageSource: types.MessageSource{
+            Chat: chat_jid,
+            IsFromMe: false,
+        },
+    }
+    msg := wac.Client.BuildHistorySyncRequest(msgInfo, 50)
+    meJID := wac.Store.ID.ToNonAD()
+    extras := whatsmeow.SendRequestExtra{Peer: true}
+    // Context here should be bound to the whatsappclient's connection
+    wac.Client.SendMessage(context.TODO(), meJID, msg, extras)
 }
 
 func (wac *WhatsAppClient) GetHistoryMessages(ctx context.Context) chan *Message {
