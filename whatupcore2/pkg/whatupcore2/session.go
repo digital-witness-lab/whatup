@@ -61,13 +61,13 @@ func NewSessionLogin(username string, passphrase string, secretKey []byte, log w
 	return session, nil
 }
 
-func NewSessionRegister(ctx context.Context, username string, passphrase string, secretKey []byte, log waLog.Logger) (*Session, *RegistrationState, error) {
+func NewSessionRegister(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions, secretKey []byte, log waLog.Logger) (*Session, *RegistrationState, error) {
 	session, err := NewSessionDisconnected(username, passphrase, secretKey, log)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	state, err := session.LoginOrRegister(ctx, username, passphrase)
+	state, err := session.LoginOrRegister(ctx, username, passphrase, registerOptions)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -96,13 +96,13 @@ func (session *Session) Login(username string, passphrase string) error {
 	return nil
 }
 
-func (session *Session) LoginOrRegister(ctx context.Context, username string, passphrase string) (*RegistrationState, error) {
+func (session *Session) LoginOrRegister(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions) (*RegistrationState, error) {
 	client, err := NewWhatsAppClient(username, passphrase, session.log.Sub("WAC"))
 	if err != nil {
 		return nil, err
 	}
 
-	state := client.LoginOrRegister(ctx)
+	state := client.LoginOrRegister(ctx, registerOptions)
 	session.Client = client
 	return state, nil
 }

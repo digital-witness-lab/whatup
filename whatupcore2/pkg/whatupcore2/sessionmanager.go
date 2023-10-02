@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	pb "github.com/digital-witness-lab/whatup/protos"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -93,7 +94,7 @@ func (sm *SessionManager) AddLogin(username string, passphrase string) (*Session
 	return session, nil
 }
 
-func (sm *SessionManager) AddRegistration(ctx context.Context, username string, passphrase string) (*Session, *RegistrationState, error) {
+func (sm *SessionManager) AddRegistration(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions) (*Session, *RegistrationState, error) {
 	session, err := sm.GetSessionLogin(username, passphrase)
 	if err != nil {
 		return nil, nil, err
@@ -101,7 +102,7 @@ func (sm *SessionManager) AddRegistration(ctx context.Context, username string, 
 		return session, nil, nil
 	}
 
-	session, state, err := NewSessionRegister(ctx, username, passphrase, sm.secretKey, sm.log.Sub(username))
+	session, state, err := NewSessionRegister(ctx, username, passphrase, registerOptions, sm.secretKey, sm.log.Sub(username))
 	if err != nil {
 		return nil, nil, err
 	}

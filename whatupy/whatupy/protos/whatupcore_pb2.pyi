@@ -18,6 +18,76 @@ else:
     import typing_extensions
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
+class _GroupPermission:
+    ValueType = typing.NewType('ValueType', builtins.int)
+    V: typing_extensions.TypeAlias = ValueType
+
+class _GroupPermissionEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_GroupPermission.ValueType], builtins.type):
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+    DENIED: _GroupPermission.ValueType
+    READONLY: _GroupPermission.ValueType
+    READWRITE: _GroupPermission.ValueType
+    WRITEONLY: _GroupPermission.ValueType
+    'useful?'
+    UNKNOWN: _GroupPermission.ValueType
+
+class GroupPermission(_GroupPermission, metaclass=_GroupPermissionEnumTypeWrapper):
+    ...
+DENIED: GroupPermission.ValueType
+READONLY: GroupPermission.ValueType
+READWRITE: GroupPermission.ValueType
+WRITEONLY: GroupPermission.ValueType
+'useful?'
+UNKNOWN: GroupPermission.ValueType
+global___GroupPermission = GroupPermission
+
+@typing_extensions.final
+class RegisterOptions(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    CREDENTIALS_FIELD_NUMBER: builtins.int
+    DEFAULTGROUPPERMISSION_FIELD_NUMBER: builtins.int
+
+    @property
+    def credentials(self) -> global___WUCredentials:
+        ...
+    defaultGroupPermission: global___GroupPermission.ValueType
+
+    def __init__(self, *, credentials: global___WUCredentials | None=..., defaultGroupPermission: global___GroupPermission.ValueType=...) -> None:
+        ...
+
+    def HasField(self, field_name: typing_extensions.Literal['credentials', b'credentials']) -> builtins.bool:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['credentials', b'credentials', 'defaultGroupPermission', b'defaultGroupPermission']) -> None:
+        ...
+global___RegisterOptions = RegisterOptions
+
+@typing_extensions.final
+class GroupACL(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    UPDATEDAT_FIELD_NUMBER: builtins.int
+    JID_FIELD_NUMBER: builtins.int
+    PERMISSION_FIELD_NUMBER: builtins.int
+
+    @property
+    def updatedAt(self) -> google.protobuf.timestamp_pb2.Timestamp:
+        ...
+
+    @property
+    def JID(self) -> global___JID:
+        ...
+    permission: global___GroupPermission.ValueType
+
+    def __init__(self, *, updatedAt: google.protobuf.timestamp_pb2.Timestamp | None=..., JID: global___JID | None=..., permission: global___GroupPermission.ValueType=...) -> None:
+        ...
+
+    def HasField(self, field_name: typing_extensions.Literal['JID', b'JID', 'updatedAt', b'updatedAt']) -> builtins.bool:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['JID', b'JID', 'permission', b'permission', 'updatedAt', b'updatedAt']) -> None:
+        ...
+global___GroupACL = GroupACL
+
 @typing_extensions.final
 class DisappearingMessageOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor

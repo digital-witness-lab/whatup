@@ -3,6 +3,7 @@ package whatupcore2
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	pb "github.com/digital-witness-lab/whatup/protos"
 	_ "github.com/mattn/go-sqlite3"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
@@ -100,6 +102,8 @@ type WhatsAppClient struct {
     shouldRequestHistory  map[string]bool
 	dbPath                string
 
+    aclStore ACLStore
+
 	presenceHandler       uint32
     historyHandler uint32
 	archiveHandler        uint32
@@ -119,10 +123,19 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	}
 	dbLog.Infof("Using database file: %s", dbPath)
 	dbUri := fmt.Sprintf("file:%s?_foreign_keys=on&_key=%s", dbPath, passphrase_safe)
-	container, err := sqlstore.New("sqlite3", dbUri, dbLog)
+
+    db, err := sql.Open("sqlite3", dbUri)
 	if err != nil {
-		return nil, err
+        dbLog.Errorf("Could not open database: %w", err)
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
+    container := sqlstore.NewWithDB(db, "sqlite3", dbLog)
+    err = container.Upgrade()
+    if err != nil {
+        dbLog.Errorf("Could not upgrade database: %w", err)
+        return nil, fmt.Errorf("failed to upgrade database: %w", err)
+    }
+
 	deviceStore, err := container.GetFirstDevice()
 	if err != nil {
 		return nil, err
@@ -133,8 +146,10 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	wmClient.AutoTrustIdentity = true // don't do this for non-bot accounts
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 
+    aclStore := NewACLStore(db)
 	client := &WhatsAppClient{
 		Client:          wmClient,
+        aclStore:        aclStore,
 		dbPath:          dbPath,
 		username:        username,
 		historyMessages: make(chan *Message, 512),
@@ -185,9 +200,11 @@ func (wac *WhatsAppClient) Login(timeout time.Duration) error {
 	return nil
 }
 
-func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context) *RegistrationState {
+func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions *pb.RegisterOptions) *RegistrationState {
 	state := NewRegistrationState()
 	isNewDB := wac.Store.ID == nil
+
+    // ACL TODO: wac.Client.Store.SetDefaultACL(asdfadsf)
 
 	go func(state *RegistrationState) {
 		for {
