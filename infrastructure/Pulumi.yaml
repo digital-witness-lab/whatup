@@ -1,0 +1,6 @@
+name: whatup
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: Deploys Whatup core services
