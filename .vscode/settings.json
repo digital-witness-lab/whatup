@@ -4,5 +4,9 @@
             "GOPRIVATE": "github.com/digital-witness-lab/*",
             "GO111MODULE": "on"
         }
-    }
+    },
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "python.formatting.provider": "none"
 }
