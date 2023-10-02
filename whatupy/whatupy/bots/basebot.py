@@ -345,7 +345,7 @@ class BaseBot:
         with filename_path.open() as fd:
             message: wuc.WUMessage = utils.jsons_to_protobuf(fd.read(), wuc.WUMessage())
         chat_id = utils.jid_to_str(message.info.source.chat)
-        metadata = {"WUMessage": message, "GroupInfo": None, "MediaContent": None}
+        metadata = {"WUMessage": message, "GroupInfo": None, "CommunityInfo:": None, "MediaContent": None}
         if chat_id:
             if group_info_filename := message.provenance.get(
                 "archivebot__groupInfoPath"
@@ -364,6 +364,11 @@ class BaseBot:
                     )
             elif chat_id in group_infos:
                 metadata["GroupInfo"] = group_infos[chat_id]
+            
+            if community_info_filename := message.provenance.get(
+                "archivebot__groupInfoPath"
+            ):
+            
 
         if media_filename := message.provenance.get("archivebot__mediaPath"):
             media_path = filename_path.parent / media_filename
