@@ -26,9 +26,8 @@ class ChatBot(BaseBot):
         super().__init__(*args, **kwargs)
 
     async def start(self, **kwargs):
-        self.strAnonJID = utils.jid_to_str((await self.core_client.GetConnectionStatus(wuc.ConnectionStatusOptions())).AnonJID)
+        self.strAnonJID = utils.jid_to_str((await self.core_client.GetConnectionStatus(wuc.ConnectionStatusOptions())).JIDAnon)
         JID = (await self.core_client.GetConnectionStatus(wuc.ConnectionStatusOptions())).JID
-        CHATBOT_FRIEND_JIDS.append(JID)
         CHATBOT_FRIEND_JIDS[self.strAnonJID] = JID
         self.logger.info("Logged self as an active chatbot.")
         async with asyncio.TaskGroup() as tg:
