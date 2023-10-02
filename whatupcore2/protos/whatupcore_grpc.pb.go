@@ -29,7 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WhatUpCoreAuthClient interface {
 	Login(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (*SessionToken, error)
-	Register(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (WhatUpCoreAuth_RegisterClient, error)
+	Register(ctx context.Context, in *RegisterOptions, opts ...grpc.CallOption) (WhatUpCoreAuth_RegisterClient, error)
 	RenewToken(ctx context.Context, in *SessionToken, opts ...grpc.CallOption) (*SessionToken, error)
 }
 
@@ -50,7 +50,7 @@ func (c *whatUpCoreAuthClient) Login(ctx context.Context, in *WUCredentials, opt
 	return out, nil
 }
 
-func (c *whatUpCoreAuthClient) Register(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (WhatUpCoreAuth_RegisterClient, error) {
+func (c *whatUpCoreAuthClient) Register(ctx context.Context, in *RegisterOptions, opts ...grpc.CallOption) (WhatUpCoreAuth_RegisterClient, error) {
 	stream, err := c.cc.NewStream(ctx, &WhatUpCoreAuth_ServiceDesc.Streams[0], WhatUpCoreAuth_Register_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func (c *whatUpCoreAuthClient) RenewToken(ctx context.Context, in *SessionToken,
 // for forward compatibility
 type WhatUpCoreAuthServer interface {
 	Login(context.Context, *WUCredentials) (*SessionToken, error)
-	Register(*WUCredentials, WhatUpCoreAuth_RegisterServer) error
+	Register(*RegisterOptions, WhatUpCoreAuth_RegisterServer) error
 	RenewToken(context.Context, *SessionToken) (*SessionToken, error)
 	mustEmbedUnimplementedWhatUpCoreAuthServer()
 }
@@ -108,7 +108,7 @@ type UnimplementedWhatUpCoreAuthServer struct {
 func (UnimplementedWhatUpCoreAuthServer) Login(context.Context, *WUCredentials) (*SessionToken, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
-func (UnimplementedWhatUpCoreAuthServer) Register(*WUCredentials, WhatUpCoreAuth_RegisterServer) error {
+func (UnimplementedWhatUpCoreAuthServer) Register(*RegisterOptions, WhatUpCoreAuth_RegisterServer) error {
 	return status.Errorf(codes.Unimplemented, "method Register not implemented")
 }
 func (UnimplementedWhatUpCoreAuthServer) RenewToken(context.Context, *SessionToken) (*SessionToken, error) {
@@ -146,7 +146,7 @@ func _WhatUpCoreAuth_Login_Handler(srv interface{}, ctx context.Context, dec fun
 }
 
 func _WhatUpCoreAuth_Register_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(WUCredentials)
+	m := new(RegisterOptions)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}

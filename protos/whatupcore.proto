@@ -10,7 +10,7 @@ option go_package = "github.com/digital-witness-lab/whatup/protos";
 
 service WhatUpCoreAuth {
     rpc Login(WUCredentials) returns (SessionToken) {}
-    rpc Register(WUCredentials) returns (stream RegisterMessages) {}
+    rpc Register(RegisterOptions) returns (stream RegisterMessages) {}
     rpc RenewToken(SessionToken) returns (SessionToken) {}
 }
 
@@ -28,6 +28,25 @@ service WhatUpCore {
 
     rpc SendMessage(SendMessageOptions) returns (SendMessageReceipt) {}
     rpc SetDisappearingMessageTime(DisappearingMessageOptions) returns (DisappearingMessageResponse) {}
+}
+
+enum GroupPermission {
+    DENIED = 0;
+    READONLY = 1;
+    READWRITE = 2;
+    WRITEONLY = 3; // useful?
+    UNKNOWN = 20;
+}
+
+message RegisterOptions {
+    WUCredentials credentials = 1;
+    GroupPermission defaultGroupPermission = 10;
+}
+
+message GroupACL {
+    google.protobuf.Timestamp updatedAt = 1;
+    JID JID = 2;
+    GroupPermission permission = 20;
 }
 
 message DisappearingMessageOptions {

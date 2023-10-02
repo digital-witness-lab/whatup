@@ -12,7 +12,7 @@ class WhatUpCoreAuthStub(object):
             channel: A grpc.Channel.
         """
         self.Login = channel.unary_unary('/protos.WhatUpCoreAuth/Login', request_serializer=whatupcore__pb2.WUCredentials.SerializeToString, response_deserializer=whatupcore__pb2.SessionToken.FromString)
-        self.Register = channel.unary_stream('/protos.WhatUpCoreAuth/Register', request_serializer=whatupcore__pb2.WUCredentials.SerializeToString, response_deserializer=whatupcore__pb2.RegisterMessages.FromString)
+        self.Register = channel.unary_stream('/protos.WhatUpCoreAuth/Register', request_serializer=whatupcore__pb2.RegisterOptions.SerializeToString, response_deserializer=whatupcore__pb2.RegisterMessages.FromString)
         self.RenewToken = channel.unary_unary('/protos.WhatUpCoreAuth/RenewToken', request_serializer=whatupcore__pb2.SessionToken.SerializeToString, response_deserializer=whatupcore__pb2.SessionToken.FromString)
 
 class WhatUpCoreAuthServicer(object):
@@ -37,7 +37,7 @@ class WhatUpCoreAuthServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 def add_WhatUpCoreAuthServicer_to_server(servicer, server):
-    rpc_method_handlers = {'Login': grpc.unary_unary_rpc_method_handler(servicer.Login, request_deserializer=whatupcore__pb2.WUCredentials.FromString, response_serializer=whatupcore__pb2.SessionToken.SerializeToString), 'Register': grpc.unary_stream_rpc_method_handler(servicer.Register, request_deserializer=whatupcore__pb2.WUCredentials.FromString, response_serializer=whatupcore__pb2.RegisterMessages.SerializeToString), 'RenewToken': grpc.unary_unary_rpc_method_handler(servicer.RenewToken, request_deserializer=whatupcore__pb2.SessionToken.FromString, response_serializer=whatupcore__pb2.SessionToken.SerializeToString)}
+    rpc_method_handlers = {'Login': grpc.unary_unary_rpc_method_handler(servicer.Login, request_deserializer=whatupcore__pb2.WUCredentials.FromString, response_serializer=whatupcore__pb2.SessionToken.SerializeToString), 'Register': grpc.unary_stream_rpc_method_handler(servicer.Register, request_deserializer=whatupcore__pb2.RegisterOptions.FromString, response_serializer=whatupcore__pb2.RegisterMessages.SerializeToString), 'RenewToken': grpc.unary_unary_rpc_method_handler(servicer.RenewToken, request_deserializer=whatupcore__pb2.SessionToken.FromString, response_serializer=whatupcore__pb2.SessionToken.SerializeToString)}
     generic_handler = grpc.method_handlers_generic_handler('protos.WhatUpCoreAuth', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
@@ -50,7 +50,7 @@ class WhatUpCoreAuth(object):
 
     @staticmethod
     def Register(request, target, options=(), channel_credentials=None, call_credentials=None, insecure=False, compression=None, wait_for_ready=None, timeout=None, metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/protos.WhatUpCoreAuth/Register', whatupcore__pb2.WUCredentials.SerializeToString, whatupcore__pb2.RegisterMessages.FromString, options, channel_credentials, insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+        return grpc.experimental.unary_stream(request, target, '/protos.WhatUpCoreAuth/Register', whatupcore__pb2.RegisterOptions.SerializeToString, whatupcore__pb2.RegisterMessages.FromString, options, channel_credentials, insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def RenewToken(request, target, options=(), channel_credentials=None, call_credentials=None, insecure=False, compression=None, wait_for_ready=None, timeout=None, metadata=None):
