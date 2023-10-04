@@ -17,23 +17,29 @@ project = gcp_config.require("project")
 class ServiceArgs:
     """
     Args for creating a CloudRun service.
-
-    Possible values for `ingress` are:
-        - `INGRESS_TRAFFIC_ALL`
-        - `INGRESS_TRAFFIC_INTERNAL_ONLY`
-        - `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER`
     """
 
     app_path: str
     commands: List[str]
     concurrency: int
     container_port: int
-    cpu: int
-    envs: Optional[List[cloudrunv2.ServiceTemplateContainerEnvArgs]]
+    cpu: str
+    # Possible values are: `ALL_TRAFFIC`, `PRIVATE_RANGES_ONLY`.
+    egress: str
     image_name: str
+    # Possible values for `ingress` are:
+    # - `INGRESS_TRAFFIC_ALL`
+    # - `INGRESS_TRAFFIC_INTERNAL_ONLY`
+    # - `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER`
     ingress: str
     memory: str
     service_account: serviceaccount.Account
+    # Specify the subnet to use Direct VPC egress instead of
+    # serverless VPC connectors for outbound traffic from
+    # this service.
+    subnet: cloudrunv2.ServiceTemplateVpcAccessNetworkInterfaceArgs
+
+    envs: Optional[List[cloudrunv2.ServiceTemplateContainerEnvArgs]]
 
 
 class Service(ComponentResource):
@@ -45,10 +51,10 @@ class Service(ComponentResource):
     def __init__(
         self,
         name: str,
-        props: Optional[ServiceArgs] = None,
+        props: ServiceArgs,
         opts: Optional[ResourceOptions] = None,
     ) -> None:
-        super().__init__("dwl:cloudrun:Service", name, props, opts)
+        super().__init__("dwl:cloudrun:Service", name, props.__dict__, opts)
 
         child_opts = ResourceOptions(parent=self)
 
@@ -63,12 +69,18 @@ class Service(ComponentResource):
 
         # Form the repository URL
         repo_url = Output.concat(
-            location, "-docker.pkg.dev/", project, "/", repository.repository_id
+            location,
+            "-docker.pkg.dev/",
+            project,
+            "/",
+            repository.repository_id,
         )
 
         # Create a container image for the service.
-        # Before running `pulumi up`, configure Docker for Artifact Registry authentication
-        # as described here: https://cloud.google.com/artifact-registry/docs/docker/authentication
+        # Before running `pulumi up`, configure Docker for
+        # Artifact Registry authentication.
+        # as described here:
+        # https://cloud.google.com/artifact-registry/docs/docker/authentication
         image = docker.Image(
             "image",
             image_name=Output.concat(repo_url, "/", props.image_name),
@@ -79,8 +91,15 @@ class Service(ComponentResource):
             opts=child_opts,
         )
 
+        resources = cloudrunv2.ServiceTemplateContainerResourcesArgs(
+            limits=dict(
+                memory=props.memory,
+                cpu=props.cpu,
+            ),
+        )
+
         # Create a Cloud Run service definition.
-        service = cloudrunv2.Service(
+        self._service = cloudrunv2.Service(
             f"{name}-service",
             cloudrunv2.ServiceArgs(
                 location=location,
@@ -89,16 +108,14 @@ class Service(ComponentResource):
                     scaling=cloudrunv2.ServiceTemplateScalingArgs(
                         min_instance_count=1, max_instance_count=3
                     ),
+                    vpc_access=cloudrunv2.ServiceTemplateVpcAccessArgs(
+                        egress=props.egress, network_interfaces=[props.subnet]
+                    ),
                     containers=[
                         cloudrunv2.ServiceTemplateContainerArgs(
                             commands=props.commands,
                             image=image.image_name,
-                            resources=cloudrunv2.ServiceTemplateContainerResourcesArgs(
-                                limits=dict(
-                                    memory=props.memory,
-                                    cpu=props.cpu,
-                                ),
-                            ),
+                            resources=resources,
                             ports=[
                                 cloudrunv2.ServiceTemplateContainerPortArgs(
                                     # This enables end-to-end HTTP/2 (gRPC)
@@ -118,19 +135,23 @@ class Service(ComponentResource):
             opts=child_opts,
         )
 
-        self.add_invoke_permission(service)
-
         super().register_outputs({})
+
+    @property
+    def service(self):
+        return self._service
 
     def add_invoke_permission(
         self, service: cloudrunv2.Service, service_account_email: str
     ):
         # We just want a random suffix not used for security purposes,
-        # so it's ok to use MD5 here.
+        # so it's ok to use MD5 here. The random suffix is needed here
+        # since this method will create many resources and each of them
+        # needs to have a unique Pulumi resource name.
         md5 = hashlib.md5()
         md5.update(service_account_email.encode("utf-8"))
         # Create an IAM member to make the service publicly accessible.
-        invoker = cloudrunv2.ServiceIamMember(
+        cloudrunv2.ServiceIamMember(
             f"invoker-{md5.hexdigest()[:6]}",
             cloudrunv2.ServiceIamMemberArgs(
                 location=location,
