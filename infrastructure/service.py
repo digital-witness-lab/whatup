@@ -131,6 +131,12 @@ class Service(ComponentResource):
                     max_instance_request_concurrency=props.concurrency,
                     service_account=props.service_account.email,
                 ),
+                traffics=[
+                    cloudrunv2.ServiceTrafficArgs(
+                        type="TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+                        percent=100,
+                    )
+                ],
             ),
             opts=child_opts,
         )
