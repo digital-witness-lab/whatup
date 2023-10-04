@@ -10,12 +10,12 @@ from ..storage import whatupcore2_bucket
 service_name = "whatupcore2"
 
 service_account = serviceaccount.Account(
-    "serviceAccount",
+    "whatupCoreServiceAccount",
     description=f"Service account for {service_name}",
 )
 
 bucket_perm = storage.BucketIAMMember(
-    "whatupcoreStorageAccess",
+    "whatupCoreStorageAccess",
     storage.BucketIAMMemberArgs(
         bucket=whatupcore2_bucket.name,
         member=f"serviceAccount:{service_account.email}",
@@ -24,16 +24,16 @@ bucket_perm = storage.BucketIAMMember(
 )
 
 whatupcore2 = Service(
-    "whatupcore2",
+    service_name,
     ServiceArgs(
-        app_path=path.join("..", "..", "whatupcore2"),
+        app_path=path.join("..", "..", service_name),
         commands=["rpc", "--log-level=DEBUG"],
         concurrency=50,
         container_port=3447,
         cpu="1",
         # Route all egress traffic via the VPC network.
         egress="ALL_TRAFFIC",
-        image_name="whatupcore2",
+        image_name=service_name,
         # We want this service to only be reachable from within
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
