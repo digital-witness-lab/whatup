@@ -1,8 +1,9 @@
+from typing import List
 from pulumi import Output, ResourceOptions
 
 from pulumi_gcp import sql
 
-from .config import db_name, db_password, db_user
+from .config import db_names, db_password, db_root_password
 from .network import private_services_network, private_db_network, vpc
 
 sql_instance_settings = sql.DatabaseInstanceSettingsArgs(
@@ -14,8 +15,10 @@ sql_instance_settings = sql.DatabaseInstanceSettingsArgs(
         # Allow BigQuery to connect to the DB via the SQL
         # instance's private IP instead.
         enable_private_path_for_google_cloud_services=True,
-        # Disable public IP assignment for this SQL instance.
-        ipv4_enabled=False,
+        # Enable public IP assignment for this SQL instance
+        # but it's only so that we can connect to it from
+        # the GCP Cloud Shell and do some admin work.
+        ipv4_enabled=True,
         authorized_networks=[
             sql.DatabaseInstanceSettingsIpConfigurationAuthorizedNetworkArgs(
                 name="private-services-network",
@@ -32,30 +35,37 @@ primary_cloud_sql_instance = sql.DatabaseInstance(
     # This is the primary SQL instance.
     instance_type="CLOUD_SQL_INSTANCE",
     settings=sql_instance_settings,
+    root_password=db_root_password,
     opts=ResourceOptions(protect=True),
 )
 
-database = sql.Database(
-    "database",
-    instance=primary_cloud_sql_instance.name,
-    name=db_name,
-)
+databases: List[sql.Database] = []
+for db_name in db_names:
+    databases.append(
+        sql.Database(
+            f"{db_name}Db",
+            instance=primary_cloud_sql_instance.name,
+            name=db_name,
+        )
+    )
 
-sql.User(
-    "dbUser",
-    name=db_user,
-    instance=primary_cloud_sql_instance.name,
-    password=db_password,
-)
+    sql.User(
+        f"{db_name}DbUser",
+        name=db_name,
+        instance=primary_cloud_sql_instance.name,
+        password=db_password,
+    )
 
-sql_instance_url = Output.concat(
-    "postgres://",
-    db_user,
-    ":",
-    db_password,
-    "@",
-    primary_cloud_sql_instance.private_ip_address,
-    "5432",
-    "/",
-    db_name,
-)
+
+def get_sql_instance_url(db_name: str) -> Output[str]:
+    return Output.concat(
+        "postgres://",
+        db_name,
+        ":",
+        db_password,
+        "@",
+        primary_cloud_sql_instance.private_ip_address,
+        "5432",
+        "/",
+        db_name,
+    )

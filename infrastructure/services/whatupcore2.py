@@ -1,14 +1,26 @@
 from os import path
-from pulumi_gcp import serviceaccount, cloudrunv2
+
+from pulumi import ResourceOptions
+from pulumi_gcp import serviceaccount, cloudrunv2, storage
 
 from ..service import Service, ServiceArgs
 from ..network import vpc, private_services_network
+from ..storage import whatupcore2_bucket
 
 service_name = "whatupcore2"
 
 service_account = serviceaccount.Account(
     "serviceAccount",
     description=f"Service account for {service_name}",
+)
+
+bucket_perm = storage.BucketIAMMember(
+    "whatupcoreStorageAccess",
+    storage.BucketIAMMemberArgs(
+        bucket=whatupcore2_bucket.name,
+        member=f"serviceAccount:{service_account.email}",
+        role="roles/storage.objectAdmin",
+    ),
 )
 
 whatupcore2 = Service(
@@ -33,6 +45,11 @@ whatupcore2 = Service(
         subnet=cloudrunv2.ServiceTemplateVpcAccessNetworkInterfaceArgs(
             network=vpc.id, subnetwork=private_services_network.id
         ),
-        envs=[],
+        envs=[
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="WHATUPCORE2_BUCKET", value=whatupcore2_bucket.name
+            )
+        ],
     ),
+    opts=ResourceOptions(depends_on=bucket_perm),
 )
