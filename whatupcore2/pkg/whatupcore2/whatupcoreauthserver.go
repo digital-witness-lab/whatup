@@ -47,7 +47,7 @@ func (s *WhatUpCoreAuthServer) RenewToken(ctx context.Context, token *pb.Session
 }
 
 func (s *WhatUpCoreAuthServer) Register(registerOptions *pb.RegisterOptions, qrStream pb.WhatUpCoreAuth_RegisterServer) error {
-    credentials := registerOptions.credentials
+    credentials := registerOptions.Credentials
 	if len(credentials.Passphrase) < 8 {
 		return status.Error(codes.InvalidArgument, "Passphrase too short. Must be >= 8 characters")
 	}

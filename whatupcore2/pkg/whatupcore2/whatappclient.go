@@ -102,7 +102,7 @@ type WhatsAppClient struct {
     shouldRequestHistory  map[string]bool
 	dbPath                string
 
-    aclStore ACLStore
+    aclStore *ACLStore
 
 	presenceHandler       uint32
     historyHandler uint32
@@ -146,7 +146,7 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	wmClient.AutoTrustIdentity = true // don't do this for non-bot accounts
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 
-    aclStore := NewACLStore(db)
+    aclStore := NewACLStore(db, log.Sub("ACL"))
 	client := &WhatsAppClient{
 		Client:          wmClient,
         aclStore:        aclStore,
