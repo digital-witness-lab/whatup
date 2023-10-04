@@ -15,8 +15,8 @@ class ChatBot(BaseBot):
     
     def __init__( 
         self,
-        response_time: float = 60,
-        response_time_sigma: float = 15,
+        response_time: float = 60 * 60 * 4,
+        response_time_sigma: float = 60 * 60 * 2,
         *args,
         **kwargs,
     ):
