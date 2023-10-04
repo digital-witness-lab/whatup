@@ -106,12 +106,12 @@ def cli(ctx, debug, host, port, control_groups: list, cert: Path):
 @cli.command()
 @async_cli
 @click.option(
-    "--response-time", type=float, default=60, help="Mean response time (seconds)"
+    "--response-time", type=float, default=60 * 60 * 4, help="Mean response time (seconds)"
 )
 @click.option(
     "--response-time-sigma",
     type=float,
-    default=15,
+    default=60 * 60 * 2,
     help="Response time sigma (seconds)",
 )
 @click.argument("credentials", type=click.Path(path_type=Path), nargs=-1)
