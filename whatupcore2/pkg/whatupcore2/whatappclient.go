@@ -297,6 +297,23 @@ func (wac *WhatsAppClient) UNSAFEArchiveHack_ShouldProcess(msg *events.Message) 
 	return true
 }
 
+func (wac *WhatsAppClient) UNSAFEArchiveHack_ShouldProcessConversation(jid *types.JID, conv *waProto.Conversation) bool {
+	if strings.HasSuffix(wac.username, "-a") {
+        if jid.Server != types.GroupServer {
+			wac.Log.Warnf("HACK: chat not in group")
+			return false
+		}
+        var isArchived bool = *conv.Archived
+        if isArchived != true {
+			wac.Log.Warnf("HACK: Not archived")
+			return false
+		}
+		wac.Log.Warnf("HACK: allowing conversation through, archive status: %t", isArchived)
+		return true
+	}
+	return true
+}
+
 func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 	msgChan := make(chan *Message)
 	handlerId := wac.AddEventHandler(func(evt interface{}) {
@@ -344,6 +361,12 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
     		}
     
     		chatJID, err := types.ParseJID(conv.GetId())
+    		// <HACK>
+    		if !wac.UNSAFEArchiveHack_ShouldProcessConversation(&chatJID, conv) {
+    			wac.Log.Warnf("HACK: skipping conversation")
+    			continue
+    		}
+    		// </HACK>
     		if err != nil {
     			wac.Log.Errorf("Could not get conversation JID: %v", err)
     			continue
@@ -358,12 +381,6 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
     			if oldestMsgInfo == nil || wmMsg.Info.Timestamp.Before(oldestMsgInfo.Timestamp) {
     				oldestMsgInfo = &wmMsg.Info
     			}
-    			// <HACK>
-    			if !wac.UNSAFEArchiveHack_ShouldProcess(wmMsg) {
-    				wac.Log.Warnf("HACK: skipping message")
-    				continue
-    			}
-    			// </HACK>
     
     			msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
     			if err != nil {
