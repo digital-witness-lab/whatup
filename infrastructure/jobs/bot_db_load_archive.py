@@ -43,8 +43,6 @@ if create_load_archive_job:
             app_path=path.join("..", "..", "whatupy"),
             commands=[
                 "databasebot-load-archive",
-                "--host",
-                "$WHATUPCORE2_HOST",
                 "--database-url",
                 "$DATABASE_URL",
             ],
