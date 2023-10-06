@@ -11,15 +11,15 @@ from .whatupcore2 import whatupcore2
 
 service_name = "whatupy_bot_archive"
 # c+c-prod + micha
-control_groups = "c+c-prod@g.us anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net"  # noqa: E501
+whatupy_control_groups = "c+c-prod@g.us anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net"  # noqa: E501
 
 service_account = serviceaccount.Account(
-    "whatupyServiceAccount",
+    "botArchiveServiceAccount",
     description=f"Service account for {service_name}",
 )
 
 message_archive_bucket_perm = storage.BucketIAMMember(
-    "whatupyMessageArchiveAccess",
+    "botArchiveMessageArchiveAccess",
     storage.BucketIAMMemberArgs(
         bucket=message_archive_bucket.name,
         member=f"serviceAccount:{service_account.email}",
@@ -30,7 +30,7 @@ message_archive_bucket_perm = storage.BucketIAMMember(
 # whatupy only needs read-only access to the sessions bucket
 # objects.
 sessions_bucket_perm = storage.BucketIAMMember(
-    "whatupySessionsAccess",
+    "botArchiveSessionsAccess",
     storage.BucketIAMMemberArgs(
         bucket=sessions_bucket.name,
         member=f"serviceAccount:{service_account.email}",
@@ -42,8 +42,14 @@ whatupy = Service(
     service_name,
     ServiceArgs(
         app_path=path.join("..", "..", service_name),
-        # whatupy --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
-        commands=["rpc", "--log-level=DEBUG"],
+        commands=[
+            "archivebot",
+            "--host",
+            "$WHATUPCORE2_HOST",
+            "--archive-dir",
+            "/usr/src/whatupy-data/message-archive/",
+            "/usr/src/whatupy-data/sessions/",
+        ],
         concurrency=50,
         container_port=3447,
         cpu="1",
@@ -64,7 +70,7 @@ whatupy = Service(
         envs=[
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPY_CONTROL_GROUPS",
-                value=control_groups,
+                value=whatupy_control_groups,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="SESSIONS_BUCKET",
