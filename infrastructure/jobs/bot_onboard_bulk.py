@@ -8,6 +8,8 @@ from ..job import JobArgs, Job
 from ..network import vpc, private_services_network
 from ..storage import sessions_bucket
 
+from ..services.whatupcore2 import whatupcore2
+
 service_name = "whatupy_bot_onboard_bulk"
 
 service_account = serviceaccount.Account(
@@ -56,6 +58,10 @@ if create_onboard_bulk_job:
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                     name="SESSIONS_BUCKET",
                     value=sessions_bucket.name,
+                ),
+                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                    name="WHATUPCORE2_HOST",
+                    value=whatupcore2.service.uri,
                 ),
             ],
             timeout="3600s",
