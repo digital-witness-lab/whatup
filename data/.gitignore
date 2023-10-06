@@ -5,6 +5,6 @@ state
 db/
 export-csv
 ./*-backup
-message-archive-backup/
+message-archive-*/
 sessions-backup/
 message-archive-backup.tar.gz
