@@ -4,7 +4,7 @@ from pulumi import Output, ResourceOptions
 from pulumi_gcp import sql
 
 from .config import db_names, db_password, db_root_password
-from .network import private_services_network, private_db_network, vpc
+from .network import private_services_network_with_db, private_db_network, vpc
 
 sql_instance_settings = sql.DatabaseInstanceSettingsArgs(
     # https://cloud.google.com/sql/pricing#instance-pricing
@@ -15,14 +15,14 @@ sql_instance_settings = sql.DatabaseInstanceSettingsArgs(
         # Allow BigQuery to connect to the DB via the SQL
         # instance's private IP instead.
         enable_private_path_for_google_cloud_services=True,
-        # Enable public IP assignment for this SQL instance
-        # but it's only so that we can connect to it from
-        # the GCP Cloud Shell and do some admin work.
-        ipv4_enabled=True,
+        # CAUTION! Enabling the public IP causes this DB to be
+        # accessible via the internet.
+        # Only enable this if you know what you are doing.
+        ipv4_enabled=False,
         authorized_networks=[
             sql.DatabaseInstanceSettingsIpConfigurationAuthorizedNetworkArgs(
-                name="private-services-network",
-                value=private_services_network.ip_cidr_range,
+                name=private_services_network_with_db.name,
+                value=private_services_network_with_db.ip_cidr_range,
             )
         ],
         private_network=vpc.id,
