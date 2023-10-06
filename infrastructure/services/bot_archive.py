@@ -41,7 +41,7 @@ sessions_bucket_perm = storage.BucketIAMMember(
 whatupy = Service(
     service_name,
     ServiceArgs(
-        app_path=path.join("..", "..", service_name),
+        app_path=path.join("..", "..", "whatupy"),
         commands=[
             "archivebot",
             "--host",
