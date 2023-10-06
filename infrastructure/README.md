@@ -14,3 +14,17 @@ https://cloud.google.com/run/docs/securing/private-networking#from-other-service
 ### Cloud SQL
 
 https://cloud.google.com/sql/docs/postgres/connect-run#private-ip_1
+
+## Jobs
+
+The `databasebot-load-archive` and `onboardbulk` jobs are guarded by a flag.
+Once set to `true` in the Pulumi stack config for a stack, the respective
+jobs will be created and executed.
+
+The jobs are one-off jobs that will to completion and terminate.
+However, the job definition itself will continue to exist in GCP.
+You can still run future executions from that by using the GCP
+console. Alternatively, you may also flip the flags back to
+`false` and let Pulumi destroy the jobs. You can once again
+at a later time set them to `true` to have them re-created
+and executed.

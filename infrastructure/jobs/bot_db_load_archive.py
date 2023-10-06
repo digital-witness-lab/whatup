@@ -2,8 +2,13 @@ from os import path
 
 from pulumi import ResourceOptions
 from pulumi_gcp import serviceaccount, cloudrunv2, storage
+from pulumi_gcp.cloudrunv2 import (
+    JobTemplateTemplateContainerEnvValueSourceArgs,
+    JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
+)  # noqa: E501
 
 from ..config import create_load_archive_job
+from ..secrets import db_url_secret
 from ..job import JobArgs, Job
 from ..network import vpc, private_services_network
 from ..storage import message_archive_bucket
@@ -24,17 +29,24 @@ message_archive_bucket_perm = storage.BucketIAMMember(
     ),
 )
 
+db_url_secret_source = JobTemplateTemplateContainerEnvValueSourceArgs(
+    secret_key_ref=JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+        secret=db_url_secret.name,
+        version="latest",
+    )
+)
+
 if create_load_archive_job:
     bot_onboard_bulk_job = Job(
         service_name,
         JobArgs(
             app_path=path.join("..", "..", "whatupy"),
             commands=[
-                "onboard-bulk",
+                "databasebot-load-archive",
                 "--host",
                 "$WHATUPCORE2_HOST",
-                "--credentials-dir",
-                "/usr/src/whatupy-data/sessions/",
+                "--database-url",
+                "$DATABASE_URL",
             ],
             concurrency=50,
             cpu="1",
@@ -58,8 +70,8 @@ if create_load_archive_job:
                     value=message_archive_bucket.name,
                 ),
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                    name="POSTGRES_DATABASE",
-                    value="messages",
+                    name="DATABASE_URL",
+                    value_source=db_url_secret_source,
                 ),
             ],
             timeout="3600s",
