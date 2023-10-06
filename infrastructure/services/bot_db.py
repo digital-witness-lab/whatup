@@ -52,7 +52,7 @@ db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
 bot_db = Service(
     service_name,
     ServiceArgs(
-        app_path=path.join("..", "..", service_name),
+        app_path=path.join("..", "..", "whatupy"),
         commands=[
             "databasebot",
             "--host",
