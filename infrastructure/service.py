@@ -1,16 +1,14 @@
 import hashlib
 from typing import List, Optional
 from attr import dataclass
-from pulumi import ComponentResource, Config, ResourceOptions, Output
+
+from pulumi import ComponentResource, ResourceOptions, Output
 
 import pulumi_docker as docker
 from pulumi_gcp import cloudrunv2, serviceaccount
 from pulumi_gcp import artifactregistry
 
-
-gcp_config = Config("gcp")
-location = gcp_config.require("region")
-project = gcp_config.require("project")
+from .config import location, project
 
 
 @dataclass
