@@ -11,7 +11,9 @@ whatupcore2_bucket = storage.Bucket(
     storage.BucketArgs(
         name="dwl-whatupcore2",
         location=location,
-        versioning=storage.BucketVersioningArgs(enabled=True),
+        # Enabling versioning will produce unpredictable behavior with
+        # gcsfuse.
+        versioning=storage.BucketVersioningArgs(enabled=False),
         public_access_prevention="enforced",
     ),
 )
@@ -21,7 +23,7 @@ sessions_bucket = storage.Bucket(
     storage.BucketArgs(
         name="dwl-sessions",
         location=location,
-        versioning=storage.BucketVersioningArgs(enabled=True),
+        versioning=storage.BucketVersioningArgs(enabled=False),
         public_access_prevention="enforced",
     ),
 )
@@ -31,7 +33,7 @@ message_archive_bucket = storage.Bucket(
     storage.BucketArgs(
         name="dwl-message-archive",
         location=location,
-        versioning=storage.BucketVersioningArgs(enabled=True),
+        versioning=storage.BucketVersioningArgs(enabled=False),
         public_access_prevention="enforced",
     ),
 )
