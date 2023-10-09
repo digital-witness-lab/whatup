@@ -27,7 +27,7 @@ whatupcore2 = Service(
     service_name,
     ServiceArgs(
         app_path=path.join("..", "..", "whatupcore2"),
-        commands=["rpc", "--log-level=DEBUG"],
+        commands=["--log-level=DEBUG"],
         concurrency=50,
         container_port=3447,
         cpu="1",
@@ -47,8 +47,13 @@ whatupcore2 = Service(
         ),
         envs=[
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="WHATUPCORE2_BUCKET", value=whatupcore2_bucket.name
-            )
+                name="WHATUPCORE2_BUCKET",
+                value=whatupcore2_bucket.name,
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="MNT_DIR",
+                value="/db/",
+            ),
         ],
     ),
     opts=ResourceOptions(depends_on=bucket_perm),
