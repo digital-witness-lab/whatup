@@ -47,8 +47,8 @@ whatupy = Service(
             "--host",
             "$WHATUPCORE2_HOST",
             "--archive-dir",
-            "/usr/src/whatupy-data/message-archive/",
-            "/usr/src/whatupy-data/sessions/",
+            "$BUCKET_MNT_DIR_PREFIX/$MESSAGE_ARCHIVE_BUCKET_MNT_DIR",
+            "$BUCKET_MNT_DIR_PREFIX/$SESSIONS_BUCKET_MNT_DIR",
         ],
         concurrency=50,
         container_port=3447,
@@ -77,8 +77,20 @@ whatupy = Service(
                 value=sessions_bucket.name,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="BUCKET_MNT_DIR_PREFIX",
+                value="/usr/src/whatupy-data",
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="SESSIONS_BUCKET_MNT_DIR",
+                value="sessions/",
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="MESSAGE_ARCHIVE_BUCKET",
                 value=message_archive_bucket.name,
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="MESSAGE_ARCHIVE_BUCKET_MNT_DIR",
+                value="message-archive/",
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_HOST",

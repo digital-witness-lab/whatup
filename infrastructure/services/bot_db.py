@@ -59,7 +59,7 @@ bot_db = Service(
             "$WHATUPCORE2_HOST",
             "--database-url",
             "$DATABASE_URL",
-            "/usr/src/whatupy-data/sessions/",
+            "$BUCKET_MNT_DIR_PREFIX/$SESSIONS_BUCKET_MNT_DIR",
         ],
         concurrency=50,
         container_port=3447,
@@ -86,6 +86,14 @@ bot_db = Service(
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="SESSIONS_BUCKET",
                 value=sessions_bucket.name,
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="BUCKET_MNT_DIR_PREFIX",
+                value="/usr/src/whatupy-data",
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="SESSIONS_MNT_DIR",
+                value="sessions/",
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_HOST",
