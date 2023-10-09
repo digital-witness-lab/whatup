@@ -97,4 +97,4 @@ services:
       - donotstart
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-    entrypoint: whatupy --host whatup --cert /run/secrets/ssl-cert onboard-bulk --credentials-dir /usr/src/whatupy-data/sessions/
+    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard-bulk --credentials-dir /usr/src/whatupy-data/sessions/
