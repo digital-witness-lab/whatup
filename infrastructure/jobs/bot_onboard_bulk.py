@@ -31,8 +31,15 @@ if create_onboard_bulk_job:
         service_name,
         JobArgs(
             app_path=path.join("..", "..", "whatupy"),
-            args=["/usr/src/whatupy/onboard_bulk_job.sh"],
-            concurrency=50,
+            args=[
+                "/usr/src/whatupy/gcsfuse_run.sh",
+                "onboard-bulk",
+                "--host",
+                "$WHATUPCORE2_HOST",
+                "--credentials-dir",
+                "$BUCKET_MNT_DIR_PREFIX/$SESSIONS_BUCKET_MNT_DIR",
+            ],
+            concurrency=1,
             cpu="1",
             # Route all egress traffic via the VPC network.
             egress="ALL_TRAFFIC",

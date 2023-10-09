@@ -10,7 +10,7 @@ from pulumi_gcp.cloudrunv2 import (
 from ..config import create_load_archive_job
 from ..secrets import messages_db_url_secret
 from ..job import JobArgs, Job
-from ..network import vpc, private_services_network
+from ..network import vpc, private_services_network_with_db
 from ..storage import message_archive_bucket
 
 service_name = "whatupy_bot_db_load_archive"
@@ -42,7 +42,7 @@ if create_load_archive_job:
         JobArgs(
             app_path=path.join("..", "..", "whatupy"),
             args=["/usr/src/whatupy/db_load_archive_job.sh"],
-            concurrency=50,
+            concurrency=1,
             cpu="1",
             # Route all egress traffic via the VPC network.
             egress="ALL_TRAFFIC",
@@ -56,7 +56,7 @@ if create_load_archive_job:
             # Direct VPC egress for outbound traffic based
             # on the value of the `egress` property above.
             subnet=cloudrunv2.JobTemplateTemplateVpcAccessNetworkInterfaceArgs(
-                network=vpc.id, subnetwork=private_services_network.id
+                network=vpc.id, subnetwork=private_services_network_with_db.id
             ),
             envs=[
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
