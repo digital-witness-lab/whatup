@@ -45,7 +45,7 @@ class Job(ComponentResource):
         self,
         name: str,
         props: JobArgs,
-        opts: Optional[ResourceOptions],
+        opts: Optional[ResourceOptions] = None,
     ) -> None:
         super().__init__("dwl:cloudrun:Job", name, props.__dict__, opts)
 
