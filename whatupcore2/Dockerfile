@@ -13,6 +13,8 @@ RUN apt update \
     && apt auto-clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Install gcsfuse and its dependencies.
+# https://cloud.google.com/run/docs/tutorials/network-filesystems-fuse#defining_your_environment_configuration_with_the_dockerfile
 RUN apt install -y \
     curl \
     gnupg \

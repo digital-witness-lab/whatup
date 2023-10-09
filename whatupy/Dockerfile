@@ -5,6 +5,8 @@ WORKDIR /usr/src/whatupy
 RUN mkdir -p /usr/share/dict/ && \
     wget -O /usr/share/dict/words "https://svnweb.freebsd.org/base/head/share/dict/web2?revision=326913&view=co&pathrev=326913"
 
+# Install gcsfuse and its dependencies.
+# https://cloud.google.com/run/docs/tutorials/network-filesystems-fuse#defining_your_environment_configuration_with_the_dockerfile
 RUN apt install -y \
     curl \
     gnupg \
