@@ -2,8 +2,8 @@ from pulumi_gcp import secretmanager
 
 from .database import get_sql_instance_url
 
-db_url_secret = secretmanager.Secret(
-    "dbUrlSecret",
+messages_db_url_secret = secretmanager.Secret(
+    "messagesDbUrlSecret",
     secretmanager.SecretArgs(
         secret_id="db_url_secret",
         replication=secretmanager.SecretReplicationArgs(
@@ -13,9 +13,9 @@ db_url_secret = secretmanager.Secret(
 )
 
 secretmanager.SecretVersion(
-    "dbUrlSecretVersion",
+    "messagesDbUrlSecretVer",
     secretmanager.SecretVersionArgs(
-        secret=db_url_secret.id,
+        secret=messages_db_url_secret.id,
         secret_data=get_sql_instance_url("messages"),
         enabled=True,
     ),

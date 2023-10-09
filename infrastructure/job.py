@@ -15,7 +15,8 @@ class JobArgs:
     """
 
     app_path: str
-    commands: List[str]
+    # This is passed to the ENTRYPOINT defined in the Dockerfile.
+    args: List[str]
     concurrency: int
     cpu: str
     # Possible values are: `ALL_TRAFFIC`, `PRIVATE_RANGES_ONLY`.
@@ -95,7 +96,7 @@ class Job(ComponentResource):
             max_retries=1,
             containers=[
                 cloudrunv2.JobTemplateTemplateContainerArgs(
-                    commands=props.commands,
+                    args=props.args,
                     image=image.image_name,
                     resources=resources,
                     envs=props.envs,

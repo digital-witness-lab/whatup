@@ -42,7 +42,8 @@ whatupy = Service(
     service_name,
     ServiceArgs(
         app_path=path.join("..", "..", "whatupy"),
-        commands=[
+        args=[
+            "/usr/src/whatupy/gcsfuse_run.sh",
             "archivebot",
             "--host",
             "$WHATUPCORE2_HOST",

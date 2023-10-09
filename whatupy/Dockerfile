@@ -26,11 +26,8 @@ COPY . .
 RUN pip install -e .
 
 # Ensure the script is executable.
-RUN chmod +x /build/gcsfuse_run.sh
+RUN chmod +x /usr/src/whatupy/*.sh
 
 # Use tini to manage zombie processes and signal forwarding.
 # https://github.com/krallin/tini
 ENTRYPOINT ["/usr/bin/tini", "--"]
-
-# Pass the wrapper script as arguments to tini.
-CMD ["/app/gcsfuse_run.sh"]

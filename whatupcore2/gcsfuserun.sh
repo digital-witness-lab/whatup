@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-if [ -z "${MNT_DIR:-}" ]; then
-    echo "MNT_DIR is required"
+if [ -z "${WHATUPCORE2_BUCKET_MNT_DIR:-}" ]; then
+    echo "WHATUPCORE2_BUCKET_MNT_DIR is required"
     exit 1
 fi
 
 # Create mount directory for service
-mkdir -p $MNT_DIR
+mkdir -p $WHATUPCORE2_BUCKET_MNT_DIR
 
 echo "Mounting $WHATUPCORE2_BUCKET using GCS Fuse."
-gcsfuse --debug_gcs --debug_fuse "$WHATUPCORE2_BUCKET" $MNT_DIR
+gcsfuse --debug_gcs --debug_fuse "$WHATUPCORE2_BUCKET" $WHATUPCORE2_BUCKET_MNT_DIR
 echo "Mounting completed."
 
 # Start the application
