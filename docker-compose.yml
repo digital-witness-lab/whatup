@@ -17,7 +17,7 @@ services:
       - ssl-key
     volumes:
       - ./data/whatupcore2/db/:/db/
-    command: rpc --log-level=DEBUG
+    command: /whatupcore2 rpc --log-level=INFO
 
   db:
     image: postgres:15-alpine
@@ -79,9 +79,9 @@ services:
     profiles:
       - donotstart
     volumes:
-      - ./data/message-archive/:/archive/:ro
-    #command: sh -c "whatupy --debug databasebot-load-archive --database-url \"postgresql://$${POSTGRES_USER}:$$( cat $${POSTGRES_PASSWORD_FILE})@db/$${POSTGRES_DATABASE}\" '/archive/120363023974439113@g.us/*_*.json'"
-    command: sh -c "ls /archive/ | xargs -n 1 -P 6 -I{} whatupy databasebot-load-archive --database-url \"postgresql://$${POSTGRES_USER}:$$( cat $${POSTGRES_PASSWORD_FILE})@db/$${POSTGRES_DATABASE}\" '/archive/{}/*_*.json'"
+      - ./data/message-archive/:/usr/src/whatupy-data/archive/:ro
+    #command: sh -c "whatupy --debug databasebot-load-archive --database-url \"postgresql://$${POSTGRES_USER}:$$( cat $${POSTGRES_PASSWORD_FILE})@db/$${POSTGRES_DATABASE}\" '/usr/src/whatupy-data/archive/120363023974439113@g.us/*_*.json'"
+    command: sh -c "ls /usr/src/whatupy-data/archive/ | xargs -n 1 -P 6 -I{} whatupy databasebot-load-archive --database-url \"postgresql://$${POSTGRES_USER}:$$( cat $${POSTGRES_PASSWORD_FILE})@db/$${POSTGRES_DATABASE}\" '/usr/src/whatupy-data/archive/{}/*_*.json'"
 
   bot-onboard-bulk:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
@@ -97,7 +97,7 @@ services:
       - donotstart
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-    entrypoint: whatupy --host whatup --cert /run/secrets/ssl-cert onboard-bulk --credentials-dir /usr/src/whatupy-data/sessions/
+    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard-bulk --credentials-dir /usr/src/whatupy-data/sessions/
 
   bot-chatbot:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
@@ -110,4 +110,4 @@ services:
       - ssl-cert
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
-    entrypoint: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot /usr/src/whatupy-data/sessions/
+    command: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot /usr/src/whatupy-data/sessions/
