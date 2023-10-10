@@ -154,7 +154,7 @@ class Service(ComponentResource):
                 role="roles/run.invoker",
                 member="allUsers",
             ),
-            opts=ResourceOptions(parent=self),
+            opts=child_opts,
         )
 
         super().register_outputs({})
