@@ -66,6 +66,7 @@ func StartRPC(port uint32, logLevel string) error {
 
 	var s *grpc.Server
 	if USE_SSL {
+        Log.Infof("Using SSL")
 		creds, err := credentials.NewServerTLSFromFile(TLS_CERT_FILE, TLS_KEY_FILE)
 		if err != nil {
 			Log.Errorf("could not load server credentials: %v", err)
