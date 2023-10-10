@@ -62,7 +62,7 @@ db_migrations_job = Job(
         envs=[
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                 name="DATABASE_USER",
-                value="root",
+                value="postgres",
             ),
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                 name="DATABASE_ROOT_PASSWORD",
