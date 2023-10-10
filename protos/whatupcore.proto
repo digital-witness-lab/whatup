@@ -170,7 +170,9 @@ message JID {
     uint32 agent = 2;
     uint32 device = 3;
     string server = 4;
-    bool ad = 5;
+
+    reserved ad;
+    reserved 5;
 
     bool isAnonymized = 20;
 

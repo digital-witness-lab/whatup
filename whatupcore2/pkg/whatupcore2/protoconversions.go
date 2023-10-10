@@ -72,20 +72,18 @@ func ProtoToMessageSource(ms *pb.MessageSource) types.MessageSource {
 func JIDToProto(JID types.JID) *pb.JID {
 	return &pb.JID{
 		User:   JID.User,
-		Agent:  uint32(JID.Agent),
+		Agent:  uint32(JID.ActualAgent()),
 		Device: uint32(JID.Device),
 		Server: JID.Server,
-		Ad:     JID.AD,
 	}
 }
 
 func ProtoToJID(pJID *pb.JID) types.JID {
 	return types.JID{
-		User:   pJID.User,
-		Agent:  uint8(pJID.Agent),
-		Device: uint8(pJID.Device),
-		Server: pJID.Server,
-		AD:     pJID.Ad,
+		User:     pJID.User,
+		RawAgent: uint8(pJID.Agent),
+		Device:   uint16(pJID.Device),
+		Server:   pJID.Server,
 	}
 }
 

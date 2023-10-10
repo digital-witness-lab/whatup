@@ -48,6 +48,10 @@ async def run_multi_bots(bot: T.Type[BotType], paths: T.List[Path], bot_args: di
                     credentials.extend(
                         path / filename for filename in path.glob("*.json")
                     )
+                else:
+                    credentials.extend(
+                        path / filename for filename in glob.glob(str(path))
+                    )
             for credential_file in credentials:
                 try:
                     credential = json.load(credential_file.open())

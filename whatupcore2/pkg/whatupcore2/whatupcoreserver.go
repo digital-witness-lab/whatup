@@ -227,9 +227,10 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 
 	for msg := range msgChan {
 		msgProto, ok := msg.ToProto()
+		anonMsgProto := AnonymizeInterface(session.Client.anonLookup, msgProto)
 		if !ok {
 			msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
-		} else if err := server.Send(msgProto); err != nil {
+		} else if err := server.Send(anonMsgProto); err != nil {
 			return nil
 		}
 	}

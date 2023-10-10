@@ -53,7 +53,7 @@ for source in $( find "$source_archive" -type f -name \*.json -or -type d -name 
         message_type="WUMessage"
     elif [[ "$source" =~ $find_media ]]; then
         if [ ! -e $target ]; then
-            echo -en "cp -r $source $target\0"
+            echo -en "rsync -avh $source $target\0"
         fi
         continue
     else
