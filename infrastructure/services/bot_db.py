@@ -8,7 +8,7 @@ from pulumi_gcp.cloudrunv2 import (
 )  # noqa: E501
 
 from ..network import vpc, private_services_network_with_db
-from ..secrets import db_url_secret
+from ..secrets import messages_db_url_secret
 from ..service import Service, ServiceArgs
 from ..storage import sessions_bucket
 
@@ -36,7 +36,7 @@ sessions_bucket_perm = storage.BucketIAMMember(
 secret_manager_perm = secretmanager.SecretIamMember(
     "botDbSecretManagerAccess",
     secretmanager.SecretIamMemberArgs(
-        secret_id=db_url_secret.id,
+        secret_id=messages_db_url_secret.id,
         role="roles/secretmanager.secretAccessor",
         member=f"serviceAccount:{service_account.email}",
     ),
@@ -44,7 +44,7 @@ secret_manager_perm = secretmanager.SecretIamMember(
 
 db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
-        secret=db_url_secret.name,
+        secret=messages_db_url_secret.name,
         version="latest",
     )
 )
@@ -53,13 +53,14 @@ bot_db = Service(
     service_name,
     ServiceArgs(
         app_path=path.join("..", "..", "whatupy"),
-        commands=[
+        args=[
+            "/usr/src/whatupy/gcsfuse_run.sh",
             "databasebot",
             "--host",
             "$WHATUPCORE2_HOST",
             "--database-url",
             "$DATABASE_URL",
-            "/usr/src/whatupy-data/sessions/",
+            "$BUCKET_MNT_DIR_PREFIX/$SESSIONS_BUCKET_MNT_DIR",
         ],
         concurrency=50,
         container_port=3447,
@@ -80,20 +81,28 @@ bot_db = Service(
         ),
         envs=[
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="WHATUPY_CONTROL_GROUPS",
-                value=whatupy_control_groups,
+                name="BUCKET_MNT_DIR_PREFIX",
+                value="/usr/src/whatupy-data",
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="DATABASE_URL",
+                value_source=db_url_secret_source,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="SESSIONS_BUCKET",
                 value=sessions_bucket.name,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="WHATUPCORE2_HOST",
-                value=whatupcore2.service.uri,
+                name="SESSIONS_BUCKET_MNT_DIR",
+                value="sessions/",
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="DATABASE_URL",
-                value_source=db_url_secret_source,
+                name="WHATUPY_CONTROL_GROUPS",
+                value=whatupy_control_groups,
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="WHATUPCORE2_HOST",
+                value=whatupcore2.service.uri,
             ),
         ],
     ),

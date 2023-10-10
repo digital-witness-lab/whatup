@@ -31,14 +31,15 @@ if create_onboard_bulk_job:
         service_name,
         JobArgs(
             app_path=path.join("..", "..", "whatupy"),
-            commands=[
+            args=[
+                "/usr/src/whatupy/gcsfuse_run.sh",
                 "onboard-bulk",
                 "--host",
                 "$WHATUPCORE2_HOST",
                 "--credentials-dir",
-                "/usr/src/whatupy-data/sessions/",
+                "$BUCKET_MNT_DIR_PREFIX/$SESSIONS_BUCKET_MNT_DIR",
             ],
-            concurrency=50,
+            concurrency=1,
             cpu="1",
             # Route all egress traffic via the VPC network.
             egress="ALL_TRAFFIC",
@@ -56,8 +57,16 @@ if create_onboard_bulk_job:
             ),
             envs=[
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                    name="BUCKET_MNT_DIR_PREFIX",
+                    value="/usr/src/whatupy-data",
+                ),
+                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                     name="SESSIONS_BUCKET",
                     value=sessions_bucket.name,
+                ),
+                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                    name="SESSIONS_BUCKET_MNT_DIR",
+                    value="sessions/",
                 ),
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                     name="WHATUPCORE2_HOST",

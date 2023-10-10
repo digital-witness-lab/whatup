@@ -18,7 +18,8 @@ class ServiceArgs:
     """
 
     app_path: str
-    commands: List[str]
+    # This is passed to the ENTRYPOINT defined in the Dockerfile.
+    args: List[str]
     concurrency: int
     container_port: int
     cpu: str
@@ -111,7 +112,7 @@ class Service(ComponentResource):
                     ),
                     containers=[
                         cloudrunv2.ServiceTemplateContainerArgs(
-                            commands=props.commands,
+                            args=props.args,
                             image=image.image_name,
                             resources=resources,
                             ports=[
