@@ -99,14 +99,14 @@ type WhatsAppClient struct {
 	username              string
 	historyMessages       chan *Message
 	historyMessagesActive bool
-    shouldRequestHistory  map[string]bool
+	shouldRequestHistory  map[string]bool
 	dbPath                string
 
-    aclStore *ACLStore
+	aclStore *ACLStore
 
-	presenceHandler       uint32
-    historyHandler uint32
-	archiveHandler        uint32
+	presenceHandler uint32
+	historyHandler  uint32
+	archiveHandler  uint32
 
 	anonLookup *AnonLookup
 }
@@ -124,17 +124,17 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	dbLog.Infof("Using database file: %s", dbPath)
 	dbUri := fmt.Sprintf("file:%s?_foreign_keys=on&_key=%s", dbPath, passphrase_safe)
 
-    db, err := sql.Open("sqlite3", dbUri)
+	db, err := sql.Open("sqlite3", dbUri)
 	if err != nil {
-        dbLog.Errorf("Could not open database: %w", err)
+		dbLog.Errorf("Could not open database: %w", err)
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-    container := sqlstore.NewWithDB(db, "sqlite3", dbLog)
-    err = container.Upgrade()
-    if err != nil {
-        dbLog.Errorf("Could not upgrade database: %w", err)
-        return nil, fmt.Errorf("failed to upgrade database: %w", err)
-    }
+	container := sqlstore.NewWithDB(db, "sqlite3", dbLog)
+	err = container.Upgrade()
+	if err != nil {
+		dbLog.Errorf("Could not upgrade database: %w", err)
+		return nil, fmt.Errorf("failed to upgrade database: %w", err)
+	}
 
 	deviceStore, err := container.GetFirstDevice()
 	if err != nil {
@@ -146,18 +146,18 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	wmClient.AutoTrustIdentity = true // don't do this for non-bot accounts
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 
-    aclStore := NewACLStore(db, log.Sub("ACL"))
+	aclStore := NewACLStore(db, log.Sub("ACL"))
 	client := &WhatsAppClient{
-		Client:          wmClient,
-        aclStore:        aclStore,
-		dbPath:          dbPath,
-		username:        username,
-		historyMessages: make(chan *Message, 512),
-        shouldRequestHistory: make(map[string]bool),
+		Client:               wmClient,
+		aclStore:             aclStore,
+		dbPath:               dbPath,
+		username:             username,
+		historyMessages:      make(chan *Message, 512),
+		shouldRequestHistory: make(map[string]bool),
 	}
 	client.anonLookup = NewAnonLookup(client)
 	client.presenceHandler = wmClient.AddEventHandler(client.setConnectPresence)
-    client.historyHandler = wmClient.AddEventHandler(client.getHistorySync)
+	client.historyHandler = wmClient.AddEventHandler(client.getHistorySync)
 	if strings.HasSuffix(username, "-a") {
 		client.Log.Warnf("HACK adding archive handler to request history on archive-state change")
 		client.archiveHandler = wmClient.AddEventHandler(client.UNSAFEArchiveHack_OnArchiveGetHistory)
@@ -204,7 +204,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions 
 	state := NewRegistrationState()
 	isNewDB := wac.Store.ID == nil
 
-    // ACL TODO: wac.Client.Store.SetDefaultACL(asdfadsf)
+	// ACL TODO: wac.Client.Store.SetDefaultACL(asdfadsf)
 
 	go func(state *RegistrationState) {
 		for {
@@ -281,9 +281,9 @@ func (wac *WhatsAppClient) UNSAFEArchiveHack_OnArchiveGetHistory(evt interface{}
 		if !strings.HasSuffix(wac.username, "-a") {
 			return
 		}
-        archiveJID := archive.JID.String()
-        wac.Log.Warnf("HACK: new group is archived... setting shouldRequestHistory: %s", archiveJID)
-        wac.shouldRequestHistory[archiveJID] = true
+		archiveJID := archive.JID.String()
+		wac.Log.Warnf("HACK: new group is archived... setting shouldRequestHistory: %s", archiveJID)
+		wac.shouldRequestHistory[archiveJID] = true
 	}
 }
 
@@ -304,11 +304,11 @@ func (wac *WhatsAppClient) UNSAFEArchiveHack_ShouldProcess(msg *events.Message) 
 			return false
 		}
 		wac.Log.Warnf("HACK: allowing message through, archive status: %t", groupSettings.Archived)
-        if wac.shouldRequestHistory[chat_jid.String()] {
-            wac.Log.Warnf("HACK: requesting message history for group: %s", chat_jid.String())
-            wac.RequestHistoryMsgInfo(&msg.Info)
-            delete(wac.shouldRequestHistory, chat_jid.String())
-        }
+		if wac.shouldRequestHistory[chat_jid.String()] {
+			wac.Log.Warnf("HACK: requesting message history for group: %s", chat_jid.String())
+			wac.RequestHistoryMsgInfo(&msg.Info)
+			delete(wac.shouldRequestHistory, chat_jid.String())
+		}
 		return true
 	}
 	return true
@@ -414,7 +414,7 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 }
 
 func (wac *WhatsAppClient) RequestHistoryMsgInfo(msgInfo *types.MessageInfo) {
-    wac.Log.Infof("Requesting history for group: %s", msgInfo.Chat.String())
+	wac.Log.Infof("Requesting history for group: %s", msgInfo.Chat.String())
 	msg := wac.Client.BuildHistorySyncRequest(msgInfo, 50)
 	// Context here should be bound to the whatsappclient's connection
 	extras := whatsmeow.SendRequestExtra{Peer: true}
