@@ -75,17 +75,3 @@ def get_sql_instance_url(db_name: str) -> Output[str]:
         "/",
         db_name,
     )
-
-
-def get_sql_instance_root_url(db_name: str) -> Output[str]:
-    return Output.concat(
-        "postgres://",
-        db_name,
-        ":",
-        db_root_password,
-        "@",
-        primary_cloud_sql_instance.private_ip_address,
-        "5432",
-        "/",
-        db_name,
-    )

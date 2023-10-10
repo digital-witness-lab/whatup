@@ -163,6 +163,12 @@ class Service(ComponentResource):
     def service(self):
         return self._service
 
+    def get_host(self):
+        return Output.apply(
+            self._service.uri,
+            lambda u: u.replace("https://", ""),
+        )
+
     def add_invoke_permission(
         self, service: cloudrunv2.Service, service_account_email: str
     ):
@@ -179,7 +185,7 @@ class Service(ComponentResource):
                 location=location,
                 name=service.name,
                 role="roles/run.invoker",
-                member=f"serviceAccount:{service_account_email}",
+                member=Output.concat("serviceAccount:", service_account_email),
             ),
             opts=ResourceOptions(parent=self),
         )

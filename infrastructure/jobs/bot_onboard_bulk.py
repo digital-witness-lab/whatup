@@ -34,9 +34,9 @@ if create_onboard_bulk_job:
             app_path=path.join("..", "whatupy"),
             args=[
                 "/usr/src/whatupy/gcsfuse_run.sh",
-                "onboard-bulk",
                 "--host",
                 "$(WHATUPCORE2_HOST)",
+                "onboard-bulk",
                 "--credentials-dir",
                 "$(BUCKET_MNT_DIR_PREFIX)/$(SESSIONS_BUCKET_MNT_DIR)",
             ],
@@ -71,7 +71,7 @@ if create_onboard_bulk_job:
                 ),
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                     name="WHATUPCORE2_HOST",
-                    value=whatupcore2_service.service.uri,
+                    value=whatupcore2_service.get_host(),
                 ),
             ],
             timeout="3600s",

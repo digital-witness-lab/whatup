@@ -45,9 +45,9 @@ whatupy = Service(
         app_path=path.join("..", "whatupy"),
         args=[
             "/usr/src/whatupy/gcsfuse_run.sh",
-            "archivebot",
             "--host",
             "$(WHATUPCORE2_HOST)",
+            "archivebot",
             "--archive-dir",
             "$(BUCKET_MNT_DIR_PREFIX)/$(MESSAGE_ARCHIVE_BUCKET_MNT_DIR)",
             "$(BUCKET_MNT_DIR_PREFIX)/$(SESSIONS_BUCKET_MNT_DIR)",
@@ -96,7 +96,7 @@ whatupy = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_HOST",
-                value=whatupcore2_service.service.uri,
+                value=whatupcore2_service.get_host(),
             ),
         ],
     ),

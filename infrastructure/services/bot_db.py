@@ -56,9 +56,9 @@ bot_db = Service(
         app_path=path.join("..", "whatupy"),
         args=[
             "/usr/src/whatupy/gcsfuse_run.sh",
-            "databasebot",
             "--host",
             "$(WHATUPCORE2_HOST)",
+            "databasebot",
             "--database-url",
             "$(DATABASE_URL)",
             "$(BUCKET_MNT_DIR_PREFIX)/$(SESSIONS_BUCKET_MNT_DIR)",
@@ -103,7 +103,7 @@ bot_db = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_HOST",
-                value=whatupcore2_service.service.uri,
+                value=whatupcore2_service.get_host(),
             ),
         ],
     ),

@@ -10,7 +10,8 @@ from pulumi_gcp.cloudrunv2 import (
 
 from job import JobArgs, Job
 from network import vpc, private_services_network_with_db
-from dwl_secrets import messages_db_root_url_secret
+from dwl_secrets import messages_db_root_pass_secret
+from database import primary_cloud_sql_instance
 
 job_name = "db-migrations"
 app_path = path.join("..", "migrations")
@@ -24,15 +25,15 @@ service_account = serviceaccount.Account(
 secret_manager_perm = secretmanager.SecretIamMember(
     "dbMigrationsSecretsAccess",
     secretmanager.SecretIamMemberArgs(
-        secret_id=messages_db_root_url_secret.id,
+        secret_id=messages_db_root_pass_secret.id,
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
 )
 
-db_url_secret_source = JobTemplateTemplateContainerEnvValueSourceArgs(
+db_root_pass_secret_source = JobTemplateTemplateContainerEnvValueSourceArgs(
     secret_key_ref=JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-        secret=messages_db_root_url_secret.name,
+        secret=messages_db_root_pass_secret.name,
         version="latest",
     )
 )
@@ -41,7 +42,7 @@ db_migrations_job = Job(
     job_name,
     JobArgs(
         app_path=app_path,
-        args=["/migrations/run_migrations.sh"],
+        args=["/run_migrations.sh"],
         concurrency=1,
         cpu="1",
         # Route all egress traffic via the VPC network.
@@ -60,8 +61,20 @@ db_migrations_job = Job(
         ),
         envs=[
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                name="DATABASE_URL",
-                value_source=db_url_secret_source,
+                name="DATABASE_USER",
+                value="root",
+            ),
+            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                name="DATABASE_ROOT_PASSWORD",
+                value_source=db_root_pass_secret_source,
+            ),
+            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                name="DATABASE_HOST",
+                value=primary_cloud_sql_instance.private_ip_address,
+            ),
+            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                name="DATABASE",
+                value="messages",
             ),
         ],
         timeout="60s",
