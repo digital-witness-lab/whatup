@@ -8,7 +8,8 @@ import pulumi_docker as docker
 from pulumi_gcp import cloudrunv2, serviceaccount
 from pulumi_gcp import artifactregistry
 
-from .config import location, project
+from config import location, project
+from network_firewall import firewall_policy
 
 
 @dataclass
@@ -59,7 +60,8 @@ class Service(ComponentResource):
 
         # Create an Artifact Registry repository
         repository = artifactregistry.Repository(
-            props.image_name + "-repo",
+            props.image_name + "Repo",
+            repository_id=props.image_name + "-repo",
             description=f"Repository for {props.image_name} container image",
             format="DOCKER",
             location=location,
@@ -81,7 +83,7 @@ class Service(ComponentResource):
         # as described here:
         # https://cloud.google.com/artifact-registry/docs/docker/authentication
         image = docker.Image(
-            "image",
+            props.image_name + "Image",
             image_name=Output.concat(repo_url, "/", props.image_name),
             build=docker.DockerBuildArgs(
                 context=props.app_path,
@@ -99,9 +101,11 @@ class Service(ComponentResource):
 
         # Create a Cloud Run service definition.
         self._service = cloudrunv2.Service(
-            f"{name}-service",
+            f"{name}Service",
             cloudrunv2.ServiceArgs(
+                name=name,
                 location=location,
+                launch_stage="BETA",
                 ingress=props.ingress,
                 template=cloudrunv2.ServiceTemplateArgs(
                     scaling=cloudrunv2.ServiceTemplateScalingArgs(
@@ -137,7 +141,20 @@ class Service(ComponentResource):
                     )
                 ],
             ),
-            opts=child_opts,
+            opts=ResourceOptions.merge(
+                child_opts, ResourceOptions(depends_on=firewall_policy)
+            ),
+        )
+
+        cloudrunv2.ServiceIamMember(
+            f"{name}AnonymousInvoke",
+            cloudrunv2.ServiceIamMemberArgs(
+                location=location,
+                name=self._service.name,
+                role="roles/run.invoker",
+                member="allUsers",
+            ),
+            opts=ResourceOptions(parent=self),
         )
 
         super().register_outputs({})

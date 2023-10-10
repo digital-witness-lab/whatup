@@ -1,16 +1,17 @@
 from os import path
 
-from pulumi import ResourceOptions
+from pulumi import ResourceOptions, Output
 from pulumi_gcp import serviceaccount, cloudrunv2, storage
 
-from ..service import Service, ServiceArgs
-from ..network import vpc, private_services_network
-from ..storage import whatupcore2_bucket
+from service import Service, ServiceArgs
+from network import vpc, private_services_network
+from storage import whatupcore2_bucket
 
 service_name = "whatupcore2"
 
 service_account = serviceaccount.Account(
     "whatupCoreServiceAccount",
+    account_id="whatupcore",
     description=f"Service account for {service_name}",
 )
 
@@ -18,16 +19,16 @@ bucket_perm = storage.BucketIAMMember(
     "whatupCoreStorageAccess",
     storage.BucketIAMMemberArgs(
         bucket=whatupcore2_bucket.name,
-        member=f"serviceAccount:{service_account.email}",
+        member=Output.concat("serviceAccount:", service_account.email),
         role="roles/storage.objectAdmin",
     ),
 )
 
-whatupcore2 = Service(
+whatupcore2_service = Service(
     service_name,
     ServiceArgs(
-        app_path=path.join("..", "..", "whatupcore2"),
-        args=["/whatupcore2", "rpc", "--log-level=DEBUG"],
+        app_path=path.join("..", "whatupcore2"),
+        args=["/gcsfuse_run.sh", "--log-level=DEBUG"],
         concurrency=50,
         container_port=3447,
         cpu="1",
@@ -46,6 +47,10 @@ whatupcore2 = Service(
             network=vpc.id, subnetwork=private_services_network.id
         ),
         envs=[
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="USE_SSL",
+                value="false",
+            ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_BUCKET",
                 value=whatupcore2_bucket.name,

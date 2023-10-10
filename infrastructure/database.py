@@ -3,15 +3,21 @@ from pulumi import Output, ResourceOptions
 
 from pulumi_gcp import sql
 
-from .config import db_names, db_password, db_root_password
-from .network import private_services_network_with_db, private_db_network, vpc
+from config import db_names, db_password, db_root_password
+from network import (
+    private_vpc_connection,
+    private_ip_address_range,
+    vpc,
+)
 
 sql_instance_settings = sql.DatabaseInstanceSettingsArgs(
     # https://cloud.google.com/sql/pricing#instance-pricing
     tier="db-g1-small",
+    # Only disable disable protection if you are intentional
+    # about wanting to delete the instance.
     deletion_protection_enabled=True,
     ip_configuration=sql.DatabaseInstanceSettingsIpConfigurationArgs(
-        allocated_ip_range=private_db_network.name,
+        allocated_ip_range=private_ip_address_range.name,
         # Allow BigQuery to connect to the DB via the SQL
         # instance's private IP instead.
         enable_private_path_for_google_cloud_services=True,
@@ -19,24 +25,24 @@ sql_instance_settings = sql.DatabaseInstanceSettingsArgs(
         # accessible via the internet.
         # Only enable this if you know what you are doing.
         ipv4_enabled=False,
-        authorized_networks=[
-            sql.DatabaseInstanceSettingsIpConfigurationAuthorizedNetworkArgs(
-                name=private_services_network_with_db.name,
-                value=private_services_network_with_db.ip_cidr_range,
-            )
-        ],
         private_network=vpc.id,
     ),
 )
 
 primary_cloud_sql_instance = sql.DatabaseInstance(
     "sqlInstance",
+    name="whatup-sql-instance",
     database_version="POSTGRES_15",
     # This is the primary SQL instance.
     instance_type="CLOUD_SQL_INSTANCE",
     settings=sql_instance_settings,
+    # We don't need this enabled since we are enabling
+    # deletion protection on GCP's side with
+    # `deletion_protection_enabled` in the
+    # instance settings.
+    deletion_protection=False,
     root_password=db_root_password,
-    opts=ResourceOptions(protect=True),
+    opts=ResourceOptions(depends_on=private_vpc_connection),
 )
 
 databases: List[sql.Database] = []
@@ -63,6 +69,20 @@ def get_sql_instance_url(db_name: str) -> Output[str]:
         db_name,
         ":",
         db_password,
+        "@",
+        primary_cloud_sql_instance.private_ip_address,
+        "5432",
+        "/",
+        db_name,
+    )
+
+
+def get_sql_instance_root_url(db_name: str) -> Output[str]:
+    return Output.concat(
+        "postgres://",
+        db_name,
+        ":",
+        db_root_password,
         "@",
         primary_cloud_sql_instance.private_ip_address,
         "5432",

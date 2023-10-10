@@ -1,22 +1,23 @@
 from os import path
 
-from pulumi import ResourceOptions
-from pulumi_gcp import serviceaccount, cloudrunv2, storage
+from pulumi import ResourceOptions, Output
+from pulumi_gcp import serviceaccount, cloudrunv2, storage, secretmanager
 from pulumi_gcp.cloudrunv2 import (
     JobTemplateTemplateContainerEnvValueSourceArgs,
     JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
 )  # noqa: E501
 
-from ..config import create_load_archive_job
-from ..secrets import messages_db_url_secret
-from ..job import JobArgs, Job
-from ..network import vpc, private_services_network_with_db
-from ..storage import message_archive_bucket
+from config import create_load_archive_job
+from dwl_secrets import messages_db_url_secret
+from job import JobArgs, Job
+from network import vpc, private_services_network_with_db
+from storage import message_archive_bucket
 
-service_name = "whatupy_bot_db_load_archive"
+service_name = "whatupy-bot-db-load-archive"
 
 service_account = serviceaccount.Account(
     "whatupDbLoadArchive",
+    account_id="whatupy-bot-db-load-archive",
     description=f"Service account for {service_name}",
 )
 
@@ -24,8 +25,17 @@ message_archive_bucket_perm = storage.BucketIAMMember(
     "botDbLoadArchiveAccess",
     storage.BucketIAMMemberArgs(
         bucket=message_archive_bucket.name,
-        member=f"serviceAccount:{service_account.email}",
+        member=Output.concat("serviceAccount:", service_account.email),
         role="roles/storage.objectViewer",
+    ),
+)
+
+secret_manager_perm = secretmanager.SecretIamMember(
+    "dbLoadArchiveJobSecretsAccess",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=messages_db_url_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
     ),
 )
 
@@ -37,10 +47,10 @@ db_url_secret_source = JobTemplateTemplateContainerEnvValueSourceArgs(
 )
 
 if create_load_archive_job:
-    bot_onboard_bulk_job = Job(
+    db_migrations_job = Job(
         service_name,
         JobArgs(
-            app_path=path.join("..", "..", "whatupy"),
+            app_path=path.join("..", "whatupy"),
             args=["/usr/src/whatupy/db_load_archive_job.sh"],
             concurrency=1,
             cpu="1",
@@ -74,5 +84,7 @@ if create_load_archive_job:
             ],
             timeout="3600s",
         ),
-        opts=ResourceOptions(depends_on=message_archive_bucket_perm),
+        opts=ResourceOptions(
+            depends_on=[message_archive_bucket_perm, secret_manager_perm]
+        ),
     )

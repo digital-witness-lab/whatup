@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
@@ -21,7 +22,7 @@ var (
 	TLS_CERT_FILE = "/run/secrets/ssl-cert"
 	TLS_KEY_FILE  = "/run/secrets/ssl-key"
 	JWT_SECRET    = []byte("SECRETSECRET")
-	USE_SSL       = true
+	USE_SSL       = getEnvAsBoolean(os.Getenv("USE_SSL"))
 	Log           waLog.Logger
 )
 

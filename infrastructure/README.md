@@ -1,5 +1,40 @@
 # GCP Infrastructure
 
+## Development
+
+### Prerequisites
+
+-   [Install](https://cloud.google.com/sdk/docs/install) the latest `gcloud` CLI and login to the `whatup-deploy` GCP project with `gcloud auth login`.
+-   [Install](https://www.pulumi.com/docs/install/) the latest `pulumi` CLI and login to your Pulumi account with `pulumi login`.
+-   [Configure Docker](https://cloud.google.com/artifact-registry/docs/docker/authentication) to use your GCP credentials.
+
+### Pulumi crash-course
+
+Activate the stack you want to operate on:
+
+```sh
+pulumi stack select <stack name>
+# Check for the currently selected stack.
+# The currently-selected stack is indicated
+# with an '*' next to it.
+pulumi stack ls
+```
+
+Set stack config settings:
+
+```sh
+pulumi config set <key> <value> -s <stack name>
+# Always pass --secret for secret configs.
+# pulumi config set --secret <key> -s <stack name>
+```
+
+Set lists and objects in stack config:
+
+```sh
+pulumi config set --path 'key[0]' value
+pulumi config set --path 'key[1]' value
+```
+
 ## Private Networking
 
 ### Cloud Run Service
@@ -13,6 +48,7 @@ https://cloud.google.com/run/docs/securing/private-networking#from-other-service
 
 ### Cloud SQL
 
+https://cloud.google.com/vpc/docs/private-services-access
 https://cloud.google.com/sql/docs/postgres/connect-run#private-ip_1
 
 ## Jobs
@@ -28,3 +64,9 @@ console. Alternatively, you may also flip the flags back to
 `false` and let Pulumi destroy the jobs. You can once again
 at a later time set them to `true` to have them re-created
 and executed.
+
+## Deleting Cloud SQL Instance
+
+The Cloud SQL instance has deletion protection enabled to prevent accidental deletion.
+If you are sure you would like to delete the DB, you should first run a `pulumi up` with
+deletion protection set to `False` first, then run a `pulumi destroy`.

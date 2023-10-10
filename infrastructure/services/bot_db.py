@@ -1,24 +1,25 @@
 from os import path
 
-from pulumi import ResourceOptions
+from pulumi import ResourceOptions, Output
 from pulumi_gcp import serviceaccount, cloudrunv2, storage, secretmanager
 
 from pulumi_gcp.cloudrunv2 import (
     ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
 )  # noqa: E501
 
-from ..network import vpc, private_services_network_with_db
-from ..secrets import messages_db_url_secret
-from ..service import Service, ServiceArgs
-from ..storage import sessions_bucket
+from network import vpc, private_services_network_with_db
+from dwl_secrets import messages_db_url_secret
+from service import Service, ServiceArgs
+from storage import sessions_bucket
 
-from .whatupcore2 import whatupcore2
+from .whatupcore2 import whatupcore2_service
 from .bot_archive import whatupy_control_groups
 
-service_name = "whatupy_bot_db"
+service_name = "whatupy-bot-db"
 
 service_account = serviceaccount.Account(
     "botDbServiceAccount",
+    account_id="whatup-bot-db",
     description=f"Service account for {service_name}",
 )
 
@@ -28,7 +29,7 @@ sessions_bucket_perm = storage.BucketIAMMember(
     "botDbSessionsAccess",
     storage.BucketIAMMemberArgs(
         bucket=sessions_bucket.name,
-        member=f"serviceAccount:{service_account.email}",
+        member=Output.concat("serviceAccount:", service_account.email),
         role="roles/storage.objectViewer",
     ),
 )
@@ -38,7 +39,7 @@ secret_manager_perm = secretmanager.SecretIamMember(
     secretmanager.SecretIamMemberArgs(
         secret_id=messages_db_url_secret.id,
         role="roles/secretmanager.secretAccessor",
-        member=f"serviceAccount:{service_account.email}",
+        member=Output.concat("serviceAccount:", service_account.email),
     ),
 )
 
@@ -52,15 +53,15 @@ db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
 bot_db = Service(
     service_name,
     ServiceArgs(
-        app_path=path.join("..", "..", "whatupy"),
+        app_path=path.join("..", "whatupy"),
         args=[
             "/usr/src/whatupy/gcsfuse_run.sh",
             "databasebot",
             "--host",
-            "$WHATUPCORE2_HOST",
+            "$(WHATUPCORE2_HOST)",
             "--database-url",
-            "$DATABASE_URL",
-            "$BUCKET_MNT_DIR_PREFIX/$SESSIONS_BUCKET_MNT_DIR",
+            "$(DATABASE_URL)",
+            "$(BUCKET_MNT_DIR_PREFIX)/$(SESSIONS_BUCKET_MNT_DIR)",
         ],
         concurrency=50,
         container_port=3447,
@@ -102,7 +103,7 @@ bot_db = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_HOST",
-                value=whatupcore2.service.uri,
+                value=whatupcore2_service.service.uri,
             ),
         ],
     ),
