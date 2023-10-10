@@ -11,6 +11,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"go.mau.fi/whatsmeow/types"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -22,6 +23,32 @@ type WhatUpCoreServer struct {
 	sessionManager *SessionManager
 	log            waLog.Logger
 	pb.UnimplementedWhatUpCoreServer
+}
+
+func CanWriteJID(session *Session, jid *types.JID) (bool, error) {
+	aclEntry, err := session.Client.aclStore.GetByJID(jid)
+	if err != nil {
+		session.log.Errorf("Could not read ACL for JID: %+v", err)
+		return false, status.Errorf(codes.Internal, "Could not read ACL: %+v", err)
+	}
+	if !aclEntry.CanWrite() {
+		session.log.Debugf("Denying request because we don't have write permissions in group")
+		return false, status.Error(codes.PermissionDenied, "No read permissions to group")
+	}
+	return true, nil
+}
+
+func CanReadJID(session *Session, jid *types.JID) (bool, error) {
+	aclEntry, err := session.Client.aclStore.GetByJID(jid)
+	if err != nil {
+		session.log.Errorf("Could not read ACL for JID: %+v", err)
+		return false, status.Errorf(codes.Internal, "Could not read ACL: %+v", err)
+	}
+	if !aclEntry.CanRead() {
+		session.log.Debugf("Denying request because we don't have read permissions in group")
+		return false, status.Error(codes.PermissionDenied, "No read permissions to group")
+	}
+	return true, nil
 }
 
 func prepareOutboundMediaMessage(ctx context.Context, client *WhatsAppClient, sendMessageMedia *pb.SendMessageMedia) (*waProto.Message, error) {
@@ -108,6 +135,10 @@ func (s *WhatUpCoreServer) SendMessage(ctx context.Context, messageOptions *pb.S
 		messageOptions.Recipient = deanonRecipient
 	}
 	jid := ProtoToJID(messageOptions.Recipient)
+	if _, err := CanWriteJID(session, &jid); err != nil {
+		return nil, err
+	}
+
 	if messageOptions.ComposingTime > 0 {
 		typingTime := time.Duration(messageOptions.ComposingTime) * time.Second
 		session.Client.SendComposingPresence(jid, typingTime)
@@ -146,6 +177,12 @@ func (s *WhatUpCoreServer) SetDisappearingMessageTime(ctx context.Context, disap
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+
+	recipient := ProtoToJID(disappearingMessageOptions.Recipient)
+	if _, err := CanWriteJID(session, &recipient); err != nil {
+		return nil, err
+	}
+
 	var disappearingTime time.Duration
 	if strings.HasPrefix(disappearingMessageOptions.Recipient.User, "anon.") {
 		deanonRecipient, isDeAnon := session.Client.anonLookup.deAnonymizeJIDProto(disappearingMessageOptions.Recipient)
@@ -154,7 +191,6 @@ func (s *WhatUpCoreServer) SetDisappearingMessageTime(ctx context.Context, disap
 		}
 		disappearingMessageOptions.Recipient = deanonRecipient
 	}
-	recipient := ProtoToJID(disappearingMessageOptions.Recipient)
 	autoClearTime := disappearingMessageOptions.AutoClearTime
 	switch disappearingMessageOptions.DisappearingTime.String() {
 	case "TIMER_OFF":
@@ -248,6 +284,10 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 	}
 
 	info := ProtoToMessageInfo(downloadMediaOptions.GetInfo())
+	if _, err := CanReadJID(session, &info.Chat); err != nil {
+		return nil, err
+	}
+
 	mediaMessage := downloadMediaOptions.GetMediaMessage()
 	if mediaMessage == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Message not downloadable")
@@ -268,6 +308,10 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 	}
 
 	JID := ProtoToJID(pJID)
+	if _, err := CanReadJID(session, &JID); err != nil {
+		return nil, err
+	}
+
 	groupInfo, err := session.Client.GetGroupInfo(JID)
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, "%v", err)

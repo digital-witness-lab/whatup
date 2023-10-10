@@ -37,7 +37,7 @@ func TestDefault(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		foundPermissionNum := int32(foundPermission.Permission.Number())
+		foundPermissionNum := int32(foundPermission.Permission)
 		if foundPermissionNum != permission_num {
 			t.Fatalf("Mismatched default permission: %d: %d", foundPermissionNum, permission_num)
 		}
@@ -65,15 +65,15 @@ func TestJIDs(t *testing.T) {
 		t.Fatalf("Should not have errored: %s", err)
 	}
 	perm, err := acl.GetByJID(&nonAdJID)
-	foundPerm := perm.Permission.Number()
-	if foundPerm != permission.Number() {
+	foundPerm := perm.Permission
+	if foundPerm != int32(permission.Number()) {
 		t.Fatalf("Should have seen the same permission: %d: %d", foundPerm, permission.Number())
 	}
 
 	uniqueJID := types.NewJID("uniqueJID", types.GroupServer)
 	perm, err = acl.GetByJID(&uniqueJID)
-	foundPerm = perm.Permission.Number()
-	if foundPerm != defaultPermission.Number() {
+	foundPerm = perm.Permission
+	if foundPerm != int32(defaultPermission.Number()) {
 		t.Fatalf("Did not correctly set default permission: %d: %d", foundPerm, defaultPermission.Number())
 	}
 }

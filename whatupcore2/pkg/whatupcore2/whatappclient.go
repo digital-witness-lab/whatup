@@ -204,8 +204,8 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions 
 	state := NewRegistrationState()
 	isNewDB := wac.Store.ID == nil
 
-    defaultPermission := pb.RegisterOptions.DefaultGroupPermission
-    wac.aclStore.SetDefault(defaultPermission)
+	defaultPermission := registerOptions.DefaultGroupPermission
+	wac.aclStore.SetDefault(&defaultPermission)
 
 	go func(state *RegistrationState) {
 		for {
@@ -317,12 +317,12 @@ func (wac *WhatsAppClient) UNSAFEArchiveHack_ShouldProcess(msg *events.Message) 
 
 func (wac *WhatsAppClient) UNSAFEArchiveHack_ShouldProcessConversation(jid *types.JID, conv *waProto.Conversation) bool {
 	if strings.HasSuffix(wac.username, "-a") {
-        if jid.Server != types.GroupServer {
+		if jid.Server != types.GroupServer {
 			wac.Log.Warnf("HACK: chat not in group")
 			return false
 		}
-        var isArchived bool = *conv.Archived
-        if isArchived != true {
+		var isArchived bool = *conv.Archived
+		if isArchived != true {
 			wac.Log.Warnf("HACK: Not archived")
 			return false
 		}
@@ -338,6 +338,14 @@ func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 		wac.Log.Debugf("GetMessages handler got something: %T", evt)
 		switch wmMsg := evt.(type) {
 		case *events.Message:
+			aclEntry, err := wac.aclStore.GetByJID(&wmMsg.Info.Chat)
+			if err != nil {
+				wac.Log.Errorf("Could not read ACL for JID: %s: %+v", wmMsg.Info.Chat.String(), err)
+			}
+			if !aclEntry.CanRead() {
+				wac.Log.Debugf("Skipping message because we don't have read permissions in group")
+				return
+			}
 			// <HACK>
 			if !wac.UNSAFEArchiveHack_ShouldProcess(wmMsg) {
 				wac.Log.Warnf("HACK: skipping message")
@@ -365,53 +373,64 @@ func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 }
 
 func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
-    switch message := evt.(type) {
-    case *events.HistorySync:
-    	wac.Log.Infof("History Progress: %d", message.Data.GetProgress())
-    	for _, conv := range message.Data.GetConversations() {
-    		jid, err := types.ParseJID(conv.GetId())
-    		if err != nil {
-    			wac.Log.Errorf("Error parsing JID from history: %v", err)
-    			continue
-    		} else if jid.Server == types.BroadcastServer || jid.Server == types.HiddenUserServer {
-    			wac.Log.Debugf("Skipping history from JID server: %v", jid.Server)
-    			continue
-    		}
-    
-    		chatJID, err := types.ParseJID(conv.GetId())
-    		// <HACK>
-    		if !wac.UNSAFEArchiveHack_ShouldProcessConversation(&chatJID, conv) {
-    			wac.Log.Warnf("HACK: skipping conversation")
-    			continue
-    		}
-    		// </HACK>
-    		if err != nil {
-    			wac.Log.Errorf("Could not get conversation JID: %v", err)
-    			continue
-    		}
-    		var oldestMsgInfo *types.MessageInfo
-    		for _, rawMsg := range conv.GetMessages() {
-    			wmMsg, err := wac.ParseWebMessage(chatJID, rawMsg.GetMessage())
-    			if err != nil {
-    				wac.Log.Errorf("Failed to parse raw history message: %v", err)
-    				continue
-    			}
-    			if oldestMsgInfo == nil || wmMsg.Info.Timestamp.Before(oldestMsgInfo.Timestamp) {
-    				oldestMsgInfo = &wmMsg.Info
-    			}
-    
-    			msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
-    			if err != nil {
-    				wac.Log.Errorf("Failed to convert history message: %v", err)
-    				continue
-    			}
-    			wac.historyMessages <- msg
-    		}
-    		if *message.Data.SyncType == waProto.HistorySync_ON_DEMAND {
-    			go wac.RequestHistoryMsgInfo(oldestMsgInfo)
-    		}
-    	}
-    }
+	switch message := evt.(type) {
+	case *events.HistorySync:
+		wac.Log.Infof("History Progress: %d", message.Data.GetProgress())
+		for _, conv := range message.Data.GetConversations() {
+			jid, err := types.ParseJID(conv.GetId())
+			if err != nil {
+				wac.Log.Errorf("Error parsing JID from history: %v", err)
+				continue
+			} else if jid.Server == types.BroadcastServer || jid.Server == types.HiddenUserServer {
+				wac.Log.Debugf("Skipping history from JID server: %v", jid.Server)
+				continue
+			}
+
+			chatJID, err := types.ParseJID(conv.GetId())
+			if err != nil {
+				wac.Log.Errorf("Could not get conversation JID: %v", err)
+				continue
+			}
+
+			// <HACK>
+			if !wac.UNSAFEArchiveHack_ShouldProcessConversation(&chatJID, conv) {
+				wac.Log.Warnf("HACK: skipping conversation")
+				continue
+			}
+			// </HACK>
+			aclEntry, err := wac.aclStore.GetByJID(&chatJID)
+			if err != nil {
+				wac.Log.Errorf("Could not read ACL for JID: %s: %+v", chatJID.String(), err)
+				continue
+			}
+			if !aclEntry.CanRead() {
+				wac.Log.Debugf("Skipping message because we don't have read permissions in group")
+				continue
+			}
+
+			var oldestMsgInfo *types.MessageInfo
+			for _, rawMsg := range conv.GetMessages() {
+				wmMsg, err := wac.ParseWebMessage(chatJID, rawMsg.GetMessage())
+				if err != nil {
+					wac.Log.Errorf("Failed to parse raw history message: %v", err)
+					continue
+				}
+				if oldestMsgInfo == nil || wmMsg.Info.Timestamp.Before(oldestMsgInfo.Timestamp) {
+					oldestMsgInfo = &wmMsg.Info
+				}
+
+				msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
+				if err != nil {
+					wac.Log.Errorf("Failed to convert history message: %v", err)
+					continue
+				}
+				wac.historyMessages <- msg
+			}
+			if *message.Data.SyncType == waProto.HistorySync_ON_DEMAND {
+				go wac.RequestHistoryMsgInfo(oldestMsgInfo)
+			}
+		}
+	}
 }
 
 func (wac *WhatsAppClient) RequestHistoryMsgInfo(msgInfo *types.MessageInfo) {

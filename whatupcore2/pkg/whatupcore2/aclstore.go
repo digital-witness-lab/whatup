@@ -20,38 +20,56 @@ type upgradeFunc func(*sql.Tx, *ACLStore) error
 
 var Upgrades = [...]upgradeFunc{upgradeV1}
 
-type ACLRow struct {
+type ACLEntry struct {
 	JID        string
-	permission int32
-	updatedAt  time.Time
+	Permission int32
+	UpdatedAt  time.Time
 }
 
-func NewACLRowFromGroupACL(groupACL *pb.GroupACL) *ACLRow {
-	return &ACLRow{
+func NewACLEntryFromProto(groupACL *pb.GroupACL) *ACLEntry {
+	return &ACLEntry{
 		JID:        ProtoToJID(groupACL.JID).String(),
-		permission: int32(groupACL.Permission.Number()),
-		updatedAt:  groupACL.UpdatedAt.AsTime(),
+		Permission: int32(groupACL.Permission.Number()),
+		UpdatedAt:  groupACL.UpdatedAt.AsTime(),
 	}
 }
 
-func (arow *ACLRow) Proto() (*pb.GroupACL, error) {
+func (aclEntry *ACLEntry) CanRead() bool {
+	switch pb.GroupPermission(aclEntry.Permission) {
+	case pb.GroupPermission_READONLY, pb.GroupPermission_READWRITE:
+		return true
+	default:
+		return false
+	}
+}
+
+func (aclEntry *ACLEntry) CanWrite() bool {
+	switch pb.GroupPermission(aclEntry.Permission) {
+	case pb.GroupPermission_WRITEONLY, pb.GroupPermission_READWRITE:
+		return true
+	default:
+		return false
+	}
+}
+
+func (aclEntry *ACLEntry) Proto() (*pb.GroupACL, error) {
 	var jid types.JID
 	var err error
-	if arow.JID == defaultJID {
+	if aclEntry.JID == defaultJID {
 		jid = types.EmptyJID
 	} else {
-		jid, err = types.ParseJID(arow.JID)
+		jid, err = types.ParseJID(aclEntry.JID)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if _, ok := pb.GroupPermission_name[arow.permission]; !ok {
-		return nil, fmt.Errorf("Unknown permission value: %d", arow.permission)
+	if _, ok := pb.GroupPermission_name[aclEntry.Permission]; !ok {
+		return nil, fmt.Errorf("Unknown permission value: %d", aclEntry.Permission)
 	}
 	return &pb.GroupACL{
 		JID:        JIDToProto(jid),
-		Permission: pb.GroupPermission(arow.permission),
-		UpdatedAt:  timestamppb.New(arow.updatedAt),
+		Permission: pb.GroupPermission(aclEntry.Permission),
+		UpdatedAt:  timestamppb.New(aclEntry.UpdatedAt),
 	}, nil
 }
 
@@ -59,7 +77,7 @@ type ACLStore struct {
 	db  *sql.DB
 	log waLog.Logger
 
-	defaultGroupACL *pb.GroupACL
+	defaultACLEntry *ACLEntry
 }
 
 func NewACLStore(db *sql.DB, log waLog.Logger) *ACLStore {
@@ -137,7 +155,7 @@ func upgradeV1(tx *sql.Tx, acls *ACLStore) error {
 }
 
 func (acls *ACLStore) SetDefault(permission *pb.GroupPermission) error {
-	acls.defaultGroupACL = nil
+	acls.defaultACLEntry = nil
 	return acls.setByString(defaultJID, permission)
 }
 
@@ -149,16 +167,16 @@ func (acls *ACLStore) SetByJID(jid *types.JID, permission *pb.GroupPermission) e
 	return acls.setByString(jidStr, permission)
 }
 
-func (acls *ACLStore) GetDefault() (*pb.GroupACL, error) {
-	if acls.defaultGroupACL != nil {
-		return acls.defaultGroupACL, nil
+func (acls *ACLStore) GetDefault() (*ACLEntry, error) {
+	if acls.defaultACLEntry != nil {
+		return acls.defaultACLEntry, nil
 	}
-	groupACL, err := acls.GetByJID(&types.EmptyJID)
+	aclEntry, err := acls.GetByJID(&types.EmptyJID)
 	if err != nil {
 		return nil, err
 	}
-	acls.defaultGroupACL = groupACL
-	return groupACL, nil
+	acls.defaultACLEntry = aclEntry
+	return aclEntry, nil
 }
 
 func (acls *ACLStore) setByString(jidStr string, permission *pb.GroupPermission) error {
@@ -172,9 +190,9 @@ func (acls *ACLStore) setByString(jidStr string, permission *pb.GroupPermission)
 	return err
 }
 
-func (acls *ACLStore) GetByJID(jid *types.JID) (*pb.GroupACL, error) {
+func (acls *ACLStore) GetByJID(jid *types.JID) (*ACLEntry, error) {
 	var jidStr string
-	permission := &ACLRow{}
+	permission := &ACLEntry{}
 	if jid.IsEmpty() {
 		jidStr = defaultJID
 	} else {
@@ -186,19 +204,15 @@ func (acls *ACLStore) GetByJID(jid *types.JID) (*pb.GroupACL, error) {
         FROM aclstore_permissions
         WHERE jid = $1`,
 		jidStr,
-	).Scan(&permission.JID, &permission.permission, &permission.updatedAt)
+	).Scan(&permission.JID, &permission.Permission, &permission.UpdatedAt)
 	if err != nil {
 		return acls.GetDefault()
 	}
-	permissionProto, err := permission.Proto()
-	if err != nil {
-		return nil, err
-	}
-	return permissionProto, nil
+	return permission, nil
 }
 
-func (acls *ACLStore) GetAll() ([]*pb.GroupACL, error) {
-	groupACLs := make([]*pb.GroupACL, 0)
+func (acls *ACLStore) GetAll() ([]*ACLEntry, error) {
+	aclEntries := make([]*ACLEntry, 0)
 	query, err := acls.db.Query(`
         SELECT
             JID, permission, updatedAt
@@ -211,16 +225,12 @@ func (acls *ACLStore) GetAll() ([]*pb.GroupACL, error) {
 	defer query.Close()
 
 	for query.Next() {
-		permission := &ACLRow{}
-		if err := query.Scan(&permission.JID, &permission.permission, &permission.updatedAt); err != nil {
+		row := &ACLEntry{}
+		if err := query.Scan(&row.JID, &row.Permission, &row.UpdatedAt); err != nil {
 			return nil, err
 		}
-		permissionProto, err := permission.Proto()
-		if err != nil {
-			return nil, err
-		}
-		groupACLs = append(groupACLs, permissionProto)
+		aclEntries = append(aclEntries, row)
 	}
-	return groupACLs, nil
+	return aclEntries, nil
 
 }
