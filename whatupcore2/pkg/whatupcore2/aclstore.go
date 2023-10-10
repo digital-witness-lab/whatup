@@ -13,7 +13,7 @@ import (
 )
 
 const (
-    defaultJID = "DEFAULT"
+	defaultJID = "DEFAULT"
 )
 
 type upgradeFunc func(*sql.Tx, *ACLStore) error
@@ -21,52 +21,52 @@ type upgradeFunc func(*sql.Tx, *ACLStore) error
 var Upgrades = [...]upgradeFunc{upgradeV1}
 
 type ACLRow struct {
-    JID string
-    permission int32
-    updatedAt time.Time
+	JID        string
+	permission int32
+	updatedAt  time.Time
 }
 
 func NewACLRowFromGroupACL(groupACL *pb.GroupACL) *ACLRow {
-    return &ACLRow{
-        JID: ProtoToJID(groupACL.JID).String(),
-        permission: int32(groupACL.Permission.Number()),
-        updatedAt: groupACL.UpdatedAt.AsTime(),
-    }
+	return &ACLRow{
+		JID:        ProtoToJID(groupACL.JID).String(),
+		permission: int32(groupACL.Permission.Number()),
+		updatedAt:  groupACL.UpdatedAt.AsTime(),
+	}
 }
 
 func (arow *ACLRow) Proto() (*pb.GroupACL, error) {
-    var jid types.JID
-    var err error
-    if arow.JID == defaultJID {
-        jid = types.EmptyJID
-    } else {
-        jid, err = types.ParseJID(arow.JID)
-        if err != nil {
-            return nil, err
-        }
-    }
-    if _, ok := pb.GroupPermission_name[arow.permission]; !ok {
-        return nil, fmt.Errorf("Unknown permission value: %d", arow.permission)
-    }
-    return &pb.GroupACL{
-        JID: JIDToProto(jid),
-        Permission: pb.GroupPermission(arow.permission),
-        UpdatedAt: timestamppb.New(arow.updatedAt),
-    }, nil
+	var jid types.JID
+	var err error
+	if arow.JID == defaultJID {
+		jid = types.EmptyJID
+	} else {
+		jid, err = types.ParseJID(arow.JID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if _, ok := pb.GroupPermission_name[arow.permission]; !ok {
+		return nil, fmt.Errorf("Unknown permission value: %d", arow.permission)
+	}
+	return &pb.GroupACL{
+		JID:        JIDToProto(jid),
+		Permission: pb.GroupPermission(arow.permission),
+		UpdatedAt:  timestamppb.New(arow.updatedAt),
+	}, nil
 }
 
 type ACLStore struct {
-    db *sql.DB
-    log waLog.Logger
+	db  *sql.DB
+	log waLog.Logger
 
-    defaultACL *ACLRow
+	defaultGroupACL *pb.GroupACL
 }
 
 func NewACLStore(db *sql.DB, log waLog.Logger) *ACLStore {
-    log.Debugf("Starting now ACLStore")
-    acls := &ACLStore{db: db, log:log}
-    acls.Upgrade()
-    return acls
+	log.Debugf("Starting now ACLStore")
+	acls := &ACLStore{db: db, log: log}
+	acls.Upgrade()
+	return acls
 }
 
 func (acls *ACLStore) getVersion() (int, error) {
@@ -133,62 +133,94 @@ func upgradeV1(tx *sql.Tx, acls *ACLStore) error {
 	if err != nil {
 		return err
 	}
-    return nil
+	return nil
 }
 
-func (acls *ACLStore) SetDefaultACL(permission *pb.GroupPermission) error {
-    return acls.setACLByString(defaultJID, permission)
+func (acls *ACLStore) SetDefault(permission *pb.GroupPermission) error {
+	acls.defaultGroupACL = nil
+	return acls.setByString(defaultJID, permission)
 }
 
-func (acls *ACLStore) SetACLByJID(jid *types.JID, permission *pb.GroupPermission) error {
-    if jid.IsEmpty() {
-        return errors.New("Cannot set ACL for empty JID")
-    }
-    jidStr := jid.ToNonAD().String()
-    return acls.setACLByString(jidStr, permission)
+func (acls *ACLStore) SetByJID(jid *types.JID, permission *pb.GroupPermission) error {
+	if jid.IsEmpty() {
+		return errors.New("Cannot set ACL for empty JID")
+	}
+	jidStr := jid.ToNonAD().String()
+	return acls.setByString(jidStr, permission)
 }
 
-func (acls *ACLStore) GetDefaultACL() (*pb.GroupACL, error) {
-    groupACL, err := acls.GetACLbyJID(&types.EmptyJID)
-    if err != nil {
-        return nil, err
-    }
-    return groupACL, nil
+func (acls *ACLStore) GetDefault() (*pb.GroupACL, error) {
+	if acls.defaultGroupACL != nil {
+		return acls.defaultGroupACL, nil
+	}
+	groupACL, err := acls.GetByJID(&types.EmptyJID)
+	if err != nil {
+		return nil, err
+	}
+	acls.defaultGroupACL = groupACL
+	return groupACL, nil
 }
 
-func (acls *ACLStore) setACLByString(jidStr string, permission *pb.GroupPermission) error {
-    _, err := acls.db.Exec(`REPLACE INTO
+func (acls *ACLStore) setByString(jidStr string, permission *pb.GroupPermission) error {
+	_, err := acls.db.Exec(`REPLACE INTO
         aclstore_permissions (jid, permission, updatedAt)
         VALUES($1, $2, $3)`,
-        jidStr,
-        permission.Number(),
-        time.Now().Unix(),
-    )
-    return err
+		jidStr,
+		permission.Number(),
+		time.Now().Unix(),
+	)
+	return err
 }
 
-func (acls *ACLStore) GetACLbyJID(jid *types.JID) (*pb.GroupACL, error) {
-    var jidStr string
-    permission := &ACLRow{}
-    if jid.IsEmpty() {
-        jidStr = defaultJID
-    } else {
-        jidStr = jid.ToNonAD().String()
-    }
-    err := acls.db.QueryRow(`
+func (acls *ACLStore) GetByJID(jid *types.JID) (*pb.GroupACL, error) {
+	var jidStr string
+	permission := &ACLRow{}
+	if jid.IsEmpty() {
+		jidStr = defaultJID
+	} else {
+		jidStr = jid.ToNonAD().String()
+	}
+	err := acls.db.QueryRow(`
         SELECT
             JID, permission, updatedAt
         FROM aclstore_permissions
         WHERE jid = $1`,
-        jidStr,
-    ).Scan(&permission.JID, &permission.permission, &permission.updatedAt)
-    if err != nil {
-        acls.log.Errorf("Could not get ACL value: %s: %s", jid.String(), err)
-        return nil, err
-    }
-    permissionProto, err := permission.Proto()
-    if err != nil {
-        return nil, err
-    }
-    return permissionProto, nil
+		jidStr,
+	).Scan(&permission.JID, &permission.permission, &permission.updatedAt)
+	if err != nil {
+		return acls.GetDefault()
+	}
+	permissionProto, err := permission.Proto()
+	if err != nil {
+		return nil, err
+	}
+	return permissionProto, nil
+}
+
+func (acls *ACLStore) GetAll() ([]*pb.GroupACL, error) {
+	groupACLs := make([]*pb.GroupACL, 0)
+	query, err := acls.db.Query(`
+        SELECT
+            JID, permission, updatedAt
+        FROM aclstore_permissions
+        WHERE jid != $1
+    `, defaultJID)
+	if err != nil {
+		return nil, err
+	}
+	defer query.Close()
+
+	for query.Next() {
+		permission := &ACLRow{}
+		if err := query.Scan(&permission.JID, &permission.permission, &permission.updatedAt); err != nil {
+			return nil, err
+		}
+		permissionProto, err := permission.Proto()
+		if err != nil {
+			return nil, err
+		}
+		groupACLs = append(groupACLs, permissionProto)
+	}
+	return groupACLs, nil
+
 }
