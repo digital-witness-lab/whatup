@@ -10,30 +10,29 @@ RUN apt update \
     libsqlcipher0 \
     libsqlcipher-dev \
     libssl-dev \
-    && apt auto-clean \
-    && rm -rf /var/lib/apt/lists/*
+    libpcre2-8-0
 
-# Install gcsfuse and its dependencies.
+# Install dependencies for gcsfuse.
 # https://cloud.google.com/run/docs/tutorials/network-filesystems-fuse#defining_your_environment_configuration_with_the_dockerfile
 RUN apt install -y \
     curl \
     gnupg \
     lsb-release \
-    tini && \
-    gcsFuseRepo=gcsfuse-`lsb_release -c -s` && \
-    echo "deb http://packages.cloud.google.com/apt $gcsFuseRepo main" | \
+    tini
+# Install gcsfuse for the current distro.
+RUN gcsFuseRepo=gcsfuse-`lsb_release -c -s` && \
+    echo "deb https://packages.cloud.google.com/apt $gcsFuseRepo main" | \
     tee /etc/apt/sources.list.d/gcsfuse.list && \
     curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
     apt-key add - && \
     apt update && \
-    apt install -y gcsfuse && \
-    apt clean
+    apt install -y gcsfuse
+
+RUN apt auto-clean && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY go.mod go.sum ./
 COPY protos/ ./
-
-# Ensure the script is executable.
-RUN chmod +x /build/gcsfuse_run.sh
 
 RUN go mod download
 
@@ -41,6 +40,10 @@ ENV GOCACHE /usr/local/cache/go-build-cache/
 ENV GOMODCACHE /usr/local/cache/go-mod-cache/
 
 COPY . .
+
+# Ensure the script is executable.
+RUN chmod +x /build/gcsfuse_run.sh
+
 RUN \
     --mount=type=cache,target=/usr/local/cache/go-build-cache/ \
     --mount=type=cache,target=/usr/local/cache/go-mod-cache/ \
@@ -49,6 +52,24 @@ RUN \
 FROM gcr.io/distroless/base-debian11 AS run
 WORKDIR /
 
+# Copy shared libraries required by the tools we need to run.
+# Use `ldd <absolute path to the program>`.
+COPY --from=builder /lib/x86_64-linux-gnu/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.6
+COPY --from=builder /lib/x86_64-linux-gnu/libdl.so.2 /lib/x86_64-linux-gnu/libdl.so.2
+COPY --from=builder /lib/x86_64-linux-gnu/libc.so.6 /lib/x86_64-linux-gnu/libc.so.6
+COPY --from=builder /lib/x86_64-linux-gnu/libpthread.so.0 /lib/x86_64-linux-gnu/libpthread.so.0
+COPY --from=builder /lib/x86_64-linux-gnu/libselinux.so.1 /lib/x86_64-linux-gnu/libselinux.so.1
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libpcre2-8.so.0 /usr/lib/x86_64-linux-gnu/libpcre2-8.so.0
+COPY --from=builder /lib64/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2
+
+# Copy the tools we need in this final image.
+COPY --from=builder /bin/bash /bin/bash
+COPY --from=builder /usr/bin/env /usr/bin/env
+COPY --from=builder /bin/mkdir /bin/mkdir
+COPY --from=builder /usr/bin/tini /usr/bin/tini
+COPY --from=builder /usr/bin/gcsfuse /usr/bin/gcsfuse
+
+# Finally, copy the app binary and related scripts.
 COPY --from=builder /build/whatupcore2 /whatupcore2
 COPY --from=builder /build/gcsfuse_run.sh /gcsfuse_run.sh
 
@@ -59,4 +80,4 @@ EXPOSE 3447
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
 # Pass the wrapper script as arguments to tini.
-CMD ["/app/gcsfuse_run.sh"]
+CMD ["gcsfuse", "--version"]
