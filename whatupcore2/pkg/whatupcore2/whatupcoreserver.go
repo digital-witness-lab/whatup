@@ -82,11 +82,15 @@ func (s *WhatUpCoreServer) GetConnectionStatus(ctx context.Context, credentials 
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
+    JID := *session.Client.Store.ID
+    JIDProto := JIDToProto(JID)
+    JIDAnnonProto := session.Client.anonLookup.anonymizeJIDProto(JIDToProto(JID))
 	return &pb.ConnectionStatus{
 		IsConnected: session.Client.IsConnected(),
 		IsLoggedIn:  session.Client.IsLoggedIn(),
 		Timestamp:   timestamppb.New(session.Client.LastSuccessfulConnect),
-		JID:         JIDToProto(*session.Client.Store.ID),
+		JID:         JIDProto,
+        JIDAnon:    JIDAnnonProto,
 	}, nil
 }
 

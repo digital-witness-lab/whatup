@@ -154,11 +154,9 @@ class BaseBot:
             messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetMessages(
                 wuc.MessagesOptions(markMessagesRead=self.mark_messages_read)
             )
-            async for message in messages:
-                try:
-                    await self._dispatch_message(message)
-                except Exception:
-                    self.logger.exception("Exception handling message... attempting to continue")
+            async with asyncio.TaskGroup() as tg:
+                async for message in messages:
+                    tg.create_task(self._dispatch_message(message))
 
     async def _dispatch_message(
         self,
@@ -190,19 +188,25 @@ class BaseBot:
                     utils.jid_to_str(jid_from),
                     message.info.id,
                 )
-                await self._dispatch_control(message, source_hash)
+                try:
+                    await self._dispatch_control(message, source_hash)
+                except Exception:
+                    self.logger.exception("Exception handling message... attempting to continue")
         else:
             self.logger.info(
                 "Got normal message: %s: %s",
                 utils.jid_to_str(jid_from),
                 message.info.id,
             )
-            await self.on_message(
-                message,
-                is_history=is_history,
-                is_archive=is_archive,
-                archive_data=archive_data,
-            )
+            try:
+                await self.on_message(
+                    message,
+                    is_history=is_history,
+                    is_archive=is_archive,
+                    archive_data=archive_data,
+                )
+            except Exception:
+                    self.logger.exception("Exception handling message... attempting to continue")
 
     async def _dispatch_control(self, message, source_hash):
         if message.info.source.isFromMe:

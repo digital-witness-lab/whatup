@@ -8,7 +8,7 @@ from pathlib import Path
 
 import click
 
-from .bots import ArchiveBot, BotType, ChatBot, DatabaseBot, OnboardBot
+from .bots import ArchiveBot, ChatBot, BotType, DatabaseBot, OnboardBot
 from .utils import async_cli, str_to_jid
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
@@ -109,19 +109,18 @@ def cli(ctx, debug, host, port, control_groups: list, cert: Path):
 
 @cli.command()
 @async_cli
-@click.option("--friend", multiple=True, help="Which users to chat with")
 @click.option(
-    "--response-time", type=float, default=60, help="Mean response time (seconds)"
+    "--response-time", type=float, default=60 * 60 * 4, help="Mean response time (seconds)"
 )
 @click.option(
     "--response-time-sigma",
     type=float,
-    default=15,
+    default=60 * 60 * 2,
     help="Response time sigma (seconds)",
 )
-@click.argument("credentials", type=click.File(), nargs=-1)
+@click.argument("credentials", type=click.Path(path_type=Path), nargs=-1)
 @click.pass_context
-async def chatbot(ctx, credentials, response_time, response_time_sigma, friend):
+async def chatbot(ctx, credentials, response_time, response_time_sigma):
     """
     Create a bot-evasion chat-bot. Multiple bots can be turned into this mode
     and they will communicate with one-another so as to simulate real users
@@ -133,7 +132,6 @@ async def chatbot(ctx, credentials, response_time, response_time_sigma, friend):
         **ctx.obj["connection_params"],
     }
     await run_multi_bots(ChatBot, credentials, params)
-
 
 @cli.command
 @async_cli
