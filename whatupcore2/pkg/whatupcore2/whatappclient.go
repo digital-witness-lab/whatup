@@ -204,7 +204,8 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions 
 	state := NewRegistrationState()
 	isNewDB := wac.Store.ID == nil
 
-	// ACL TODO: wac.Client.Store.SetDefaultACL(asdfadsf)
+    defaultPermission := pb.RegisterOptions.DefaultGroupPermission
+    wac.aclStore.SetDefault(defaultPermission)
 
 	go func(state *RegistrationState) {
 		for {
