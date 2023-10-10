@@ -185,6 +185,7 @@ message ConnectionStatus {
     google.protobuf.Timestamp timestamp = 3;
 
     JID JID = 20;
+    JID JIDAnon = 21;
 }
 
 message WUMessage {

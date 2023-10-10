@@ -98,3 +98,16 @@ services:
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
     command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard-bulk --credentials-dir /usr/src/whatupy-data/sessions/
+
+  bot-chatbot:
+    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
+    build: ./whatupy/
+    links:
+      - whatup
+    environment:
+      - WHATUPY_CERT=/run/secrets/ssl-cert
+    secrets:
+      - ssl-cert
+    volumes:
+      - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
+    command: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot /usr/src/whatupy-data/sessions/
