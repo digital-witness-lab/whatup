@@ -212,6 +212,9 @@ var WhatUpCoreAuth_ServiceDesc = grpc.ServiceDesc{
 
 const (
 	WhatUpCore_GetConnectionStatus_FullMethodName        = "/protos.WhatUpCore/GetConnectionStatus"
+	WhatUpCore_GetACLAll_FullMethodName                  = "/protos.WhatUpCore/GetACLAll"
+	WhatUpCore_SetACL_FullMethodName                     = "/protos.WhatUpCore/SetACL"
+	WhatUpCore_GetACL_FullMethodName                     = "/protos.WhatUpCore/GetACL"
 	WhatUpCore_GetGroupInfo_FullMethodName               = "/protos.WhatUpCore/GetGroupInfo"
 	WhatUpCore_GetGroupInfoInvite_FullMethodName         = "/protos.WhatUpCore/GetGroupInfoInvite"
 	WhatUpCore_JoinGroup_FullMethodName                  = "/protos.WhatUpCore/JoinGroup"
@@ -227,6 +230,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WhatUpCoreClient interface {
 	GetConnectionStatus(ctx context.Context, in *ConnectionStatusOptions, opts ...grpc.CallOption) (*ConnectionStatus, error)
+	GetACLAll(ctx context.Context, in *GetACLAllOptions, opts ...grpc.CallOption) (WhatUpCore_GetACLAllClient, error)
+	SetACL(ctx context.Context, in *GroupACL, opts ...grpc.CallOption) (*GroupACL, error)
+	GetACL(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupACL, error)
 	GetGroupInfo(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupInfo, error)
 	GetGroupInfoInvite(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error)
 	JoinGroup(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error)
@@ -249,6 +255,56 @@ func NewWhatUpCoreClient(cc grpc.ClientConnInterface) WhatUpCoreClient {
 func (c *whatUpCoreClient) GetConnectionStatus(ctx context.Context, in *ConnectionStatusOptions, opts ...grpc.CallOption) (*ConnectionStatus, error) {
 	out := new(ConnectionStatus)
 	err := c.cc.Invoke(ctx, WhatUpCore_GetConnectionStatus_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *whatUpCoreClient) GetACLAll(ctx context.Context, in *GetACLAllOptions, opts ...grpc.CallOption) (WhatUpCore_GetACLAllClient, error) {
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[0], WhatUpCore_GetACLAll_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &whatUpCoreGetACLAllClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type WhatUpCore_GetACLAllClient interface {
+	Recv() (*GroupACL, error)
+	grpc.ClientStream
+}
+
+type whatUpCoreGetACLAllClient struct {
+	grpc.ClientStream
+}
+
+func (x *whatUpCoreGetACLAllClient) Recv() (*GroupACL, error) {
+	m := new(GroupACL)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *whatUpCoreClient) SetACL(ctx context.Context, in *GroupACL, opts ...grpc.CallOption) (*GroupACL, error) {
+	out := new(GroupACL)
+	err := c.cc.Invoke(ctx, WhatUpCore_SetACL_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *whatUpCoreClient) GetACL(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupACL, error) {
+	out := new(GroupACL)
+	err := c.cc.Invoke(ctx, WhatUpCore_GetACL_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +339,7 @@ func (c *whatUpCoreClient) JoinGroup(ctx context.Context, in *InviteCode, opts .
 }
 
 func (c *whatUpCoreClient) GetMessages(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetMessagesClient, error) {
-	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[0], WhatUpCore_GetMessages_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[1], WhatUpCore_GetMessages_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -315,7 +371,7 @@ func (x *whatUpCoreGetMessagesClient) Recv() (*WUMessage, error) {
 }
 
 func (c *whatUpCoreClient) GetPendingHistory(ctx context.Context, in *PendingHistoryOptions, opts ...grpc.CallOption) (WhatUpCore_GetPendingHistoryClient, error) {
-	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[1], WhatUpCore_GetPendingHistory_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[2], WhatUpCore_GetPendingHistory_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -378,6 +434,9 @@ func (c *whatUpCoreClient) SetDisappearingMessageTime(ctx context.Context, in *D
 // for forward compatibility
 type WhatUpCoreServer interface {
 	GetConnectionStatus(context.Context, *ConnectionStatusOptions) (*ConnectionStatus, error)
+	GetACLAll(*GetACLAllOptions, WhatUpCore_GetACLAllServer) error
+	SetACL(context.Context, *GroupACL) (*GroupACL, error)
+	GetACL(context.Context, *JID) (*GroupACL, error)
 	GetGroupInfo(context.Context, *JID) (*GroupInfo, error)
 	GetGroupInfoInvite(context.Context, *InviteCode) (*GroupInfo, error)
 	JoinGroup(context.Context, *InviteCode) (*GroupInfo, error)
@@ -396,6 +455,15 @@ type UnimplementedWhatUpCoreServer struct {
 
 func (UnimplementedWhatUpCoreServer) GetConnectionStatus(context.Context, *ConnectionStatusOptions) (*ConnectionStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetConnectionStatus not implemented")
+}
+func (UnimplementedWhatUpCoreServer) GetACLAll(*GetACLAllOptions, WhatUpCore_GetACLAllServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetACLAll not implemented")
+}
+func (UnimplementedWhatUpCoreServer) SetACL(context.Context, *GroupACL) (*GroupACL, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetACL not implemented")
+}
+func (UnimplementedWhatUpCoreServer) GetACL(context.Context, *JID) (*GroupACL, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetACL not implemented")
 }
 func (UnimplementedWhatUpCoreServer) GetGroupInfo(context.Context, *JID) (*GroupInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroupInfo not implemented")
@@ -448,6 +516,63 @@ func _WhatUpCore_GetConnectionStatus_Handler(srv interface{}, ctx context.Contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WhatUpCoreServer).GetConnectionStatus(ctx, req.(*ConnectionStatusOptions))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WhatUpCore_GetACLAll_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetACLAllOptions)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(WhatUpCoreServer).GetACLAll(m, &whatUpCoreGetACLAllServer{stream})
+}
+
+type WhatUpCore_GetACLAllServer interface {
+	Send(*GroupACL) error
+	grpc.ServerStream
+}
+
+type whatUpCoreGetACLAllServer struct {
+	grpc.ServerStream
+}
+
+func (x *whatUpCoreGetACLAllServer) Send(m *GroupACL) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _WhatUpCore_SetACL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GroupACL)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WhatUpCoreServer).SetACL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WhatUpCore_SetACL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WhatUpCoreServer).SetACL(ctx, req.(*GroupACL))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WhatUpCore_GetACL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JID)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WhatUpCoreServer).GetACL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WhatUpCore_GetACL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WhatUpCoreServer).GetACL(ctx, req.(*JID))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -614,6 +739,14 @@ var WhatUpCore_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WhatUpCore_GetConnectionStatus_Handler,
 		},
 		{
+			MethodName: "SetACL",
+			Handler:    _WhatUpCore_SetACL_Handler,
+		},
+		{
+			MethodName: "GetACL",
+			Handler:    _WhatUpCore_GetACL_Handler,
+		},
+		{
 			MethodName: "GetGroupInfo",
 			Handler:    _WhatUpCore_GetGroupInfo_Handler,
 		},
@@ -639,6 +772,11 @@ var WhatUpCore_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GetACLAll",
+			Handler:       _WhatUpCore_GetACLAll_Handler,
+			ServerStreams: true,
+		},
 		{
 			StreamName:    "GetMessages",
 			Handler:       _WhatUpCore_GetMessages_Handler,
