@@ -1,20 +1,21 @@
 from os import path
 
-from pulumi import ResourceOptions
+from pulumi import ResourceOptions, Output
 from pulumi_gcp import serviceaccount, cloudrunv2, storage
 
-from ..service import Service, ServiceArgs
-from ..network import vpc, private_services_network
-from ..storage import sessions_bucket, message_archive_bucket
+from service import Service, ServiceArgs
+from network import vpc, private_services_network
+from storage import sessions_bucket, message_archive_bucket
 
-from .whatupcore2 import whatupcore2
+from .whatupcore2 import whatupcore2_service
 
-service_name = "whatupy_bot_archive"
+service_name = "whatupy-bot-archive"
 # cool friends + micha
 whatupy_control_groups = "120363104970691776@g.us anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net"  # noqa: E501
 
 service_account = serviceaccount.Account(
     "botArchiveServiceAccount",
+    account_id="whatupy-bot-archive",
     description=f"Service account for {service_name}",
 )
 
@@ -22,7 +23,7 @@ message_archive_bucket_perm = storage.BucketIAMMember(
     "botArchiveMessageArchiveAccess",
     storage.BucketIAMMemberArgs(
         bucket=message_archive_bucket.name,
-        member=f"serviceAccount:{service_account.email}",
+        member=Output.concat("serviceAccount:", service_account.email),
         role="roles/storage.objectAdmin",
     ),
 )
@@ -33,7 +34,7 @@ sessions_bucket_perm = storage.BucketIAMMember(
     "botArchiveSessionsAccess",
     storage.BucketIAMMemberArgs(
         bucket=sessions_bucket.name,
-        member=f"serviceAccount:{service_account.email}",
+        member=Output.concat("serviceAccount:", service_account.email),
         role="roles/storage.objectViewer",
     ),
 )
@@ -41,15 +42,15 @@ sessions_bucket_perm = storage.BucketIAMMember(
 whatupy = Service(
     service_name,
     ServiceArgs(
-        app_path=path.join("..", "..", "whatupy"),
+        app_path=path.join("..", "whatupy"),
         args=[
             "/usr/src/whatupy/gcsfuse_run.sh",
-            "archivebot",
             "--host",
-            "$WHATUPCORE2_HOST",
+            "$(WHATUPCORE2_HOST)",
+            "archivebot",
             "--archive-dir",
-            "$BUCKET_MNT_DIR_PREFIX/$MESSAGE_ARCHIVE_BUCKET_MNT_DIR",
-            "$BUCKET_MNT_DIR_PREFIX/$SESSIONS_BUCKET_MNT_DIR",
+            "$(BUCKET_MNT_DIR_PREFIX)/$(MESSAGE_ARCHIVE_BUCKET_MNT_DIR)",
+            "$(BUCKET_MNT_DIR_PREFIX)/$(SESSIONS_BUCKET_MNT_DIR)",
         ],
         concurrency=50,
         container_port=3447,
@@ -95,7 +96,7 @@ whatupy = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_HOST",
-                value=whatupcore2.service.uri,
+                value=whatupcore2_service.get_host(),
             ),
         ],
     ),

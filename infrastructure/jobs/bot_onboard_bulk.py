@@ -1,19 +1,20 @@
 from os import path
 
-from pulumi import ResourceOptions
+from pulumi import ResourceOptions, Output
 from pulumi_gcp import serviceaccount, cloudrunv2, storage
 
-from ..config import create_onboard_bulk_job
-from ..job import JobArgs, Job
-from ..network import vpc, private_services_network
-from ..storage import sessions_bucket
+from config import create_onboard_bulk_job
+from job import JobArgs, Job
+from network import vpc, private_services_network
+from storage import sessions_bucket
 
-from ..services.whatupcore2 import whatupcore2
+from services.whatupcore2 import whatupcore2_service
 
-service_name = "whatupy_bot_onboard_bulk"
+service_name = "whatupy-bot-onboard-bulk"
 
 service_account = serviceaccount.Account(
     "whatupOnboardBulk",
+    account_id="whatupy-bot-onboard-bulk",
     description=f"Service account for {service_name}",
 )
 
@@ -21,7 +22,7 @@ sessions_bucket_perm = storage.BucketIAMMember(
     "botOnboardBulkSessionsAccess",
     storage.BucketIAMMemberArgs(
         bucket=sessions_bucket.name,
-        member=f"serviceAccount:{service_account.email}",
+        member=Output.concat("serviceAccount:", service_account.email),
         role="roles/storage.objectAdmin",
     ),
 )
@@ -30,16 +31,15 @@ if create_onboard_bulk_job:
     bot_onboard_bulk_job = Job(
         service_name,
         JobArgs(
-            app_path=path.join("..", "..", "whatupy"),
+            app_path=path.join("..", "whatupy"),
             args=[
                 "/usr/src/whatupy/gcsfuse_run.sh",
-                "onboard-bulk",
                 "--host",
-                "$WHATUPCORE2_HOST",
+                "$(WHATUPCORE2_HOST)",
+                "onboard-bulk",
                 "--credentials-dir",
-                "$BUCKET_MNT_DIR_PREFIX/$SESSIONS_BUCKET_MNT_DIR",
+                "$(BUCKET_MNT_DIR_PREFIX)/$(SESSIONS_BUCKET_MNT_DIR)",
             ],
-            concurrency=1,
             cpu="1",
             # Route all egress traffic via the VPC network.
             egress="ALL_TRAFFIC",
@@ -70,7 +70,7 @@ if create_onboard_bulk_job:
                 ),
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                     name="WHATUPCORE2_HOST",
-                    value=whatupcore2.service.uri,
+                    value=whatupcore2_service.get_host(),
                 ),
             ],
             timeout="3600s",

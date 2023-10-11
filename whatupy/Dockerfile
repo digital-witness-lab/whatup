@@ -1,9 +1,11 @@
-FROM python:3.11
+FROM python:3.11-slim-bullseye
 
 WORKDIR /usr/src/whatupy
 
+RUN apt update && apt upgrade -y && apt install -y curl
+
 RUN mkdir -p /usr/share/dict/ && \
-    wget -O /usr/share/dict/words "https://svnweb.freebsd.org/base/head/share/dict/web2?revision=326913&view=co&pathrev=326913"
+    curl -o /usr/share/dict/words "https://svnweb.freebsd.org/base/head/share/dict/web2?revision=326913&view=co&pathrev=326913"
 
 # Install gcsfuse and its dependencies.
 # https://cloud.google.com/run/docs/tutorials/network-filesystems-fuse#defining_your_environment_configuration_with_the_dockerfile
@@ -13,7 +15,7 @@ RUN apt install -y \
     lsb-release \
     tini && \
     gcsFuseRepo=gcsfuse-`lsb_release -c -s` && \
-    echo "deb http://packages.cloud.google.com/apt $gcsFuseRepo main" | \
+    echo "deb https://packages.cloud.google.com/apt $gcsFuseRepo main" | \
     tee /etc/apt/sources.list.d/gcsfuse.list && \
     curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
     apt-key add - && \

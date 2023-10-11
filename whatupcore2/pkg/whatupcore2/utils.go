@@ -130,3 +130,7 @@ func findFieldNameFunc(input interface{}, fieldFunc func(string) bool) []reflect
 		return nil
 	})
 }
+
+func getEnvAsBoolean(value string) bool {
+	return value == "true"
+}

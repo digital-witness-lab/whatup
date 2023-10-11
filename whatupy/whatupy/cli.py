@@ -15,26 +15,6 @@ FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(linen
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-DEFAULT_CERT = Path(str(files("whatupy").joinpath("whatupcore/static/cert.pem")))
-
-
-"""
-async def run_multi_bots(
-    bot: T.Type[BotType], credentials: T.List[T.TextIO], bot_args: dict
-):
-    whatup_credentials: T.List[dict] = []
-    for credential in credentials:
-        try:
-            whatup_credentials.append(json.load(credential))
-        except ValueError:
-            raise Exception(f"Could not parse credential: {credential}")
-    async with asyncio.TaskGroup() as tg:
-        for whatup_credential in whatup_credentials:
-            b: BotType = await bot(**bot_args).login(**whatup_credential)
-            coro = b.start()
-            tg.create_task(coro)
-        """
-
 
 async def run_multi_bots(bot: T.Type[BotType], paths: T.List[Path], bot_args: dict):
     bots_loaded: T.Dict[str, BotType] = {}
@@ -90,10 +70,10 @@ async def run_multi_bots(bot: T.Type[BotType], paths: T.List[Path], bot_args: di
 @click.option(
     "--cert",
     type=click.Path(dir_okay=False, readable=True, path_type=Path),
-    default=DEFAULT_CERT,
+    default=None,
 )
 @click.pass_context
-def cli(ctx, debug, host, port, control_groups: list, cert: Path):
+def cli(ctx, debug, host, port, control_groups: list, cert: T.Optional[Path]):
     ctx.obj = {"debug": debug}
     if debug:
         logging.basicConfig(format=FORMAT, level=logging.DEBUG)

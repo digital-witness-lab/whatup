@@ -5,7 +5,8 @@ from pulumi import ComponentResource, Output, ResourceOptions
 import pulumi_docker as docker
 from pulumi_gcp import artifactregistry, cloudrunv2, serviceaccount
 
-from .config import location, project
+from config import location, project
+from network_firewall import firewall_policy
 
 
 @dataclass
@@ -17,7 +18,6 @@ class JobArgs:
     app_path: str
     # This is passed to the ENTRYPOINT defined in the Dockerfile.
     args: List[str]
-    concurrency: int
     cpu: str
     # Possible values are: `ALL_TRAFFIC`, `PRIVATE_RANGES_ONLY`.
     egress: str
@@ -53,7 +53,8 @@ class Job(ComponentResource):
 
         # Create an Artifact Registry repository
         repository = artifactregistry.Repository(
-            props.image_name + "-repo",
+            props.image_name + "Repo",
+            repository_id=props.image_name + "-repo",
             description=f"Repository for {props.image_name} container image",
             format="DOCKER",
             location=location,
@@ -75,7 +76,7 @@ class Job(ComponentResource):
         # as described here:
         # https://cloud.google.com/artifact-registry/docs/docker/authentication
         image = docker.Image(
-            "image",
+            props.image_name + "Image",
             image_name=Output.concat(repo_url, "/", props.image_name),
             build=docker.DockerBuildArgs(
                 context=props.app_path,
@@ -110,10 +111,18 @@ class Job(ComponentResource):
         self._job = cloudrunv2.Job(
             f"{name}Job",
             cloudrunv2.JobArgs(
+                name=name,
+                # Set the launch stage to BETA since
+                # we want to use the Preview feature
+                # "Direct VPC Access".
+                # https://cloud.google.com/run/docs/configuring/vpc-direct-vpc
+                launch_stage="BETA",
                 location=location,
                 template=cloudrunv2.JobTemplateArgs(template=template),
             ),
-            opts=child_opts,
+            opts=ResourceOptions.merge(
+                child_opts, ResourceOptions(depends_on=firewall_policy)
+            ),
         )
 
         super().register_outputs({})
