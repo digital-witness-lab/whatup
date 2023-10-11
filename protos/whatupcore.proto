@@ -17,6 +17,10 @@ service WhatUpCoreAuth {
 service WhatUpCore {
     rpc GetConnectionStatus(ConnectionStatusOptions) returns (ConnectionStatus) {}
 
+    rpc GetACLAll(GetACLAllOptions) returns (stream GroupACL) {}
+    rpc SetACL(GroupACL) returns (GroupACL) {}
+    rpc GetACL(JID) returns (GroupACL) {}
+
     rpc GetGroupInfo(JID) returns (GroupInfo) {}
     rpc GetGroupInfoInvite(InviteCode) returns (GroupInfo) {}
     rpc JoinGroup(InviteCode) returns (GroupInfo) {}
@@ -28,6 +32,9 @@ service WhatUpCore {
 
     rpc SendMessage(SendMessageOptions) returns (SendMessageReceipt) {}
     rpc SetDisappearingMessageTime(DisappearingMessageOptions) returns (DisappearingMessageResponse) {}
+}
+
+message GetACLAllOptions {
 }
 
 enum GroupPermission {

@@ -42,6 +42,14 @@ UNKNOWN: GroupPermission.ValueType
 global___GroupPermission = GroupPermission
 
 @typing_extensions.final
+class GetACLAllOptions(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(self) -> None:
+        ...
+global___GetACLAllOptions = GetACLAllOptions
+
+@typing_extensions.final
 class RegisterOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     CREDENTIALS_FIELD_NUMBER: builtins.int
