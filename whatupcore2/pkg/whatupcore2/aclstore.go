@@ -206,15 +206,25 @@ func (acls *ACLStore) GetByJID(jid *types.JID) (*ACLEntry, error) {
 	} else {
 		jidStr = jid.ToNonAD().String()
 	}
-	err := acls.db.QueryRow(`
+	row := acls.db.QueryRow(`
         SELECT
             JID, permission, updatedAt
         FROM aclstore_permissions
         WHERE jid = $1`,
 		jidStr,
-	).Scan(&permission.JID, &permission.Permission, &permission.UpdatedAt)
-	if err != nil {
+	)
+	if row.Err() != nil {
+		return nil, row.Err()
+	}
+
+	err := row.Scan(&permission.JID, &permission.Permission, &permission.UpdatedAt)
+	if err == sql.ErrNoRows {
+		if jidStr == defaultJID {
+			return &ACLEntry{}, nil
+		}
 		return acls.GetDefault()
+	} else if err != nil {
+		return nil, err
 	}
 	return permission, nil
 }
