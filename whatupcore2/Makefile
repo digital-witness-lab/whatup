@@ -1,7 +1,6 @@
 .PHONY: connect clean whatupcore2
 
 whatupcore2:
-	go mod tidy
 	GOOS=linux go build \
     	-tags "sqlite3 sqlcipher sqlite_secure_delete" \
     	-o whatupcore2 \

@@ -3,13 +3,10 @@ package whatupcore2
 import (
 	"reflect"
 
-	pb "github.com/digital-witness-lab/whatup/protos"
-	"go.mau.fi/whatsmeow"
-	"go.mau.fi/whatsmeow/store"
-	"go.mau.fi/whatsmeow/types"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"github.com/nyaruka/phonenumbers"
 )
 
+<<<<<<< HEAD
 func ProtoToMediaType(mediaType pb.SendMessageMedia_MediaType) (whatsmeow.MediaType, bool) {
 	switch m := mediaType.String(); m {
 	case "MediaImage":
@@ -165,7 +162,14 @@ func GroupInfoToProto(gi *types.GroupInfo, device *store.Device) *pb.GroupInfo {
 
 		ParticipantVersionId: gi.ParticipantVersionID,
 		Participants:         participants,
+=======
+func UserToCountry(user string) string {
+	num, err := phonenumbers.Parse("+"+user, "IN")
+	if err != nil {
+		return ""
+>>>>>>> main
 	}
+	return phonenumbers.GetRegionCodeForNumber(num)
 }
 
 func valuesFilterZero(values []reflect.Value) []reflect.Value {
@@ -222,19 +226,31 @@ func valuesToStrings(values []reflect.Value) []string {
 func findRunAction(v interface{}, action func(reflect.Value) []reflect.Value) []reflect.Value {
 	output := []reflect.Value{}
 	queue := []reflect.Value{reflect.ValueOf(v)}
+	seenAddr := make(map[uintptr]bool)
 	for len(queue) > 0 {
 		v := queue[0]
 		queue = queue[1:]
-		for v.Kind() == reflect.Ptr {
+		for v.Kind() == reflect.Ptr && v.IsValid() {
 			output = append(output, action(v)...)
 			v = v.Elem()
 		}
-		if v.Kind() != reflect.Struct {
+		if !v.IsValid() {
 			continue
 		}
-		output = append(output, action(v)...)
-		for i := 0; i < v.NumField(); i++ {
-			queue = append(queue, v.Field(i))
+		if p := uintptr(v.UnsafeAddr()); !seenAddr[p] {
+			seenAddr[p] = true
+			switch v.Kind() {
+			case reflect.Struct:
+				output = append(output, action(v)...)
+				for i := 0; i < v.NumField(); i++ {
+					queue = append(queue, v.Field(i))
+				}
+			case reflect.Slice, reflect.Array:
+				output = append(output, action(v)...)
+				for i := 0; i < v.Len(); i++ {
+					queue = append(queue, v.Index(i))
+				}
+			}
 		}
 	}
 	return output
@@ -271,4 +287,8 @@ func findFieldNameFunc(input interface{}, fieldFunc func(string) bool) []reflect
 		}
 		return nil
 	})
+}
+
+func getEnvAsBoolean(value string) bool {
+	return value == "true"
 }

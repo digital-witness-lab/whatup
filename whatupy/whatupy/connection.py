@@ -16,16 +16,18 @@ class NotRegisteredError(Exception):
     pass
 
 
-def create_whatupcore_clients(host: str, port: int, cert_path: Path):
+def create_whatupcore_clients(host: str, port: int, cert_path: T.Optional[Path] = None):
     authenticator = WhatUpAuthentication()
 
-    with cert_path.open("rb") as f:
-        cert = f.read()
+    cert = None
+    if cert_path:
+        with cert_path.open("rb") as f:
+            cert = f.read()
     options = [("grpc.max_receive_message_length", 200 * 1024 * 1024)]
     channel = grpc.aio.secure_channel(
         f"{host}:{port}",
         grpc.composite_channel_credentials(
-            grpc.ssl_channel_credentials(cert),
+            grpc.ssl_channel_credentials(root_certificates=cert or None),
             grpc.metadata_call_credentials(GRPCAuth(authenticator)),
         ),
         options=options,
