@@ -45,11 +45,13 @@ services:
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
       - ./data/message-archive/:/usr/src/whatupy-data/message-archive/
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
+    command: whatupy --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/micha.json
 
   bot-debug:
     # run with,
     #   $ docker compose run --build --service-ports bot-debug  /usr/src/whatupy-data/sessions/<target-session>.json
+    # and then connect with,
+    #   $ rlwrap nc localhost 6666
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
