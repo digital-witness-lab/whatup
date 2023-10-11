@@ -22,7 +22,7 @@ class ServiceArgs:
     # This is passed to the ENTRYPOINT defined in the Dockerfile.
     args: List[str]
     concurrency: int
-    container_port: int
+    container_port: Optional[int]
     cpu: str
     # Possible values are: `ALL_TRAFFIC`, `PRIVATE_RANGES_ONLY`.
     egress: str
@@ -92,12 +92,7 @@ class Service(ComponentResource):
             opts=child_opts,
         )
 
-        resources = cloudrunv2.ServiceTemplateContainerResourcesArgs(
-            limits=dict(
-                memory=props.memory,
-                cpu=props.cpu,
-            ),
-        )
+        containers = self.get_containers(props, image)
 
         # Create a Cloud Run service definition.
         self._service = cloudrunv2.Service(
@@ -118,23 +113,7 @@ class Service(ComponentResource):
                     vpc_access=cloudrunv2.ServiceTemplateVpcAccessArgs(
                         egress=props.egress, network_interfaces=[props.subnet]
                     ),
-                    containers=[
-                        cloudrunv2.ServiceTemplateContainerArgs(
-                            args=props.args,
-                            image=image.image_name,
-                            resources=resources,
-                            ports=[
-                                cloudrunv2.ServiceTemplateContainerPortArgs(
-                                    # This enables end-to-end HTTP/2 (gRPC)
-                                    # as described in:
-                                    # https://cloud.google.com/run/docs/configuring/http2
-                                    name="h2c",
-                                    container_port=props.container_port,
-                                ),
-                            ],
-                            envs=props.envs,
-                        ),
-                    ],
+                    containers=containers,
                     max_instance_request_concurrency=props.concurrency,
                     service_account=props.service_account.email,
                 ),
@@ -172,6 +151,61 @@ class Service(ComponentResource):
             self._service.uri,
             lambda u: u.replace("https://", ""),
         )
+
+    def get_containers(self, props: ServiceArgs, image: docker.Image):
+        containers: List[cloudrunv2.ServiceTemplateContainerArgs] = []
+
+        # If a container port was not provided, we assume
+        # that the main container image we want to run
+        # does not run an HTTP server.
+        #
+        # Run a simple container that can serve HTTP traffic
+        # to make the startup probes of CloudRun happy.
+        if props.container_port is None:
+            nginx_resources = cloudrunv2.ServiceTemplateContainerResourcesArgs(
+                limits=dict(
+                    memory="512Mi",
+                    cpu="0.5",
+                ),
+            )
+            simple_hello_container = cloudrunv2.ServiceTemplateContainerArgs(
+                image="nginxdemos/nginx-hello",
+                resources=nginx_resources,
+                ports=[
+                    cloudrunv2.ServiceTemplateContainerPortArgs(
+                        name="http1",
+                        container_port=8080,
+                    ),
+                ],
+            )
+            containers.append(simple_hello_container)
+
+        resources = cloudrunv2.ServiceTemplateContainerResourcesArgs(
+            limits=dict(
+                memory=props.memory,
+                cpu=props.cpu,
+            ),
+        )
+        containers.append(
+            cloudrunv2.ServiceTemplateContainerArgs(
+                args=props.args,
+                image=image.image_name,
+                resources=resources,
+                ports=[
+                    cloudrunv2.ServiceTemplateContainerPortArgs(
+                        # This enables end-to-end HTTP/2 (gRPC)
+                        # as described in:
+                        # https://cloud.google.com/run/docs/configuring/http2
+                        name="h2c",
+                        container_port=props.container_port,
+                    ),
+                ]
+                if props.container_port is not None
+                else None,
+                envs=props.envs,
+            ),
+        )
+        return containers
 
     def add_invoke_permission(
         self, service: cloudrunv2.Service, service_account_email: str

@@ -65,7 +65,7 @@ bot_db = Service(
             "$(BUCKET_MNT_DIR_PREFIX)/$(SESSIONS_BUCKET_MNT_DIR)",
         ],
         concurrency=50,
-        container_port=3447,
+        container_port=None,
         cpu="1",
         # Route all egress traffic via the VPC network.
         egress="ALL_TRAFFIC",
