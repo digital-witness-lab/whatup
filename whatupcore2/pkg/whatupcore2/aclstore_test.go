@@ -41,6 +41,10 @@ func TestDefault(t *testing.T) {
 		if foundPermissionNum != permission_num {
 			t.Fatalf("Mismatched default permission: %d: %d", foundPermissionNum, permission_num)
 		}
+
+		if !foundPermission.IsDefault() {
+			t.Fatalf("IsDefault is not set properly: %t", foundPermission.IsDefault())
+		}
 	}
 }
 

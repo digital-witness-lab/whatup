@@ -79,11 +79,14 @@ func JIDToProto(JID types.JID) *pb.JID {
 }
 
 func ProtoToJID(pJID *pb.JID) types.JID {
+	if pJID == nil {
+		return types.EmptyJID
+	}
 	return types.JID{
-		User:     pJID.User,
-		RawAgent: uint8(pJID.Agent),
-		Device:   uint16(pJID.Device),
-		Server:   pJID.Server,
+		User:     pJID.GetUser(),
+		RawAgent: uint8(pJID.GetAgent()),
+		Device:   uint16(pJID.GetDevice()),
+		Server:   pJID.GetServer(),
 	}
 }
 

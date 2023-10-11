@@ -109,15 +109,15 @@ func (s *WhatUpCoreServer) GetConnectionStatus(ctx context.Context, credentials 
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-    JID := *session.Client.Store.ID
-    JIDProto := JIDToProto(JID)
-    JIDAnnonProto := session.Client.anonLookup.anonymizeJIDProto(JIDToProto(JID))
+	JID := *session.Client.Store.ID
+	JIDProto := JIDToProto(JID)
+	JIDAnnonProto := session.Client.anonLookup.anonymizeJIDProto(JIDToProto(JID))
 	return &pb.ConnectionStatus{
 		IsConnected: session.Client.IsConnected(),
 		IsLoggedIn:  session.Client.IsLoggedIn(),
 		Timestamp:   timestamppb.New(session.Client.LastSuccessfulConnect),
 		JID:         JIDProto,
-        JIDAnon:    JIDAnnonProto,
+		JIDAnon:     JIDAnnonProto,
 	}, nil
 }
 
@@ -368,7 +368,11 @@ func (s *WhatUpCoreServer) SetACL(ctx context.Context, groupACL *pb.GroupACL) (*
 		return nil, status.Errorf(codes.Internal, "Could not get ACL value: %+v", err)
 	}
 
-	err = aclStore.SetByJID(&jid, &groupACL.Permission)
+	if groupACL.IsDefault {
+		err = aclStore.SetDefault(&groupACL.Permission)
+	} else {
+		err = aclStore.SetByJID(&jid, &groupACL.Permission)
+	}
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not set ACL value: %+v", err)
 	}
