@@ -10,10 +10,15 @@ import click
 
 from .bots import ArchiveBot, ChatBot, BotType, DatabaseBot, OnboardBot, DebugBot
 from .utils import async_cli, str_to_jid
+from .protos import whatupcore_pb2 as wuc
+
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+
+GROUP_PERMISSIONS = dict(wuc.GroupPermission.items())
 
 
 async def run_multi_bots(bot: T.Type[BotType], paths: T.List[Path], bot_args: dict):
@@ -120,13 +125,18 @@ async def chatbot(ctx, credentials, response_time, response_time_sigma):
 @cli.command
 @async_cli
 @click.option(
+    "--default-group-permission",
+    type=click.Choice(list(GROUP_PERMISSIONS.keys())),
+    default="DENIED",
+)
+@click.option(
     "--credentials-dir",
     type=click.Path(file_okay=False, writable=True, path_type=Path),
     default=Path("./credentials/"),
 )
 @click.argument("name", type=str)
 @click.pass_context
-async def onboard(ctx, name, credentials_dir: Path):
+async def onboard(ctx, name, credentials_dir: Path, default_group_permission: str):
     """
     Creates a QR code for provided bot. The command will exit on a sucessful QR
     code scan. The credential file will be saved to <credential-dir>/<name>.json
@@ -134,7 +144,11 @@ async def onboard(ctx, name, credentials_dir: Path):
     credentials_dir.mkdir(parents=True, exist_ok=True)
     credential_file = credentials_dir / f"{name}.json"
     bot = OnboardBot(**ctx.obj["connection_params"])
-    await bot.register(name, credential_file)
+    await bot.register(
+        name,
+        credential_file,
+        default_group_permission=GROUP_PERMISSIONS[default_group_permission],
+    )
 
 
 @cli.command()
@@ -166,9 +180,18 @@ async def onboard_bulk(ctx, credentials_dir: Path):
         if not name:
             print("No name provided... exiting.")
             return
+        default_group_permission_str: str = click.prompt(
+            "Enter the default group permission level (default=DENIED)",
+            type=click.Choice(list(GROUP_PERMISSIONS.keys())),
+            default="DENIED",
+        )
         credential_file = credentials_dir / f"{name}.json"
         bot = OnboardBot(**ctx.obj["connection_params"])
-        await bot.register(name, credential_file)
+        await bot.register(
+            name,
+            credential_file,
+            default_group_permission=GROUP_PERMISSIONS[default_group_permission_str],
+        )
 
 
 @cli.command()

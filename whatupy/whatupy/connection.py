@@ -62,12 +62,21 @@ class WhatUpAuthentication:
         session = await self.auth_client.Login(credentials)
         self.session_token = session
 
-    async def register(self, username: str, passphrase: str) -> T.AsyncIterator[str]:
+    async def register(
+        self,
+        username: str,
+        passphrase: str,
+        default_group_permission: wuc.GroupPermission.ValueType = wuc.GroupPermission.DENIED,
+    ) -> T.AsyncIterator[str]:
         if not self.auth_client:
             raise Exception("Must set an auth client")
         self.logger = self.logger.getChild(username)
         credentials = wuc.WUCredentials(username=username, passphrase=passphrase)
-        registerStream = self.auth_client.Register(credentials)
+        register_options = wuc.RegisterOptions(
+            credentials=credentials,
+            defaultGroupPermission=default_group_permission,
+        )
+        registerStream = self.auth_client.Register(register_options)
         async for msg in registerStream:
             if msg.qrcode:
                 yield msg.qrcode
