@@ -7,5 +7,6 @@ from .chatbot import ChatBot
 from .databasebot import DatabaseBot
 from .debugbot import DebugBot
 from .onboardbot import OnboardBot
+from .debugbot import DebugBot
 
 BotType = TypeVar("BotType", bound=BaseBot)

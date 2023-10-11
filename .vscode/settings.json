@@ -1,0 +1,13 @@
+{
+    "gopls": {
+        "build.env": {
+            "GOPRIVATE": "github.com/digital-witness-lab/*",
+            "GO111MODULE": "on"
+        }
+    },
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "python.formatting.provider": "none",
+    "python.analysis.typeCheckingMode": "basic"
+}

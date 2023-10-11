@@ -8,33 +8,12 @@ from pathlib import Path
 
 import click
 
-from .bots import (ArchiveBot, BotType, ChatBot, DatabaseBot, DebugBot,
-                   OnboardBot)
+from .bots import ArchiveBot, ChatBot, BotType, DatabaseBot, OnboardBot, DebugBot
 from .utils import async_cli, str_to_jid
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-DEFAULT_CERT = Path(str(files("whatupy").joinpath("whatupcore/static/cert.pem")))
-
-
-"""
-async def run_multi_bots(
-    bot: T.Type[BotType], credentials: T.List[T.TextIO], bot_args: dict
-):
-    whatup_credentials: T.List[dict] = []
-    for credential in credentials:
-        try:
-            whatup_credentials.append(json.load(credential))
-        except ValueError:
-            raise Exception(f"Could not parse credential: {credential}")
-    async with asyncio.TaskGroup() as tg:
-        for whatup_credential in whatup_credentials:
-            b: BotType = await bot(**bot_args).login(**whatup_credential)
-            coro = b.start()
-            tg.create_task(coro)
-        """
 
 
 async def run_multi_bots(bot: T.Type[BotType], paths: T.List[Path], bot_args: dict):
@@ -48,6 +27,10 @@ async def run_multi_bots(bot: T.Type[BotType], paths: T.List[Path], bot_args: di
                 elif path.is_dir():
                     credentials.extend(
                         path / filename for filename in path.glob("*.json")
+                    )
+                else:
+                    credentials.extend(
+                        path / filename for filename in glob.glob(str(path))
                     )
             for credential_file in credentials:
                 try:
@@ -87,10 +70,10 @@ async def run_multi_bots(bot: T.Type[BotType], paths: T.List[Path], bot_args: di
 @click.option(
     "--cert",
     type=click.Path(dir_okay=False, readable=True, path_type=Path),
-    default=DEFAULT_CERT,
+    default=None,
 )
 @click.pass_context
-def cli(ctx, debug, host, port, control_groups: list, cert: Path):
+def cli(ctx, debug, host, port, control_groups: list, cert: T.Optional[Path]):
     ctx.obj = {"debug": debug}
     if debug:
         logging.basicConfig(format=FORMAT, level=logging.DEBUG)
@@ -106,19 +89,21 @@ def cli(ctx, debug, host, port, control_groups: list, cert: Path):
 
 @cli.command()
 @async_cli
-@click.option("--friend", multiple=True, help="Which users to chat with")
 @click.option(
-    "--response-time", type=float, default=60, help="Mean response time (seconds)"
+    "--response-time",
+    type=float,
+    default=60 * 60 * 4,
+    help="Mean response time (seconds)",
 )
 @click.option(
     "--response-time-sigma",
     type=float,
-    default=15,
+    default=60 * 60 * 2,
     help="Response time sigma (seconds)",
 )
-@click.argument("credentials", type=click.File(), nargs=-1)
+@click.argument("credentials", type=click.Path(path_type=Path), nargs=-1)
 @click.pass_context
-async def chatbot(ctx, credentials, response_time, response_time_sigma, friend):
+async def chatbot(ctx, credentials, response_time, response_time_sigma):
     """
     Create a bot-evasion chat-bot. Multiple bots can be turned into this mode
     and they will communicate with one-another so as to simulate real users

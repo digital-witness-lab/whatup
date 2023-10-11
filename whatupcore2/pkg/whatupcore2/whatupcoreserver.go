@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
@@ -82,10 +83,15 @@ func (s *WhatUpCoreServer) GetConnectionStatus(ctx context.Context, credentials 
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
+    JID := *session.Client.Store.ID
+    JIDProto := JIDToProto(JID)
+    JIDAnnonProto := session.Client.anonLookup.anonymizeJIDProto(JIDToProto(JID))
 	return &pb.ConnectionStatus{
 		IsConnected: session.Client.IsConnected(),
 		IsLoggedIn:  session.Client.IsLoggedIn(),
 		Timestamp:   timestamppb.New(session.Client.LastSuccessfulConnect),
+		JID:         JIDProto,
+        JIDAnon:    JIDAnnonProto,
 	}, nil
 }
 
@@ -95,6 +101,13 @@ func (s *WhatUpCoreServer) SendMessage(ctx context.Context, messageOptions *pb.S
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
+	if strings.HasPrefix(messageOptions.Recipient.User, "anon.") {
+		deanonRecipient, isDeAnon := session.Client.anonLookup.deAnonymizeJIDProto(messageOptions.Recipient)
+		if !isDeAnon {
+			return nil, status.Errorf(codes.Internal, "Could not deanonimize recipient of message: %s", messageOptions.Recipient.User)
+		}
+		messageOptions.Recipient = deanonRecipient
+	}
 	jid := ProtoToJID(messageOptions.Recipient)
 	if messageOptions.ComposingTime > 0 {
 		typingTime := time.Duration(messageOptions.ComposingTime) * time.Second
@@ -135,6 +148,13 @@ func (s *WhatUpCoreServer) SetDisappearingMessageTime(ctx context.Context, disap
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 	var disappearingTime time.Duration
+	if strings.HasPrefix(disappearingMessageOptions.Recipient.User, "anon.") {
+		deanonRecipient, isDeAnon := session.Client.anonLookup.deAnonymizeJIDProto(disappearingMessageOptions.Recipient)
+		if !isDeAnon {
+			return nil, status.Errorf(codes.Internal, "Could not deanonimize recipient of message: %s", disappearingMessageOptions.Recipient.User)
+		}
+		disappearingMessageOptions.Recipient = deanonRecipient
+	}
 	recipient := ProtoToJID(disappearingMessageOptions.Recipient)
 	autoClearTime := disappearingMessageOptions.AutoClearTime
 	switch disappearingMessageOptions.DisappearingTime.String() {
@@ -183,9 +203,10 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 			msg.MarkRead()
 		}
 		msgProto, ok := msg.ToProto()
+		anonMsgProto := AnonymizeInterface(session.Client.anonLookup, msgProto)
 		if !ok {
 			msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
-		} else if err := server.Send(msgProto); err != nil {
+		} else if err := server.Send(anonMsgProto); err != nil {
 			s.log.Errorf("Could not send message to client: %v", err)
 			return nil
 		}
@@ -207,9 +228,10 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 
 	for msg := range msgChan {
 		msgProto, ok := msg.ToProto()
+		anonMsgProto := AnonymizeInterface(session.Client.anonLookup, msgProto)
 		if !ok {
 			msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
-		} else if err := server.Send(msgProto); err != nil {
+		} else if err := server.Send(anonMsgProto); err != nil {
 			return nil
 		}
 	}
@@ -251,7 +273,8 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, "%v", err)
 	}
-	return GroupInfoToProto(groupInfo, session.Client.Store), nil
+	groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+	return AnonymizeInterface(session.Client.anonLookup, groupInfoProto), nil
 }
 
 func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_GetCommunityInfoServer) error {
@@ -317,7 +340,9 @@ func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context, inviteCode *pb.
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, "%v", err)
 	}
-	return GroupInfoToProto(groupInfo, session.Client.Store), nil
+
+	groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+	return AnonymizeInterface(session.Client.anonLookup, groupInfoProto), nil
 }
 
 func (s *WhatUpCoreServer) JoinGroup(ctx context.Context, inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
@@ -335,5 +360,6 @@ func (s *WhatUpCoreServer) JoinGroup(ctx context.Context, inviteCode *pb.InviteC
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, "Could not join group: %v", err)
 	}
-	return GroupInfoToProto(groupInfo, session.Client.Store), nil
+	groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+	return AnonymizeInterface(session.Client.anonLookup, groupInfoProto), nil
 }

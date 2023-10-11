@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from functools import partial
 
 import dataset
-import phonenumbers
 from dataset.util import DatasetException
 from google.protobuf.timestamp_pb2 import Timestamp
 from phonenumbers.phonenumberutil import region_code_for_number
@@ -46,18 +45,7 @@ def flatten_proto_message(
             if "jid" not in jid_key.lower():
                 jid_key = f"{jid_key}_jid"
             flat[jid_key] = utils.jid_to_str(obj)
-            if obj.server != "g.us" and obj.user:
-                try:
-                    jid_phone = phonenumbers.parse(f"+{obj.user}")
-                    flat.update(
-                        {
-                            f"{key}_country_code": jid_phone.country_code,
-                            f"{key}_country_iso": region_code_for_number(jid_phone),
-                            f"{key}_national_number": jid_phone.national_number,
-                        }
-                    )
-                except phonenumbers.NumberParseException:
-                    logger.warning("Could not parse phone number: +%s", obj.user)
+            flat[f"{key}_country_iso"] = obj.userGeocode
             continue
         elif isinstance(obj, Timestamp):
             obj = obj.ToDatetime()
@@ -141,7 +129,7 @@ def query_group_country_codes(db):
 
 
 class DatabaseBot(BaseBot):
-    __version__ = "1.1.0"
+    __version__ = "1.2.0"
 
     def __init__(
         self,
