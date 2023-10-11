@@ -354,32 +354,31 @@ func (s *WhatUpCoreServer) JoinGroup(ctx context.Context, inviteCode *pb.InviteC
 	return AnonymizeInterface(session.Client.anonLookup, groupInfoProto), nil
 }
 
-
 func (s *WhatUpCoreServer) SetACL(ctx context.Context, groupACL *pb.GroupACL) (*pb.GroupACL, error) {
 	session, ok := ctx.Value("session").(*Session)
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-    aclStore := session.Client.aclStore
+	aclStore := session.Client.aclStore
 
-    jid := ProtoToJID(groupACL.JID)
-    prevGroupACL, err := aclStore.GetByJID(&jid)
-    if err != nil {
-        return nil, status.Errorf(codes.Internal, "Could not get ACL value: %+v", err)
-    }
+	jid := ProtoToJID(groupACL.JID)
+	prevGroupACL, err := aclStore.GetByJID(&jid)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Could not get ACL value: %+v", err)
+	}
 
-    err = aclStore.SetByJID(&jid, &groupACL.Permission)
-    if err != nil {
-        return nil, status.Errorf(codes.Internal, "Could not set ACL value: %+v", err)
-    }
+	err = aclStore.SetByJID(&jid, &groupACL.Permission)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Could not set ACL value: %+v", err)
+	}
 
-    prevGroupACLProto, err := prevGroupACL.Proto()
-    if err != nil {
-        return prevGroupACLProto, status.Errorf(codes.Internal, "Could not convert to protobuf: %+v", err)
-    }
+	prevGroupACLProto, err := prevGroupACL.Proto()
+	if err != nil {
+		return prevGroupACLProto, status.Errorf(codes.Internal, "Could not convert to protobuf: %+v", err)
+	}
 
-    return prevGroupACLProto, nil
+	return AnonymizeInterface(session.Client.anonLookup, prevGroupACLProto), nil
 }
 
 func (s *WhatUpCoreServer) GetACL(ctx context.Context, jidProto *pb.JID) (*pb.GroupACL, error) {
@@ -388,18 +387,100 @@ func (s *WhatUpCoreServer) GetACL(ctx context.Context, jidProto *pb.JID) (*pb.Gr
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-    aclStore := session.Client.aclStore
+	aclStore := session.Client.aclStore
 
-    jid := ProtoToJID(jidProto)
-    prevGroupACL, err := aclStore.GetByJID(&jid)
-    if err != nil {
-        return nil, status.Errorf(codes.Internal, "Could not get ACL value: %+v", err)
-    }
+	jid := ProtoToJID(jidProto)
+	groupACL, err := aclStore.GetByJID(&jid)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Could not get ACL value: %+v", err)
+	}
 
-    prevGroupACLProto, err := prevGroupACL.Proto()
-    if err != nil {
-        return prevGroupACLProto, status.Errorf(codes.Internal, "Could not convert to protobuf: %+v", err)
-    }
+	groupACLProto, err := groupACL.Proto()
+	if err != nil {
+		return groupACLProto, status.Errorf(codes.Internal, "Could not convert to protobuf: %+v", err)
+	}
+	return AnonymizeInterface(session.Client.anonLookup, groupACLProto), nil
+}
 
-    return prevGroupACLProto, nil
+func (s *WhatUpCoreServer) GetACLAll(getACLAllOptions *pb.GetACLAllOptions, server pb.WhatUpCore_GetACLAllServer) error {
+	ctx := server.Context()
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	aclValues, err := session.Client.aclStore.GetAll()
+	if err != nil {
+		return status.Errorf(codes.Internal, "Could not get ACL values: %+v", err)
+	}
+
+	for _, groupACL := range aclValues {
+		groupACLProto, err := groupACL.Proto()
+		if err != nil {
+			return status.Errorf(codes.Internal, "Could not convert to protobuf: %+v", err)
+		}
+		groupACLProtoAnon := AnonymizeInterface(session.Client.anonLookup, groupACLProto)
+		if err := server.Send(groupACLProtoAnon); err != nil {
+			s.log.Errorf("Could not send message to client: %v", err)
+			return nil
+		}
+	}
+	session.log.Debugf("Ending GetMessages")
+	return nil
+}
+
+func (s *WhatUpCoreServer) GetJoinedGroups(getJoinedGroupsOptions *pb.GetJoinedGroupsOptions, server pb.WhatUpCore_GetJoinedGroupsServer) error {
+	ctx := server.Context()
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	defaultACL, err := session.Client.aclStore.GetDefault()
+	if err != nil {
+		return status.Errorf(codes.Internal, "Could not get default ACL value: %+v", err)
+	}
+	defaultACLProto, err := defaultACL.Proto()
+	if err != nil {
+		return status.Errorf(codes.Internal, "Could not convert default ACL value to proto: %+v", err)
+	}
+
+	aclValues, err := session.Client.aclStore.GetAll()
+	if err != nil {
+		return status.Errorf(codes.Internal, "Could not get ACL values: %+v", err)
+	}
+	aclMap := make(map[string]*pb.GroupACL)
+	for _, aclEntry := range aclValues {
+		aclEntryProto, err := aclEntry.Proto()
+		if err != nil {
+			return status.Errorf(codes.Internal, "Could not convert ACL value to proto: %+v", err)
+		}
+		aclMap[aclEntry.JID] = aclEntryProto
+	}
+
+	groupInfos, err := session.Client.GetJoinedGroups()
+	if err != nil {
+		return status.Errorf(codes.Internal, "Could not get joined groups: %+v", err)
+	}
+
+	for _, groupInfo := range groupInfos {
+		groupJIDStr := groupInfo.JID.ToNonAD().String()
+		groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+
+		aclEntry, aclFound := aclMap[groupJIDStr]
+		if !aclFound {
+			aclEntry = defaultACLProto
+		}
+
+		jgProto := &pb.JoinedGroup{
+			GroupInfo: groupInfoProto,
+			Acl:       aclEntry,
+		}
+		jgProtoAnon := AnonymizeInterface(session.Client.anonLookup, jgProto)
+		if err := server.Send(jgProtoAnon); err != nil {
+			s.log.Errorf("Could not send message to client: %v", err)
+			return nil
+		}
+	}
+	return nil
 }

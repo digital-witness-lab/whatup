@@ -215,6 +215,7 @@ const (
 	WhatUpCore_GetACLAll_FullMethodName                  = "/protos.WhatUpCore/GetACLAll"
 	WhatUpCore_SetACL_FullMethodName                     = "/protos.WhatUpCore/SetACL"
 	WhatUpCore_GetACL_FullMethodName                     = "/protos.WhatUpCore/GetACL"
+	WhatUpCore_GetJoinedGroups_FullMethodName            = "/protos.WhatUpCore/GetJoinedGroups"
 	WhatUpCore_GetGroupInfo_FullMethodName               = "/protos.WhatUpCore/GetGroupInfo"
 	WhatUpCore_GetGroupInfoInvite_FullMethodName         = "/protos.WhatUpCore/GetGroupInfoInvite"
 	WhatUpCore_JoinGroup_FullMethodName                  = "/protos.WhatUpCore/JoinGroup"
@@ -233,6 +234,7 @@ type WhatUpCoreClient interface {
 	GetACLAll(ctx context.Context, in *GetACLAllOptions, opts ...grpc.CallOption) (WhatUpCore_GetACLAllClient, error)
 	SetACL(ctx context.Context, in *GroupACL, opts ...grpc.CallOption) (*GroupACL, error)
 	GetACL(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupACL, error)
+	GetJoinedGroups(ctx context.Context, in *GetJoinedGroupsOptions, opts ...grpc.CallOption) (WhatUpCore_GetJoinedGroupsClient, error)
 	GetGroupInfo(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupInfo, error)
 	GetGroupInfoInvite(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error)
 	JoinGroup(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error)
@@ -311,6 +313,38 @@ func (c *whatUpCoreClient) GetACL(ctx context.Context, in *JID, opts ...grpc.Cal
 	return out, nil
 }
 
+func (c *whatUpCoreClient) GetJoinedGroups(ctx context.Context, in *GetJoinedGroupsOptions, opts ...grpc.CallOption) (WhatUpCore_GetJoinedGroupsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[1], WhatUpCore_GetJoinedGroups_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &whatUpCoreGetJoinedGroupsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type WhatUpCore_GetJoinedGroupsClient interface {
+	Recv() (*JoinedGroup, error)
+	grpc.ClientStream
+}
+
+type whatUpCoreGetJoinedGroupsClient struct {
+	grpc.ClientStream
+}
+
+func (x *whatUpCoreGetJoinedGroupsClient) Recv() (*JoinedGroup, error) {
+	m := new(JoinedGroup)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *whatUpCoreClient) GetGroupInfo(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupInfo, error) {
 	out := new(GroupInfo)
 	err := c.cc.Invoke(ctx, WhatUpCore_GetGroupInfo_FullMethodName, in, out, opts...)
@@ -339,7 +373,7 @@ func (c *whatUpCoreClient) JoinGroup(ctx context.Context, in *InviteCode, opts .
 }
 
 func (c *whatUpCoreClient) GetMessages(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetMessagesClient, error) {
-	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[1], WhatUpCore_GetMessages_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[2], WhatUpCore_GetMessages_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -371,7 +405,7 @@ func (x *whatUpCoreGetMessagesClient) Recv() (*WUMessage, error) {
 }
 
 func (c *whatUpCoreClient) GetPendingHistory(ctx context.Context, in *PendingHistoryOptions, opts ...grpc.CallOption) (WhatUpCore_GetPendingHistoryClient, error) {
-	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[2], WhatUpCore_GetPendingHistory_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[3], WhatUpCore_GetPendingHistory_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -437,6 +471,7 @@ type WhatUpCoreServer interface {
 	GetACLAll(*GetACLAllOptions, WhatUpCore_GetACLAllServer) error
 	SetACL(context.Context, *GroupACL) (*GroupACL, error)
 	GetACL(context.Context, *JID) (*GroupACL, error)
+	GetJoinedGroups(*GetJoinedGroupsOptions, WhatUpCore_GetJoinedGroupsServer) error
 	GetGroupInfo(context.Context, *JID) (*GroupInfo, error)
 	GetGroupInfoInvite(context.Context, *InviteCode) (*GroupInfo, error)
 	JoinGroup(context.Context, *InviteCode) (*GroupInfo, error)
@@ -464,6 +499,9 @@ func (UnimplementedWhatUpCoreServer) SetACL(context.Context, *GroupACL) (*GroupA
 }
 func (UnimplementedWhatUpCoreServer) GetACL(context.Context, *JID) (*GroupACL, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetACL not implemented")
+}
+func (UnimplementedWhatUpCoreServer) GetJoinedGroups(*GetJoinedGroupsOptions, WhatUpCore_GetJoinedGroupsServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetJoinedGroups not implemented")
 }
 func (UnimplementedWhatUpCoreServer) GetGroupInfo(context.Context, *JID) (*GroupInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroupInfo not implemented")
@@ -575,6 +613,27 @@ func _WhatUpCore_GetACL_Handler(srv interface{}, ctx context.Context, dec func(i
 		return srv.(WhatUpCoreServer).GetACL(ctx, req.(*JID))
 	}
 	return interceptor(ctx, in, info, handler)
+}
+
+func _WhatUpCore_GetJoinedGroups_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetJoinedGroupsOptions)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(WhatUpCoreServer).GetJoinedGroups(m, &whatUpCoreGetJoinedGroupsServer{stream})
+}
+
+type WhatUpCore_GetJoinedGroupsServer interface {
+	Send(*JoinedGroup) error
+	grpc.ServerStream
+}
+
+type whatUpCoreGetJoinedGroupsServer struct {
+	grpc.ServerStream
+}
+
+func (x *whatUpCoreGetJoinedGroupsServer) Send(m *JoinedGroup) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _WhatUpCore_GetGroupInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -775,6 +834,11 @@ var WhatUpCore_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "GetACLAll",
 			Handler:       _WhatUpCore_GetACLAll_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "GetJoinedGroups",
+			Handler:       _WhatUpCore_GetJoinedGroups_Handler,
 			ServerStreams: true,
 		},
 		{
