@@ -10,6 +10,7 @@ from pulumi_gcp.cloudrunv2 import (
 from config import create_load_archive_job
 from dwl_secrets import messages_db_url_secret
 from job import JobArgs, Job
+from jobs.db_migrations import migrations_job_complete
 from network import vpc, private_services_network_with_db
 from storage import message_archive_bucket
 
@@ -79,6 +80,12 @@ if create_load_archive_job:
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                     name="MESSAGE_ARCHIVE_BUCKET_MNT_DIR",
                     value="message-archive/",
+                ),
+                # Create an implicit dependency on the migrations
+                # job completing successfully.
+                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                    name="MIGRATIONS_JOB_COMPLETE",
+                    value=migrations_job_complete.apply(lambda b: f"{b}"),
                 ),
             ],
             timeout="3600s",

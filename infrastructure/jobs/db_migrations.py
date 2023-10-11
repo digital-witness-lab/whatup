@@ -12,7 +12,6 @@ from job import JobArgs, Job
 from network import vpc, private_services_network_with_db
 from dwl_secrets import messages_db_root_pass_secret
 from database import primary_cloud_sql_instance
-from jobs.db_migrations import migrations_job_complete
 
 from execute_job import run_job_sync
 
@@ -77,12 +76,6 @@ db_migrations_job = Job(
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                 name="DATABASE",
                 value="messages",
-            ),
-            # Create an implicit dependency on the migrations
-            # job completing successfully.
-            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                name="MIGRATIONS_JOB_COMPLETE",
-                value=migrations_job_complete.apply(lambda b: f"{b}"),
             ),
         ],
         timeout="60s",
