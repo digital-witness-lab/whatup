@@ -1,5 +1,7 @@
 import pulumi
 
+from config import location, project
+
 from google.cloud import run_v2
 from google.api_core import exceptions
 
@@ -27,7 +29,7 @@ def run_job_sync(job_name: str, polling_timeout: int):
     client = run_v2.JobsClient()
 
     request = run_v2.RunJobRequest(
-        name=job_name,
+        name=f"projects/{project}/locations/{location}/jobs/{job_name}",
     )
 
     operation = client.run_job(request=request)
