@@ -1,6 +1,6 @@
 from pulumi_gcp import storage
 
-from .config import location
+from config import location
 
 # Cloud Storage buckets will be used as network filesystem using gcsfuse
 # in Cloud Run services.

@@ -1,4 +1,4 @@
-from pulumi_gcp import compute
+from pulumi_gcp import compute, servicenetworking
 
 vpc = compute.Network("vpc", auto_create_subnetworks=False)
 
@@ -18,10 +18,22 @@ private_services_network_with_db = compute.Subnetwork(
     private_ip_google_access=True,
 )
 
-private_db_network = compute.Subnetwork(
-    "dbNetwork",
-    name="db",
+private_services_connect_ip_prefix = "10.240.0.0"
+private_services_connect_ip_range = 16
+
+private_ip_address_range = compute.GlobalAddress(
+    "reservedPrivateIps",
+    name="reserved-private-ips",
+    purpose="VPC_PEERING",
+    address_type="INTERNAL",
+    address=private_services_connect_ip_prefix,
+    prefix_length=private_services_connect_ip_range,
     network=vpc.id,
-    ip_cidr_range="10.3.0.0/28",
-    private_ip_google_access=True,
+)
+
+private_vpc_connection = servicenetworking.Connection(
+    "privateVpcConnection",
+    network=vpc.id,
+    service="servicenetworking.googleapis.com",
+    reserved_peering_ranges=[private_ip_address_range.name],
 )

@@ -12,6 +12,7 @@ services:
     build: ./whatupcore2/
     environment:
       - STORAGE_DIR=/usr/src/whatupcore-data/storage/
+      - USE_SSL=true
     secrets:
       - ssl-cert
       - ssl-key
