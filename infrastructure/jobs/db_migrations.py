@@ -13,7 +13,7 @@ from network import vpc, private_services_network_with_db
 from dwl_secrets import messages_db_root_pass_secret
 from database import primary_cloud_sql_instance
 
-from execute_job import run_job_sync
+from .execute_job import run_job_sync
 
 job_name = "db-migrations"
 app_path = path.join("..", "migrations")
