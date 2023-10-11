@@ -42,6 +42,38 @@ UNKNOWN: GroupPermission.ValueType
 global___GroupPermission = GroupPermission
 
 @typing_extensions.final
+class JoinedGroup(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    GROUPINFO_FIELD_NUMBER: builtins.int
+    ACL_FIELD_NUMBER: builtins.int
+
+    @property
+    def groupInfo(self) -> global___GroupInfo:
+        ...
+
+    @property
+    def acl(self) -> global___GroupACL:
+        ...
+
+    def __init__(self, *, groupInfo: global___GroupInfo | None=..., acl: global___GroupACL | None=...) -> None:
+        ...
+
+    def HasField(self, field_name: typing_extensions.Literal['acl', b'acl', 'groupInfo', b'groupInfo']) -> builtins.bool:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['acl', b'acl', 'groupInfo', b'groupInfo']) -> None:
+        ...
+global___JoinedGroup = JoinedGroup
+
+@typing_extensions.final
+class GetJoinedGroupsOptions(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(self) -> None:
+        ...
+global___GetJoinedGroupsOptions = GetJoinedGroupsOptions
+
+@typing_extensions.final
 class GetACLAllOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -75,6 +107,7 @@ class GroupACL(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     UPDATEDAT_FIELD_NUMBER: builtins.int
     JID_FIELD_NUMBER: builtins.int
+    ISDEFAULT_FIELD_NUMBER: builtins.int
     PERMISSION_FIELD_NUMBER: builtins.int
 
     @property
@@ -84,15 +117,16 @@ class GroupACL(google.protobuf.message.Message):
     @property
     def JID(self) -> global___JID:
         ...
+    isDefault: builtins.bool
     permission: global___GroupPermission.ValueType
 
-    def __init__(self, *, updatedAt: google.protobuf.timestamp_pb2.Timestamp | None=..., JID: global___JID | None=..., permission: global___GroupPermission.ValueType=...) -> None:
+    def __init__(self, *, updatedAt: google.protobuf.timestamp_pb2.Timestamp | None=..., JID: global___JID | None=..., isDefault: builtins.bool=..., permission: global___GroupPermission.ValueType=...) -> None:
         ...
 
     def HasField(self, field_name: typing_extensions.Literal['JID', b'JID', 'updatedAt', b'updatedAt']) -> builtins.bool:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['JID', b'JID', 'permission', b'permission', 'updatedAt', b'updatedAt']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['JID', b'JID', 'isDefault', b'isDefault', 'permission', b'permission', 'updatedAt', b'updatedAt']) -> None:
         ...
 global___GroupACL = GroupACL
 

@@ -21,6 +21,7 @@ service WhatUpCore {
     rpc SetACL(GroupACL) returns (GroupACL) {}
     rpc GetACL(JID) returns (GroupACL) {}
 
+    rpc GetJoinedGroups(GetJoinedGroupsOptions) returns (stream JoinedGroup) {}
     rpc GetGroupInfo(JID) returns (GroupInfo) {}
     rpc GetGroupInfoInvite(InviteCode) returns (GroupInfo) {}
     rpc JoinGroup(InviteCode) returns (GroupInfo) {}
@@ -32,6 +33,14 @@ service WhatUpCore {
 
     rpc SendMessage(SendMessageOptions) returns (SendMessageReceipt) {}
     rpc SetDisappearingMessageTime(DisappearingMessageOptions) returns (DisappearingMessageResponse) {}
+}
+
+message JoinedGroup {
+    GroupInfo groupInfo = 1;
+    GroupACL acl = 20;
+}
+
+message GetJoinedGroupsOptions {
 }
 
 message GetACLAllOptions {
@@ -53,6 +62,8 @@ message RegisterOptions {
 message GroupACL {
     google.protobuf.Timestamp updatedAt = 1;
     JID JID = 2;
+    bool isDefault = 3;
+
     GroupPermission permission = 20;
 }
 

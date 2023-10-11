@@ -34,6 +34,10 @@ func NewACLEntryFromProto(groupACL *pb.GroupACL) *ACLEntry {
 	}
 }
 
+func (aclEntry *ACLEntry) IsDefault() bool {
+	return aclEntry.JID == defaultJID
+}
+
 func (aclEntry *ACLEntry) CanRead() bool {
 	switch pb.GroupPermission(aclEntry.Permission) {
 	case pb.GroupPermission_READONLY, pb.GroupPermission_READWRITE:
@@ -55,9 +59,12 @@ func (aclEntry *ACLEntry) CanWrite() bool {
 func (aclEntry *ACLEntry) Proto() (*pb.GroupACL, error) {
 	var jid types.JID
 	var err error
-	if aclEntry.JID == defaultJID {
+	var isDefault bool
+	if aclEntry.IsDefault() {
 		jid = types.EmptyJID
+		isDefault = true
 	} else {
+		isDefault = false
 		jid, err = types.ParseJID(aclEntry.JID)
 		if err != nil {
 			return nil, err
@@ -70,6 +77,7 @@ func (aclEntry *ACLEntry) Proto() (*pb.GroupACL, error) {
 		JID:        JIDToProto(jid),
 		Permission: pb.GroupPermission(aclEntry.Permission),
 		UpdatedAt:  timestamppb.New(aclEntry.UpdatedAt),
+		IsDefault:  isDefault,
 	}, nil
 }
 
