@@ -18,7 +18,6 @@ class JobArgs:
     app_path: str
     # This is passed to the ENTRYPOINT defined in the Dockerfile.
     args: List[str]
-    concurrency: int
     cpu: str
     # Possible values are: `ALL_TRAFFIC`, `PRIVATE_RANGES_ONLY`.
     egress: str
@@ -113,6 +112,10 @@ class Job(ComponentResource):
             f"{name}Job",
             cloudrunv2.JobArgs(
                 name=name,
+                # Set the launch stage to BETA since
+                # we want to use the Preview feature
+                # "Direct VPC Access".
+                # https://cloud.google.com/run/docs/configuring/vpc-direct-vpc
                 launch_stage="BETA",
                 location=location,
                 template=cloudrunv2.JobTemplateArgs(template=template),

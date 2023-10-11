@@ -52,7 +52,6 @@ if create_load_archive_job:
         JobArgs(
             app_path=path.join("..", "whatupy"),
             args=["/usr/src/whatupy/db_load_archive_job.sh"],
-            concurrency=1,
             cpu="1",
             # Route all egress traffic via the VPC network.
             egress="ALL_TRAFFIC",

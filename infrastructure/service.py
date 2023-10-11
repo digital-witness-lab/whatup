@@ -105,6 +105,10 @@ class Service(ComponentResource):
             cloudrunv2.ServiceArgs(
                 name=name,
                 location=location,
+                # Set the launch stage to BETA since
+                # we want to use the Preview feature
+                # "Direct VPC Access".
+                # https://cloud.google.com/run/docs/configuring/vpc-direct-vpc
                 launch_stage="BETA",
                 ingress=props.ingress,
                 template=cloudrunv2.ServiceTemplateArgs(

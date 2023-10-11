@@ -43,7 +43,6 @@ db_migrations_job = Job(
     JobArgs(
         app_path=app_path,
         args=["/run_migrations.sh"],
-        concurrency=1,
         cpu="1",
         # Route all egress traffic via the VPC network.
         egress="ALL_TRAFFIC",
