@@ -168,24 +168,11 @@ class DatabaseBot(BaseBot):
         except DatasetException:
             self.logger.warn(
                 "Could not create group_participants indicies because table doesn't exist yet"
-            )
+            )  # is this an incorrect, copy-pasted warning message? ^ 
         db["group_info"].create_column(
             "first_seen", type=db.types.datetime, server_default=func.now()
         )
         db["group_info"].create_column(
-            "last_update", type=db.types.datetime, server_default=func.now()
-        )
-
-        community_info = db.create_table(
-            "community_info",
-            primary_id="id",
-            primary_type=db.types.text,
-            primary_increment=False
-        )
-        db["community_info"].create_column( # assuming we'd like to have same thing as group info to track last time we updated
-            "first_seen", type=db.types.datetime, server_default=func.now()
-        )
-        db["community_info"].create_column(
             "last_update", type=db.types.datetime, server_default=func.now()
         )
 
@@ -200,6 +187,38 @@ class DatabaseBot(BaseBot):
         group_participants.create_column(
             "first_seen", type=db.types.datetime, server_default=func.now()
         )
+
+        community_info = db.create_table(
+            "community_info",
+            primary_id="id",
+            primary_type=db.types.text,
+            primary_increment=False
+        )
+        try:
+            community_info.create_index(["JID"])
+        except DatasetException:
+            self.logger.warn(
+                "Could not create JID index because commmunity_info table doesn't exist yet"
+            )
+        db["community_info"].create_column(
+            "first_seen", type=db.types.datetime, server_default=func.now()
+        )
+        db["community_info"].create_column(
+            "last_update", type=db.types.datetime, server_default=func.now()
+        )
+
+        community_participants = db.create_table("community_participants")
+        try:
+            community_participants.create_index(["chat_jid"])
+            community_participants.create_index(["JID", "chat_jid"])
+        except DatasetException:
+            self.logger.warn(
+                "Could not create community_participants indices because table doesn't exist yet"
+            )
+        community_participants.create_column(
+            "first_seen", type=db.types.datetime, server_default=func.now()
+        )
+
         db.create_table(
             "messages",
             primary_id="id",
@@ -399,7 +418,7 @@ class DatabaseBot(BaseBot):
         if group_info.isCommunity:
             self.logger.info("Updating community for group: %s", group_info.JID)
             await self._update_community(
-                db, message.info.source.chat, is_archive, archive_data
+                db, chat, is_archive, archive_data
             )
             self.logger.info("Done updating community for group: %s", group_info.JID)
         
@@ -464,47 +483,73 @@ class DatabaseBot(BaseBot):
             chat: wuc.JID,
             is_archive: bool,
             archive_data: ArchiveData,
-    ):
-        # get groupinfo object fromc core client. 
-        
+    ):  
         chat_jid = utils.jid_to_str(chat)
         logger = self.logger.getChild(chat_jid)
         now = datetime.now()
         if is_archive:
-            if archive_data.GroupInfo is None:
+            if archive_data.CommunityInfo is None:
                 return
             now = archive_data.WUMessage.info.timestamp.ToDatetime()
             self.logger.debug("Replacing date with archived message timestamp: %s", now)
 
-        group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
-        last_update: datetime = group_info_prev.get("last_update", datetime.min)
+        community_info_prev = db["community_info"].find_one(id=chat_jid) or {}
+        last_update: datetime = community_info_prev.get("last_update", datetime.min)
         if not is_archive and last_update + self.group_info_refresh_time > now:
+            #assume we will use the same refresh time for groups and communities
             return
 
         if is_archive:
-            group_info = archive_data.GroupInfo
+            community_info = archive_data.CommunityInfo
         else:
-            group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
-
-        if group_info.isCommunity:
-            self.logger.info("Updating community for group: %s", group_info.JID)
-            await self._update_community(
-                db, message.info.source.chat, is_archive, archive_data
-            )
-            self.logger.info("Done updating community for group: %s", group_info.JID)
+            community_info: wuc.GroupInfo = await self.core_client.GetCommunityInfo(chat)
         
-        group_info_flat = flatten_proto_message(
-            group_info,
+        community_info_flat = flatten_proto_message(
+            community_info,
             preface_keys=True,
-            skip_keys=set(["participants", "participantVersionId"]),
+            skip_keys=set(["participants", "participantVersionId"]), # similar to group info, this is handled elsewhere below?  
         )
-        keys = set(group_info_prev.keys()).intersection(group_info_flat.keys())
+        keys = set(community_info_prev.keys()).intersection(community_info_flat.keys())
         keys.discard("provenance")
 
-        group_info_flat["id"] = chat_jid
-        group_info_flat["last_update"] = now
-        group_participants = [flatten_proto_message(p) for p in group_info.participants]
+        community_info_flat["id"] = chat_jid
+        community_info_flat["last_update"] = now
+        community_participants = [flatten_proto_message(p) for p in community_info.participants]
 
+        if community_info_prev:
+            if changed_keys := [
+                k for k in keys if community_info_flat.get(k) != community_info_prev.get(k)
+            ]:
+                logger.debug(
+                    "Found previous out-of-date entry, updating: %s: %s",
+                    chat_jid,
+                    changed_keys,
+                )
+                community_info_prev["n_versions"] = community_info_prev.get("n_versions") or 0
+                prev_id = community_info_prev["id"]
+                N = community_info_flat["n_versions"] = community_info_prev["n_versions"] + 1
+                id_ = community_info_prev["id"] = f"{chat_jid}-{N:06d}"
+                community_info_prev["last_update"] = now
+                community_info_flat["previous_version_id"] = id_
+                if first_seen := community_info_prev.get("first_seen"):
+                    community_info_flat["first_seen"] = first_seen
+                db["community_info"].delete(id=prev_id)
+                db["community_info"].insert(community_info_prev)
+                db["community_info"].upsert(community_info_flat, ["id"])
+            else:
+                db["community_info"].update({"id": chat_jid, "last_update": now}, ["id"])
+        elif not community_info_prev:
+            community_info_flat["first_seen"] = now
+            db["community_info"].insert(community_info_flat)
+
+        for participant in community_participants:
+            participant["last_seen"] = now
+            participant["chat_jid"] = chat_jid
+
+        logger.debug("Updating community info: %s", chat_jid)
+        db["community_participants"].upsert_many(community_participants, ["JID", "chat_jid"])
+
+        # communities can't have parent communities right? 
 
         return
 

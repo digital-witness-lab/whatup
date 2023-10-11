@@ -111,21 +111,20 @@ class BaseBot:
     async def start(self, **kwargs):
         self.logger.info("Starting bot for user")
         BOT_REGISTRY[self.__class__.__name__][id(self)] = self
-        async with asyncio.TaskGroup() as tg:
-            self.logger.info("Starting bot")
-            tg.create_task(self.authenticator.start())
-            tg.create_task(self.listen_messages())
-            tg.create_task(self._download_messages_background())
-            if self.read_historical_messages:
-                tg.create_task(self.listen_historical_messages())
-            tg.create_task(self.post_start())
+        try:
+            async with asyncio.TaskGroup() as tg:
+                self.logger.info("Starting bot")
+                tg.create_task(self.authenticator.start())
+                tg.create_task(self.listen_messages())
+                tg.create_task(self._download_messages_background())
+                if self.read_historical_messages:
+                    tg.create_task(self.listen_historical_messages())
+        except Exception as e:
+            self.logger.exception("Exception in main run loop of bot")
         self.stop()
 
     def stop(self):
         BOT_REGISTRY[self.__class__.__name__].pop(id(self), None)
-
-    async def post_start(self):
-        pass
 
     async def listen_historical_messages(self):
         while True:
@@ -142,9 +141,12 @@ class BaseBot:
                     utils.jid_to_str(jid_from),
                     message.info.id,
                 )
-                await self._dispatch_message(
-                    message, skip_control=True, is_history=True
-                )
+                try:
+                    await self._dispatch_message(
+                        message, skip_control=True, is_history=True
+                    )
+                except Exception:
+                    self.logger.exception("Exception handling historical message... attempting to continue")
 
     async def listen_messages(self):
         while True:
@@ -152,8 +154,9 @@ class BaseBot:
             messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetMessages(
                 wuc.MessagesOptions(markMessagesRead=self.mark_messages_read)
             )
-            async for message in messages:
-                await self._dispatch_message(message)
+            async with asyncio.TaskGroup() as tg:
+                async for message in messages:
+                    tg.create_task(self._dispatch_message(message))
 
     async def _dispatch_message(
         self,
@@ -185,19 +188,25 @@ class BaseBot:
                     utils.jid_to_str(jid_from),
                     message.info.id,
                 )
-                await self._dispatch_control(message, source_hash)
+                try:
+                    await self._dispatch_control(message, source_hash)
+                except Exception:
+                    self.logger.exception("Exception handling message... attempting to continue")
         else:
             self.logger.info(
                 "Got normal message: %s: %s",
                 utils.jid_to_str(jid_from),
                 message.info.id,
             )
-            await self.on_message(
-                message,
-                is_history=is_history,
-                is_archive=is_archive,
-                archive_data=archive_data,
-            )
+            try:
+                await self.on_message(
+                    message,
+                    is_history=is_history,
+                    is_archive=is_archive,
+                    archive_data=archive_data,
+                )
+            except Exception:
+                    self.logger.exception("Exception handling message... attempting to continue")
 
     async def _dispatch_control(self, message, source_hash):
         if message.info.source.isFromMe:
@@ -337,6 +346,11 @@ class BaseBot:
                     f"Could not load file: {filename}... trying to continue"
                 )
 
+    async def _process_groups_and_communities(message: wuc.WUMessage):
+        # potential helper function
+        return
+
+    # why group infos? it does not appear to be actually be sent as an argument anywhere
     async def _process_archive_file(
         self, filename, group_infos: T.Dict[str, wuc.GroupInfo]
     ):
@@ -345,7 +359,7 @@ class BaseBot:
         with filename_path.open() as fd:
             message: wuc.WUMessage = utils.jsons_to_protobuf(fd.read(), wuc.WUMessage())
         chat_id = utils.jid_to_str(message.info.source.chat)
-        metadata = {"WUMessage": message, "GroupInfo": None, "CommunityInfo:": None, "MediaContent": None}
+        metadata = {"WUMessage": message, "GroupInfo": None, "CommunityInfo": None, "MediaContent": None}
         if chat_id:
             if group_info_filename := message.provenance.get(
                 "archivebot__groupInfoPath"
@@ -362,13 +376,24 @@ class BaseBot:
                     self.logger.critical(
                         "Could not find group info in path: %s", group_info_path
                     )
+                
+                if community_info_filename := message.provenance.get(
+                    "archivebot__communityInfoPath"
+                ):
+                    community_info_path = filename_path.parent / community_info_filename
+                    try:
+                        with community_info_path.open() as fd:
+                            community_info: wuc.GroupInfo = utils.jsons_to_protobuf(
+                                fd.read(), wuc.GroupInfo()
+                            )
+                        metadata["CommunityInfo"] = community_info
+                    except FileNotFoundError:
+                        self.logger.critical(
+                            "Could not find community info in path: %s", group_info_path
+                        )
+
             elif chat_id in group_infos:
                 metadata["GroupInfo"] = group_infos[chat_id]
-            
-            if community_info_filename := message.provenance.get(
-                "archivebot__groupInfoPath"
-            ):
-            
 
         if media_filename := message.provenance.get("archivebot__mediaPath"):
             media_path = filename_path.parent / media_filename
