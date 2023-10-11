@@ -38,6 +38,7 @@ def run_job_sync(job_name: str, polling_timeout: int):
 
     try:
         operation.result(timeout=polling_timeout)
+        pulumi.log.info(f"{job_name} completed successfully!")
     except Exception as e:
         ex = operation.exception()
         if ex is not None:
