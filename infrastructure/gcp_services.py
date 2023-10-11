@@ -19,6 +19,9 @@ for service in [
     "iam.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com",
+    # run.googleapis.com allows us to use the
+    # CloudRun Admin API to execute jobs.
+    "run.googleapis.com",
     "secretmanager.googleapis.com",
     "servicenetworking.googleapis.com",
     "sqladmin.googleapis.com",

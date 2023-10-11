@@ -13,6 +13,8 @@ from network import vpc, private_services_network_with_db
 from dwl_secrets import messages_db_root_pass_secret
 from database import primary_cloud_sql_instance
 
+from .execute_job import run_job_sync
+
 job_name = "db-migrations"
 app_path = path.join("..", "migrations")
 
@@ -79,4 +81,9 @@ db_migrations_job = Job(
         timeout="60s",
     ),
     opts=ResourceOptions(depends_on=secret_manager_perm),
+)
+
+migrations_job_complete = Output.apply(
+    db_migrations_job.job.name,
+    lambda job_name: run_job_sync(job_name, 120),
 )

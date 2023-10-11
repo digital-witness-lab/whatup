@@ -70,3 +70,14 @@ and executed.
 The Cloud SQL instance has deletion protection enabled to prevent accidental deletion.
 If you are sure you would like to delete the DB, you should first run a `pulumi up` with
 deletion protection set to `False` first, then run a `pulumi destroy`.
+
+## Destroying Infrastructure
+
+**Note:** Ensure that you have the correct stack selected.
+
+You can teardown all the resources in a stack with `pulumi destroy`.
+However, you are likely to encounter a failure deleting the subnet
+resources since GCP seems to take a while to release the private IP
+reservation that we make for the purpose of Cloud SQL private IP
+enablement. If that happens, wait for a few hours and try re-running
+`pulumi destroy` to fully remove all the resources.

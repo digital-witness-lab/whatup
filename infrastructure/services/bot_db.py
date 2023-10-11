@@ -9,6 +9,7 @@ from pulumi_gcp.cloudrunv2 import (
 
 from network import vpc, private_services_network_with_db
 from dwl_secrets import messages_db_url_secret
+from jobs.db_migrations import migrations_job_complete
 from service import Service, ServiceArgs
 from storage import sessions_bucket
 
@@ -104,6 +105,12 @@ bot_db = Service(
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_HOST",
                 value=whatupcore2_service.get_host(),
+            ),
+            # Create an implicit dependency on the migrations
+            # job completing successfully.
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="MIGRATIONS_JOB_COMPLETE",
+                value=migrations_job_complete.apply(lambda b: f"{b}"),
             ),
         ],
     ),
