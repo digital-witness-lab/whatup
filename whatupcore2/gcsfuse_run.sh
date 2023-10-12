@@ -10,7 +10,7 @@ fi
 mkdir -p $WHATUPCORE2_BUCKET_MNT_DIR
 
 echo "Mounting $WHATUPCORE2_BUCKET using GCS Fuse."
-gcsfuse --debug_gcs --debug_fuse "$WHATUPCORE2_BUCKET" $WHATUPCORE2_BUCKET_MNT_DIR
+gcsfuse "$WHATUPCORE2_BUCKET" $WHATUPCORE2_BUCKET_MNT_DIR
 echo "Mounting completed."
 
 # Start the application
