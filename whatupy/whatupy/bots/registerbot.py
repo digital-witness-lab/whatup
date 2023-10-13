@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import qrcode
+import dataset
 
 from .. import NotRegisteredError, utils
 from . import BaseBot
@@ -11,8 +12,9 @@ from ..connection import WhatUpAuthentication
 
 
 class RegisterBot(BaseBot):
-    def __init__(self, sessions_dir: Path, *args, **kwargs):
+    def __init__(self, sessions_dir: Path, database_url: str, *args, **kwargs):
         self.sessions_dir = sessions_dir
+        self.db: dataset.Database = dataset.connect(database_url)
         kwargs["read_historical_messages"] = False
         super().__init__(*args, **kwargs)
 
@@ -53,11 +55,11 @@ class RegisterBot(BaseBot):
             return
         sender: wuc.JID = message.info.source.sender
 
-        default_group_permission = None
+        is_bot: bool
         if params.command == "register":
-            default_group_permission = wuc.GroupPermission.DENIED
+            is_bot = False
         elif params.command == "register-bot":
-            default_group_permission = wuc.GroupPermission.READWRITE
+            is_bot = True
         else:
             return await self.send_text_message(
                 sender,
@@ -71,14 +73,19 @@ class RegisterBot(BaseBot):
                 f"Invalid alias... must only be alpha-numeric: {alias}",
             )
 
-        return await self.start_registration(sender, alias, default_group_permission)
+        return await self.start_registration(sender, alias, is_bot=is_bot)
 
     async def start_registration(
         self,
         handler_jid: wuc.JID,
         username: str,
-        default_group_permission: wuc.GroupPermission.ValueType,
+        is_bot: bool,
     ):
+        if is_bot:
+            default_group_permission = wuc.GroupPermission.READWRITE
+        else:
+            default_group_permission = wuc.GroupPermission.DENIED
+
         logger = self.logger.getChild(username)
         logger.info("Registering user")
         passphrase = utils.random_passphrase()
@@ -105,6 +112,14 @@ class RegisterBot(BaseBot):
         credentials_file = self.sessions_dir / f"{username}.json"
         with credentials_file.open("w+") as fd:
             json.dump(credentials, fd)
+
+        self.db["registered_users"].insert(
+            {
+                "username": username,
+                "is_bot": is_bot,
+            }
+        )
+        # now how to trigger user services.... ?
         await self.send_text_message(
             handler_jid,
             "User registered",
