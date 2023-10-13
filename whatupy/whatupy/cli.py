@@ -23,17 +23,21 @@ GROUP_PERMISSIONS = dict(wuc.GroupPermission.items())
 
 async def run_multi_bots(bot: T.Type[BotType], paths: T.List[Path], bot_args: dict):
     bots_loaded: T.Dict[str, BotType] = {}
+    should_loop = True
     async with asyncio.TaskGroup() as tg:
-        while True:
+        while should_loop:
             credentials = []
+            should_loop = False
             for path in paths:
                 if path.is_file():
                     credentials.append(path)
                 elif path.is_dir():
+                    should_loop = True
                     credentials.extend(
                         path / filename for filename in path.glob("*.json")
                     )
                 else:
+                    should_loop = True
                     credentials.extend(
                         path / filename for filename in glob.glob(str(path))
                     )
@@ -297,6 +301,37 @@ async def databasebot_load_archive(
         )
     filenames.sort()
     await db.process_archive(filenames)
+
+
+@cli.command()
+@async_cli
+@click.option("--database-url", type=str)
+@click.option(
+    "--session-dir",
+    type=str,
+    default=None,
+    help="Directory to store sessions for newly registered users",
+)
+@click.argument("credentials", type=click.Path(path_type=Path), nargs=-1)
+@click.pass_context
+async def registerbot(
+    ctx,
+    credentials,
+    database_url,
+    session_dir,
+):
+    """
+    Start a registration bot that will manage registering new users completely
+    through the WhatsApp interface. The database URI specifies where newly
+    registered user metadata and state should be stored. The sessions directory
+    specifies where newly registered user's session file should be stored.
+    """
+    params = {
+        "database_url": database_url,
+        "session_dir": session_dir,
+        **ctx.obj["connection_params"],
+    }
+    await run_multi_bots(RegisterBot, credentials, params)
 
 
 def main():
