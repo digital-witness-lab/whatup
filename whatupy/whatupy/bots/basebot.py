@@ -60,6 +60,7 @@ class BaseBot:
         host: str,
         port: int,
         cert: Path,
+        *,
         mark_messages_read: bool = False,
         read_historical_messages: bool = False,
         control_groups: T.List[wuc.JID] = [],
@@ -102,7 +103,7 @@ class BaseBot:
             await self.send_text_message(sender, e.message())
             return None
 
-    async def login(self, username: str, passphrase: str) -> T.Self:
+    async def login(self, username: str, passphrase: str, **kwargs) -> T.Self:
         self.logger = self.logger.getChild(username)
         self.logger.info("Logging in")
         await self.authenticator.login(username, passphrase)
