@@ -210,6 +210,16 @@ def media_message_filename(message: wuc.WUMessage) -> str | None:
     return f"{fileSha}.unk"
 
 
+def qrcode_gen_bytes(data, kind="png", version=1) -> bytes:
+    qr = qrcode.QRCode(version, error_correction=qrcode.ERROR_CORRECT_L)
+    qr.add_data(data)
+    img = qr.make_image()
+
+    buffer = io.BytesIO()
+    img.save(buffer, kind=kind)
+    return buffer.getvalue()
+
+
 def qrcode_gen(data, version=1) -> str:
     white_block = "\033[0;37;47m  "
     black_block = "\033[0;37;40m  "
