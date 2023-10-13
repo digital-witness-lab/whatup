@@ -169,7 +169,7 @@ class Service(ComponentResource):
                 ),
             )
             simple_hello_container = cloudrunv2.ServiceTemplateContainerArgs(
-                image="nginxdemos/nginx-hello",
+                image="nginxdemos/nginx-hello:0.2",
                 resources=nginx_resources,
                 ports=[
                     cloudrunv2.ServiceTemplateContainerPortArgs(
