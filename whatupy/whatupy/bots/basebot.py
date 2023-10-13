@@ -121,11 +121,12 @@ class BaseBot:
                 if self.read_historical_messages:
                     tg.create_task(self.listen_historical_messages())
                 tg.create_task(self.post_start())
-        except Exception as e:
+        except Exception:
             self.logger.exception("Exception in main run loop of bot")
         self.stop()
 
     def stop(self):
+        self.logger.critical("Bot Stopping")
         BOT_REGISTRY[self.__class__.__name__].pop(id(self), None)
 
     async def post_start(self):
