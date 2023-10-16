@@ -13,5 +13,6 @@ from .databasebot import DatabaseBot
 from .onboardbot import OnboardBot
 from .debugbot import DebugBot
 from .registerbot import RegisterBot
+from .userservicesbot import UserServicesBot
 
 BotType = TypeVar("BotType", bound=BaseBot)

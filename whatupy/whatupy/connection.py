@@ -45,6 +45,7 @@ class WhatUpAuthentication:
         self.auth_client: T.Optional[WhatUpCoreAuthStub] = auth_client
         self.session_token: T.Optional[wuc.SessionToken] = None
         self.logger = logger.getChild("GRPCAuthentication")
+        self.username: T.Optional[str] = None
 
     def set_auth_client(self, auth_client: WhatUpCoreAuthStub):
         self.auth_client = auth_client
@@ -57,6 +58,7 @@ class WhatUpAuthentication:
     async def login(self, username: str, passphrase: str):
         if not self.auth_client:
             raise Exception("Must set an auth client")
+        self.username = username
         self.logger = self.logger.getChild(f"u:{username}")
         credentials = wuc.WUCredentials(username=username, passphrase=passphrase)
         session = await self.auth_client.Login(credentials)
@@ -70,6 +72,7 @@ class WhatUpAuthentication:
     ) -> T.AsyncIterator[str]:
         if not self.auth_client:
             raise Exception("Must set an auth client")
+        self.username = username
         self.logger = self.logger.getChild(username)
         credentials = wuc.WUCredentials(username=username, passphrase=passphrase)
         register_options = wuc.RegisterOptions(
