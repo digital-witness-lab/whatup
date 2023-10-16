@@ -62,6 +62,7 @@ class BaseBot:
         cert: Path,
         *,
         mark_messages_read: bool = False,
+        read_messages: bool = True,
         read_historical_messages: bool = False,
         control_groups: T.List[wuc.JID] = [],
         archive_files: T.Optional[str] = None,
@@ -76,6 +77,7 @@ class BaseBot:
 
         self.control_groups = control_groups
         self.mark_messages_read = mark_messages_read
+        self.read_messages = read_messages
         self.read_historical_messages = read_historical_messages
         self.archive_files = archive_files
 
@@ -116,8 +118,9 @@ class BaseBot:
             async with asyncio.TaskGroup() as tg:
                 self.logger.info("Starting bot")
                 tg.create_task(self.authenticator.start())
-                tg.create_task(self.listen_messages())
                 tg.create_task(self._download_messages_background())
+                if self.read_messages:
+                    tg.create_task(self.listen_messages())
                 if self.read_historical_messages:
                     tg.create_task(self.listen_historical_messages())
                 tg.create_task(self.post_start())
