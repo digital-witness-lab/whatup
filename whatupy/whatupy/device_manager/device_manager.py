@@ -61,6 +61,9 @@ class DeviceManager:
         self.devices[username] = device
         await self.on_device_start(device)
 
+    def get_device(self, username: str) -> DeviceObject:
+        return self.devices[username]
+
     async def _on_bot_dead(self, task):
         try:
             username = self.tasks.pop(task)
