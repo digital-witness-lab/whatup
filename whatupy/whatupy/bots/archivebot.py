@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta
 from functools import partial
 from pathlib import Path
+import typing as T
 
 from packaging import version
 
@@ -82,8 +83,7 @@ class ArchiveBot(BaseBot):
             conversation_dir / "community-info" / f"community-info_{timestamp}.json"
         )
         meta_group_path.parent.mkdir(exist_ok=True, parents=True)
-        meta_community_path.parent.mkdir(exist_ok=True, parents=True) # just like group info, we want the community info directory to exist even if there is no community associated w the message?
-        # so the below only triggers if the specific group has never been seen before? 
+        meta_community_path.parent.mkdir(exist_ok=True, parents=True)
         if message.info.source.isGroup and not meta_group_path.exists():
             group: wuc.JID = message.info.source.chat
             metadata: wuc.GroupInfo = await self.core_client.GetGroupInfo(group)
@@ -95,14 +95,15 @@ class ArchiveBot(BaseBot):
             message.provenance["archivebot__groupInfoPath"] = str(
                 meta_group_path.relative_to(archive_filename.parent)
             )
+            
             # TODO do this again for the parent chat
-
-            if metadata.isCommunity:
-                community_info: wuc.GroupInfo = await self.core_client.GetCommunityInfo(group)
-                community_info.provenance.update(provenance) 
-                community_info.provenance["archivebot__communityInfoRefreshTime"] = str(refresh_dt)
+            
+            if metadata.parentJID != None:
+                community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = await self.core_client.GetGroupInfo(metadata.parentJID)
+                community_info : T.List[wuc.GroupInfo] = await utils.aiter_to_list(community_info_iterator)
+                community_info[0].provenance.update(provenance)
+                community_info[0].provenance["archivebot__communityInfoRefreshTime"] = str(refresh_dt)
                 self.logger.debug("Got metadata for community: %s", chat_id)
-                # TODO - where/how to store community relative to groupinfo? in a new json?
                 with meta_community_path.open("w+") as fd:
                     fd.write(utils.protobuf_to_json(community_info))
                 message.provenance["archivebot__communityInfoPath"] = str(meta_community_path.relative_to(archive_filename.parent))

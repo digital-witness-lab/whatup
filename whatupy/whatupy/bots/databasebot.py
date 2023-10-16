@@ -151,12 +151,12 @@ class DatabaseBot(BaseBot):
             primary_type=db.types.text,
             primary_increment=False,
         )
-        try:
-            group_info.create_index(["JID"])
-        except DatasetException:
-            self.logger.warn(
-                "Could not create group_participants indicies because table doesn't exist yet"
-            )  # is this an incorrect, copy-pasted warning message? ^ 
+        group_info.create_column(
+            "JID",
+            type=db.types.text, 
+        )
+        group_info.create_index(["JID"])
+
         db["group_info"].create_column(
             "first_seen", type=db.types.datetime, server_default=func.now()
         )
@@ -173,37 +173,6 @@ class DatabaseBot(BaseBot):
                 "Could not create group_participants indicies because table doesn't exist yet"
             )
         group_participants.create_column(
-            "first_seen", type=db.types.datetime, server_default=func.now()
-        )
-
-        community_info = db.create_table(
-            "community_info",
-            primary_id="id",
-            primary_type=db.types.text,
-            primary_increment=False
-        )
-        try:
-            community_info.create_index(["JID"])
-        except DatasetException:
-            self.logger.warn(
-                "Could not create JID index because commmunity_info table doesn't exist yet"
-            )
-        db["community_info"].create_column(
-            "first_seen", type=db.types.datetime, server_default=func.now()
-        )
-        db["community_info"].create_column(
-            "last_update", type=db.types.datetime, server_default=func.now()
-        )
-
-        community_participants = db.create_table("community_participants")
-        try:
-            community_participants.create_index(["chat_jid"])
-            community_participants.create_index(["JID", "chat_jid"])
-        except DatasetException:
-            self.logger.warn(
-                "Could not create community_participants indices because table doesn't exist yet"
-            )
-        community_participants.create_column(
             "first_seen", type=db.types.datetime, server_default=func.now()
         )
 

@@ -41,7 +41,12 @@ class WhatUpyJSONDecoder(json.JSONDecoder):
         if "type" in dct and dct["type"] == "bytes":
             return base64_to_bytes(dct)
         return dct
-
+    
+async def aiter_to_list(aiter: T.AsyncIterable) -> list:
+    result = []
+    async for item in aiter:
+        result.append(item)
+    return result
 
 def dict_to_csv_bytes(data: T.List[dict]) -> bytes:
     if not data:
@@ -113,6 +118,12 @@ def jsons_to_protobuf(jsons: str, proto_type: Generic) -> Generic:
     data = json.loads(jsons, cls=WhatUpyJSONDecoder)
     return ParseDict(data, proto_type)
 
+def jsons_to_protobuf_list(jsons: str, proto_type: Generic) -> T.List[Generic]:
+    data = json.loads(jsons, cls=WhatUpyJSONDecoder)
+    object_list : T.List[Generic] = []
+    for item in data:
+        object_list.append(ParseDict(item, proto_type))
+    return object_list
 
 def protobuf_to_dict(proto_obj) -> dict[str, T.Any]:
     return MessageToDict(proto_obj, including_default_value_fields=False)

@@ -356,7 +356,7 @@ class BaseBot:
                     f"Could not load file: {filename}... trying to continue"
                 )
 
-    async def _process_groups_and_communities(message: wuc.WUMessage):
+    async def _process_groups_and_communities(self, message: wuc.WUMessage):
         # potential helper function
         return
 
@@ -393,13 +393,13 @@ class BaseBot:
                     community_info_path = filename_path.parent / community_info_filename
                     try:
                         with community_info_path.open() as fd:
-                            community_info: wuc.GroupInfo = utils.jsons_to_protobuf(
+                            community_info_list: T.List[wuc.GroupInfo] = utils.jsons_to_protobuf_list(
                                 fd.read(), wuc.GroupInfo()
                             )
-                        metadata["CommunityInfo"] = community_info
+                        metadata["CommunityInfo"] = community_info_list
                     except FileNotFoundError:
                         self.logger.critical(
-                            "Could not find community info in path: %s", group_info_path
+                            "Could not find community info in path: %s", community_info_path
                         )
 
             elif chat_id in group_infos:
