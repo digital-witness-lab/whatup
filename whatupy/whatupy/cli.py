@@ -1,14 +1,11 @@
-import asyncio
-import json
 import logging
-import glob
 import typing as T
-from importlib.resources import files
 from pathlib import Path
 
 import click
 
-from .bots import ArchiveBot, ChatBot, BotType, DatabaseBot, OnboardBot, DebugBot
+from .bots import ArchiveBot, ChatBot, DatabaseBot, OnboardBot, DebugBot
+from .device_manager import run_multi_bots
 from .utils import async_cli, str_to_jid
 from .protos import whatupcore_pb2 as wuc
 
@@ -19,49 +16,6 @@ logger = logging.getLogger(__name__)
 
 
 GROUP_PERMISSIONS = dict(wuc.GroupPermission.items())
-
-
-async def run_multi_bots(bot: T.Type[BotType], paths: T.List[Path], bot_args: dict):
-    bots_loaded: T.Dict[str, BotType] = {}
-    should_loop = True
-    async with asyncio.TaskGroup() as tg:
-        while should_loop:
-            credentials = []
-            should_loop = False
-            for path in paths:
-                if path.is_file():
-                    credentials.append(path)
-                elif path.is_dir():
-                    should_loop = True
-                    credentials.extend(
-                        path / filename for filename in path.glob("*.json")
-                    )
-                else:
-                    should_loop = True
-                    credentials.extend(
-                        path / filename for filename in glob.glob(str(path))
-                    )
-            for credential_file in credentials:
-                try:
-                    credential = json.load(credential_file.open())
-                    if not all(f in credential for f in ("username", "passphrase")):
-                        logger.critical("Invalid credentials file: %s", credential_file)
-                        continue
-                    username = credential["username"]
-                    if username not in bots_loaded:
-                        logger.info(
-                            "Found new credential to connect to: %s: %s",
-                            username,
-                            credential_file,
-                        )
-                        b: BotType = await bot(**bot_args).login(**credential)
-                        bots_loaded[username] = b
-                        coro = b.start()
-                        tg.create_task(coro)
-                except ValueError:
-                    logger.exception(f"Could not parse credential: {credential_file}")
-                    continue
-            await asyncio.sleep(10)
 
 
 @click.group()
