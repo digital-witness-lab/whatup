@@ -1,10 +1,19 @@
 import logging
 import typing as T
+import asyncio
 from pathlib import Path
 
 import click
 
-from .bots import ArchiveBot, ChatBot, DatabaseBot, OnboardBot, DebugBot
+from .bots import (
+    ArchiveBot,
+    ChatBot,
+    DatabaseBot,
+    OnboardBot,
+    DebugBot,
+    RegisterBot,
+    UserServicesBot,
+)
 from .device_manager import run_multi_bots
 from .utils import async_cli, str_to_jid
 from .protos import whatupcore_pb2 as wuc
@@ -262,15 +271,16 @@ async def databasebot_load_archive(
 @click.option("--database-url", type=str)
 @click.option(
     "--session-dir",
-    type=str,
-    default=None,
+    type=click.Path(path_type=Path, file_okay=False, writable=True),
     help="Directory to store sessions for newly registered users",
 )
-@click.argument("credentials", type=click.Path(path_type=Path), nargs=-1)
+@click.argument(
+    "credentials", type=click.Path(path_type=Path, dir_okay=False, exists=True), nargs=1
+)
 @click.pass_context
 async def registerbot(
     ctx,
-    credentials,
+    credential,
     database_url,
     session_dir,
 ):
@@ -285,7 +295,9 @@ async def registerbot(
         "session_dir": session_dir,
         **ctx.obj["connection_params"],
     }
-    await run_multi_bots(RegisterBot, credentials, params)
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(run_multi_bots(RegisterBot, [credential], params))
+        tg.create_task(run_multi_bots(UserServicesBot, [credential], params))
 
 
 def main():
