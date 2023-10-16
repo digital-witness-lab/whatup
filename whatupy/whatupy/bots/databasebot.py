@@ -372,14 +372,14 @@ class DatabaseBot(BaseBot):
         else:
             group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
 
-        if group_info.isCommunity:
+        if group_info.parentJID != None: # this group is in a community
             self.logger.info("Updating community for group: %s", group_info.JID)
             await self._update_community(
-                db, chat, is_archive, archive_data
+                db, chat, group_info.parentJID, is_archive, archive_data
             )
             self.logger.info("Done updating community for group: %s", group_info.JID)
         
-        group_info_flat = flatten_proto_message(
+        group_info_flat = flatten_proto_message( # SAME
             group_info,
             preface_keys=True,
             skip_keys=set(["participants", "participantVersionId"]),
@@ -434,44 +434,44 @@ class DatabaseBot(BaseBot):
                 archive_data=archive_data,
             )
 
+    # TODO can probably put reused code for group and community processing in one function
+    
     async def _update_community( 
             self,
             db:dataset.Database,
             chat: wuc.JID,
+            chat_parent_id: wuc.JID,
             is_archive: bool,
             archive_data: ArchiveData,
     ):  
         chat_jid = utils.jid_to_str(chat)
         logger = self.logger.getChild(chat_jid)
         now = datetime.now()
+
         if is_archive:
             if archive_data.CommunityInfo is None:
                 return
-            now = archive_data.WUMessage.info.timestamp.ToDatetime()
-            self.logger.debug("Replacing date with archived message timestamp: %s", now)
-
-        community_info_prev = db["community_info"].find_one(id=chat_jid) or {}
-        last_update: datetime = community_info_prev.get("last_update", datetime.min)
-        if not is_archive and last_update + self.group_info_refresh_time > now:
-            #assume we will use the same refresh time for groups and communities
-            return
-
-        if is_archive:
             community_info = archive_data.CommunityInfo
         else:
-            community_info: wuc.GroupInfo = await self.core_client.GetCommunityInfo(chat)
-        
+            community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = await self.core_client.GetGroupInfo(chat_parent_id)
+            community_info : T.List[wuc.GroupInfo] = await utils.aiter_to_list(community_info_iterator)
+
+        community_info_prev = db["group_info"].find_one(id=chat_parent_id) or {}
+        last_update: datetime = community_info_prev.get("last_update", datetime.min)
+        if not is_archive and last_update + self.group_info_refresh_time > now:
+            return
+   
+        # is community will be a field automatically?
         community_info_flat = flatten_proto_message(
-            community_info,
+            community_info[0],
             preface_keys=True,
-            skip_keys=set(["participants", "participantVersionId"]), # similar to group info, this is handled elsewhere below?  
+            skip_keys=set(["participants", "participantVersionId"]), 
         )
         keys = set(community_info_prev.keys()).intersection(community_info_flat.keys())
         keys.discard("provenance")
 
         community_info_flat["id"] = chat_jid
         community_info_flat["last_update"] = now
-        community_participants = [flatten_proto_message(p) for p in community_info.participants]
 
         if community_info_prev:
             if changed_keys := [
@@ -490,23 +490,19 @@ class DatabaseBot(BaseBot):
                 community_info_flat["previous_version_id"] = id_
                 if first_seen := community_info_prev.get("first_seen"):
                     community_info_flat["first_seen"] = first_seen
-                db["community_info"].delete(id=prev_id)
-                db["community_info"].insert(community_info_prev)
-                db["community_info"].upsert(community_info_flat, ["id"])
+                db["group_info"].delete(id=prev_id)
+                db["group_info"].insert(community_info_prev)
+                db["group_info"].upsert(community_info_flat, ["id"])
             else:
-                db["community_info"].update({"id": chat_jid, "last_update": now}, ["id"])
+                db["group_info"].update({"id": chat_jid, "last_update": now}, ["id"])
         elif not community_info_prev:
             community_info_flat["first_seen"] = now
-            db["community_info"].insert(community_info_flat)
+            db["group_info"].insert(community_info_flat)
 
-        for participant in community_participants:
-            participant["last_seen"] = now
-            participant["chat_jid"] = chat_jid
-
-        logger.debug("Updating community info: %s", chat_jid)
-        db["community_participants"].upsert_many(community_participants, ["JID", "chat_jid"])
-
-        # communities can't have parent communities right? 
+        for group_in_community in community_info[1:]:
+            db["group_info"].upsert(group_in_community, ["id"])
+            
+        logger.debug("Updating community info associated with group: %s", chat_jid)
 
         return
 

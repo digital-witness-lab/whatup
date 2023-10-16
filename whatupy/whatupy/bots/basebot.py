@@ -355,12 +355,7 @@ class BaseBot:
                 self.logger.exception(
                     f"Could not load file: {filename}... trying to continue"
                 )
-
-    async def _process_groups_and_communities(self, message: wuc.WUMessage):
-        # potential helper function
-        return
-
-    # why group infos? it does not appear to be actually be sent as an argument anywhere
+                
     async def _process_archive_file(
         self, filename, group_infos: T.Dict[str, wuc.GroupInfo]
     ):
