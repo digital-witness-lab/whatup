@@ -15,6 +15,7 @@ google-cloud-run==0.9.1
 pulumi==3.86.0
 pulumi-docker==4.4.1
 pulumi-gcp==6.67.0
+pulumi-google-native==0.31.1
 pulumi-random==4.14.0
 
 PyYAML==6.0.1

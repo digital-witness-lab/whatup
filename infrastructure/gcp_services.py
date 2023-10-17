@@ -13,6 +13,8 @@ enabled_services = []
 # we create in this project.
 for service in [
     "artifactregistry.googleapis.com",
+    "bigqueryconnection.googleapis.com",
+    "bigquerydatatransfer.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "compute.googleapis.com",
     "container.googleapis.com",
