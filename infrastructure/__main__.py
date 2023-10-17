@@ -1,4 +1,5 @@
 # flake8: noqa
+import pulumi
 
 # Import this first to register the services first.
 import gcp_services
@@ -15,3 +16,7 @@ from jobs import (
     db_migrations,
     whatupcore_remove_user,
 )
+
+from bigquery import bigquery_sql_connection
+
+pulumi.export("bigquery_connection_id", bigquery_sql_connection.connection_id)
