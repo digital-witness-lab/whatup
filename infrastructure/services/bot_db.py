@@ -1,6 +1,6 @@
 from os import path
 
-from pulumi import ResourceOptions, Output
+from pulumi import get_stack, ResourceOptions, Output
 from pulumi_gcp import serviceaccount, cloudrunv2, storage, secretmanager
 
 from pulumi_gcp.cloudrunv2 import (
@@ -16,18 +16,18 @@ from storage import sessions_bucket
 from .whatupcore2 import whatupcore2_service
 from .bot_archive import whatupy_control_groups
 
-service_name = "whatupy-bot-db"
+service_name = "bot-db"
 
 service_account = serviceaccount.Account(
-    "botDbServiceAccount",
-    account_id="whatup-bot-db",
+    "bot-db",
+    account_id=f"whatup-bot-db-{get_stack()}",
     description=f"Service account for {service_name}",
 )
 
 # whatupy only needs read-only access to the sessions bucket
 # objects.
 sessions_bucket_perm = storage.BucketIAMMember(
-    "botDbSessionsAccess",
+    "bot-db-sess-perm",
     storage.BucketIAMMemberArgs(
         bucket=sessions_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
@@ -36,7 +36,7 @@ sessions_bucket_perm = storage.BucketIAMMember(
 )
 
 secret_manager_perm = secretmanager.SecretIamMember(
-    "botDbSecretManagerAccess",
+    "bot-db-secret-perm",
     secretmanager.SecretIamMemberArgs(
         secret_id=messages_db_url_secret.id,
         role="roles/secretmanager.secretAccessor",
@@ -74,6 +74,7 @@ bot_db = Service(
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
         memory="1Gi",
+        public_access=True,
         service_account=service_account,
         # Specifying the subnet causes CloudRun to use
         # Direct VPC egress for outbound traffic based

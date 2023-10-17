@@ -1,6 +1,6 @@
 from os import path
 
-from pulumi import ResourceOptions, Output
+from pulumi import get_stack, ResourceOptions, Output
 from pulumi_gcp import serviceaccount, cloudrunv2, storage
 
 from service import Service, ServiceArgs
@@ -9,18 +9,18 @@ from storage import sessions_bucket, message_archive_bucket
 
 from .whatupcore2 import whatupcore2_service
 
-service_name = "whatupy-bot-archive"
+service_name = "bot-archive"
 # cool friends + micha
 whatupy_control_groups = "120363104970691776@g.us anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net"  # noqa: E501
 
 service_account = serviceaccount.Account(
-    "botArchiveServiceAccount",
-    account_id="whatupy-bot-archive",
+    "bot-archive",
+    account_id=f"bot-archive-{get_stack()}",
     description=f"Service account for {service_name}",
 )
 
 message_archive_bucket_perm = storage.BucketIAMMember(
-    "botArchiveMessageArchiveAccess",
+    "bot-archive-msgarch-perm",
     storage.BucketIAMMemberArgs(
         bucket=message_archive_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
@@ -31,7 +31,7 @@ message_archive_bucket_perm = storage.BucketIAMMember(
 # whatupy only needs read-only access to the sessions bucket
 # objects.
 sessions_bucket_perm = storage.BucketIAMMember(
-    "botArchiveSessionsAccess",
+    "bot-archive-sess-perm",
     storage.BucketIAMMemberArgs(
         bucket=sessions_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
@@ -62,6 +62,7 @@ whatupy = Service(
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
         memory="1Gi",
+        public_access=True,
         service_account=service_account,
         # Specifying the subnet causes CloudRun to use
         # Direct VPC egress for outbound traffic based
