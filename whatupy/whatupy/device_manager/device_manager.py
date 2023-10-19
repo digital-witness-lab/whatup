@@ -74,7 +74,7 @@ class DeviceManager:
         await self.on_device_start(device)
 
     def _reset_backoff(self, username, backoff_value):
-        if self.reconnect_backoff.get(username) != backoff_value:
+        if backoff_value == 0 or self.reconnect_backoff.get(username) != backoff_value:
             return
         if username not in self.devices:
             return

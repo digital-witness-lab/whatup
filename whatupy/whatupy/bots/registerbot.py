@@ -8,11 +8,12 @@ from .. import NotRegisteredError, utils
 from . import BaseBot
 from . import BotCommandArgs, MediaType
 from ..protos import whatupcore_pb2 as wuc
-from ..connection import WhatUpAuthentication
+from ..connection import create_whatupcore_clients
 
 
 class RegisterBot(BaseBot):
     def __init__(self, sessions_dir: Path, database_url: str, *args, **kwargs):
+        self.connection_params = {f: kwargs[f] for f in ("host", "port", "cert")}
         self.sessions_dir = sessions_dir
         self.db: dataset.Database = dataset.connect(database_url)
         kwargs["read_historical_messages"] = False
@@ -89,7 +90,7 @@ class RegisterBot(BaseBot):
         logger = self.logger.getChild(username)
         logger.info("Registering user")
         passphrase = utils.random_passphrase()
-        authenticator = WhatUpAuthentication()
+        core_client, authenticator = create_whatupcore_clients(**self.connection_params)
         try:
             async for qrcode in authenticator.register(
                 username, passphrase, default_group_permission
@@ -108,19 +109,28 @@ class RegisterBot(BaseBot):
             logger.exception("Could not register user")
             return
         logger.info("User registered")
+
         credentials = {"username": username, "passphrase": passphrase}
         credentials_file = self.sessions_dir / f"{username}.json"
         with credentials_file.open("w+") as fd:
             json.dump(credentials, fd)
 
+        connection_status = await core_client.GetConnectionStatus(
+            wuc.ConnectionStatusOptions()
+        )
         self.db["registered_users"].insert(
             {
                 "username": username,
                 "is_bot": is_bot,
+                "jid_anon": utils.jid_to_str(connection_status.JIDAnon),
             }
         )
         # now how to trigger user services.... ?
         await self.send_text_message(
             handler_jid,
             "User registered",
+        )
+        await self.send_text_message(
+            connection_status.JID,
+            "Welcome to the WhatsApp Watch system! It's time to get you onboarded.",
         )
