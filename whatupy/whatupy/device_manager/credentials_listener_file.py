@@ -12,15 +12,18 @@ logger = logging.getLogger(__name__)
 
 
 class CredentialsListenerFile(CredentialsListener):
-    def __init__(self, paths: T.List[Path], timeout: int = 10):
+    def __init__(self, paths: T.List[Path], timeout: int = 60):
         self.paths = paths
         self.active_usernames: T.Set[str] = set()
         self.timeout = timeout
+        self.blocker = asyncio.Event()
 
     async def listen(self, device_manager):
         logger.debug("CredentialsListenerFile listening to paths: %s", self.paths)
         should_loop = True
-        while should_loop:
+        while should_loop or (await self.blocker.wait()):
+            logger.debug("Looking for new credentials")
+            self.blocker.clear()
             credentials = []
             should_loop = False
             for path in self.paths:
@@ -56,5 +59,7 @@ class CredentialsListenerFile(CredentialsListener):
                     continue
             await asyncio.sleep(self.timeout)
 
-        def mark_dead(self, username):
-            self.active_usernames.discard(username)
+    def mark_dead(self, username):
+        logger.info("Marking user dead: %s", username)
+        self.active_usernames.discard(username)
+        self.blocker.set()
