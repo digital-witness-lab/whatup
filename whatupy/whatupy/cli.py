@@ -111,6 +111,9 @@ async def onboard(ctx, name, credentials_dir: Path, default_group_permission: st
     credentials_dir.mkdir(parents=True, exist_ok=True)
     credential_file = credentials_dir / f"{name}.json"
     bot = OnboardBot(**ctx.obj["connection_params"])
+    logger.info(
+        "Registering user %s with default permission %s", name, default_group_permission
+    )
     await bot.register(
         name,
         credential_file,
@@ -270,19 +273,19 @@ async def databasebot_load_archive(
 @async_cli
 @click.option("--database-url", type=str)
 @click.option(
-    "--session-dir",
+    "--sessions-dir",
     type=click.Path(path_type=Path, file_okay=False, writable=True),
     help="Directory to store sessions for newly registered users",
 )
 @click.argument(
-    "credentials", type=click.Path(path_type=Path, dir_okay=False, exists=True), nargs=1
+    "credential", type=click.Path(path_type=Path, dir_okay=False, exists=True), nargs=1
 )
 @click.pass_context
 async def userservices(
     ctx,
     credential,
     database_url,
-    session_dir,
+    sessions_dir,
 ):
     """
     Start a registration bot and a userservices bot that will manage
@@ -293,7 +296,7 @@ async def userservices(
     """
     params = {
         "database_url": database_url,
-        "session_dir": session_dir,
+        "sessions_dir": sessions_dir,
         **ctx.obj["connection_params"],
     }
     async with asyncio.TaskGroup() as tg:

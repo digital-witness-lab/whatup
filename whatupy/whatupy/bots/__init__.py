@@ -7,6 +7,7 @@ from .basebot import (
     BotCommandArgsException,
     MediaType,
 )
+
 BotType = TypeVar("BotType", bound=BaseBot)
 
 from .archivebot import ArchiveBot
