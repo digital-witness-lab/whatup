@@ -22,12 +22,11 @@ class DeviceManager:
     def __init__(
         self,
         bot_factory: abc.Callable[[], BaseBot],
-        credential_listenrs: T.List[CredentialsListener],
+        credential_listeners: T.List[CredentialsListener],
         logger=logger,
     ):
         self.bot_factory = bot_factory
-        self.credential_listeners: T.List[CredentialsListener] = credential_listenrs
-        self.tasks: T.Dict[asyncio.Task, str] = {}
+        self.credential_listeners: T.List[CredentialsListener] = credential_listeners
         self.devices: T.Dict[str, DeviceObject] = {}
         self.logger = logger.getChild(self.__class__.__name__)
         self.reconnect_backoff = defaultdict(int)
@@ -41,6 +40,14 @@ class DeviceManager:
             # well. Maybe this is also a good way to have a restart mechanism
             # on error with exp backoff?
 
+    async def _start_bot(self, bot: BaseBot, username: str, credentials):
+        try:
+            bot = await bot.login(**credentials)
+            await bot.start()
+        except Exception:
+            self.logger.exception("Exception running bot")
+        await self._on_bot_dead(username)
+
     async def on_credentials(self, credentials):
         username = credentials["username"]
         if backoff := self.reconnect_backoff[username]:
@@ -52,21 +59,34 @@ class DeviceManager:
                 t,
             )
             await asyncio.sleep(t)
-        bot = await self.bot_factory().login(**credentials)
-        task = asyncio.create_task(bot.start(), name=username)
-        self.tasks[task] = username
-        # TODO: check that this done callback can be a coroutine
-        task.add_done_callback(self._on_bot_dead)
+        bot = self.bot_factory()
+        task = asyncio.create_task(
+            self._start_bot(bot, username, credentials), name=username
+        )
         device = DeviceObject(username=username, bot=bot, task=task)
         self.devices[username] = device
+        asyncio.get_event_loop().call_later(
+            60,
+            self._reset_backoff,
+            username,
+            self.reconnect_backoff.get(username),
+        )
         await self.on_device_start(device)
+
+    def _reset_backoff(self, username, backoff_value):
+        if self.reconnect_backoff.get(username) != backoff_value:
+            return
+        if username not in self.devices:
+            return
+        self.logger.info("Resetting bot backoff to 0: %d: %s", backoff_value, username)
+        self.reconnect_backoff[username] = 0
 
     def get_device(self, username: str) -> DeviceObject:
         return self.devices[username]
 
-    async def _on_bot_dead(self, task):
+    async def _on_bot_dead(self, username):
         try:
-            username = self.tasks.pop(task)
+            self.logger.critical("Bot dead: %s", username)
             device = self.devices.pop(username)
             device.bot.stop()
             self.reconnect_backoff[username] += 1
