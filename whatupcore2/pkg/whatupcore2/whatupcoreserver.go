@@ -11,6 +11,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"go.mau.fi/whatsmeow/types"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -22,6 +23,32 @@ type WhatUpCoreServer struct {
 	sessionManager *SessionManager
 	log            waLog.Logger
 	pb.UnimplementedWhatUpCoreServer
+}
+
+func CanWriteJID(session *Session, jid *types.JID) (bool, error) {
+	aclEntry, err := session.Client.aclStore.GetByJID(jid)
+	if err != nil {
+		session.log.Errorf("Could not read ACL for JID: %+v", err)
+		return false, status.Errorf(codes.Internal, "Could not read ACL: %+v", err)
+	}
+	if !aclEntry.CanWrite() {
+		session.log.Debugf("Denying request because we don't have write permissions in group")
+		return false, status.Error(codes.PermissionDenied, "No read permissions to group")
+	}
+	return true, nil
+}
+
+func CanReadJID(session *Session, jid *types.JID) (bool, error) {
+	aclEntry, err := session.Client.aclStore.GetByJID(jid)
+	if err != nil {
+		session.log.Errorf("Could not read ACL for JID: %+v", err)
+		return false, status.Errorf(codes.Internal, "Could not read ACL: %+v", err)
+	}
+	if !aclEntry.CanRead() {
+		session.log.Debugf("Denying request because we don't have read permissions in group")
+		return false, status.Error(codes.PermissionDenied, "No read permissions to group")
+	}
+	return true, nil
 }
 
 func prepareOutboundMediaMessage(ctx context.Context, client *WhatsAppClient, sendMessageMedia *pb.SendMessageMedia) (*waProto.Message, error) {
@@ -82,15 +109,15 @@ func (s *WhatUpCoreServer) GetConnectionStatus(ctx context.Context, credentials 
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-    JID := *session.Client.Store.ID
-    JIDProto := JIDToProto(JID)
-    JIDAnnonProto := session.Client.anonLookup.anonymizeJIDProto(JIDToProto(JID))
+	JID := *session.Client.Store.ID
+	JIDProto := JIDToProto(JID)
+	JIDAnnonProto := session.Client.anonLookup.anonymizeJIDProto(JIDToProto(JID))
 	return &pb.ConnectionStatus{
 		IsConnected: session.Client.IsConnected(),
 		IsLoggedIn:  session.Client.IsLoggedIn(),
 		Timestamp:   timestamppb.New(session.Client.LastSuccessfulConnect),
 		JID:         JIDProto,
-        JIDAnon:    JIDAnnonProto,
+		JIDAnon:     JIDAnnonProto,
 	}, nil
 }
 
@@ -108,6 +135,10 @@ func (s *WhatUpCoreServer) SendMessage(ctx context.Context, messageOptions *pb.S
 		messageOptions.Recipient = deanonRecipient
 	}
 	jid := ProtoToJID(messageOptions.Recipient)
+	if _, err := CanWriteJID(session, &jid); err != nil {
+		return nil, err
+	}
+
 	if messageOptions.ComposingTime > 0 {
 		typingTime := time.Duration(messageOptions.ComposingTime) * time.Second
 		session.Client.SendComposingPresence(jid, typingTime)
@@ -146,6 +177,12 @@ func (s *WhatUpCoreServer) SetDisappearingMessageTime(ctx context.Context, disap
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+
+	recipient := ProtoToJID(disappearingMessageOptions.Recipient)
+	if _, err := CanWriteJID(session, &recipient); err != nil {
+		return nil, err
+	}
+
 	var disappearingTime time.Duration
 	if strings.HasPrefix(disappearingMessageOptions.Recipient.User, "anon.") {
 		deanonRecipient, isDeAnon := session.Client.anonLookup.deAnonymizeJIDProto(disappearingMessageOptions.Recipient)
@@ -154,7 +191,6 @@ func (s *WhatUpCoreServer) SetDisappearingMessageTime(ctx context.Context, disap
 		}
 		disappearingMessageOptions.Recipient = deanonRecipient
 	}
-	recipient := ProtoToJID(disappearingMessageOptions.Recipient)
 	autoClearTime := disappearingMessageOptions.AutoClearTime
 	switch disappearingMessageOptions.DisappearingTime.String() {
 	case "TIMER_OFF":
@@ -248,6 +284,10 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 	}
 
 	info := ProtoToMessageInfo(downloadMediaOptions.GetInfo())
+	if _, err := CanReadJID(session, &info.Chat); err != nil {
+		return nil, err
+	}
+
 	mediaMessage := downloadMediaOptions.GetMediaMessage()
 	if mediaMessage == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Message not downloadable")
@@ -268,6 +308,10 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 	}
 
 	JID := ProtoToJID(pJID)
+	if _, err := CanReadJID(session, &JID); err != nil {
+		return nil, err
+	}
+
 	groupInfo, err := session.Client.GetGroupInfo(JID)
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, "%v", err)
@@ -308,4 +352,163 @@ func (s *WhatUpCoreServer) JoinGroup(ctx context.Context, inviteCode *pb.InviteC
 	}
 	groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
 	return AnonymizeInterface(session.Client.anonLookup, groupInfoProto), nil
+}
+
+func (s *WhatUpCoreServer) SetACL(ctx context.Context, groupACL *pb.GroupACL) (*pb.GroupACL, error) {
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	aclStore := session.Client.aclStore
+
+	jid := ProtoToJID(groupACL.JID)
+	prevGroupACL, err := aclStore.GetByJID(&jid)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Could not get ACL value: %+v", err)
+	}
+
+	if groupACL.IsDefault {
+		err = aclStore.SetDefault(&groupACL.Permission)
+	} else {
+		err = aclStore.SetByJID(&jid, &groupACL.Permission)
+	}
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Could not set ACL value: %+v", err)
+	}
+
+	prevGroupACLProto, err := prevGroupACL.Proto()
+	if err != nil {
+		return prevGroupACLProto, status.Errorf(codes.Internal, "Could not convert to protobuf: %+v", err)
+	}
+
+	return AnonymizeInterface(session.Client.anonLookup, prevGroupACLProto), nil
+}
+
+func (s *WhatUpCoreServer) GetACL(ctx context.Context, jidProto *pb.JID) (*pb.GroupACL, error) {
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	aclStore := session.Client.aclStore
+
+	jid := ProtoToJID(jidProto)
+	groupACL, err := aclStore.GetByJID(&jid)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Could not get ACL value: %+v", err)
+	}
+
+	groupACLProto, err := groupACL.Proto()
+	if err != nil {
+		return groupACLProto, status.Errorf(codes.Internal, "Could not convert to protobuf: %+v", err)
+	}
+	return AnonymizeInterface(session.Client.anonLookup, groupACLProto), nil
+}
+
+func (s *WhatUpCoreServer) GetACLAll(getACLAllOptions *pb.GetACLAllOptions, server pb.WhatUpCore_GetACLAllServer) error {
+	ctx := server.Context()
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	aclValues, err := session.Client.aclStore.GetAll()
+	if err != nil {
+		return status.Errorf(codes.Internal, "Could not get ACL values: %+v", err)
+	}
+
+	for _, groupACL := range aclValues {
+		groupACLProto, err := groupACL.Proto()
+		if err != nil {
+			return status.Errorf(codes.Internal, "Could not convert to protobuf: %+v", err)
+		}
+		groupACLProtoAnon := AnonymizeInterface(session.Client.anonLookup, groupACLProto)
+		if err := server.Send(groupACLProtoAnon); err != nil {
+			s.log.Errorf("Could not send message to client: %v", err)
+			return nil
+		}
+	}
+	session.log.Debugf("Ending GetMessages")
+	return nil
+}
+
+func (s *WhatUpCoreServer) GetJoinedGroups(getJoinedGroupsOptions *pb.GetJoinedGroupsOptions, server pb.WhatUpCore_GetJoinedGroupsServer) error {
+	ctx := server.Context()
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	defaultACL, err := session.Client.aclStore.GetDefault()
+	if err != nil {
+		return status.Errorf(codes.Internal, "Could not get default ACL value: %+v", err)
+	}
+	defaultACLProto, err := defaultACL.Proto()
+	if err != nil {
+		return status.Errorf(codes.Internal, "Could not convert default ACL value to proto: %+v", err)
+	}
+
+	aclValues, err := session.Client.aclStore.GetAll()
+	if err != nil {
+		return status.Errorf(codes.Internal, "Could not get ACL values: %+v", err)
+	}
+	aclMap := make(map[string]*pb.GroupACL)
+	for _, aclEntry := range aclValues {
+		aclEntryProto, err := aclEntry.Proto()
+		if err != nil {
+			return status.Errorf(codes.Internal, "Could not convert ACL value to proto: %+v", err)
+		}
+		aclMap[aclEntry.JID] = aclEntryProto
+	}
+
+	groupInfos, err := session.Client.GetJoinedGroups()
+	if err != nil {
+		return status.Errorf(codes.Internal, "Could not get joined groups: %+v", err)
+	}
+
+	for _, groupInfo := range groupInfos {
+		groupJIDStr := groupInfo.JID.ToNonAD().String()
+		groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+
+		aclEntry, aclFound := aclMap[groupJIDStr]
+		if !aclFound {
+			aclEntry = defaultACLProto
+		}
+
+		jgProto := &pb.JoinedGroup{
+			GroupInfo: groupInfoProto,
+			Acl:       aclEntry,
+		}
+		jgProtoAnon := AnonymizeInterface(session.Client.anonLookup, jgProto)
+		if err := server.Send(jgProtoAnon); err != nil {
+			s.log.Errorf("Could not send message to client: %v", err)
+			return nil
+		}
+	}
+	return nil
+}
+
+func (s *WhatUpCoreServer) Unregister(ctx context.Context, options *pb.UnregisterOptions) (*pb.ConnectionStatus, error) {
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	JID := *session.Client.Store.ID
+	JIDProto := JIDToProto(JID)
+	JIDAnnonProto := session.Client.anonLookup.anonymizeJIDProto(JIDToProto(JID))
+
+	session.Client.Logout()
+	session.Client.Disconnect()
+	session.Client.Store.Delete()
+	ClearFileAndParents(session.Client.dbPath)
+
+	return &pb.ConnectionStatus{
+		IsConnected: session.Client.IsConnected(),
+		IsLoggedIn:  session.Client.IsLoggedIn(),
+		Timestamp:   timestamppb.New(session.Client.LastSuccessfulConnect),
+		JID:         JIDProto,
+		JIDAnon:     JIDAnnonProto,
+	}, nil
 }
