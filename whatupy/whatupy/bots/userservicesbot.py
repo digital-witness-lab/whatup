@@ -241,7 +241,8 @@ class UserServicesBot(BaseBot):
     async def unregister_workflow(self, user: _UserBot):
         await self.send_text_message(
             user.jid,
-            "Are you sure you want to unregister? Send 'yes' within 60 seconds to finalize your request.",
+            "Are you sure you want to unregister? "
+            "Send 'yes' within 60 seconds to finalize your request.",
         )
         user.unregistering_timer = asyncio.get_event_loop().call_later(
             60,
@@ -250,23 +251,23 @@ class UserServicesBot(BaseBot):
         )
 
     async def unregister_workflow_continue(self, user: _UserBot, text: str):
-        is_expired = (
-            user.unregistering_timer is None
-            or user.unregistering_timer.when() < asyncio.get_running_loop().time()
-        )
+        if user.unregistering_timer is not None:
+            user.unregistering_timer.cancel()
+            is_expired = (
+                user.unregistering_timer.when() < asyncio.get_running_loop().time()
+            )
+        else:
+            is_expired = True
+        user.unregistering_timer = None
         if is_expired:
-            user.unregistering_timer = None
             raise asyncio.CancelledError()
         elif text != "yes":
-            user.unregistering_timer.cancel()
-            user.unregistering_timer = None
             await self.send_text_message(
                 user.jid,
                 "Unrecognized response. Canceling unregister request. Please request to unregister again if you still desire to unregister",
             )
             raise asyncio.CancelledError()
-        else:
-            return await self.unregister_workflow_finalize(user)
+        return await self.unregister_workflow_finalize(user)
 
     async def unregister_workflow_finalize(self, user: _UserBot):
         final_message = static_files["unregister_final_message"].open().read()
