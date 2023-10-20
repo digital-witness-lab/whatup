@@ -33,6 +33,11 @@ service WhatUpCore {
 
     rpc SendMessage(SendMessageOptions) returns (SendMessageReceipt) {}
     rpc SetDisappearingMessageTime(DisappearingMessageOptions) returns (DisappearingMessageResponse) {}
+
+    rpc Unregister(UnregisterOptions) returns (ConnectionStatus) {}
+}
+
+message UnregisterOptions {
 }
 
 message JoinedGroup {

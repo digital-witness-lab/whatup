@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import asyncio
 import logging
 from collections import abc, defaultdict
@@ -16,6 +16,7 @@ class DeviceObject:
     username: str
     bot: BaseBot
     task: asyncio.Task
+    unregistered: bool = field(default=False)
 
 
 class DeviceManager:
@@ -88,6 +89,8 @@ class DeviceManager:
         try:
             self.logger.critical("Bot dead: %s", username)
             device = self.devices.pop(username)
+            if device.unregistered:
+                return
             device.bot.stop()
             self.reconnect_backoff[username] += 1
             for listener in self.credential_listeners:
@@ -103,3 +106,14 @@ class DeviceManager:
 
     async def on_device_start(self, device: DeviceObject):
         pass
+
+    async def unregister(self, username: str):
+        device = self.devices.pop(username)
+        self.logger.warning("Calling unregister")
+        device.unregistered = True
+        await device.bot.unregister()
+        for listener in self.credential_listeners:
+            listener.unregister(device.username)
+        device.task.cancel()
+        device.bot.stop()
+        self.reconnect_backoff.pop(device.username, None)

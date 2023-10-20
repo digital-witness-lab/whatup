@@ -42,6 +42,14 @@ UNKNOWN: GroupPermission.ValueType
 global___GroupPermission = GroupPermission
 
 @typing_extensions.final
+class UnregisterOptions(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(self) -> None:
+        ...
+global___UnregisterOptions = UnregisterOptions
+
+@typing_extensions.final
 class JoinedGroup(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     GROUPINFO_FIELD_NUMBER: builtins.int

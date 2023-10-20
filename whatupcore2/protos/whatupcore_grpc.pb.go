@@ -224,6 +224,7 @@ const (
 	WhatUpCore_DownloadMedia_FullMethodName              = "/protos.WhatUpCore/DownloadMedia"
 	WhatUpCore_SendMessage_FullMethodName                = "/protos.WhatUpCore/SendMessage"
 	WhatUpCore_SetDisappearingMessageTime_FullMethodName = "/protos.WhatUpCore/SetDisappearingMessageTime"
+	WhatUpCore_Unregister_FullMethodName                 = "/protos.WhatUpCore/Unregister"
 )
 
 // WhatUpCoreClient is the client API for WhatUpCore service.
@@ -244,6 +245,7 @@ type WhatUpCoreClient interface {
 	DownloadMedia(ctx context.Context, in *DownloadMediaOptions, opts ...grpc.CallOption) (*MediaContent, error)
 	SendMessage(ctx context.Context, in *SendMessageOptions, opts ...grpc.CallOption) (*SendMessageReceipt, error)
 	SetDisappearingMessageTime(ctx context.Context, in *DisappearingMessageOptions, opts ...grpc.CallOption) (*DisappearingMessageResponse, error)
+	Unregister(ctx context.Context, in *UnregisterOptions, opts ...grpc.CallOption) (*ConnectionStatus, error)
 }
 
 type whatUpCoreClient struct {
@@ -463,6 +465,15 @@ func (c *whatUpCoreClient) SetDisappearingMessageTime(ctx context.Context, in *D
 	return out, nil
 }
 
+func (c *whatUpCoreClient) Unregister(ctx context.Context, in *UnregisterOptions, opts ...grpc.CallOption) (*ConnectionStatus, error) {
+	out := new(ConnectionStatus)
+	err := c.cc.Invoke(ctx, WhatUpCore_Unregister_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WhatUpCoreServer is the server API for WhatUpCore service.
 // All implementations must embed UnimplementedWhatUpCoreServer
 // for forward compatibility
@@ -481,6 +492,7 @@ type WhatUpCoreServer interface {
 	DownloadMedia(context.Context, *DownloadMediaOptions) (*MediaContent, error)
 	SendMessage(context.Context, *SendMessageOptions) (*SendMessageReceipt, error)
 	SetDisappearingMessageTime(context.Context, *DisappearingMessageOptions) (*DisappearingMessageResponse, error)
+	Unregister(context.Context, *UnregisterOptions) (*ConnectionStatus, error)
 	mustEmbedUnimplementedWhatUpCoreServer()
 }
 
@@ -526,6 +538,9 @@ func (UnimplementedWhatUpCoreServer) SendMessage(context.Context, *SendMessageOp
 }
 func (UnimplementedWhatUpCoreServer) SetDisappearingMessageTime(context.Context, *DisappearingMessageOptions) (*DisappearingMessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetDisappearingMessageTime not implemented")
+}
+func (UnimplementedWhatUpCoreServer) Unregister(context.Context, *UnregisterOptions) (*ConnectionStatus, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Unregister not implemented")
 }
 func (UnimplementedWhatUpCoreServer) mustEmbedUnimplementedWhatUpCoreServer() {}
 
@@ -786,6 +801,24 @@ func _WhatUpCore_SetDisappearingMessageTime_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WhatUpCore_Unregister_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnregisterOptions)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WhatUpCoreServer).Unregister(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WhatUpCore_Unregister_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WhatUpCoreServer).Unregister(ctx, req.(*UnregisterOptions))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WhatUpCore_ServiceDesc is the grpc.ServiceDesc for WhatUpCore service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -828,6 +861,10 @@ var WhatUpCore_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetDisappearingMessageTime",
 			Handler:    _WhatUpCore_SetDisappearingMessageTime_Handler,
+		},
+		{
+			MethodName: "Unregister",
+			Handler:    _WhatUpCore_Unregister_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
