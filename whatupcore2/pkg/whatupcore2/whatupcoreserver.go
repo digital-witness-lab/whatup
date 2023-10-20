@@ -499,10 +499,10 @@ func (s *WhatUpCoreServer) Unregister(ctx context.Context, options *pb.Unregiste
 	JIDProto := JIDToProto(JID)
 	JIDAnnonProto := session.Client.anonLookup.anonymizeJIDProto(JIDToProto(JID))
 
-    session.Client.Logout()
-    session.Client.Disconnect()
-    session.Client.Store.Delete()
-    ClearFileAndParents(session.Client.dbPath)
+	session.Client.Logout()
+	session.Client.Disconnect()
+	session.Client.Store.Delete()
+	ClearFileAndParents(session.Client.dbPath)
 
 	return &pb.ConnectionStatus{
 		IsConnected: session.Client.IsConnected(),
