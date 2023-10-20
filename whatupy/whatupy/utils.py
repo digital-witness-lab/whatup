@@ -43,6 +43,10 @@ class WhatUpyJSONDecoder(json.JSONDecoder):
         return dct
 
 
+def jid_noad(jid: wuc.JID) -> wuc.JID:
+    return wuc.JID(user=jid.user, server=jid.server)
+
+
 def dict_to_csv_bytes(data: T.List[dict]) -> bytes:
     if not data:
         return b""
