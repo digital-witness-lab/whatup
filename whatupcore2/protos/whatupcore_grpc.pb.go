@@ -29,7 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WhatUpCoreAuthClient interface {
 	Login(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (*SessionToken, error)
-	Register(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (WhatUpCoreAuth_RegisterClient, error)
+	Register(ctx context.Context, in *RegisterOptions, opts ...grpc.CallOption) (WhatUpCoreAuth_RegisterClient, error)
 	RenewToken(ctx context.Context, in *SessionToken, opts ...grpc.CallOption) (*SessionToken, error)
 }
 
@@ -50,7 +50,7 @@ func (c *whatUpCoreAuthClient) Login(ctx context.Context, in *WUCredentials, opt
 	return out, nil
 }
 
-func (c *whatUpCoreAuthClient) Register(ctx context.Context, in *WUCredentials, opts ...grpc.CallOption) (WhatUpCoreAuth_RegisterClient, error) {
+func (c *whatUpCoreAuthClient) Register(ctx context.Context, in *RegisterOptions, opts ...grpc.CallOption) (WhatUpCoreAuth_RegisterClient, error) {
 	stream, err := c.cc.NewStream(ctx, &WhatUpCoreAuth_ServiceDesc.Streams[0], WhatUpCoreAuth_Register_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func (c *whatUpCoreAuthClient) RenewToken(ctx context.Context, in *SessionToken,
 // for forward compatibility
 type WhatUpCoreAuthServer interface {
 	Login(context.Context, *WUCredentials) (*SessionToken, error)
-	Register(*WUCredentials, WhatUpCoreAuth_RegisterServer) error
+	Register(*RegisterOptions, WhatUpCoreAuth_RegisterServer) error
 	RenewToken(context.Context, *SessionToken) (*SessionToken, error)
 	mustEmbedUnimplementedWhatUpCoreAuthServer()
 }
@@ -108,7 +108,7 @@ type UnimplementedWhatUpCoreAuthServer struct {
 func (UnimplementedWhatUpCoreAuthServer) Login(context.Context, *WUCredentials) (*SessionToken, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
-func (UnimplementedWhatUpCoreAuthServer) Register(*WUCredentials, WhatUpCoreAuth_RegisterServer) error {
+func (UnimplementedWhatUpCoreAuthServer) Register(*RegisterOptions, WhatUpCoreAuth_RegisterServer) error {
 	return status.Errorf(codes.Unimplemented, "method Register not implemented")
 }
 func (UnimplementedWhatUpCoreAuthServer) RenewToken(context.Context, *SessionToken) (*SessionToken, error) {
@@ -146,7 +146,7 @@ func _WhatUpCoreAuth_Login_Handler(srv interface{}, ctx context.Context, dec fun
 }
 
 func _WhatUpCoreAuth_Register_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(WUCredentials)
+	m := new(RegisterOptions)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -212,6 +212,10 @@ var WhatUpCoreAuth_ServiceDesc = grpc.ServiceDesc{
 
 const (
 	WhatUpCore_GetConnectionStatus_FullMethodName        = "/protos.WhatUpCore/GetConnectionStatus"
+	WhatUpCore_GetACLAll_FullMethodName                  = "/protos.WhatUpCore/GetACLAll"
+	WhatUpCore_SetACL_FullMethodName                     = "/protos.WhatUpCore/SetACL"
+	WhatUpCore_GetACL_FullMethodName                     = "/protos.WhatUpCore/GetACL"
+	WhatUpCore_GetJoinedGroups_FullMethodName            = "/protos.WhatUpCore/GetJoinedGroups"
 	WhatUpCore_GetGroupInfo_FullMethodName               = "/protos.WhatUpCore/GetGroupInfo"
 	WhatUpCore_GetGroupInfoInvite_FullMethodName         = "/protos.WhatUpCore/GetGroupInfoInvite"
 	WhatUpCore_JoinGroup_FullMethodName                  = "/protos.WhatUpCore/JoinGroup"
@@ -220,6 +224,7 @@ const (
 	WhatUpCore_DownloadMedia_FullMethodName              = "/protos.WhatUpCore/DownloadMedia"
 	WhatUpCore_SendMessage_FullMethodName                = "/protos.WhatUpCore/SendMessage"
 	WhatUpCore_SetDisappearingMessageTime_FullMethodName = "/protos.WhatUpCore/SetDisappearingMessageTime"
+	WhatUpCore_Unregister_FullMethodName                 = "/protos.WhatUpCore/Unregister"
 )
 
 // WhatUpCoreClient is the client API for WhatUpCore service.
@@ -227,6 +232,10 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WhatUpCoreClient interface {
 	GetConnectionStatus(ctx context.Context, in *ConnectionStatusOptions, opts ...grpc.CallOption) (*ConnectionStatus, error)
+	GetACLAll(ctx context.Context, in *GetACLAllOptions, opts ...grpc.CallOption) (WhatUpCore_GetACLAllClient, error)
+	SetACL(ctx context.Context, in *GroupACL, opts ...grpc.CallOption) (*GroupACL, error)
+	GetACL(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupACL, error)
+	GetJoinedGroups(ctx context.Context, in *GetJoinedGroupsOptions, opts ...grpc.CallOption) (WhatUpCore_GetJoinedGroupsClient, error)
 	GetGroupInfo(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupInfo, error)
 	GetGroupInfoInvite(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error)
 	JoinGroup(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error)
@@ -236,6 +245,7 @@ type WhatUpCoreClient interface {
 	DownloadMedia(ctx context.Context, in *DownloadMediaOptions, opts ...grpc.CallOption) (*MediaContent, error)
 	SendMessage(ctx context.Context, in *SendMessageOptions, opts ...grpc.CallOption) (*SendMessageReceipt, error)
 	SetDisappearingMessageTime(ctx context.Context, in *DisappearingMessageOptions, opts ...grpc.CallOption) (*DisappearingMessageResponse, error)
+	Unregister(ctx context.Context, in *UnregisterOptions, opts ...grpc.CallOption) (*ConnectionStatus, error)
 }
 
 type whatUpCoreClient struct {
@@ -253,6 +263,88 @@ func (c *whatUpCoreClient) GetConnectionStatus(ctx context.Context, in *Connecti
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *whatUpCoreClient) GetACLAll(ctx context.Context, in *GetACLAllOptions, opts ...grpc.CallOption) (WhatUpCore_GetACLAllClient, error) {
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[0], WhatUpCore_GetACLAll_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &whatUpCoreGetACLAllClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type WhatUpCore_GetACLAllClient interface {
+	Recv() (*GroupACL, error)
+	grpc.ClientStream
+}
+
+type whatUpCoreGetACLAllClient struct {
+	grpc.ClientStream
+}
+
+func (x *whatUpCoreGetACLAllClient) Recv() (*GroupACL, error) {
+	m := new(GroupACL)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *whatUpCoreClient) SetACL(ctx context.Context, in *GroupACL, opts ...grpc.CallOption) (*GroupACL, error) {
+	out := new(GroupACL)
+	err := c.cc.Invoke(ctx, WhatUpCore_SetACL_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *whatUpCoreClient) GetACL(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupACL, error) {
+	out := new(GroupACL)
+	err := c.cc.Invoke(ctx, WhatUpCore_GetACL_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *whatUpCoreClient) GetJoinedGroups(ctx context.Context, in *GetJoinedGroupsOptions, opts ...grpc.CallOption) (WhatUpCore_GetJoinedGroupsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[1], WhatUpCore_GetJoinedGroups_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &whatUpCoreGetJoinedGroupsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type WhatUpCore_GetJoinedGroupsClient interface {
+	Recv() (*JoinedGroup, error)
+	grpc.ClientStream
+}
+
+type whatUpCoreGetJoinedGroupsClient struct {
+	grpc.ClientStream
+}
+
+func (x *whatUpCoreGetJoinedGroupsClient) Recv() (*JoinedGroup, error) {
+	m := new(JoinedGroup)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *whatUpCoreClient) GetGroupInfo(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupInfo, error) {
@@ -283,7 +375,7 @@ func (c *whatUpCoreClient) JoinGroup(ctx context.Context, in *InviteCode, opts .
 }
 
 func (c *whatUpCoreClient) GetMessages(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetMessagesClient, error) {
-	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[0], WhatUpCore_GetMessages_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[2], WhatUpCore_GetMessages_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -315,7 +407,7 @@ func (x *whatUpCoreGetMessagesClient) Recv() (*WUMessage, error) {
 }
 
 func (c *whatUpCoreClient) GetPendingHistory(ctx context.Context, in *PendingHistoryOptions, opts ...grpc.CallOption) (WhatUpCore_GetPendingHistoryClient, error) {
-	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[1], WhatUpCore_GetPendingHistory_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &WhatUpCore_ServiceDesc.Streams[3], WhatUpCore_GetPendingHistory_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -373,11 +465,24 @@ func (c *whatUpCoreClient) SetDisappearingMessageTime(ctx context.Context, in *D
 	return out, nil
 }
 
+func (c *whatUpCoreClient) Unregister(ctx context.Context, in *UnregisterOptions, opts ...grpc.CallOption) (*ConnectionStatus, error) {
+	out := new(ConnectionStatus)
+	err := c.cc.Invoke(ctx, WhatUpCore_Unregister_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WhatUpCoreServer is the server API for WhatUpCore service.
 // All implementations must embed UnimplementedWhatUpCoreServer
 // for forward compatibility
 type WhatUpCoreServer interface {
 	GetConnectionStatus(context.Context, *ConnectionStatusOptions) (*ConnectionStatus, error)
+	GetACLAll(*GetACLAllOptions, WhatUpCore_GetACLAllServer) error
+	SetACL(context.Context, *GroupACL) (*GroupACL, error)
+	GetACL(context.Context, *JID) (*GroupACL, error)
+	GetJoinedGroups(*GetJoinedGroupsOptions, WhatUpCore_GetJoinedGroupsServer) error
 	GetGroupInfo(context.Context, *JID) (*GroupInfo, error)
 	GetGroupInfoInvite(context.Context, *InviteCode) (*GroupInfo, error)
 	JoinGroup(context.Context, *InviteCode) (*GroupInfo, error)
@@ -387,6 +492,7 @@ type WhatUpCoreServer interface {
 	DownloadMedia(context.Context, *DownloadMediaOptions) (*MediaContent, error)
 	SendMessage(context.Context, *SendMessageOptions) (*SendMessageReceipt, error)
 	SetDisappearingMessageTime(context.Context, *DisappearingMessageOptions) (*DisappearingMessageResponse, error)
+	Unregister(context.Context, *UnregisterOptions) (*ConnectionStatus, error)
 	mustEmbedUnimplementedWhatUpCoreServer()
 }
 
@@ -396,6 +502,18 @@ type UnimplementedWhatUpCoreServer struct {
 
 func (UnimplementedWhatUpCoreServer) GetConnectionStatus(context.Context, *ConnectionStatusOptions) (*ConnectionStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetConnectionStatus not implemented")
+}
+func (UnimplementedWhatUpCoreServer) GetACLAll(*GetACLAllOptions, WhatUpCore_GetACLAllServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetACLAll not implemented")
+}
+func (UnimplementedWhatUpCoreServer) SetACL(context.Context, *GroupACL) (*GroupACL, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetACL not implemented")
+}
+func (UnimplementedWhatUpCoreServer) GetACL(context.Context, *JID) (*GroupACL, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetACL not implemented")
+}
+func (UnimplementedWhatUpCoreServer) GetJoinedGroups(*GetJoinedGroupsOptions, WhatUpCore_GetJoinedGroupsServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetJoinedGroups not implemented")
 }
 func (UnimplementedWhatUpCoreServer) GetGroupInfo(context.Context, *JID) (*GroupInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroupInfo not implemented")
@@ -420,6 +538,9 @@ func (UnimplementedWhatUpCoreServer) SendMessage(context.Context, *SendMessageOp
 }
 func (UnimplementedWhatUpCoreServer) SetDisappearingMessageTime(context.Context, *DisappearingMessageOptions) (*DisappearingMessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetDisappearingMessageTime not implemented")
+}
+func (UnimplementedWhatUpCoreServer) Unregister(context.Context, *UnregisterOptions) (*ConnectionStatus, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Unregister not implemented")
 }
 func (UnimplementedWhatUpCoreServer) mustEmbedUnimplementedWhatUpCoreServer() {}
 
@@ -450,6 +571,84 @@ func _WhatUpCore_GetConnectionStatus_Handler(srv interface{}, ctx context.Contex
 		return srv.(WhatUpCoreServer).GetConnectionStatus(ctx, req.(*ConnectionStatusOptions))
 	}
 	return interceptor(ctx, in, info, handler)
+}
+
+func _WhatUpCore_GetACLAll_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetACLAllOptions)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(WhatUpCoreServer).GetACLAll(m, &whatUpCoreGetACLAllServer{stream})
+}
+
+type WhatUpCore_GetACLAllServer interface {
+	Send(*GroupACL) error
+	grpc.ServerStream
+}
+
+type whatUpCoreGetACLAllServer struct {
+	grpc.ServerStream
+}
+
+func (x *whatUpCoreGetACLAllServer) Send(m *GroupACL) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _WhatUpCore_SetACL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GroupACL)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WhatUpCoreServer).SetACL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WhatUpCore_SetACL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WhatUpCoreServer).SetACL(ctx, req.(*GroupACL))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WhatUpCore_GetACL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JID)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WhatUpCoreServer).GetACL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WhatUpCore_GetACL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WhatUpCoreServer).GetACL(ctx, req.(*JID))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WhatUpCore_GetJoinedGroups_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetJoinedGroupsOptions)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(WhatUpCoreServer).GetJoinedGroups(m, &whatUpCoreGetJoinedGroupsServer{stream})
+}
+
+type WhatUpCore_GetJoinedGroupsServer interface {
+	Send(*JoinedGroup) error
+	grpc.ServerStream
+}
+
+type whatUpCoreGetJoinedGroupsServer struct {
+	grpc.ServerStream
+}
+
+func (x *whatUpCoreGetJoinedGroupsServer) Send(m *JoinedGroup) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _WhatUpCore_GetGroupInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -602,6 +801,24 @@ func _WhatUpCore_SetDisappearingMessageTime_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WhatUpCore_Unregister_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnregisterOptions)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WhatUpCoreServer).Unregister(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WhatUpCore_Unregister_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WhatUpCoreServer).Unregister(ctx, req.(*UnregisterOptions))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WhatUpCore_ServiceDesc is the grpc.ServiceDesc for WhatUpCore service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -612,6 +829,14 @@ var WhatUpCore_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetConnectionStatus",
 			Handler:    _WhatUpCore_GetConnectionStatus_Handler,
+		},
+		{
+			MethodName: "SetACL",
+			Handler:    _WhatUpCore_SetACL_Handler,
+		},
+		{
+			MethodName: "GetACL",
+			Handler:    _WhatUpCore_GetACL_Handler,
 		},
 		{
 			MethodName: "GetGroupInfo",
@@ -637,8 +862,22 @@ var WhatUpCore_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "SetDisappearingMessageTime",
 			Handler:    _WhatUpCore_SetDisappearingMessageTime_Handler,
 		},
+		{
+			MethodName: "Unregister",
+			Handler:    _WhatUpCore_Unregister_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GetACLAll",
+			Handler:       _WhatUpCore_GetACLAll_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "GetJoinedGroups",
+			Handler:       _WhatUpCore_GetJoinedGroups_Handler,
+			ServerStreams: true,
+		},
 		{
 			StreamName:    "GetMessages",
 			Handler:       _WhatUpCore_GetMessages_Handler,

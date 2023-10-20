@@ -1,4 +1,5 @@
 import logging
+import typing as T
 from functools import partial
 
 import aioconsole
@@ -10,6 +11,13 @@ from ..protos import whatupcore_pb2 as wuc
 from . import BaseBot
 
 logger = logging.getLogger(__name__)
+
+
+async def aiter_to_list(aiter: T.AsyncIterable) -> list:
+    result = []
+    async for item in aiter:
+        result.append(item)
+    return result
 
 
 class DebugBot(BaseBot):
@@ -24,6 +32,7 @@ class DebugBot(BaseBot):
         self.logger.info(
             "Starting debug server on port: %s:%d", self.debug_host, self.debug_port
         )
+        c = self.core_client
         g = {**locals(), **globals()}
         factory = partial(AsynchronousConsole, locals=g)
         server = await aioconsole.start_interactive_server(

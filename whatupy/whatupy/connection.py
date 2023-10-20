@@ -16,18 +16,18 @@ class NotRegisteredError(Exception):
     pass
 
 
-def create_whatupcore_clients(host: str, port: int, cert_path: T.Optional[Path] = None):
+def create_whatupcore_clients(host: str, port: int, cert: T.Optional[Path] = None):
     authenticator = WhatUpAuthentication()
 
-    cert = None
-    if cert_path:
-        with cert_path.open("rb") as f:
-            cert = f.read()
+    cert_bytes = None
+    if cert:
+        with cert.open("rb") as f:
+            cert_bytes = f.read()
     options = [("grpc.max_receive_message_length", 200 * 1024 * 1024)]
     channel = grpc.aio.secure_channel(
         f"{host}:{port}",
         grpc.composite_channel_credentials(
-            grpc.ssl_channel_credentials(root_certificates=cert or None),
+            grpc.ssl_channel_credentials(root_certificates=cert_bytes or None),
             grpc.metadata_call_credentials(GRPCAuth(authenticator)),
         ),
         options=options,
@@ -45,6 +45,7 @@ class WhatUpAuthentication:
         self.auth_client: T.Optional[WhatUpCoreAuthStub] = auth_client
         self.session_token: T.Optional[wuc.SessionToken] = None
         self.logger = logger.getChild("GRPCAuthentication")
+        self.username: T.Optional[str] = None
 
     def set_auth_client(self, auth_client: WhatUpCoreAuthStub):
         self.auth_client = auth_client
@@ -57,17 +58,28 @@ class WhatUpAuthentication:
     async def login(self, username: str, passphrase: str):
         if not self.auth_client:
             raise Exception("Must set an auth client")
+        self.username = username
         self.logger = self.logger.getChild(f"u:{username}")
         credentials = wuc.WUCredentials(username=username, passphrase=passphrase)
         session = await self.auth_client.Login(credentials)
         self.session_token = session
 
-    async def register(self, username: str, passphrase: str) -> T.AsyncIterator[str]:
+    async def register(
+        self,
+        username: str,
+        passphrase: str,
+        default_group_permission: wuc.GroupPermission.ValueType = wuc.GroupPermission.DENIED,
+    ) -> T.AsyncIterator[str]:
         if not self.auth_client:
             raise Exception("Must set an auth client")
+        self.username = username
         self.logger = self.logger.getChild(username)
         credentials = wuc.WUCredentials(username=username, passphrase=passphrase)
-        registerStream = self.auth_client.Register(credentials)
+        register_options = wuc.RegisterOptions(
+            credentials=credentials,
+            defaultGroupPermission=default_group_permission,
+        )
+        registerStream = self.auth_client.Register(register_options)
         async for msg in registerStream:
             if msg.qrcode:
                 yield msg.qrcode
