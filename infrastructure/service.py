@@ -2,7 +2,7 @@ import hashlib
 from typing import List, Optional
 from attr import dataclass
 
-from pulumi import ComponentResource, ResourceOptions, Output
+from pulumi import ComponentResource, get_stack, ResourceOptions, Output
 
 import pulumi_docker as docker
 from pulumi_gcp import cloudrunv2, serviceaccount
@@ -33,6 +33,7 @@ class ServiceArgs:
     # - `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER`
     ingress: str
     memory: str
+    public_access: bool
     service_account: serviceaccount.Account
     # Specify the subnet to use Direct VPC egress instead of
     # serverless VPC connectors for outbound traffic from
@@ -56,12 +57,20 @@ class Service(ComponentResource):
     ) -> None:
         super().__init__("dwl:cloudrun:Service", name, props.__dict__, opts)
 
+        # Disallow services with open public access accepting ingress from
+        # the internet. We do not expect to have such services deployed
+        # via this component resource at this time.
+        if props.ingress == "INGRESS_TRAFFIC_ALL" and props.public_access:
+            raise Exception(
+                "Public access with direct ingress traffic from the internet is not allowed"  # noqa: E501
+            )
+
         child_opts = ResourceOptions(parent=self)
 
         # Create an Artifact Registry repository
         repository = artifactregistry.Repository(
-            props.image_name + "Repo",
-            repository_id=props.image_name + "-repo",
+            props.image_name + "-repo",
+            repository_id=f"{props.image_name}-{get_stack()}-repo",
             description=f"Repository for {props.image_name} container image",
             format="DOCKER",
             location=location,
@@ -83,7 +92,7 @@ class Service(ComponentResource):
         # as described here:
         # https://cloud.google.com/artifact-registry/docs/docker/authentication
         image = docker.Image(
-            props.image_name + "Image",
+            props.image_name + "-img",
             image_name=Output.concat(repo_url, "/", props.image_name),
             build=docker.DockerBuildArgs(
                 context=props.app_path,
@@ -96,9 +105,8 @@ class Service(ComponentResource):
 
         # Create a Cloud Run service definition.
         self._service = cloudrunv2.Service(
-            f"{name}Service",
+            f"{name}-svc",
             cloudrunv2.ServiceArgs(
-                name=name,
                 location=location,
                 # Set the launch stage to BETA since
                 # we want to use the Preview feature
@@ -129,8 +137,16 @@ class Service(ComponentResource):
             ),
         )
 
+        # Grant public, unauthenticated access to this service.
+        # Since the services are marked with an ingress of
+        # internal-only traffic, these are not allowed to be
+        # called from the internet anyway. Moreover, the
+        # services themselves require authentication, so
+        # they are not exactly "anonymous". But marking
+        # them as anonymous in GCP makes some things
+        # easier to use our own auth.
         cloudrunv2.ServiceIamMember(
-            f"{name}AnonymousInvoke",
+            f"{name}-public-access",
             cloudrunv2.ServiceIamMemberArgs(
                 location=location,
                 name=self._service.name,

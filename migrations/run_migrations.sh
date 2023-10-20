@@ -7,7 +7,7 @@ echo "Running migrations..."
 ENCODED_DATABASE_ROOT_PASSWORD=$(echo "$DATABASE_ROOT_PASSWORD" | python3 -c 'import urllib.parse; print(urllib.parse.quote(input(), ""))')
 
 if [ -z "${ENCODED_DATABASE_ROOT_PASSWORD:-}" ]; then
-    echo "Encoded DB URL is empty..."
+    echo "Encoded DB password is empty..."
     exit 1
 fi
 

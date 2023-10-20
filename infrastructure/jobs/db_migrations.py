@@ -1,6 +1,6 @@
 from os import path
 
-from pulumi import Output, ResourceOptions
+from pulumi import get_stack, Output, ResourceOptions
 
 from pulumi_gcp import serviceaccount, cloudrunv2, secretmanager
 from pulumi_gcp.cloudrunv2 import (
@@ -19,13 +19,13 @@ job_name = "db-migrations"
 app_path = path.join("..", "migrations")
 
 service_account = serviceaccount.Account(
-    "dbMigrations",
-    account_id="db-migrations",
+    "db-migrations",
+    account_id=f"db-migrations-{get_stack()}",
     description=f"Service account for {job_name}",
 )
 
 secret_manager_perm = secretmanager.SecretIamMember(
-    "dbMigrationsSecretsAccess",
+    "db-mig-secret-perm",
     secretmanager.SecretIamMemberArgs(
         secret_id=messages_db_root_pass_secret.id,
         role="roles/secretmanager.secretAccessor",

@@ -44,8 +44,7 @@ sql_instance_settings = sql.DatabaseInstanceSettingsArgs(
 )
 
 primary_cloud_sql_instance = sql.DatabaseInstance(
-    "sqlInstance",
-    name="whatup-sql-instance",
+    "whatup",
     database_version="POSTGRES_15",
     # This is the primary SQL instance.
     instance_type="CLOUD_SQL_INSTANCE",
@@ -63,14 +62,14 @@ databases: List[sql.Database] = []
 for db_name in db_names:
     databases.append(
         sql.Database(
-            f"{db_name}Db",
+            f"{db_name}",
             instance=primary_cloud_sql_instance.name,
             name=db_name,
         )
     )
 
     sql.User(
-        f"{db_name}DbUser",
+        f"{db_name}",
         name=db_name,
         instance=primary_cloud_sql_instance.name,
         password=db_password,
