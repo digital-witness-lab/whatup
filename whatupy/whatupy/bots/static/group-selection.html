@@ -1,0 +1,57 @@
+<html>
+    <head>
+        <title>Select the groups for WhatsApp Watch</title>
+    </head>
+    <body>
+
+        <div>
+            Select the groups below that you give consent for our systems to
+            read. This means that our system will be able to read past and
+            future messages within the group. Keep in mind that we do not store
+            usernames, phone numbers or real names.
+        </div>
+
+        <hr>
+
+        <div id="group-list"></div>
+        <button id="submit-button">Submit</button>
+
+        <script>
+            const userServicesBot = "{bot_number}";
+            const gid_nbytes = {gid_nbytes};  // number of bytes from the hashed group JID that were used in the gid
+            const data = {data_jsons};
+
+            const groupList = document.getElementById('group-list');
+            const submitButton = document.getElementById('submit-button');
+        
+            // Render the JSON data as a list
+            data.sort((a, b) => a.n_participants < b.n_participants);
+            data.forEach(item => {{
+                const listItem = document.createElement('li');
+                const checked = item.can_read ? 'checked' : ''
+                listItem.innerHTML = `
+           <input type="checkbox" class="group-checkbox" data-gid="${{item.gid}}" data-initial="${{item.can_read}}" ${{checked}}>
+                        ${{item.name}} - ${{item.topic}} (${{item['n_participants']}} participants)
+                `;
+                groupList.appendChild(listItem);
+            }});
+        
+            // Handle form submission
+            submitButton.addEventListener('click', () => {{
+                const selectedGroups = [];
+                const checkboxes = document.querySelectorAll('.group-checkbox');
+        
+                checkboxes.forEach(checkbox => {{
+                    const gid = checkbox.getAttribute('data-gid');
+                    const checked_initial = checkbox.getAttribute('data-initial') == "true";
+                    if (checked_initial ^ checkbox.checked) {{
+                        selectedGroups.push(`${{gid}}|${{Number(checkbox.checked)}}`)
+                    }}
+                }});
+                
+                var serializedResp = selectedGroups.join(':');
+                window.location = `https://api.whatsapp.com/send?phone=${{userServicesBot}}&text=setacl-${{gid_nbytes}}@${{serializedResp}}`
+            }});
+        </script>
+    </body>
+</html>

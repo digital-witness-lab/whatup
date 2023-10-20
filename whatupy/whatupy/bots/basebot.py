@@ -1,12 +1,11 @@
 import argparse
 import asyncio
 import enum
-import json
 import logging
 import random
 import shlex
-import time
 import typing as T
+from contextlib import asynccontextmanager
 from collections import defaultdict, deque, namedtuple
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -305,7 +304,7 @@ class BaseBot:
     async def send_text_message(
         self, recipient: wuc.JID, text: str, composing_time: int = 5
     ) -> wuc.SendMessageReceipt:
-        recipient_nonad = wuc.JID(user=recipient.user, server=recipient.server)
+        recipient_nonad = utils.jid_noad(recipient)
         options = wuc.SendMessageOptions(
             recipient=recipient_nonad, simpleText=text, composingTime=composing_time
         )
@@ -322,7 +321,7 @@ class BaseBot:
         filename: T.Optional[str] = None,
         composing_time: int = 5,
     ) -> wuc.SendMessageReceipt:
-        recipient_nonad = wuc.JID(user=recipient.user, server=recipient.server)
+        recipient_nonad = utils.jid_noad(recipient)
         options = wuc.SendMessageOptions(
             recipient=recipient_nonad,
             composingTime=composing_time,
@@ -404,4 +403,24 @@ class BaseBot:
             is_archive=True,
             archive_data=archive_data,
             skip_control=True,
+        )
+
+    @asynccontextmanager
+    async def with_disappearing_messages(
+        self,
+        jid: wuc.JID,
+        disappearing_time: wuc.DisappearingMessageOptions.DISAPPEARING_TIME.ValueType,
+    ):
+        jid_noad = utils.jid_noad(jid)
+        await self.core_client.SetDisappearingMessageTime(
+            wuc.DisappearingMessageOptions(
+                recipient=jid_noad, disappearingTime=disappearing_time
+            )
+        )
+        yield
+        await self.core_client.SetDisappearingMessageTime(
+            wuc.DisappearingMessageOptions(
+                recipient=jid_noad,
+                disappearingTime=wuc.DisappearingMessageOptions.TIMER_OFF,
+            )
         )
