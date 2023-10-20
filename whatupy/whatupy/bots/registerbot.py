@@ -82,6 +82,12 @@ class RegisterBot(BaseBot):
         username: str,
         is_bot: bool,
     ):
+        user_state = self.db["registered_users"].find_one(username=username)
+        if user_state is not None:
+            return await self.send_text_message(
+                handler_jid, "Alias is already in use. Please select a different one"
+            )
+
         if is_bot:
             default_group_permission = wuc.GroupPermission.READWRITE
         else:

@@ -275,3 +275,5 @@ class UserServicesBot(BaseBot):
             final_message.format(anon_user=user.jid_anon.user),
         )
         await self.device_manager.unregister(user.username)
+        self.db["registered_users"].delete(username=user.username)
+        )
