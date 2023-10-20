@@ -1,6 +1,6 @@
 from os import path
 
-from pulumi import ResourceOptions, Output
+from pulumi import get_stack, ResourceOptions, Output
 from pulumi_gcp import serviceaccount, cloudrunv2, storage, secretmanager
 from pulumi_gcp.cloudrunv2 import (
     JobTemplateTemplateContainerEnvValueSourceArgs,
@@ -14,16 +14,16 @@ from jobs.db_migrations import migrations_job_complete
 from network import vpc, private_services_network_with_db
 from storage import message_archive_bucket
 
-service_name = "whatupy-bot-db-load-archive"
+service_name = "bot-db-load-archive"
 
 service_account = serviceaccount.Account(
-    "whatupDbLoadArchive",
-    account_id="whatupy-bot-db-load-archive",
+    "db-load-archive",
+    account_id=f"bot-db-load-archive-{get_stack()}",
     description=f"Service account for {service_name}",
 )
 
 message_archive_bucket_perm = storage.BucketIAMMember(
-    "botDbLoadArchiveAccess",
+    "db-ld-archive-arch-perm",
     storage.BucketIAMMemberArgs(
         bucket=message_archive_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
@@ -32,7 +32,7 @@ message_archive_bucket_perm = storage.BucketIAMMember(
 )
 
 secret_manager_perm = secretmanager.SecretIamMember(
-    "dbLoadArchiveJobSecretsAccess",
+    "db-ld-archive-scrt-perm",
     secretmanager.SecretIamMemberArgs(
         secret_id=messages_db_url_secret.id,
         role="roles/secretmanager.secretAccessor",

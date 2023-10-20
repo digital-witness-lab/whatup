@@ -1,6 +1,6 @@
 from os import path
 
-from pulumi import ResourceOptions, Output
+from pulumi import get_stack, ResourceOptions, Output
 from pulumi_gcp import serviceaccount, cloudrunv2, storage
 
 from service import Service, ServiceArgs
@@ -10,13 +10,13 @@ from storage import whatupcore2_bucket
 service_name = "whatupcore2"
 
 service_account = serviceaccount.Account(
-    "whatupCoreServiceAccount",
-    account_id="whatupcore",
+    "whatupcore",
+    account_id=f"whatupcore-{get_stack()}",
     description=f"Service account for {service_name}",
 )
 
 bucket_perm = storage.BucketIAMMember(
-    "whatupCoreStorageAccess",
+    "wu-core-strg-perm",
     storage.BucketIAMMemberArgs(
         bucket=whatupcore2_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
@@ -39,6 +39,7 @@ whatupcore2_service = Service(
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
         memory="1Gi",
+        public_access=True,
         service_account=service_account,
         # Specifying the subnet causes CloudRun to use
         # Direct VPC egress for outbound traffic based
