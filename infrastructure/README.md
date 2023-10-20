@@ -1,5 +1,11 @@
 # GCP Infrastructure
 
+```bash
+$ gcloud auth application-default login
+$ pulumu up --stack test
+$ gcloud auth configure-docker europe-west3-docker.pkg.dev
+```
+
 ## Development
 
 ### Prerequisites
@@ -95,3 +101,10 @@ resources since GCP seems to take a while to release the private IP
 reservation that we make for the purpose of Cloud SQL private IP
 enablement. If that happens, wait for a few hours and try re-running
 `pulumi destroy` to fully remove all the resources.
+
+
+# Future Notes
+
+- set protect for buckets and database if stack == prod
+- if bigquery sync is slow, we can use DMS on the SQL side
+- move repository for whatupy into a global thing all jobs/services use if it becomes an issue having so many repositories
