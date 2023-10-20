@@ -424,3 +424,9 @@ class BaseBot:
                 disappearingTime=wuc.DisappearingMessageOptions.TIMER_OFF,
             )
         )
+
+    async def unregister(self):
+        self.logger.warning("Calling unregister")
+        self.logger.critical("Calling unregister")
+        self.logger.error("Calling unregister")
+        await self.core_client.Unregister(wuc.UnregisterOptions)

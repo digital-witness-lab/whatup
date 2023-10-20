@@ -1,6 +1,9 @@
 class CredentialsListener:
     async def listen(self, device_manager):
-        pass
+        raise NotImplementedError
 
     def mark_dead(self, username):
-        pass
+        raise NotImplementedError
+
+    def unregister(self, username):
+        raise NotImplementedError

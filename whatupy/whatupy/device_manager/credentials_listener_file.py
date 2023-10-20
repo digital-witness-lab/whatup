@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class CredentialsListenerFile(CredentialsListener):
     def __init__(self, paths: T.List[Path], timeout: int = 60):
         self.paths = paths
-        self.active_usernames: T.Set[str] = set()
+        self.active_usernames: T.Dict[str, Path] = {}
         self.timeout = timeout
         self.blocker = asyncio.Event()
 
@@ -46,7 +46,7 @@ class CredentialsListenerFile(CredentialsListener):
                     credential_file,
                 )
                 await device_manager.on_credentials(credential)
-                self.active_usernames.add(username)
+                self.active_usernames[username] = credential_file
         except ValueError:
             logger.exception(f"Could not parse credential: {credential_file}")
             return
@@ -64,5 +64,10 @@ class CredentialsListenerFile(CredentialsListener):
 
     def mark_dead(self, username):
         logger.info("Marking user dead: %s", username)
-        self.active_usernames.discard(username)
+        self.active_usernames.pop(username, None)
         self.blocker.set()
+
+    def unregister(self, username):
+        credential_file = self.active_usernames.pop(username)
+        logger.info("Removing session file: %s", credential_file)
+        credential_file.unlink(missing_ok=True)

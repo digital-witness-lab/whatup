@@ -488,3 +488,27 @@ func (s *WhatUpCoreServer) GetJoinedGroups(getJoinedGroupsOptions *pb.GetJoinedG
 	}
 	return nil
 }
+
+func (s *WhatUpCoreServer) Unregister(ctx context.Context, options *pb.UnregisterOptions) (*pb.ConnectionStatus, error) {
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	JID := *session.Client.Store.ID
+	JIDProto := JIDToProto(JID)
+	JIDAnnonProto := session.Client.anonLookup.anonymizeJIDProto(JIDToProto(JID))
+
+    session.Client.Logout()
+    session.Client.Disconnect()
+    session.Client.Store.Delete()
+    ClearFileAndParents(session.Client.dbPath)
+
+	return &pb.ConnectionStatus{
+		IsConnected: session.Client.IsConnected(),
+		IsLoggedIn:  session.Client.IsLoggedIn(),
+		Timestamp:   timestamppb.New(session.Client.LastSuccessfulConnect),
+		JID:         JIDProto,
+		JIDAnon:     JIDAnnonProto,
+	}, nil
+}
