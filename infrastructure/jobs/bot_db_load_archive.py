@@ -52,7 +52,7 @@ if create_load_archive_job:
         service_name,
         JobArgs(
             app_path=path.join("..", "whatupy"),
-            args=["/usr/src/whatupy/db_load_archive_job.sh"],
+            args=["/usr/src/whatupy/gcsfuse_run.sh", "load-archive"],
             cpu="1",
             # Route all egress traffic via the VPC network.
             egress="ALL_TRAFFIC",
