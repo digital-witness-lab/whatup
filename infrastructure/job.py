@@ -98,7 +98,7 @@ class Job(ComponentResource):
             containers=[
                 cloudrunv2.JobTemplateTemplateContainerArgs(
                     args=props.args,
-                    image=image.image_name,
+                    image=image.repo_digest,
                     resources=resources,
                     envs=props.envs,
                 ),

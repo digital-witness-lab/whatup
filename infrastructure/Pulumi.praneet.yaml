@@ -2,6 +2,7 @@ config:
   gcp:project: whatup-deploy
   gcp:region: europe-west3
   gcp:zone: europe-west3-a
+  whatup:createOnboardBulkJob: "true"
   whatup:dbNames:
     - messages
   whatup:dbPassword:
