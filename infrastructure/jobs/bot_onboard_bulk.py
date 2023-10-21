@@ -65,10 +65,6 @@ if create_onboard_bulk_job:
                     name="WHATUPCORE2_HOST",
                     value=whatupcore2_service.get_host(),
                 ),
-                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                    name="WHATUPY_ONBOARD_BOT_NAME",
-                    value="praneet-test",
-                ),
             ],
             timeout="3600s",
         ),
