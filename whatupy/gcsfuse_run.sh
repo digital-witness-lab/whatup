@@ -42,6 +42,10 @@ case $app_command in
     ;;
 
     onboard-bulk)
+        if [ -z "${WHATUPY_ONBOARD_BOT_NAME:-}" ]; then
+            echo "WHATUPY_ONBOARD_BOT_NAME env var is required."
+            exit 1
+        fi
         whatupy --host "${WHATUPCORE2_HOST}" \
             --port 443 \
             onboard \
