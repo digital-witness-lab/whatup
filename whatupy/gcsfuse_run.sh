@@ -27,6 +27,7 @@ case $app_command in
 
     archivebot)
         whatupy --host "${WHATUPCORE2_HOST}" \
+            --port 443 \
             archivebot \
             --archive-dir "${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}" \
             "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}" &
@@ -34,6 +35,7 @@ case $app_command in
 
     databasebot)
         whatupy --host "${WHATUPCORE2_HOST}" \
+            --port 443 \
             databasebot \
             --database-url "${DATABASE_URL}" \
             "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}" &
@@ -41,6 +43,7 @@ case $app_command in
 
     onboard-bulk)
         whatupy --host "${WHATUPCORE2_HOST}" \
+            --port 443 \
             onboard \
             --credentials-dir "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}" "${WHATUPY_ONBOARD_BOT_NAME}" &
     ;;
