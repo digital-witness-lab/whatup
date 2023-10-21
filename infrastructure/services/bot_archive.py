@@ -43,15 +43,7 @@ whatupy = Service(
     service_name,
     ServiceArgs(
         app_path=path.join("..", "whatupy"),
-        args=[
-            "/usr/src/whatupy/gcsfuse_run.sh",
-            "--host",
-            "$(WHATUPCORE2_HOST)",
-            "archivebot",
-            "--archive-dir",
-            "$(BUCKET_MNT_DIR_PREFIX)/$(MESSAGE_ARCHIVE_BUCKET_MNT_DIR)",
-            "$(BUCKET_MNT_DIR_PREFIX)/$(SESSIONS_BUCKET_MNT_DIR)",
-        ],
+        args=["/usr/src/whatupy/gcsfuse_run.sh", "archivebot"],
         concurrency=50,
         container_port=None,
         cpu="1",

@@ -5,12 +5,18 @@ from network import (
     private_services_network_with_db,
     private_services_connect_ip_prefix,
     private_services_connect_ip_range,
+    vpc,
 )
 
 firewall_policy = compute.NetworkFirewallPolicy(
     "vpc-fw-policy",
-    name="vpc-firewall-policy",
     description="VPC firewall policy",
+)
+
+firewall_association = compute.NetworkFirewallPolicyAssociation(
+    "vpc-firewall-assoc",
+    firewall_policy=firewall_policy.name,
+    attachment_target=vpc.id,
 )
 
 private_services_network_block = (
