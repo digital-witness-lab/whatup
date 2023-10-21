@@ -49,7 +49,11 @@ case $app_command in
         whatupy --host "${WHATUPCORE2_HOST}" \
             --port 443 \
             onboard \
-            --credentials-dir "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}" "${WHATUPY_ONBOARD_BOT_NAME}" &
+            --credentials-dir "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}" "${WHATUPY_ONBOARD_BOT_NAME}"
+    ;;
+
+    load-archive)
+        ls "${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}" | xargs -n 1 -P 6 -I{} whatupy databasebot-load-archive --database-url ${DATABASE_URL} '${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}{}/*_*.json'
     ;;
 
     *)
