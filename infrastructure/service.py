@@ -121,6 +121,11 @@ class Service(ComponentResource):
                     vpc_access=cloudrunv2.ServiceTemplateVpcAccessArgs(
                         egress=props.egress, network_interfaces=[props.subnet]
                     ),
+                    # https://cloud.google.com/run/docs/configuring/execution-environments#yaml
+                    # Read about the differences between gen1 and gen2
+                    # and choose the most appropriate value.
+                    # https://cloud.google.com/run/docs/about-execution-environments#choose
+                    execution_environment="EXECUTION_ENVIRONMENT_GEN1",
                     containers=containers,
                     max_instance_request_concurrency=props.concurrency,
                     service_account=props.service_account.email,
@@ -205,8 +210,16 @@ class Service(ComponentResource):
         containers.append(
             cloudrunv2.ServiceTemplateContainerArgs(
                 args=props.args,
-                image=image.image_name,
+                image=image.repo_digest,
                 resources=resources,
+                startup_probe=cloudrunv2.ServiceTemplateContainerStartupProbeArgs(  # noqa: E501
+                    failure_threshold=1,
+                    initial_delay_seconds=240,
+                    timeout_seconds=20,
+                    tcp_socket=cloudrunv2.ServiceTemplateContainerStartupProbeTcpSocketArgs(),  # noqa: E501
+                )
+                if props.container_port is not None
+                else None,
                 ports=[
                     cloudrunv2.ServiceTemplateContainerPortArgs(
                         # This enables end-to-end HTTP/2 (gRPC)

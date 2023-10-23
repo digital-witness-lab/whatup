@@ -55,15 +55,7 @@ bot_db = Service(
     service_name,
     ServiceArgs(
         app_path=path.join("..", "whatupy"),
-        args=[
-            "/usr/src/whatupy/gcsfuse_run.sh",
-            "--host",
-            "$(WHATUPCORE2_HOST)",
-            "databasebot",
-            "--database-url",
-            "$(DATABASE_URL)",
-            "$(BUCKET_MNT_DIR_PREFIX)/$(SESSIONS_BUCKET_MNT_DIR)",
-        ],
+        args=["/usr/src/whatupy/gcsfuse_run.sh", "databasebot"],
         concurrency=50,
         container_port=None,
         cpu="1",
