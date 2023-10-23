@@ -96,12 +96,6 @@ func ClearFileAndParents(path string) error {
 type WhatsAppClient struct {
 	*whatsmeow.Client
 
-<<<<<<< HEAD
-	historyMessages       chan *Message
-	historyMessagesActive bool
-	presenceHandler       uint32
-	dbPath                string
-=======
 	username              string
 	historyMessages       chan *Message
 	historyMessagesActive bool
@@ -115,7 +109,6 @@ type WhatsAppClient struct {
 	archiveHandler  uint32
 
 	anonLookup *AnonLookup
->>>>>>> main
 }
 
 func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*WhatsAppClient, error) {
