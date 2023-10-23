@@ -8,7 +8,7 @@ from network import (
 )
 
 firewall_policy = compute.NetworkFirewallPolicy(
-    "vpcFirewallPolicy",
+    "vpc-fw-policy",
     name="vpc-firewall-policy",
     description="VPC firewall policy",
 )
@@ -17,7 +17,7 @@ private_services_network_block = (
     f"{private_services_connect_ip_prefix}/{private_services_connect_ip_range}"
 )
 compute.NetworkFirewallPolicyRule(
-    "dbAccessRule",
+    "allow-to-db",
     compute.NetworkFirewallPolicyRuleArgs(
         action="allow",
         description="Allow private services to connect to the DB",
@@ -40,7 +40,7 @@ compute.NetworkFirewallPolicyRule(
 )
 
 compute.NetworkFirewallPolicyRule(
-    "internetEgressRule",
+    "allow-to-internet",
     compute.NetworkFirewallPolicyRuleArgs(
         action="allow",
         description="Allow private services to connect to the internet",
@@ -66,7 +66,7 @@ compute.NetworkFirewallPolicyRule(
 )
 
 compute.NetworkFirewallPolicyRule(
-    "denyDbAccessRule",
+    "deny-to-db",
     compute.NetworkFirewallPolicyRuleArgs(
         action="deny",
         description="Deny other networks from connecting to the DB",
@@ -89,7 +89,7 @@ compute.NetworkFirewallPolicyRule(
 )
 
 compute.NetworkFirewallPolicyRule(
-    "denyInternetEgressRule",
+    "deny-to-internet",
     compute.NetworkFirewallPolicyRuleArgs(
         action="deny",
         description="Deny connecting to the internet",

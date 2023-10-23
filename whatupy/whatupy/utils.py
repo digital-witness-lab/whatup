@@ -48,6 +48,10 @@ async def aiter_to_list(aiter: T.AsyncIterable) -> list:
         result.append(item)
     return result
 
+def jid_noad(jid: wuc.JID) -> wuc.JID:
+    return wuc.JID(user=jid.user, server=jid.server)
+
+
 def dict_to_csv_bytes(data: T.List[dict]) -> bytes:
     if not data:
         return b""
@@ -219,6 +223,16 @@ def media_message_filename(message: wuc.WUMessage) -> str | None:
     if ext := mime_type_to_ext(mime_type or ""):
         return f"{fileSha}{ext}"
     return f"{fileSha}.unk"
+
+
+def qrcode_gen_bytes(data, kind="png", version=1) -> bytes:
+    qr = qrcode.QRCode(version, error_correction=qrcode.ERROR_CORRECT_L)
+    qr.add_data(data)
+    img = qr.make_image()
+
+    buffer = io.BytesIO()
+    img.save(buffer, kind=kind)
+    return buffer.getvalue()
 
 
 def qrcode_gen(data, version=1) -> str:

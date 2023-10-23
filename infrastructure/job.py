@@ -1,7 +1,7 @@
 from typing import List, Optional
 from attr import dataclass
 
-from pulumi import ComponentResource, Output, ResourceOptions
+from pulumi import ComponentResource, Output, ResourceOptions, get_stack
 import pulumi_docker as docker
 from pulumi_gcp import artifactregistry, cloudrunv2, serviceaccount
 
@@ -53,8 +53,8 @@ class Job(ComponentResource):
 
         # Create an Artifact Registry repository
         repository = artifactregistry.Repository(
-            props.image_name + "Repo",
-            repository_id=props.image_name + "-repo",
+            props.image_name + "-repo",
+            repository_id=f"{props.image_name}-{get_stack()}-repo",
             description=f"Repository for {props.image_name} container image",
             format="DOCKER",
             location=location,
@@ -76,7 +76,7 @@ class Job(ComponentResource):
         # as described here:
         # https://cloud.google.com/artifact-registry/docs/docker/authentication
         image = docker.Image(
-            props.image_name + "Image",
+            props.image_name + "-img",
             image_name=Output.concat(repo_url, "/", props.image_name),
             build=docker.DockerBuildArgs(
                 context=props.app_path,
@@ -109,9 +109,8 @@ class Job(ComponentResource):
             ),
         )
         self._job = cloudrunv2.Job(
-            f"{name}Job",
+            f"{name}-job",
             cloudrunv2.JobArgs(
-                name=name,
                 # Set the launch stage to BETA since
                 # we want to use the Preview feature
                 # "Direct VPC Access".

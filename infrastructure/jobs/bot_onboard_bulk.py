@@ -1,6 +1,6 @@
 from os import path
 
-from pulumi import ResourceOptions, Output
+from pulumi import get_stack, ResourceOptions, Output
 from pulumi_gcp import serviceaccount, cloudrunv2, storage
 
 from config import create_onboard_bulk_job
@@ -10,16 +10,16 @@ from storage import sessions_bucket
 
 from services.whatupcore2 import whatupcore2_service
 
-service_name = "whatupy-bot-onboard-bulk"
+service_name = "bot-onboard-bulk"
 
 service_account = serviceaccount.Account(
-    "whatupOnboardBulk",
-    account_id="whatupy-bot-onboard-bulk",
+    "onboard-bulk",
+    account_id=f"bot-onboard-bulk-{get_stack()}",
     description=f"Service account for {service_name}",
 )
 
 sessions_bucket_perm = storage.BucketIAMMember(
-    "botOnboardBulkSessionsAccess",
+    "onboard-bulk-sess-perm",
     storage.BucketIAMMemberArgs(
         bucket=sessions_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),

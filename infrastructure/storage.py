@@ -7,9 +7,8 @@ from config import location
 # https://cloud.google.com/run/docs/tutorials/network-filesystems-fuse
 
 whatupcore2_bucket = storage.Bucket(
-    "whatupcore2Bucket",
+    "dwl-core2",
     storage.BucketArgs(
-        name="dwl-whatupcore2",
         location=location,
         # Enabling versioning will produce unpredictable behavior with
         # gcsfuse.
@@ -19,9 +18,8 @@ whatupcore2_bucket = storage.Bucket(
 )
 
 sessions_bucket = storage.Bucket(
-    "sessionsBucket",
+    "dwl-sess",
     storage.BucketArgs(
-        name="dwl-sessions",
         location=location,
         versioning=storage.BucketVersioningArgs(enabled=False),
         public_access_prevention="enforced",
@@ -29,9 +27,8 @@ sessions_bucket = storage.Bucket(
 )
 
 message_archive_bucket = storage.Bucket(
-    "messageArchiveBucket",
+    "dwl-msgarc",
     storage.BucketArgs(
-        name="dwl-message-archive",
         location=location,
         versioning=storage.BucketVersioningArgs(enabled=False),
         public_access_prevention="enforced",

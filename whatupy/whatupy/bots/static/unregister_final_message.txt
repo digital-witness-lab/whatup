@@ -1,0 +1,8 @@
+We are sad to see you go! You will now be logged out of WhatsApp Watch and we will no longer be able to connect to your device. We still will have the messages you shared with us, and if you wish for us to delete those as well contact support@digitalwitnesslab.org and include the following unique user ID:
+
+{anon_user}
+
+If you want to be sure that our access is gone, you can go to the 'Linked Devices' view in WhatsApp and see that the "WA Watch" device is no longer connected (or actively logging out).
+
+Thank you for your participation!
+

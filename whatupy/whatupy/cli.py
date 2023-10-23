@@ -1,58 +1,36 @@
+<<<<<<< HEAD
 import asyncio
 import glob
 import json
+=======
+>>>>>>> main
 import logging
 import typing as T
-from importlib.resources import files
+import asyncio
 from pathlib import Path
 
 import click
 
-from .bots import ArchiveBot, ChatBot, BotType, DatabaseBot, OnboardBot, DebugBot
+from .bots import (
+    ArchiveBot,
+    ChatBot,
+    DatabaseBot,
+    OnboardBot,
+    DebugBot,
+    RegisterBot,
+    UserServicesBot,
+)
+from .device_manager import run_multi_bots
 from .utils import async_cli, str_to_jid
+from .protos import whatupcore_pb2 as wuc
+
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-async def run_multi_bots(bot: T.Type[BotType], paths: T.List[Path], bot_args: dict):
-    bots_loaded: T.Dict[str, BotType] = {}
-    async with asyncio.TaskGroup() as tg:
-        while True:
-            credentials = []
-            for path in paths:
-                if path.is_file():
-                    credentials.append(path)
-                elif path.is_dir():
-                    credentials.extend(
-                        path / filename for filename in path.glob("*.json")
-                    )
-                else:
-                    credentials.extend(
-                        path / filename for filename in glob.glob(str(path))
-                    )
-            for credential_file in credentials:
-                try:
-                    credential = json.load(credential_file.open())
-                    if not all(f in credential for f in ("username", "passphrase")):
-                        logger.critical("Invalid credentials file: %s", credential_file)
-                        continue
-                    username = credential["username"]
-                    if username not in bots_loaded:
-                        logger.info(
-                            "Found new credential to connect to: %s: %s",
-                            username,
-                            credential_file,
-                        )
-                        b: BotType = await bot(**bot_args).login(**credential)
-                        bots_loaded[username] = b
-                        coro = b.start()
-                        tg.create_task(coro)
-                except ValueError:
-                    logger.exception(f"Could not parse credential: {credential_file}")
-                    continue
-            await asyncio.sleep(10)
+GROUP_PERMISSIONS = dict(wuc.GroupPermission.items())
 
 
 @click.group()
@@ -120,13 +98,18 @@ async def chatbot(ctx, credentials, response_time, response_time_sigma):
 @cli.command
 @async_cli
 @click.option(
+    "--default-group-permission",
+    type=click.Choice(list(GROUP_PERMISSIONS.keys())),
+    default="DENIED",
+)
+@click.option(
     "--credentials-dir",
     type=click.Path(file_okay=False, writable=True, path_type=Path),
     default=Path("./credentials/"),
 )
 @click.argument("name", type=str)
 @click.pass_context
-async def onboard(ctx, name, credentials_dir: Path):
+async def onboard(ctx, name, credentials_dir: Path, default_group_permission: str):
     """
     Creates a QR code for provided bot. The command will exit on a sucessful QR
     code scan. The credential file will be saved to <credential-dir>/<name>.json
@@ -134,7 +117,14 @@ async def onboard(ctx, name, credentials_dir: Path):
     credentials_dir.mkdir(parents=True, exist_ok=True)
     credential_file = credentials_dir / f"{name}.json"
     bot = OnboardBot(**ctx.obj["connection_params"])
-    await bot.register(name, credential_file)
+    logger.info(
+        "Registering user %s with default permission %s", name, default_group_permission
+    )
+    await bot.register(
+        name,
+        credential_file,
+        default_group_permission=GROUP_PERMISSIONS[default_group_permission],
+    )
 
 
 @cli.command()
@@ -166,9 +156,18 @@ async def onboard_bulk(ctx, credentials_dir: Path):
         if not name:
             print("No name provided... exiting.")
             return
+        default_group_permission_str: str = click.prompt(
+            "Enter the default group permission level (default=DENIED)",
+            type=click.Choice(list(GROUP_PERMISSIONS.keys())),
+            default="DENIED",
+        )
         credential_file = credentials_dir / f"{name}.json"
         bot = OnboardBot(**ctx.obj["connection_params"])
-        await bot.register(name, credential_file)
+        await bot.register(
+            name,
+            credential_file,
+            default_group_permission=GROUP_PERMISSIONS[default_group_permission_str],
+        )
 
 
 @cli.command()
@@ -274,6 +273,43 @@ async def databasebot_load_archive(
         )
     filenames.sort()
     await db.process_archive(filenames)
+
+
+@cli.command()
+@async_cli
+@click.option("--database-url", type=str)
+@click.option(
+    "--sessions-dir",
+    type=click.Path(path_type=Path, file_okay=False, writable=True),
+    help="Directory to store sessions for newly registered users",
+)
+@click.argument(
+    "credential", type=click.Path(path_type=Path, dir_okay=False, exists=True), nargs=1
+)
+@click.pass_context
+async def userservices(
+    ctx,
+    credential,
+    database_url,
+    sessions_dir,
+):
+    """
+    Start a registration bot and a userservices bot that will manage
+    registering new users completely through the WhatsApp interface. The
+    database URI specifies where newly registered user metadata and state
+    should be stored. The sessions directory specifies where newly registered
+    user's session file should be stored.
+    """
+    params = {
+        "database_url": database_url,
+        "sessions_dir": sessions_dir,
+        **ctx.obj["connection_params"],
+    }
+    async with asyncio.TaskGroup() as tg:
+        # NOTE: it may be better ro run these as two separate commands so that
+        # only the register bot get write access to the sessions directory.
+        tg.create_task(run_multi_bots(RegisterBot, [credential], params))
+        tg.create_task(run_multi_bots(UserServicesBot, [credential], params))
 
 
 def main():

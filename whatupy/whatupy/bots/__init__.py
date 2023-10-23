@@ -1,5 +1,18 @@
 from typing import TypeVar
 
+<<<<<<< HEAD
+=======
+from .basebot import (
+    ArchiveData,
+    BaseBot,
+    BotCommandArgs,
+    BotCommandArgsException,
+    MediaType,
+)
+
+BotType = TypeVar("BotType", bound=BaseBot)
+
+>>>>>>> main
 from .archivebot import ArchiveBot
 from .basebot import (ArchiveData, BaseBot, BotCommandArgs,
                       BotCommandArgsException, MediaType)
@@ -8,5 +21,5 @@ from .databasebot import DatabaseBot
 from .debugbot import DebugBot
 from .onboardbot import OnboardBot
 from .debugbot import DebugBot
-
-BotType = TypeVar("BotType", bound=BaseBot)
+from .registerbot import RegisterBot
+from .userservicesbot import UserServicesBot
