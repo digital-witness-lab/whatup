@@ -1,12 +1,11 @@
 import argparse
 import asyncio
 import enum
-import json
 import logging
 import random
 import shlex
-import time
 import typing as T
+from contextlib import asynccontextmanager
 from collections import defaultdict, deque, namedtuple
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -60,7 +59,9 @@ class BaseBot:
         host: str,
         port: int,
         cert: Path,
+        *,
         mark_messages_read: bool = False,
+        read_messages: bool = True,
         read_historical_messages: bool = False,
         control_groups: T.List[wuc.JID] = [],
         archive_files: T.Optional[str] = None,
@@ -75,6 +76,7 @@ class BaseBot:
 
         self.control_groups = control_groups
         self.mark_messages_read = mark_messages_read
+        self.read_messages = read_messages
         self.read_historical_messages = read_historical_messages
         self.archive_files = archive_files
 
@@ -102,7 +104,7 @@ class BaseBot:
             await self.send_text_message(sender, e.message())
             return None
 
-    async def login(self, username: str, passphrase: str) -> T.Self:
+    async def login(self, username: str, passphrase: str, **kwargs) -> T.Self:
         self.logger = self.logger.getChild(username)
         self.logger.info("Logging in")
         await self.authenticator.login(username, passphrase)
@@ -115,16 +117,18 @@ class BaseBot:
             async with asyncio.TaskGroup() as tg:
                 self.logger.info("Starting bot")
                 tg.create_task(self.authenticator.start())
-                tg.create_task(self.listen_messages())
                 tg.create_task(self._download_messages_background())
+                if self.read_messages:
+                    tg.create_task(self.listen_messages())
                 if self.read_historical_messages:
                     tg.create_task(self.listen_historical_messages())
                 tg.create_task(self.post_start())
-        except Exception as e:
+        except Exception:
             self.logger.exception("Exception in main run loop of bot")
         self.stop()
 
     def stop(self):
+        self.logger.critical("Bot Stopping")
         BOT_REGISTRY[self.__class__.__name__].pop(id(self), None)
 
     async def post_start(self):
@@ -300,7 +304,7 @@ class BaseBot:
     async def send_text_message(
         self, recipient: wuc.JID, text: str, composing_time: int = 5
     ) -> wuc.SendMessageReceipt:
-        recipient_nonad = wuc.JID(user=recipient.user, server=recipient.server)
+        recipient_nonad = utils.jid_noad(recipient)
         options = wuc.SendMessageOptions(
             recipient=recipient_nonad, simpleText=text, composingTime=composing_time
         )
@@ -317,7 +321,7 @@ class BaseBot:
         filename: T.Optional[str] = None,
         composing_time: int = 5,
     ) -> wuc.SendMessageReceipt:
-        recipient_nonad = wuc.JID(user=recipient.user, server=recipient.server)
+        recipient_nonad = utils.jid_noad(recipient)
         options = wuc.SendMessageOptions(
             recipient=recipient_nonad,
             composingTime=composing_time,
@@ -416,3 +420,29 @@ class BaseBot:
             archive_data=archive_data,
             skip_control=True,
         )
+
+    @asynccontextmanager
+    async def with_disappearing_messages(
+        self,
+        jid: wuc.JID,
+        disappearing_time: wuc.DisappearingMessageOptions.DISAPPEARING_TIME.ValueType,
+    ):
+        jid_noad = utils.jid_noad(jid)
+        await self.core_client.SetDisappearingMessageTime(
+            wuc.DisappearingMessageOptions(
+                recipient=jid_noad, disappearingTime=disappearing_time
+            )
+        )
+        yield
+        await self.core_client.SetDisappearingMessageTime(
+            wuc.DisappearingMessageOptions(
+                recipient=jid_noad,
+                disappearingTime=wuc.DisappearingMessageOptions.TIMER_OFF,
+            )
+        )
+
+    async def unregister(self):
+        self.logger.warning("Calling unregister")
+        self.logger.critical("Calling unregister")
+        self.logger.error("Calling unregister")
+        await self.core_client.Unregister(wuc.UnregisterOptions)

@@ -1,5 +1,11 @@
 # GCP Infrastructure
 
+```bash
+$ gcloud auth application-default login
+$ pulumu up --stack test
+$ gcloud auth configure-docker europe-west3-docker.pkg.dev
+```
+
 ## Development
 
 ### Prerequisites
@@ -65,6 +71,20 @@ console. Alternatively, you may also flip the flags back to
 at a later time set them to `true` to have them re-created
 and executed.
 
+### Executing jobs
+
+Jobs can be executed in a [few ways](https://cloud.google.com/run/docs/execute/jobs#console).
+We have a `jobs/execute_job.py` that uses the Cloud Run Python client to execute the job.
+See `jobs/db_migration.py` for an example of how it's used.
+
+If you are going to use the `run_job_sync` to run a job, you should ensure that it is ok
+if you run it every time pulumi up runs. If that is not desired, then you should promptly
+remove any calls to `run_job_sync` after you've executed a job successfully...OR use this
+func outside of this infrastructure app in some other way, or trigger the execution
+directly using one of the other ways GCP supports. This is not a problem for our DB
+migrations job since migrations once applied will be a no-op on subsequent executions
+due to the way we apply migrations.
+
 ## Deleting Cloud SQL Instance
 
 The Cloud SQL instance has deletion protection enabled to prevent accidental deletion.
@@ -81,3 +101,10 @@ resources since GCP seems to take a while to release the private IP
 reservation that we make for the purpose of Cloud SQL private IP
 enablement. If that happens, wait for a few hours and try re-running
 `pulumi destroy` to fully remove all the resources.
+
+
+# Future Notes
+
+- set protect for buckets and database if stack == prod
+- if bigquery sync is slow, we can use DMS on the SQL side
+- move repository for whatupy into a global thing all jobs/services use if it becomes an issue having so many repositories

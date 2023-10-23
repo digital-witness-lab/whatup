@@ -2,7 +2,7 @@ import hashlib
 from typing import List, Optional
 from attr import dataclass
 
-from pulumi import ComponentResource, ResourceOptions, Output
+from pulumi import ComponentResource, get_stack, ResourceOptions, Output
 
 import pulumi_docker as docker
 from pulumi_gcp import cloudrunv2, serviceaccount
@@ -22,7 +22,7 @@ class ServiceArgs:
     # This is passed to the ENTRYPOINT defined in the Dockerfile.
     args: List[str]
     concurrency: int
-    container_port: int
+    container_port: Optional[int]
     cpu: str
     # Possible values are: `ALL_TRAFFIC`, `PRIVATE_RANGES_ONLY`.
     egress: str
@@ -33,6 +33,7 @@ class ServiceArgs:
     # - `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER`
     ingress: str
     memory: str
+    public_access: bool
     service_account: serviceaccount.Account
     # Specify the subnet to use Direct VPC egress instead of
     # serverless VPC connectors for outbound traffic from
@@ -56,12 +57,20 @@ class Service(ComponentResource):
     ) -> None:
         super().__init__("dwl:cloudrun:Service", name, props.__dict__, opts)
 
+        # Disallow services with open public access accepting ingress from
+        # the internet. We do not expect to have such services deployed
+        # via this component resource at this time.
+        if props.ingress == "INGRESS_TRAFFIC_ALL" and props.public_access:
+            raise Exception(
+                "Public access with direct ingress traffic from the internet is not allowed"  # noqa: E501
+            )
+
         child_opts = ResourceOptions(parent=self)
 
         # Create an Artifact Registry repository
         repository = artifactregistry.Repository(
-            props.image_name + "Repo",
-            repository_id=props.image_name + "-repo",
+            props.image_name + "-repo",
+            repository_id=f"{props.image_name}-{get_stack()}-repo",
             description=f"Repository for {props.image_name} container image",
             format="DOCKER",
             location=location,
@@ -83,7 +92,7 @@ class Service(ComponentResource):
         # as described here:
         # https://cloud.google.com/artifact-registry/docs/docker/authentication
         image = docker.Image(
-            props.image_name + "Image",
+            props.image_name + "-img",
             image_name=Output.concat(repo_url, "/", props.image_name),
             build=docker.DockerBuildArgs(
                 context=props.app_path,
@@ -92,18 +101,12 @@ class Service(ComponentResource):
             opts=child_opts,
         )
 
-        resources = cloudrunv2.ServiceTemplateContainerResourcesArgs(
-            limits=dict(
-                memory=props.memory,
-                cpu=props.cpu,
-            ),
-        )
+        containers = self.get_containers(props, image)
 
         # Create a Cloud Run service definition.
         self._service = cloudrunv2.Service(
-            f"{name}Service",
+            f"{name}-svc",
             cloudrunv2.ServiceArgs(
-                name=name,
                 location=location,
                 # Set the launch stage to BETA since
                 # we want to use the Preview feature
@@ -118,23 +121,7 @@ class Service(ComponentResource):
                     vpc_access=cloudrunv2.ServiceTemplateVpcAccessArgs(
                         egress=props.egress, network_interfaces=[props.subnet]
                     ),
-                    containers=[
-                        cloudrunv2.ServiceTemplateContainerArgs(
-                            args=props.args,
-                            image=image.image_name,
-                            resources=resources,
-                            ports=[
-                                cloudrunv2.ServiceTemplateContainerPortArgs(
-                                    # This enables end-to-end HTTP/2 (gRPC)
-                                    # as described in:
-                                    # https://cloud.google.com/run/docs/configuring/http2
-                                    name="h2c",
-                                    container_port=props.container_port,
-                                ),
-                            ],
-                            envs=props.envs,
-                        ),
-                    ],
+                    containers=containers,
                     max_instance_request_concurrency=props.concurrency,
                     service_account=props.service_account.email,
                 ),
@@ -150,8 +137,16 @@ class Service(ComponentResource):
             ),
         )
 
+        # Grant public, unauthenticated access to this service.
+        # Since the services are marked with an ingress of
+        # internal-only traffic, these are not allowed to be
+        # called from the internet anyway. Moreover, the
+        # services themselves require authentication, so
+        # they are not exactly "anonymous". But marking
+        # them as anonymous in GCP makes some things
+        # easier to use our own auth.
         cloudrunv2.ServiceIamMember(
-            f"{name}AnonymousInvoke",
+            f"{name}-public-access",
             cloudrunv2.ServiceIamMemberArgs(
                 location=location,
                 name=self._service.name,
@@ -172,6 +167,61 @@ class Service(ComponentResource):
             self._service.uri,
             lambda u: u.replace("https://", ""),
         )
+
+    def get_containers(self, props: ServiceArgs, image: docker.Image):
+        containers: List[cloudrunv2.ServiceTemplateContainerArgs] = []
+
+        # If a container port was not provided, we assume
+        # that the main container image we want to run
+        # does not run an HTTP server.
+        #
+        # Run a simple container that can serve HTTP traffic
+        # to make the startup probes of CloudRun happy.
+        if props.container_port is None:
+            nginx_resources = cloudrunv2.ServiceTemplateContainerResourcesArgs(
+                limits=dict(
+                    memory="512Mi",
+                    cpu="0.5",
+                ),
+            )
+            simple_hello_container = cloudrunv2.ServiceTemplateContainerArgs(
+                image="nginxdemos/nginx-hello:0.2",
+                resources=nginx_resources,
+                ports=[
+                    cloudrunv2.ServiceTemplateContainerPortArgs(
+                        name="http1",
+                        container_port=8080,
+                    ),
+                ],
+            )
+            containers.append(simple_hello_container)
+
+        resources = cloudrunv2.ServiceTemplateContainerResourcesArgs(
+            limits=dict(
+                memory=props.memory,
+                cpu=props.cpu,
+            ),
+        )
+        containers.append(
+            cloudrunv2.ServiceTemplateContainerArgs(
+                args=props.args,
+                image=image.image_name,
+                resources=resources,
+                ports=[
+                    cloudrunv2.ServiceTemplateContainerPortArgs(
+                        # This enables end-to-end HTTP/2 (gRPC)
+                        # as described in:
+                        # https://cloud.google.com/run/docs/configuring/http2
+                        name="h2c",
+                        container_port=props.container_port,
+                    ),
+                ]
+                if props.container_port is not None
+                else None,
+                envs=props.envs,
+            ),
+        )
+        return containers
 
     def add_invoke_permission(
         self, service: cloudrunv2.Service, service_account_email: str

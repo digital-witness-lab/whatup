@@ -10,13 +10,18 @@ option go_package = "github.com/digital-witness-lab/whatup/protos";
 
 service WhatUpCoreAuth {
     rpc Login(WUCredentials) returns (SessionToken) {}
-    rpc Register(WUCredentials) returns (stream RegisterMessages) {}
+    rpc Register(RegisterOptions) returns (stream RegisterMessages) {}
     rpc RenewToken(SessionToken) returns (SessionToken) {}
 }
 
 service WhatUpCore {
     rpc GetConnectionStatus(ConnectionStatusOptions) returns (ConnectionStatus) {}
 
+    rpc GetACLAll(GetACLAllOptions) returns (stream GroupACL) {}
+    rpc SetACL(GroupACL) returns (GroupACL) {}
+    rpc GetACL(JID) returns (GroupACL) {}
+
+    rpc GetJoinedGroups(GetJoinedGroupsOptions) returns (stream JoinedGroup) {}
     rpc GetGroupInfo(JID) returns (GroupInfo) {}
     rpc GetCommunityInfo(JID) returns (stream GroupInfo) {}
     rpc GetGroupInfoInvite(InviteCode) returns (GroupInfo) {}
@@ -29,6 +34,43 @@ service WhatUpCore {
 
     rpc SendMessage(SendMessageOptions) returns (SendMessageReceipt) {}
     rpc SetDisappearingMessageTime(DisappearingMessageOptions) returns (DisappearingMessageResponse) {}
+
+    rpc Unregister(UnregisterOptions) returns (ConnectionStatus) {}
+}
+
+message UnregisterOptions {
+}
+
+message JoinedGroup {
+    GroupInfo groupInfo = 1;
+    GroupACL acl = 20;
+}
+
+message GetJoinedGroupsOptions {
+}
+
+message GetACLAllOptions {
+}
+
+enum GroupPermission {
+    DENIED = 0;
+    READONLY = 1;
+    READWRITE = 2;
+    WRITEONLY = 3; // useful?
+    UNKNOWN = 20;
+}
+
+message RegisterOptions {
+    WUCredentials credentials = 1;
+    GroupPermission defaultGroupPermission = 10;
+}
+
+message GroupACL {
+    google.protobuf.Timestamp updatedAt = 1;
+    JID JID = 2;
+    bool isDefault = 3;
+
+    GroupPermission permission = 20;
 }
 
 message DisappearingMessageOptions {

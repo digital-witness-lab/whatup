@@ -3,16 +3,30 @@ from pulumi import Output, ResourceOptions
 
 from pulumi_gcp import sql
 
-from config import db_names, db_password, db_root_password
+from config import db_names, db_password, db_root_password, location
 from network import (
     private_vpc_connection,
     private_ip_address_range,
     vpc,
 )
 
+retention_settings = (
+    sql.DatabaseInstanceSettingsBackupConfigurationBackupRetentionSettingsArgs(
+        retention_unit="COUNT",
+        retained_backups=5,
+    )
+)  # noqa: E501
+
+backup_config = sql.DatabaseInstanceSettingsBackupConfigurationArgs(
+    enabled=True,
+    location=location,
+    backup_retention_settings=retention_settings,
+)
+
 sql_instance_settings = sql.DatabaseInstanceSettingsArgs(
     # https://cloud.google.com/sql/pricing#instance-pricing
     tier="db-g1-small",
+    backup_configuration=backup_config,
     # Only disable disable protection if you are intentional
     # about wanting to delete the instance.
     deletion_protection_enabled=True,
@@ -30,8 +44,7 @@ sql_instance_settings = sql.DatabaseInstanceSettingsArgs(
 )
 
 primary_cloud_sql_instance = sql.DatabaseInstance(
-    "sqlInstance",
-    name="whatup-sql-instance",
+    "whatup",
     database_version="POSTGRES_15",
     # This is the primary SQL instance.
     instance_type="CLOUD_SQL_INSTANCE",
@@ -49,14 +62,14 @@ databases: List[sql.Database] = []
 for db_name in db_names:
     databases.append(
         sql.Database(
-            f"{db_name}Db",
+            f"{db_name}",
             instance=primary_cloud_sql_instance.name,
             name=db_name,
         )
     )
 
     sql.User(
-        f"{db_name}DbUser",
+        f"{db_name}",
         name=db_name,
         instance=primary_cloud_sql_instance.name,
         password=db_password,
