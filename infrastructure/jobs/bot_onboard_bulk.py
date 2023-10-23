@@ -10,16 +10,16 @@ from storage import sessions_bucket
 
 from services.whatupcore2 import whatupcore2_service
 
-service_name = "bot-onboard-bulk"
+service_name = "bot-onboard"
 
 service_account = serviceaccount.Account(
-    "onboard-bulk",
-    account_id=f"bot-onboard-bulk-{get_stack()}",
+    "onboard",
+    account_id=f"bot-onboard-{get_stack()}",
     description=f"Service account for {service_name}",
 )
 
 sessions_bucket_perm = storage.BucketIAMMember(
-    "onboard-bulk-sess-perm",
+    "onboard-sess-perm",
     storage.BucketIAMMemberArgs(
         bucket=sessions_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
@@ -32,7 +32,7 @@ if create_onboard_bulk_job:
         service_name,
         JobArgs(
             app_path=path.join("..", "whatupy"),
-            args=["/usr/src/whatupy/gcsfuse_run.sh", "onboard-bulk"],
+            args=["/usr/src/whatupy/gcsfuse_run.sh", "onboard"],
             cpu="1",
             # Route all egress traffic via the VPC network.
             egress="ALL_TRAFFIC",
