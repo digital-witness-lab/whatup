@@ -3,8 +3,34 @@ package whatupcore2
 import (
 	"reflect"
 
+	"go.mau.fi/whatsmeow/types"
 	"github.com/nyaruka/phonenumbers"
 )
+
+func mergeGroupParticipants(participants []types.GroupParticipant, jids []types.JID) []types.GroupParticipant {
+	participantsFull := make([]types.GroupParticipant, len(participants))
+	seenJids := make(map[string]bool)
+	for _, jid := range jids {
+		seenJids[jid.String()] = false
+	}
+
+	for i, participant := range participants {
+		pJID := participant.JID
+		seenJids[pJID.String()] = true
+		participantsFull[i] = participant
+	}
+
+	for jids, seen := range seenJids {
+		if !seen {
+			jid, _ := types.ParseJID(jids)
+			participant := types.GroupParticipant{
+				JID: jid,
+			}
+			participantsFull = append(participantsFull, participant)
+		}
+	}
+	return participantsFull
+}
 
 func UserToCountry(user string) string {
 	num, err := phonenumbers.Parse("+"+user, "IN")

@@ -1,7 +1,5 @@
 from typing import TypeVar
 
-<<<<<<< HEAD
-=======
 from .basebot import (
     ArchiveData,
     BaseBot,
@@ -12,7 +10,6 @@ from .basebot import (
 
 BotType = TypeVar("BotType", bound=BaseBot)
 
->>>>>>> main
 from .archivebot import ArchiveBot
 from .basebot import (ArchiveData, BaseBot, BotCommandArgs,
                       BotCommandArgsException, MediaType)

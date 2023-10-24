@@ -1,9 +1,6 @@
-<<<<<<< HEAD
 import asyncio
 import glob
 import json
-=======
->>>>>>> main
 import logging
 import typing as T
 import asyncio
