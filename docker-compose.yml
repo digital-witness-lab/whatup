@@ -8,7 +8,8 @@ secrets:
 
 services:
   whatup:
-    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupcore2
+    image: 8b813f8dbcbe #asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupcore2
+    platform: linux/x86_64
     build: ./whatupcore2/
     environment:
       - STORAGE_DIR=/usr/src/whatupcore-data/storage/
