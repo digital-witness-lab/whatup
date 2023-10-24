@@ -115,7 +115,7 @@ def protobuf_to_json(proto_obj) -> str:
 
 def jsons_to_protobuf(jsons: str, proto_type: Generic) -> Generic:
     data = json.loads(jsons, cls=WhatUpyJSONDecoder)
-    return ParseDict(data, proto_type)
+    return ParseDict(data, proto_type, ignore_unknown_fields=True)
 
 
 def protobuf_to_dict(proto_obj) -> dict[str, T.Any]:
