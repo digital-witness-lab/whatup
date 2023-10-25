@@ -79,7 +79,10 @@ func (al *AnonLookup) DeAnonString(anonString string) (string, bool) {
 }
 
 func (al *AnonLookup) anonymizeJIDProto(JID *pb.JID) *pb.JID {
-	if !strings.HasPrefix(JID.User, "anon.") && (JID.Server == types.DefaultUserServer || JID.Server == types.LegacyUserServer) {
+	if JID == nil {
+        return JID
+    }
+	if !strings.HasPrefix(JID.GetUser(), "anon.") && (JID.GetServer() == types.DefaultUserServer || JID.GetServer() == types.LegacyUserServer) {
 		anonUser := AnonymizeString(JID.User)
 		user := JID.User
 		al.setAnon(anonUser, JID.User)
