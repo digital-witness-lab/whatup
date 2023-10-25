@@ -130,14 +130,13 @@ services:
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
       - SESSION_NAME=
-      - DEFAULT_PERMISSION=DENIED
     secrets:
       - ssl-cert
     profiles:
       - donotstart
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission ${DEFAULT_PERMISSION} --credentials-dir /usr/src/whatupy-data/sessions/ ${SESSION_NAME}
+    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission READWRITE --credentials-dir /usr/src/whatupy-data/sessions/ ${SESSION_NAME}
 
   bot-chatbot:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
