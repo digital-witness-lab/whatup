@@ -18,7 +18,7 @@ const (
 var (
 	ErrSessionManagerInvalidState = status.Error(codes.Internal, "Invalid SessionManager state")
 	ErrInvalidPassphrase          = status.Error(codes.Unauthenticated, "Could not authenticate")
-    sessionCreationLock = NewMutexMap()
+	sessionCreationLock           = NewMutexMap()
 )
 
 type SessionManager struct {
@@ -78,8 +78,8 @@ func (sm *SessionManager) pruneSessions() {
 }
 
 func (sm *SessionManager) AddLogin(username string, passphrase string) (*Session, error) {
-    lock := sessionCreationLock.Lock(username)
-    defer lock.Unlock()
+	lock := sessionCreationLock.Lock(username)
+	defer lock.Unlock()
 
 	session, err := sm.GetSessionLogin(username, passphrase)
 	if err != nil {
@@ -99,8 +99,8 @@ func (sm *SessionManager) AddLogin(username string, passphrase string) (*Session
 }
 
 func (sm *SessionManager) AddRegistration(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions) (*Session, *RegistrationState, error) {
-    lock := sessionCreationLock.Lock(username)
-    defer lock.Unlock()
+	lock := sessionCreationLock.Lock(username)
+	defer lock.Unlock()
 
 	session, err := sm.GetSessionLogin(username, passphrase)
 	if err != nil {
@@ -142,7 +142,7 @@ func (sm *SessionManager) removeSession(session *Session) bool {
 	if _, sessionExists := sm.sessionIdToSession[session.sessionId]; !sessionExists {
 		return false
 	}
-    sm.log.Debugf("Removing session: %s: %s", session.Username, session.sessionId)
+	sm.log.Debugf("Removing session: %s: %s", session.Username, session.sessionId)
 	session.Close()
 	delete(sm.sessionIdToSession, session.sessionId)
 	delete(sm.usernameToSessionId, session.Username)
@@ -194,9 +194,9 @@ func (sm *SessionManager) GetSessionLogin(username, passphrase string) (*Session
 }
 
 func (sm *SessionManager) Close() {
-    sm.log.Infof("Closing session manager")
+	sm.log.Infof("Closing session manager")
 	sm.cancelFunc()
-    for _, session := range sm.sessionIdToSession {
-        sm.removeSession(session)
-    }
+	for _, session := range sm.sessionIdToSession {
+		sm.removeSession(session)
+	}
 }
