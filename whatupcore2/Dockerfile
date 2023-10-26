@@ -78,6 +78,3 @@ EXPOSE 3447
 # Use tini to manage zombie processes and signal forwarding.
 # https://github.com/krallin/tini
 ENTRYPOINT ["/usr/bin/tini", "--"]
-
-# Pass the wrapper script as arguments to tini.
-CMD ["gcsfuse", "--version"]
