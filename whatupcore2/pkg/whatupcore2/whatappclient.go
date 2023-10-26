@@ -33,6 +33,7 @@ const (
 
 var (
 	ErrInvalidMediaMessage = errors.New("Invalid MediaMessage")
+    clientCreationLock = NewMutexMap()
 )
 
 type RegistrationState struct {
@@ -101,6 +102,7 @@ type WhatsAppClient struct {
 	historyMessagesActive bool
 	shouldRequestHistory  map[string]bool
 	dbPath                string
+    dbConn                *sql.DB
 
 	aclStore *ACLStore
 
@@ -112,6 +114,11 @@ type WhatsAppClient struct {
 }
 
 func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*WhatsAppClient, error) {
+    // TODO: there is a memory leak here... we need to remove unused locks that
+    // haven't been used in a while
+    lock := clientCreationLock.Lock(username)
+    defer lock.Unlock()
+
 	//store.SetOSInfo("Mac OS", [3]uint32{10, 15, 7})
 	store.SetOSInfo("WA by DWL", WhatUpCoreVersionInts)
 	store.DeviceProps.RequireFullSync = proto.Bool(true)
@@ -158,6 +165,7 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 		Client:               wmClient,
 		aclStore:             aclStore,
 		dbPath:               dbPath,
+        dbConn:               db,
 		username:             username,
 		historyMessages:      make(chan *Message, 512),
 		shouldRequestHistory: make(map[string]bool),
@@ -170,6 +178,7 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 		client.archiveHandler = wmClient.AddEventHandler(client.UNSAFEArchiveHack_OnArchiveGetHistory)
 	}
 
+    log.Debugf("WhatsAppClient created and lock releasing")
 	return client, nil
 }
 

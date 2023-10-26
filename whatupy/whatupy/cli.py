@@ -274,7 +274,7 @@ async def databasebot_load_archive(
 @click.option("--database-url", type=str)
 @click.option(
     "--sessions-dir",
-    type=click.Path(path_type=Path, file_okay=False, writable=True),
+    type=click.Path(path_type=Path, file_okay=False, readable=True),
     help="Directory to store sessions for newly registered users",
 )
 @click.argument(
