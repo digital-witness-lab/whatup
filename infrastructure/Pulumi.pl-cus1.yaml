@@ -1,0 +1,11 @@
+config:
+  gcp:project: whatup-deploy
+  gcp:region: us-central1
+  gcp:zone: us-central1-a
+  whatup:createOnboardBulkJob: "true"
+  whatup:dbNames:
+    - messages
+  whatup:dbPassword:
+    secure: AAABAFCeqZXdCh5cgR360Wu0Mu6LePPwNRVPQbJ6Va6Er0WnHwRUbBjoUhnGaw==
+  whatup:dbRootPassword:
+    secure: AAABANhgCzfWyQD9FMkora2kYOJuZIpMa7NZ9qmy0m0F59Br5dA+2okl6Oq6Gg==
