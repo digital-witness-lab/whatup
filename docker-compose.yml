@@ -18,7 +18,7 @@ services:
       - ssl-key
     volumes:
       - ./data/whatupcore2/db/:/db/
-    command: /whatupcore2 rpc --log-level=DEBUG
+    command: /whatupcore2 rpc --log-level=INFO
 
   db:
     image: postgres:15-alpine
