@@ -3,12 +3,15 @@ package whatupcore2
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
+	"github.com/pkg/errors"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -50,6 +53,17 @@ func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(cont
 
 func StartRPC(port uint32, logLevel string) error {
 	Log = waLog.Stdout("RPC", logLevel, true)
+
+	resp, err := http.Get("https://web.whatsapp.com")
+	if err != nil {
+		Log.Errorf("Failed to connect to https://web.whatsapp.com: %v", err)
+		return errors.Wrap(err, "Cannot connect to the internet")
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	Log.Infof("Internet connection status (%d): %v", resp.StatusCode, string(body))
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {

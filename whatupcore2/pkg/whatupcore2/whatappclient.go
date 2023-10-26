@@ -119,7 +119,7 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	passphrase_safe := hashStringHex(passphrase)
 	dbPath, err := CreateDBFilePath(username, 4)
 	if err != nil {
-        dbLog.Errorf("Could not create database path: %v: %w", dbPath, err)
+		dbLog.Errorf("Could not create database path: %v: %w", dbPath, err)
 		return nil, err
 	}
 	dbLog.Infof("Using database file: %s", dbPath)
@@ -130,11 +130,11 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 		dbLog.Errorf("Could not open database: %w", err)
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-    err = db.Ping()
-    if err != nil {
-        dbLog.Errorf("Could not ping database: %w", err)
+	err = db.Ping()
+	if err != nil {
+		dbLog.Errorf("Could not ping database: %w", err)
 		return nil, fmt.Errorf("failed to open database: %w", err)
-    }
+	}
 	container := sqlstore.NewWithDB(db, "sqlite3", dbLog)
 	err = container.Upgrade()
 	if err != nil {

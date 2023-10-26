@@ -28,7 +28,7 @@ whatupcore2_service = Service(
     service_name,
     ServiceArgs(
         app_path=path.join("..", "whatupcore2"),
-        args=["/gcsfuse_run.sh", "--log-level=INFO"],
+        args=["/gcsfuse_run.sh", "--log-level=DEBUG"],
         concurrency=50,
         container_port=3447,
         cpu="1",
