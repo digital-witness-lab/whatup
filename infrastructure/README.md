@@ -119,6 +119,5 @@ Error trying to delete bucket dwl-core2-6eaba0c containing objects without `forc
 
 # Future Notes
 
--   set protect for buckets and database if stack == prod
 -   if bigquery sync is slow, we can use DMS on the SQL side
 -   move repository for whatupy into a global thing all jobs/services use if it becomes an issue having so many repositories
