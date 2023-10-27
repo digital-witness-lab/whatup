@@ -117,6 +117,9 @@ def protobuf_to_json(proto_obj) -> str:
     data = protobuf_to_dict(proto_obj)
     return json.dumps(data, cls=WhatUpyJSONEncoder)
 
+def protobuf_to_json_list(proto_objs) -> str:
+    data = [protobuf_to_dict(proto_obj) for proto_obj in proto_objs]
+    return json.dumps(data, cls=WhatUpyJSONEncoder)
 
 def jsons_to_protobuf(jsons: str, proto_type: Generic) -> Generic:
     data = json.loads(jsons, cls=WhatUpyJSONDecoder)
