@@ -18,7 +18,7 @@ from ..protos.whatupcore_pb2_grpc import WhatUpCoreStub
 
 logger = logging.getLogger(__name__)
 PinningEntry = namedtuple("PinningEntry", "bot_id expiration_time".split(" "))
-ArchiveData = namedtuple("ArchiveData", "WUMessage GroupInfo MediaContent".split(" "))
+ArchiveData = namedtuple("ArchiveData", "WUMessage GroupInfo CommunityInfo MediaContent".split(" "))
 
 COMMAND_PINNING_TTL = timedelta(seconds=60 * 60)
 COMMAND_PINNING: T.Dict[bytes, PinningEntry] = {}

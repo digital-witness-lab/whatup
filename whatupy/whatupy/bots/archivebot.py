@@ -74,7 +74,7 @@ class ArchiveBot(BaseBot):
         }
         message.provenance.update(provenance)
 
-        refresh_dt = self.group_info_refresh_time.total_seconds()
+        refresh_dt = 10 #self.group_info_refresh_time.total_seconds()
         timestamp = int((now.timestamp() // refresh_dt) * refresh_dt)
         meta_group_path = (
             conversation_dir / "group-info" / f"group-info_{timestamp}.json"
@@ -98,14 +98,16 @@ class ArchiveBot(BaseBot):
             
             # TODO do this again for the parent chat
             
-            if metadata.parentJID != None:
-                community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = await self.core_client.GetGroupInfo(metadata.parentJID)
+            if utils.jid_to_str(metadata.parentJID) != None:
+                self.logger.debug("Processing metadata for community with ID: %s", metadata.parentJID)
+                community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = self.core_client.GetCommunityInfo(metadata.parentJID)
                 community_info : T.List[wuc.GroupInfo] = await utils.aiter_to_list(community_info_iterator)
                 community_info[0].provenance.update(provenance)
                 community_info[0].provenance["archivebot__communityInfoRefreshTime"] = str(refresh_dt)
                 self.logger.debug("Got metadata for community: %s", chat_id)
                 with meta_community_path.open("w+") as fd:
-                    fd.write(utils.protobuf_to_json(community_info))
+                    fd.write(utils.protobuf_to_json_list(community_info))
+                self.logger.debug(utils.protobuf_to_json_list(community_info))
                 message.provenance["archivebot__communityInfoPath"] = str(meta_community_path.relative_to(archive_filename.parent))
 
         if media_filename := utils.media_message_filename(message):
