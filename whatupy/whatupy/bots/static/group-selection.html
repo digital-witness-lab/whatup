@@ -1,6 +1,53 @@
 <html>
     <head>
         <title>Select the groups for WhatsApp Watch</title>
+        <style>
+            body {{
+                padding: 5vh 5vw;
+                font-size: 2rem;
+            }}
+            
+            hr {{
+                margin: 5vh 0;
+            }}
+            
+            li {{
+                list-style-type: none;
+            }}
+            
+            li:not(:last-child) {{ 
+               margin-bottom: 2rem;  
+            }}
+            
+            .group-name {{
+                font-weight: bold;
+            }}
+            
+            .group-topic:not(:empty)::before {{
+                content: "- "
+            }}
+            
+            .group-participants {{
+                font-size: 0.5em;
+                font-style: italic;
+            }}
+            
+            .center {{
+                text-align: center;
+            }}
+            
+            #submit-button {{
+                margin-top: 5vh;
+                background-color: #4CAF50; /* Green */
+                border: none;
+                color: white;
+                padding: 15px 32px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 2em;
+            }}
+        </style>
     </head>
     <body>
 
@@ -14,7 +61,9 @@
         <hr>
 
         <div id="group-list"></div>
-        <button id="submit-button">Submit</button>
+        <div class="center">
+            <button id="submit-button">Submit</button>
+        </div>
 
         <script>
             const userServicesBot = "{bot_number}";
@@ -30,8 +79,10 @@
                 const listItem = document.createElement('li');
                 const checked = item.can_read ? 'checked' : ''
                 listItem.innerHTML = `
-           <input type="checkbox" class="group-checkbox" data-gid="${{item.gid}}" data-initial="${{item.can_read}}" ${{checked}}>
-                        ${{item.name}} - ${{item.topic}} (${{item['n_participants']}} participants)
+           <label>
+             <input type="checkbox" class="group-checkbox" data-gid="${{item.gid}}" data-initial="${{item.can_read}}" ${{checked}}>
+             <span class="group-name">${{item.name}}</span> <span class="group-topic">${{item.topic}}</span> <span class="group-participants">(${{item['n_participants']}} participants)</span>
+           </label>
                 `;
                 groupList.appendChild(listItem);
             }});
