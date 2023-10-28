@@ -55,7 +55,7 @@ primary_cloud_sql_instance = sql.DatabaseInstance(
     # instance settings.
     deletion_protection=False,
     root_password=db_root_password,
-    opts=ResourceOptions(depends_on=private_vpc_connection),
+    opts=ResourceOptions(depends_on=private_vpc_connection, protect=is_prod_stack()),
 )
 
 databases: List[sql.Database] = []

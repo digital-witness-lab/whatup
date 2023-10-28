@@ -1,3 +1,5 @@
+from pulumi import ResourceOptions
+
 from pulumi_gcp import storage
 
 from config import location, is_prod_stack
@@ -16,6 +18,7 @@ whatupcore2_bucket = storage.Bucket(
         public_access_prevention="enforced",
         force_destroy=False if is_prod_stack() else True,
     ),
+    opts=ResourceOptions(protect=is_prod_stack()),
 )
 
 sessions_bucket = storage.Bucket(
@@ -26,6 +29,7 @@ sessions_bucket = storage.Bucket(
         public_access_prevention="enforced",
         force_destroy=False if is_prod_stack() else True,
     ),
+    opts=ResourceOptions(protect=is_prod_stack()),
 )
 
 message_archive_bucket = storage.Bucket(
@@ -36,4 +40,5 @@ message_archive_bucket = storage.Bucket(
         public_access_prevention="enforced",
         force_destroy=False if is_prod_stack() else True,
     ),
+    opts=ResourceOptions(protect=is_prod_stack()),
 )
