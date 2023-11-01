@@ -13,6 +13,7 @@ services:
     environment:
       - STORAGE_DIR=/usr/src/whatupcore-data/storage/
       - USE_SSL=true
+      - APP_NAME_SUFFIX=$APP_NAME_SUFFIX
     secrets:
       - ssl-cert
       - ssl-key
@@ -129,7 +130,7 @@ services:
       - whatup
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
-      - SESSION_NAME=
+      - SESSION_NAME=$SESSION_NAME
     secrets:
       - ssl-cert
     profiles:

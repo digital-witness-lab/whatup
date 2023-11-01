@@ -34,6 +34,7 @@ const (
 var (
 	ErrInvalidMediaMessage = errors.New("Invalid MediaMessage")
 	clientCreationLock     = NewMutexMap()
+    appNameSuffix          = os.Getenv("APP_NAME_SUFFIX")
 )
 
 type RegistrationState struct {
@@ -120,7 +121,8 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	defer lock.Unlock()
 
 	//store.SetOSInfo("Mac OS", [3]uint32{10, 15, 7})
-	store.SetOSInfo("WA by DWL", WhatUpCoreVersionInts)
+    appName := strings.TrimSpace(fmt.Sprintf("WA by DWL %s", appNameSuffix))
+	store.SetOSInfo(appName, WhatUpCoreVersionInts)
 	store.DeviceProps.RequireFullSync = proto.Bool(true)
 	dbLog := log.Sub("DB")
 	passphrase_safe := hashStringHex(passphrase)
