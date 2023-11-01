@@ -76,8 +76,7 @@ func NewSessionRegister(ctx context.Context, username string, passphrase string,
 
 func (session *Session) Close() {
 	session.log.Debugf("Closing session")
-	session.Client.Disconnect()
-	session.Client.dbConn.Close()
+	session.Client.Close()
 }
 
 func (session *Session) ToProto() *pb.SessionToken {
