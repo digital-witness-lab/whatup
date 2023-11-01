@@ -132,11 +132,11 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 		return nil, err
 	}
 	dbLog.Infof("Using database file: %s", dbPath)
-    dbUri := fmt.Sprintf("file:%s?mode=memory&cache=shared&_foreign_keys=on&_key=%s", dbPath, passphrase_safe)
+    dbUri := fmt.Sprintf("file:%s?mode=rwc&_journal=WAL&_foreign_keys=on&_key=%s", dbPath, passphrase_safe)
     //log.Warnf("!!!OPENING DATABASE WITHOUT ENCRYPTION!!!")
     //if passphrase_safe != "" {
     //}
-	//dbUri := fmt.Sprintf("file:%s?mode=memory&cache=shared&_foreign_keys=on", dbPath)
+    //dbUri := fmt.Sprintf("file:%s?mode=rwc&_journal=WAL&_foreign_keys=on", dbPath)
 
 	db, err := sql.Open("sqlite3", dbUri)
 	if err != nil {
