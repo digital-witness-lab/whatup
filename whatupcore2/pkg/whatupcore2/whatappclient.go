@@ -132,22 +132,29 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 		return nil, err
 	}
 	dbLog.Infof("Using database file: %s", dbPath)
-    dbUri := fmt.Sprintf("file:%s?mode=rwc&_journal=WAL&_foreign_keys=on&_key=%s", dbPath, passphrase_safe)
-    //log.Warnf("!!!OPENING DATABASE WITHOUT ENCRYPTION!!!")
-    //if passphrase_safe != "" {
-    //}
-    //dbUri := fmt.Sprintf("file:%s?mode=rwc&_journal=WAL&_foreign_keys=on", dbPath)
+    dbLog.Errorf("CAUTION: USING MODE=MEMORY SO THERE IS NO PERSISTENCE")
+    dbUri := fmt.Sprintf("file:%s?mode=memory&cache=shared&_foreign_keys=on&_key=%s", dbPath, passphrase_safe)
 
 	db, err := sql.Open("sqlite3", dbUri)
 	if err != nil {
 		dbLog.Errorf("Could not open database: %w", err)
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-	err = db.Ping()
-	if err != nil {
+    var pingErr error
+    for i := 0; i < 10; i+=1 {
+	    pingErr = db.Ping()
+        if pingErr == nil {
+		    dbLog.Infof("Sucessfully pinged database")
+            break
+        }
+        dbLog.Errorf("Could not ping DB... trying again in 2 seconds: %d/10: %w", i+1, pingErr)
+        time.Sleep(2 * time.Second)
+    }
+	if pingErr != nil {
 		dbLog.Errorf("Could not ping database: %w", err)
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
+
 	container := sqlstore.NewWithDB(db, "sqlite3", dbLog)
 	err = container.Upgrade()
 	if err != nil {
