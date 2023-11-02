@@ -97,6 +97,13 @@ class Service(ComponentResource):
             build=docker.DockerBuildArgs(
                 context=props.app_path,
                 platform="linux/amd64",
+                args={
+                    # There is a cache bug in the Docker provider
+                    # that causes the provider to reuse an image
+                    # digest that was built for a different
+                    # location.
+                    "LOCATION": location
+                },
             ),
             opts=child_opts,
         )
