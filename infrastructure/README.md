@@ -96,15 +96,28 @@ deletion protection set to `False` first, then run a `pulumi destroy`.
 **Note:** Ensure that you have the correct stack selected.
 
 You can teardown all the resources in a stack with `pulumi destroy`.
-However, you are likely to encounter a failure deleting the subnet
-resources since GCP seems to take a while to release the private IP
-reservation that we make for the purpose of Cloud SQL private IP
-enablement. If that happens, wait for a few hours and try re-running
-`pulumi destroy` to fully remove all the resources.
+In addition to the above section about [deleting the database instance](#deleting-cloud-sql-instance)
+you are also likely to encounter other failures during deletion.
+Some of these only apply to production stacks.
 
+### Failure deleting subnetworks/subnets
+
+GCP seems to take a while to release the private IP address reservations
+that we make for the purpose of Cloud SQL private IP enablement.
+If that happens, wait for a few hours (> 4 hours; best if you just try again the next day)
+and try re-running `pulumi destroy` to fully remove all the resources.
+
+### Failure deleting cloud storage buckets
+
+You will need to explicitly delete all the objects in the buckets
+before the buckets themselves can be deleted. This is especially
+the case for the production stack.
+
+```
+Error trying to delete bucket dwl-core2-6eaba0c containing objects without `force_destroy` set to true
+```
 
 # Future Notes
 
-- set protect for buckets and database if stack == prod
-- if bigquery sync is slow, we can use DMS on the SQL side
-- move repository for whatupy into a global thing all jobs/services use if it becomes an issue having so many repositories
+-   if bigquery sync is slow, we can use DMS on the SQL side
+-   move repository for whatupy into a global thing all jobs/services use if it becomes an issue having so many repositories

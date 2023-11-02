@@ -3,7 +3,7 @@ from pulumi import Output, ResourceOptions
 
 from pulumi_gcp import sql
 
-from config import db_names, db_password, db_root_password, location
+from config import db_names, db_password, db_root_password, location, is_prod_stack
 from network import (
     private_vpc_connection,
     private_ip_address_range,
@@ -29,7 +29,7 @@ sql_instance_settings = sql.DatabaseInstanceSettingsArgs(
     backup_configuration=backup_config,
     # Only disable disable protection if you are intentional
     # about wanting to delete the instance.
-    deletion_protection_enabled=True,
+    deletion_protection_enabled=False if is_prod_stack() else True,
     ip_configuration=sql.DatabaseInstanceSettingsIpConfigurationArgs(
         allocated_ip_range=private_ip_address_range.name,
         # Allow BigQuery to connect to the DB via the SQL
@@ -55,7 +55,7 @@ primary_cloud_sql_instance = sql.DatabaseInstance(
     # instance settings.
     deletion_protection=False,
     root_password=db_root_password,
-    opts=ResourceOptions(depends_on=private_vpc_connection),
+    opts=ResourceOptions(depends_on=private_vpc_connection, protect=is_prod_stack()),
 )
 
 databases: List[sql.Database] = []
