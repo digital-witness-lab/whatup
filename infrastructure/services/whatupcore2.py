@@ -6,6 +6,7 @@ from pulumi_gcp import serviceaccount, cloudrunv2, storage
 from service import Service, ServiceArgs
 from network import vpc, private_services_network
 from storage import whatupcore2_bucket
+from config import is_prod_stack
 
 service_name = "whatupcore2"
 
@@ -28,12 +29,17 @@ whatupcore2_service = Service(
     service_name,
     ServiceArgs(
         app_path=path.join("..", "whatupcore2"),
-        args=["/gcsfuse_run.sh", "--log-level=INFO"],
+        args=["/gcsfuse_run.sh", "--log-level=DEBUG"],
         concurrency=50,
         container_port=3447,
         cpu="1",
-        # Route all egress traffic via the VPC network.
-        egress="ALL_TRAFFIC",
+        # Route only egress traffic bound for private IPs
+        # via the VPC network. All other traffic will take
+        # the default route bound for the internet gateway.
+        # Routing all traffic via the VPC for this container
+        # will cause the websocket connection to WhatsApp to
+        # fail due to dial timeout.
+        egress="PRIVATE_RANGES_ONLY",
         image_name=service_name,
         # We want this service to only be reachable from within
         # our VPC network.
@@ -59,6 +65,10 @@ whatupcore2_service = Service(
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_BUCKET_MNT_DIR",
                 value="/db/",
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="APP_NAME_SUFFIX",
+                value="" if is_prod_stack() else get_stack(),
             ),
         ],
     ),

@@ -34,6 +34,7 @@ const (
 var (
 	ErrInvalidMediaMessage = errors.New("Invalid MediaMessage")
 	clientCreationLock     = NewMutexMap()
+	appNameSuffix          = os.Getenv("APP_NAME_SUFFIX")
 )
 
 type RegistrationState struct {
@@ -120,7 +121,8 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	defer lock.Unlock()
 
 	//store.SetOSInfo("Mac OS", [3]uint32{10, 15, 7})
-	store.SetOSInfo("WA by DWL", WhatUpCoreVersionInts)
+	appName := strings.TrimSpace(fmt.Sprintf("WA by DWL %s", appNameSuffix))
+	store.SetOSInfo(appName, WhatUpCoreVersionInts)
 	store.DeviceProps.RequireFullSync = proto.Bool(true)
 	dbLog := log.Sub("DB")
 	passphrase_safe := hashStringHex(passphrase)
@@ -130,11 +132,8 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 		return nil, err
 	}
 	dbLog.Infof("Using database file: %s", dbPath)
-    dbUri := fmt.Sprintf("file:%s?mode=memory&cache=shared&_foreign_keys=on&_key=%s", dbPath, passphrase_safe)
-    //log.Warnf("!!!OPENING DATABASE WITHOUT ENCRYPTION!!!")
-    //if passphrase_safe != "" {
-    //}
-	//dbUri := fmt.Sprintf("file:%s?mode=memory&cache=shared&_foreign_keys=on", dbPath)
+	dbLog.Errorf("CAUTION: USING MODE=MEMORY SO THERE IS NO PERSISTENCE")
+	dbUri := fmt.Sprintf("file:%s?mode=memory&cache=shared&_foreign_keys=on&_key=%s", dbPath, passphrase_safe)
 
 	db, err := sql.Open("sqlite3", dbUri)
 	if err != nil {
@@ -146,6 +145,7 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 		dbLog.Errorf("Could not ping database: %w", err)
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
+
 	container := sqlstore.NewWithDB(db, "sqlite3", dbLog)
 	err = container.Upgrade()
 	if err != nil {
@@ -187,7 +187,7 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 }
 
 func (wac *WhatsAppClient) Close() {
-    wac.Log.Infof("Closing WhatsApp Client")
+	wac.Log.Infof("Closing WhatsApp Client")
 	wac.Disconnect()
 	wac.dbConn.Close()
 }
