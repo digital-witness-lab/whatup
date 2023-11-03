@@ -3,33 +3,43 @@ secrets:
     file: ./data/keys/key.pem
   ssl-cert:
     file: ./data/keys/cert.pem
-  postgres-passwd:
-    file: ./data/static/dev/postgres-passwd.secret
+  postgres-whatupdb-passwd:
+    file: ./data/static/dev/postgres-whatupdb-passwd.secret
+  postgres-messages-passwd:
+    file: ./data/static/dev/postgres-messages-passwd.secret
+  postgres-whatupcore-passwd:
+    file: ./data/static/dev/postgres-whatupcore-passwd.secret
 
 services:
   whatup:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupcore2
     build: ./whatupcore2/
+    env_file:
+      - .env
     environment:
-      - STORAGE_DIR=/usr/src/whatupcore-data/storage/
       - USE_SSL=true
       - APP_NAME_SUFFIX=$APP_NAME_SUFFIX
+      - POSTGRES_DATABASE=whatupcore
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-whatupcore-passwd
+    links:
+      - db
     secrets:
       - ssl-cert
       - ssl-key
-    volumes:
-      - ./data/whatupcore2/db/:/db/
+      - postgres-whatupcore-passwd
     command: /whatupcore2 rpc --log-level=DEBUG
 
   db:
     image: postgres:15-alpine
     secrets:
-      - postgres-passwd
+      - postgres-whatupdb-passwd
+      - postgres-messages-passwd
+      - postgres-whatupcore-passwd
     env_file:
       - .env
     volumes:
       - ./data/db/:/var/lib/postgresql/data
-      - ./scripts/postgres-multi-databases.sh:/docker-entrypoint-initdb.d/postgres-multi-databases.sh
+      - ./scripts/initdb/:/docker-entrypoint-initdb.d/
     ports:
       - 5432:5432
 
@@ -82,12 +92,12 @@ services:
       - WHATUPY_CONTROL_GROUPS=120363104970691776@g.us anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net # cool friends + micha
     secrets:
       - ssl-cert
-      - postgres-passwd
+      - postgres-messages-passwd
     env_file:
       - .env
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
-    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert databasebot --database-url \"postgresql://$${POSTGRES_USER}:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" /usr/src/whatupy-data/sessions/"
+    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert databasebot --database-url \"postgresql://$${POSTGRES_USER}:$$( cat $${POSTGRES_MESSAGES_PASSWORD_FILE})@db/messages\" /usr/src/whatupy-data/sessions/"
 
   bot-database-load-archive:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
@@ -97,10 +107,9 @@ services:
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
       - POSTGRES_DATABASE=messages
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
     secrets:
-      - postgres-passwd
-    env_file:
-      - .env
+      - postgres-messages-passwd
     profiles:
       - donotstart
     volumes:
@@ -137,7 +146,7 @@ services:
       - donotstart
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission READWRITE --credentials-dir /usr/src/whatupy-data/sessions/ ${SESSION_NAME}
+    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission DENIED --credentials-dir /usr/src/whatupy-data/sessions/ ${SESSION_NAME}
 
   bot-chatbot:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
@@ -159,15 +168,15 @@ services:
       - whatup
       - db
     environment:
-      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-passwd
       - WHATUPY_CERT=/run/secrets/ssl-cert
       - WHATUPY_CONTROL_GROUPS=120363159470639781@g.us  # coolest friends
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
     secrets:
+      - postgres-messages-passwd
       - ssl-cert
-      - postgres-passwd
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert registerbot --database-url \"postgresql://whatupdb:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --sessions-dir  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/gertrude.json"
+    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert registerbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --sessions-dir  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/gertrude.json"
 
   bot-userservices:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
@@ -176,15 +185,15 @@ services:
       - whatup
       - db
     environment:
-      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-passwd
       - WHATUPY_CERT=/run/secrets/ssl-cert
       - WHATUPY_CONTROL_GROUPS=XXXXX@g.us  # no one
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
     secrets:
+      - postgres-messages-passwd
       - ssl-cert
-      - postgres-passwd
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
-    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert userservicesbot --database-url \"postgresql://whatupdb:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --sessions-dir  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/gertrude.json"
+    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert userservicesbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --sessions-dir  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/gertrude.json"
 
   bot-user-archive:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy

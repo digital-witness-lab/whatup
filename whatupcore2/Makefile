@@ -2,7 +2,6 @@
 
 whatupcore2:
 	GOOS=linux go build \
-    	-tags "sqlite3 sqlcipher sqlite_secure_delete" \
     	-o whatupcore2 \
     	main.go
 

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/lib/pq"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/store"
@@ -102,7 +102,6 @@ type WhatsAppClient struct {
 	historyMessages       chan *Message
 	historyMessagesActive bool
 	shouldRequestHistory  map[string]bool
-	dbPath                string
 	dbConn                *sql.DB
 
 	aclStore *ACLStore
@@ -114,7 +113,7 @@ type WhatsAppClient struct {
 	anonLookup *AnonLookup
 }
 
-func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*WhatsAppClient, error) {
+func NewWhatsAppClient(username string, passphrase string, dbUri string, log waLog.Logger) (*WhatsAppClient, error) {
 	// TODO: there is a memory leak here... we need to remove unused locks that
 	// haven't been used in a while
 	lock := clientCreationLock.Lock(username)
@@ -126,16 +125,12 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	store.DeviceProps.RequireFullSync = proto.Bool(true)
 	dbLog := log.Sub("DB")
 	passphrase_safe := hashStringHex(passphrase)
-	dbPath, err := CreateDBFilePath(username, 4)
-	if err != nil {
-		dbLog.Errorf("Could not create database path: %v: %w", dbPath, err)
-		return nil, err
-	}
-	dbLog.Infof("Using database file: %s", dbPath)
-	dbLog.Errorf("CAUTION: USING MODE=MEMORY SO THERE IS NO PERSISTENCE")
-	dbUri := fmt.Sprintf("file:%s?mode=memory&cache=shared&_foreign_keys=on&_key=%s", dbPath, passphrase_safe)
+    if passphrase_safe == "" {
+        // DELETE
+    }
 
-	db, err := sql.Open("sqlite3", dbUri)
+    sqlstore.PostgresArrayWrapper = pq.Array
+	db, err := sql.Open("postgres", dbUri)
 	if err != nil {
 		dbLog.Errorf("Could not open database: %w", err)
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -146,7 +141,7 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	container := sqlstore.NewWithDB(db, "sqlite3", dbLog)
+	container := sqlstore.NewWithDB(db, "postgres", dbLog)
 	err = container.Upgrade()
 	if err != nil {
 		dbLog.Errorf("Could not upgrade database: %w", err)
@@ -168,7 +163,6 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	client := &WhatsAppClient{
 		Client:               wmClient,
 		aclStore:             aclStore,
-		dbPath:               dbPath,
 		dbConn:               db,
 		username:             username,
 		historyMessages:      make(chan *Message, 512),
@@ -204,9 +198,10 @@ func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
 	}
 }
 
-func (wac *WhatsAppClient) cleanupDBFile() error {
-	path := wac.dbPath
-	return ClearFileAndParents(path)
+func (wac *WhatsAppClient) removeUserDB() error {
+    // TODO: figure out deleteuser
+    // wac.Store.DeleteSomething(...?)
+    return  nil
 }
 
 func (wac *WhatsAppClient) IsLoggedIn() bool {
@@ -249,8 +244,8 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions 
 
 				state.Close()
 				if !wac.IsLoggedIn() && isNewDB {
-					wac.Log.Infof("No login detected. deleting temporary DB file: %s", wac.dbPath)
-					wac.cleanupDBFile()
+					wac.Log.Infof("No login detected. Deleting user info")
+					wac.removeUserDB()
 				}
 				return
 			}
