@@ -1,6 +1,8 @@
+from pulumi import ResourceOptions
+
 from pulumi_gcp import storage
 
-from config import location
+from config import location, is_prod_stack
 
 # Cloud Storage buckets will be used as network filesystem using gcsfuse
 # in Cloud Run services.
@@ -14,7 +16,9 @@ whatupcore2_bucket = storage.Bucket(
         # gcsfuse.
         versioning=storage.BucketVersioningArgs(enabled=False),
         public_access_prevention="enforced",
+        force_destroy=False if is_prod_stack() else True,
     ),
+    opts=ResourceOptions(protect=is_prod_stack()),
 )
 
 sessions_bucket = storage.Bucket(
@@ -23,7 +27,9 @@ sessions_bucket = storage.Bucket(
         location=location,
         versioning=storage.BucketVersioningArgs(enabled=False),
         public_access_prevention="enforced",
+        force_destroy=False if is_prod_stack() else True,
     ),
+    opts=ResourceOptions(protect=is_prod_stack()),
 )
 
 message_archive_bucket = storage.Bucket(
@@ -32,5 +38,7 @@ message_archive_bucket = storage.Bucket(
         location=location,
         versioning=storage.BucketVersioningArgs(enabled=False),
         public_access_prevention="enforced",
+        force_destroy=False if is_prod_stack() else True,
     ),
+    opts=ResourceOptions(protect=is_prod_stack()),
 )
