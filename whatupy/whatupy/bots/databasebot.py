@@ -287,11 +287,6 @@ class DatabaseBot(BaseBot):
         message.provenance["databasebot__version"] = self.__version__
         self.db["messages_seen"].insert({"id": msg_id, **message.provenance})
 
-        if is_archive:
-            if archive_data.CommunityInfo is not None:
-                self.logger.info("here is community info from archive %s", archive_data.CommunityInfo)
-                
-
         if message.messageProperties.isReaction:
             await self._update_reaction(message)
         elif message.messageProperties.isEdit:
@@ -338,7 +333,7 @@ class DatabaseBot(BaseBot):
                     else:
                         await self.download_message_media_eventually(message, callback)
             db["messages"].upsert(message_flat, ["id"])
-        self.logger.debug("Done upading message: %s", message.info.id)
+        self.logger.debug("Done updating message: %s", message.info.id)
 
     async def _handle_media_content(
         self, message: wuc.WUMessage, content: bytes, datum: dict
@@ -358,7 +353,6 @@ class DatabaseBot(BaseBot):
         is_archive: bool,
         archive_data: ArchiveData,
     ):
-        self.logger.debug("we are in update group for chat: %s", chat)
         chat_jid = utils.jid_to_str(chat)
         logger = self.logger.getChild(chat_jid)
         now = datetime.now()
@@ -371,8 +365,7 @@ class DatabaseBot(BaseBot):
         group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
         last_update: datetime = group_info_prev.get("last_update", datetime.min)
         if not is_archive and last_update + self.group_info_refresh_time > now:
-            self.logger.debug("not time to refresh but bc im testing let us move on pls")
-            #return
+            return
 
         if is_archive:
             group_info = archive_data.GroupInfo
@@ -453,8 +446,6 @@ class DatabaseBot(BaseBot):
             community_info : T.List[wuc.GroupInfo] = await utils.aiter_to_list(community_info_iterator)
 
         community_info_prev = db["group_info"].find_one(id=chat_parent_jid) or {}
-        
-        # actually should review what id is set as etc since it should just be a group.
    
         community_info_flat = flatten_proto_message(
             community_info[0],
@@ -539,7 +530,10 @@ class DatabaseBot(BaseBot):
                 id_ = group_info_prev["id"] = f"{chat_jid}-{N:06d}"
                 group_info_prev["last_update"] = now
                 group_info_flat["previous_version_id"] = id_
-                # group_info_flat["groupTopic_updatedBy_country_iso"] = group_info_prev.get("groupTopic_updatedBy_country_iso")
+                if group_info_flat["groupName_updatedAt"] == group_info_prev["groupName_updatedAt"]: # we will have more information preserved in prev 
+                    group_info_flat["groupName_updatedBy_country_code"] = group_info_prev["groupName_updatedBy_country_code"] 
+                    group_info_flat["groupName_updatedBy_country_iso"] = group_info_prev["groupName_updatedBy_country_iso"]
+                    group_info_flat["groupName_updatedBy_national_number"] = group_info_prev["groupName_updatedBy_national_number"]
                 if first_seen := group_info_prev.get("first_seen"):
                     group_info_flat["first_seen"] = first_seen
                 db["group_info"].delete(id=prev_id)
