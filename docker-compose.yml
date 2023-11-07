@@ -19,6 +19,7 @@ services:
     environment:
       - USE_SSL=true
       - APP_NAME_SUFFIX=$APP_NAME_SUFFIX
+      - ENC_KEY_SALT=kajsdfhkajsdfhaksdjfhkjasdfhskd
       - POSTGRES_DATABASE=whatupcore
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-whatupcore-passwd
     links:
