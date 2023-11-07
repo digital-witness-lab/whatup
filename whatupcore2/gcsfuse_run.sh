@@ -13,6 +13,8 @@ echo "Mounting $WHATUPCORE2_BUCKET using GCS Fuse."
 gcsfuse "$WHATUPCORE2_BUCKET" $WHATUPCORE2_BUCKET_MNT_DIR
 echo "Mounting completed."
 
+echo "Starting whatupcore2..."
+
 # Start the application
 /whatupcore2 rpc $@ &
 

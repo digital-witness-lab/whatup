@@ -277,25 +277,24 @@ async def databasebot_load_archive(
 @click.option("--database-url", type=str)
 @click.option(
     "--sessions-dir",
-    type=click.Path(path_type=Path, file_okay=False, writable=True),
+    type=click.Path(path_type=Path, file_okay=False, readable=True),
     help="Directory to store sessions for newly registered users",
 )
 @click.argument(
     "credential", type=click.Path(path_type=Path, dir_okay=False, exists=True), nargs=1
 )
 @click.pass_context
-async def userservices(
+async def userservicesbot(
     ctx,
     credential,
     database_url,
     sessions_dir,
 ):
     """
-    Start a registration bot and a userservices bot that will manage
-    registering new users completely through the WhatsApp interface. The
-    database URI specifies where newly registered user metadata and state
-    should be stored. The sessions directory specifies where newly registered
-    user's session file should be stored.
+    Start a userservices bot that will manage onboarding new users completely
+    through the WhatsApp interface. The database URI specifies where newly
+    registered user metadata and state should be stored. The sessions directory
+    specifies where newly registered user's session file should be stored.
     """
     params = {
         "database_url": database_url,
@@ -305,8 +304,41 @@ async def userservices(
     async with asyncio.TaskGroup() as tg:
         # NOTE: it may be better ro run these as two separate commands so that
         # only the register bot get write access to the sessions directory.
-        tg.create_task(run_multi_bots(RegisterBot, [credential], params))
+        # tg.create_task(run_multi_bots(RegisterBot, [credential], params))
         tg.create_task(run_multi_bots(UserServicesBot, [credential], params))
+
+
+@cli.command()
+@async_cli
+@click.option("--database-url", type=str)
+@click.option(
+    "--sessions-dir",
+    type=click.Path(path_type=Path, file_okay=False, writable=True),
+    help="Directory to store sessions for newly registered users",
+)
+@click.argument(
+    "credential", type=click.Path(path_type=Path, dir_okay=False, exists=True), nargs=1
+)
+@click.pass_context
+async def registerbot(
+    ctx,
+    credential,
+    database_url,
+    sessions_dir,
+):
+    """
+    Start a registration bot that will manage registering new users completely
+    through the WhatsApp interface. The database URI specifies where newly
+    registered user metadata and state should be stored. The sessions directory
+    specifies where newly registered user's session file should be stored.
+    """
+    params = {
+        "database_url": database_url,
+        "sessions_dir": sessions_dir,
+        **ctx.obj["connection_params"],
+    }
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(run_multi_bots(RegisterBot, [credential], params))
 
 
 def main():

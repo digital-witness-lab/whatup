@@ -14,3 +14,7 @@ create_onboard_bulk_job = config.get_bool("createOnboardBulkJob")
 gcp_config = pulumi.Config("gcp")
 location = gcp_config.require("region")
 project = gcp_config.require("project")
+
+
+def is_prod_stack() -> bool:
+    return pulumi.get_stack() == "prod"
