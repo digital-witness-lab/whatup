@@ -30,26 +30,25 @@ import (
 )
 
 var (
-    ErrNoCredentials = errors.New("Container has no credentials. Cannot perform encryption tasks")
-    keySalt = []byte(os.Getenv("ENC_KEY_SALT"))
+	ErrNoCredentials = errors.New("Container has no credentials. Cannot perform encryption tasks")
+	keySalt          = []byte(os.Getenv("ENC_KEY_SALT"))
 )
 
 type EncryptableContainer interface {
-    Encrypt([]byte) ([]byte, error)
-    EncryptString(string) (string, error)
-    HasCredentials() bool
+	Encrypt([]byte) ([]byte, error)
+	EncryptString(string) (string, error)
+	HasCredentials() bool
 }
 
 type DecryptableContainer interface {
-    decrypt([]byte) ([]byte, error)
-    decryptString(string) (string, error)
-    HasCredentials() bool
+	decrypt([]byte) ([]byte, error)
+	decryptString(string) (string, error)
+	HasCredentials() bool
 }
 
 type scannable interface {
 	Scan(dest ...interface{}) error
 }
-
 
 // EncContainer is a wrapper for a SQL database that can contain multiple whatsmeow sessions.
 type EncContainer struct {
@@ -57,7 +56,7 @@ type EncContainer struct {
 	dialect string
 	log     waLog.Logger
 
-    userContext context.Context
+	userContext context.Context
 
 	DatabaseErrorHandler func(device *store.Device, action string, attemptIndex int, err error) (retry bool)
 }
@@ -109,125 +108,125 @@ func NewWithDB(db *sql.DB, dialect string, log waLog.Logger) *EncContainer {
 		log = waLog.Noop
 	}
 	return &EncContainer{
-		db:      db,
-		dialect: dialect,
-		log:     log,
-        userContext: context.Background(),
+		db:          db,
+		dialect:     dialect,
+		log:         log,
+		userContext: context.Background(),
 	}
 }
 
 func (ec *EncContainer) WithCredentials(username, passphrase string) (*EncContainer, error) {
-    key, err := scrypt.Key([]byte(passphrase), keySalt, 32768, 8, 1, 32)
-    if err != nil {
-        return nil, err
-    }
-    newEc := *ec
-    c := newEc.userContext
-    c = context.WithValue(c, "username", username)
-    c = context.WithValue(c, "key", key)
-    newEc.userContext = c
-    return &newEc, nil
+	key, err := scrypt.Key([]byte(passphrase), keySalt, 32768, 8, 1, 32)
+	if err != nil {
+		return nil, err
+	}
+	newEc := *ec
+	c := newEc.userContext
+	c = context.WithValue(c, "username", username)
+	c = context.WithValue(c, "key", key)
+	newEc.userContext = c
+	return &newEc, nil
 }
 
 func (ec *EncContainer) HasCredentials() bool {
-    return ec.userContext.Value("username") != nil && ec.userContext.Value("key") != nil
+	return ec.userContext.Value("username") != nil && ec.userContext.Value("key") != nil
 }
 
 func (ec *EncContainer) getUsername() (string, error) {
-    username := ec.userContext.Value("username").(string)
-    if username == "" {
-        return "", ErrNoCredentials
-    }
-    return username, nil
+	username := ec.userContext.Value("username").(string)
+	if username == "" {
+		return "", ErrNoCredentials
+	}
+	return username, nil
 }
 
 func (ec *EncContainer) getKey() ([]byte, error) {
-    key := ec.userContext.Value("key").([]byte)
-    if key == nil {
-        return nil, ErrNoCredentials
-    }
-    return key, nil
+	key := ec.userContext.Value("key").([]byte)
+	if key == nil {
+		return nil, ErrNoCredentials
+	}
+	return key, nil
 }
 
 func (ec *EncContainer) Encrypt(plaintext []byte) ([]byte, error) {
-    key, err := ec.getKey()
-    if err != nil {
-        return nil, err
-    }
+	key, err := ec.getKey()
+	if err != nil {
+		return nil, err
+	}
 
-    c, err := aes.NewCipher(key)
-    if err != nil {
-        return nil, err
-    }
+	c, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
 
-    gcm, err := cipher.NewGCM(c)
-    if err != nil {
-        return nil, err
-    }
+	gcm, err := cipher.NewGCM(c)
+	if err != nil {
+		return nil, err
+	}
 
-    // We need a 12-byte nonce for GCM (modifiable if you use cipher.NewGCMWithNonceSize())
-    // A nonce should always be randomly generated for every encryption.
-    nonce := make([]byte, gcm.NonceSize())
-    _, err = rand.Read(nonce)
-    if err != nil {
-        return nil, err
-    }
+	// We need a 12-byte nonce for GCM (modifiable if you use cipher.NewGCMWithNonceSize())
+	// A nonce should always be randomly generated for every encryption.
+	nonce := make([]byte, gcm.NonceSize())
+	_, err = rand.Read(nonce)
+	if err != nil {
+		return nil, err
+	}
 
-    // ciphertext here is actually nonce+ciphertext
-    // So that when we decrypt, just knowing the nonce size
-    // is enough to separate it from the ciphertext.
-    ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
+	// ciphertext here is actually nonce+ciphertext
+	// So that when we decrypt, just knowing the nonce size
+	// is enough to separate it from the ciphertext.
+	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
 
-    return ciphertext, nil
+	return ciphertext, nil
 }
 
 func (ec *EncContainer) EncryptString(plaintext string) (string, error) {
-    ciphertext, err := ec.Encrypt([]byte(plaintext))
-    if err != nil {
-        return "", err
-    }
-    return hex.EncodeToString(ciphertext), nil
+	ciphertext, err := ec.Encrypt([]byte(plaintext))
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(ciphertext), nil
 }
 
 func (ec *EncContainer) decrypt(ciphertext []byte) ([]byte, error) {
-    key, err := ec.getKey()
-    if err != nil {
-        return nil, err
-    }
+	key, err := ec.getKey()
+	if err != nil {
+		return nil, err
+	}
 
-    c, err := aes.NewCipher(key)
-    if err != nil {
-        return nil, err
-    }
+	c, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
 
-    gcm, err := cipher.NewGCM(c)
-    if err != nil {
-        return nil, err
-    }
+	gcm, err := cipher.NewGCM(c)
+	if err != nil {
+		return nil, err
+	}
 
-    // Since we know the ciphertext is actually nonce+ciphertext
-    // And len(nonce) == NonceSize(). We can separate the two.
-    nonceSize := gcm.NonceSize()
-    nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	// Since we know the ciphertext is actually nonce+ciphertext
+	// And len(nonce) == NonceSize(). We can separate the two.
+	nonceSize := gcm.NonceSize()
+	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
 
-    plaintext, err := gcm.Open(nil, []byte(nonce), ciphertext, nil)
-    if err != nil {
-        return nil, err
-    }
+	plaintext, err := gcm.Open(nil, []byte(nonce), ciphertext, nil)
+	if err != nil {
+		return nil, err
+	}
 
-    return plaintext, nil
+	return plaintext, nil
 }
 
 func (ec *EncContainer) decryptString(ciphertext string) (string, error) {
-    ciphertextBytes, err := hex.DecodeString(ciphertext)
-    if err != nil {
-        return "", err
-    }
-    plaintextBytes, err := ec.decrypt(ciphertextBytes)
-    if err != nil {
-        return "", err
-    }
-    return string(plaintextBytes), nil
+	ciphertextBytes, err := hex.DecodeString(ciphertext)
+	if err != nil {
+		return "", err
+	}
+	plaintextBytes, err := ec.decrypt(ciphertextBytes)
+	if err != nil {
+		return "", err
+	}
+	return string(plaintextBytes), nil
 }
 
 const getAllDevicesQuery = `
@@ -257,7 +256,7 @@ func (c *EncContainer) scanDevice(row scannable) (*store.Device, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan session: %w", err)
 	} else if len(noisePriv) != 32 || len(identityPriv) != 32 || len(preKeyPriv) != 32 || len(preKeySig) != 64 {
-        c.log.Errorf("Scanned device has wrong key lengths")
+		c.log.Errorf("Scanned device has wrong key lengths")
 		return nil, ErrInvalidLength
 	}
 
@@ -298,7 +297,7 @@ func (c *EncContainer) GetDevice(jid types.JID) (*store.Device, error) {
 }
 
 func (c *EncContainer) GetDeviceUsername(username string) (*store.Device, error) {
-    sess, err := c.scanDevice(c.db.QueryRow(getDeviceQueryUsername, []byte("plain:" + username)))
+	sess, err := c.scanDevice(c.db.QueryRow(getDeviceQueryUsername, []byte("plain:"+username)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -347,29 +346,29 @@ func (c *EncContainer) PutDevice(device *store.Device) error {
 	if device.ID == nil {
 		return ErrDeviceIDMustBeSet
 	}
-    username, err := c.getUsername()
-    if err != nil {
-        return ErrNoCredentials
-    }
+	username, err := c.getUsername()
+	if err != nil {
+		return ErrNoCredentials
+	}
 	_, err = encryptDBArguments(c, c.db.Exec,
-        insertDeviceQuery,
+		insertDeviceQuery,
 		device.ID.String(),
-        []byte("plain:" + username),
-        device.RegistrationID,
-        device.NoiseKey.Priv[:],
-        device.IdentityKey.Priv[:],
+		[]byte("plain:"+username),
+		device.RegistrationID,
+		device.NoiseKey.Priv[:],
+		device.IdentityKey.Priv[:],
 		device.SignedPreKey.Priv[:],
-        device.SignedPreKey.KeyID,
-        device.SignedPreKey.Signature[:],
+		device.SignedPreKey.KeyID,
+		device.SignedPreKey.Signature[:],
 		device.AdvSecretKey,
-        device.Account.Details,
-        device.Account.AccountSignature,
-        device.Account.AccountSignatureKey,
-        device.Account.DeviceSignature,
+		device.Account.Details,
+		device.Account.AccountSignature,
+		device.Account.AccountSignatureKey,
+		device.Account.DeviceSignature,
 		device.Platform,
-        device.BusinessName,
-        device.PushName,
-    )
+		device.BusinessName,
+		device.PushName,
+	)
 
 	if !device.Initialized {
 		innerStore := NewEncSQLStore(c, *device.ID)

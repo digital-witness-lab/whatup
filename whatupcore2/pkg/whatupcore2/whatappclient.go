@@ -125,11 +125,11 @@ func NewWhatsAppClient(username string, passphrase string, dbUri string, log waL
 	store.DeviceProps.RequireFullSync = proto.Bool(true)
 	dbLog := log.Sub("DB")
 	passphrase_safe := hashStringHex(passphrase)
-    if passphrase_safe == "" {
-        // DELETE
-    }
+	if passphrase_safe == "" {
+		// DELETE
+	}
 
-    encsqlstore.PostgresArrayWrapper = pq.Array
+	encsqlstore.PostgresArrayWrapper = pq.Array
 	db, err := sql.Open("postgres", dbUri)
 	if err != nil {
 		dbLog.Errorf("Could not open database: %w", err)
@@ -141,10 +141,10 @@ func NewWhatsAppClient(username string, passphrase string, dbUri string, log waL
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-    // TODO the encsqlstore NewWithDB should be global and this fxn should just do a "WithCredentials" to get the user version
+	// TODO the encsqlstore NewWithDB should be global and this fxn should just do a "WithCredentials" to get the user version
 	container, err := encsqlstore.NewWithDB(db, "postgres", dbLog).WithCredentials(username, passphrase)
 	if err != nil {
-        dbLog.Errorf("Could not create encrypted SQL store: %w", err)
+		dbLog.Errorf("Could not create encrypted SQL store: %w", err)
 		return nil, fmt.Errorf("Could not create encrypted SQL store: %w", err)
 	}
 
@@ -154,15 +154,15 @@ func NewWhatsAppClient(username string, passphrase string, dbUri string, log waL
 		return nil, fmt.Errorf("failed to upgrade database: %w", err)
 	}
 
-    var deviceStore *store.Device
+	var deviceStore *store.Device
 	deviceStore, err = container.GetDeviceUsername(username)
 	if err != nil {
 		dbLog.Errorf("Could't get device from store: %w", err)
 		return nil, err
 	}
-    if deviceStore == nil {
-        deviceStore = container.NewDevice()
-    }
+	if deviceStore == nil {
+		deviceStore = container.NewDevice()
+	}
 
 	wmClient := whatsmeow.NewClient(deviceStore, log.Sub("WMC"))
 	wmClient.EnableAutoReconnect = true
@@ -210,9 +210,9 @@ func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
 }
 
 func (wac *WhatsAppClient) removeUserDB() error {
-    // TODO: figure out deleteuser
-    // wac.Store.DeleteSomething(...?)
-    return  nil
+	// TODO: figure out deleteuser
+	// wac.Store.DeleteSomething(...?)
+	return nil
 }
 
 func (wac *WhatsAppClient) IsLoggedIn() bool {

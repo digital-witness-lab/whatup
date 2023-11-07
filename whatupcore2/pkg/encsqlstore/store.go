@@ -39,7 +39,6 @@ type execable interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
 }
 
-
 type EncSQLStore struct {
 	*EncContainer
 	JID string
@@ -56,7 +55,7 @@ type EncSQLStore struct {
 // In general, you should use EncContainer.NewDevice or EncContainer.GetDevice instead of this.
 func NewEncSQLStore(c *EncContainer, jid types.JID) *EncSQLStore {
 	return &EncSQLStore{
-		EncContainer:    c,
+		EncContainer: c,
 		JID:          jid.String(),
 		contactCache: make(map[types.JID]*types.ContactInfo),
 	}
@@ -234,7 +233,7 @@ func (s *EncSQLStore) scanPreKey(row scannable) (*keys.PreKey, error) {
 	} else if err != nil {
 		return nil, err
 	} else if len(priv) != 32 {
-        s.log.Errorf("Scan pre keys have an invalid length: %d != 32", len(priv))
+		s.log.Errorf("Scan pre keys have an invalid length: %d != 32", len(priv))
 		return nil, ErrInvalidLength
 	}
 	return &keys.PreKey{
