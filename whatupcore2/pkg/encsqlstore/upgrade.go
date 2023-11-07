@@ -79,9 +79,9 @@ func (c *EncContainer) Upgrade() error {
 func upgradeV1(tx *sql.Tx, _ *EncContainer) error {
 	_, err := tx.Exec(`CREATE TABLE whatsmeow_enc_device (
 		jid TEXT PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
+        username bytea UNIQUE NOT NULL,
 
-		registration_id BIGINT NOT NULL CHECK,
+		registration_id BIGINT NOT NULL,
 
 		noise_key    bytea NOT NULL,
 		identity_key bytea NOT NULL,
@@ -169,7 +169,7 @@ func upgradeV1(tx *sql.Tx, _ *EncContainer) error {
 		jid     TEXT,
 		name    TEXT,
 		version BIGINT NOT NULL,
-		hash    bytea  NOT NULL ),
+		hash    bytea  NOT NULL,
 
 		PRIMARY KEY (jid, name),
 		FOREIGN KEY (jid) REFERENCES whatsmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
@@ -182,7 +182,7 @@ func upgradeV1(tx *sql.Tx, _ *EncContainer) error {
 		name      TEXT,
 		version   BIGINT,
 		index_mac bytea,
-		value_mac bytea NOT NULL ),
+		value_mac bytea NOT NULL,
 
 		PRIMARY KEY (jid, name, version, index_mac),
 		FOREIGN KEY (jid, name) REFERENCES whatsmeow_enc_app_state_version(jid, name) ON DELETE CASCADE ON UPDATE CASCADE

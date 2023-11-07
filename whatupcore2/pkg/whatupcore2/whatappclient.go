@@ -141,6 +141,7 @@ func NewWhatsAppClient(username string, passphrase string, dbUri string, log waL
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
+    // TODO the encsqlstore NewWithDB should be global and this fxn should just do a "WithCredentials" to get the user version
 	container, err := encsqlstore.NewWithDB(db, "postgres", dbLog).WithCredentials(username, passphrase)
 	if err != nil {
         dbLog.Errorf("Could not create encrypted SQL store: %w", err)
@@ -153,11 +154,16 @@ func NewWhatsAppClient(username string, passphrase string, dbUri string, log waL
 		return nil, fmt.Errorf("failed to upgrade database: %w", err)
 	}
 
-	deviceStore, err := container.GetFirstDevice()
+    var deviceStore *store.Device
+	deviceStore, err = container.GetDeviceUsername(username)
 	if err != nil {
 		dbLog.Errorf("Could't get device from store: %w", err)
 		return nil, err
 	}
+    if deviceStore == nil {
+        deviceStore = container.NewDevice()
+    }
+
 	wmClient := whatsmeow.NewClient(deviceStore, log.Sub("WMC"))
 	wmClient.EnableAutoReconnect = true
 	wmClient.EmitAppStateEventsOnFullSync = true
