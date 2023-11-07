@@ -41,7 +41,7 @@ case $app_command in
             "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}" &
     ;;
 
-    onboard-bulk)
+    onboard)
         if [ -z "${WHATUPY_ONBOARD_BOT_NAME:-}" ]; then
             echo "WHATUPY_ONBOARD_BOT_NAME env var is required."
             exit 1

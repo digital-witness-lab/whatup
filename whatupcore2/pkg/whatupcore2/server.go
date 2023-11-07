@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
@@ -59,6 +61,7 @@ func StartRPC(port uint32, logLevel string) error {
 
 	sessionManager := NewSessionManager(JWT_SECRET, Log.Sub("SessionManager"))
 	sessionManager.Start()
+	defer sessionManager.Close()
 	authCheck := createAuthCheck(sessionManager, JWT_SECRET)
 	keepAlive := grpc.KeepaliveParams(keepalive.ServerParameters{
 		Time: 10 * time.Second,
@@ -96,9 +99,18 @@ func StartRPC(port uint32, logLevel string) error {
 		log:            Log.Sub("CoreServer"),
 	})
 
-	Log.Infof("server listening at %v", lis.Addr())
-	if err := s.Serve(lis); err != nil {
-		Log.Errorf("failed to serve: %v", err)
-	}
+	go func() {
+		Log.Infof("server listening at %v", lis.Addr())
+		if err := s.Serve(lis); err != nil {
+			Log.Errorf("failed to serve: %v", err)
+		}
+	}()
+
+	Log.Infof("Registering signal listener")
+	sigchan := make(chan os.Signal, 1)
+	signal.Notify(sigchan, syscall.SIGTERM, syscall.SIGINT)
+	sig := <-sigchan
+	Log.Infof("Got signal... exiting gracefully: %v", sig)
+	s.Stop()
 	return nil
 }

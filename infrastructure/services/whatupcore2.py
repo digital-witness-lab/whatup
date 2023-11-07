@@ -32,8 +32,13 @@ whatupcore2_service = Service(
         concurrency=50,
         container_port=3447,
         cpu="1",
-        # Route all egress traffic via the VPC network.
-        egress="ALL_TRAFFIC",
+        # Route only egress traffic bound for private IPs
+        # via the VPC network. All other traffic will take
+        # the default route bound for the internet gateway.
+        # Routing all traffic via the VPC for this container
+        # will cause the websocket connection to WhatsApp to
+        # fail due to dial timeout.
+        egress="PRIVATE_RANGES_ONLY",
         image_name=service_name,
         # We want this service to only be reachable from within
         # our VPC network.
