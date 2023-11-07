@@ -8,7 +8,7 @@ secrets:
 
 services:
   whatup:
-    image: 8b813f8dbcbe #asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupcore2
+    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupcore2
     platform: linux/x86_64
     build: ./whatupcore2/
     environment:
