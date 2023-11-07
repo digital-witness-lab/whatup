@@ -74,7 +74,7 @@ class ArchiveBot(BaseBot):
         }
         message.provenance.update(provenance)
 
-        refresh_dt = 10 #self.group_info_refresh_time.total_seconds()
+        refresh_dt = self.group_info_refresh_time.total_seconds()
         timestamp = int((now.timestamp() // refresh_dt) * refresh_dt)
         meta_group_path = (
             conversation_dir / "group-info" / f"group-info_{timestamp}.json"
