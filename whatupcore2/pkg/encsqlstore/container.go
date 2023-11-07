@@ -12,6 +12,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	mathRand "math/rand"
@@ -35,12 +36,18 @@ var (
 
 type EncryptableContainer interface {
     Encrypt([]byte) ([]byte, error)
+    EncryptString(string) (string, error)
     HasCredentials() bool
 }
 
 type DecryptableContainer interface {
     decrypt([]byte) ([]byte, error)
+    decryptString(string) (string, error)
     HasCredentials() bool
+}
+
+type scannable interface {
+	Scan(dest ...interface{}) error
 }
 
 
@@ -174,6 +181,14 @@ func (ec *EncContainer) Encrypt(plaintext []byte) ([]byte, error) {
     return ciphertext, nil
 }
 
+func (ec *EncContainer) EncryptString(plaintext string) (string, error) {
+    ciphertext, err := ec.Encrypt([]byte(plaintext))
+    if err != nil {
+        return "", err
+    }
+    return hex.EncodeToString(ciphertext), nil
+}
+
 func (ec *EncContainer) decrypt(ciphertext []byte) ([]byte, error) {
     key, err := ec.getKey()
     if err != nil {
@@ -203,20 +218,28 @@ func (ec *EncContainer) decrypt(ciphertext []byte) ([]byte, error) {
     return plaintext, nil
 }
 
+func (ec *EncContainer) decryptString(ciphertext string) (string, error) {
+    ciphertextBytes, err := hex.DecodeString(ciphertext)
+    if err != nil {
+        return "", err
+    }
+    plaintextBytes, err := ec.decrypt(ciphertextBytes)
+    if err != nil {
+        return "", err
+    }
+    return string(plaintextBytes), nil
+}
+
 const getAllDevicesQuery = `
 SELECT jid, registration_id, noise_key, identity_key,
        signed_pre_key, signed_pre_key_id, signed_pre_key_sig,
        adv_key, adv_details, adv_account_sig, adv_account_sig_key, adv_device_sig,
        platform, business_name, push_name
-FROM whatsmeow_device
+FROM whatsmeow_enc_device
 `
 
 const getDeviceQuery = getAllDevicesQuery + " WHERE jid=$1"
 const getDeviceQueryUsername = getAllDevicesQuery + " WHERE username=$1"
-
-type scannable interface {
-	Scan(dest ...interface{}) error
-}
 
 func (c *EncContainer) scanDevice(row scannable) (*store.Device, error) {
 	var device store.Device
@@ -226,7 +249,7 @@ func (c *EncContainer) scanDevice(row scannable) (*store.Device, error) {
 	var noisePriv, identityPriv, preKeyPriv, preKeySig []byte
 	var account waProto.ADVSignedDeviceIdentity
 
-	err := row.Scan(
+	err := decryptDBScan(c, row,
 		&device.ID, &device.RegistrationID, &noisePriv, &identityPriv,
 		&preKeyPriv, &device.SignedPreKey.KeyID, &preKeySig,
 		&device.AdvSecretKey, &account.Details, &account.AccountSignature, &account.AccountSignatureKey, &account.DeviceSignature,
@@ -234,6 +257,7 @@ func (c *EncContainer) scanDevice(row scannable) (*store.Device, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan session: %w", err)
 	} else if len(noisePriv) != 32 || len(identityPriv) != 32 || len(preKeyPriv) != 32 || len(preKeySig) != 64 {
+        c.log.Errorf("Scanned device has wrong key lengths")
 		return nil, ErrInvalidLength
 	}
 
@@ -260,38 +284,6 @@ func (c *EncContainer) scanDevice(row scannable) (*store.Device, error) {
 	return &device, nil
 }
 
-// GetAllDevices finds all the devices in the database.
-func (c *EncContainer) GetAllDevices() ([]*store.Device, error) {
-	res, err := c.db.Query(getAllDevicesQuery)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query sessions: %w", err)
-	}
-	sessions := make([]*store.Device, 0)
-	for res.Next() {
-		sess, scanErr := c.scanDevice(res)
-		if scanErr != nil {
-			return sessions, scanErr
-		}
-		sessions = append(sessions, sess)
-	}
-	return sessions, nil
-}
-
-// GetFirstDevice is a convenience method for getting the first device in the store. If there are
-// no devices, then a new device will be created. You should only use this if you don't want to
-// have multiple sessions simultaneously.
-func (c *EncContainer) GetFirstDevice() (*store.Device, error) {
-	devices, err := c.GetAllDevices()
-	if err != nil {
-		return nil, err
-	}
-	if len(devices) == 0 {
-		return c.NewDevice(), nil
-	} else {
-		return devices[0], nil
-	}
-}
-
 // GetDevice finds the device with the specified JID in the database.
 //
 // If the device is not found, nil is returned instead.
@@ -306,7 +298,7 @@ func (c *EncContainer) GetDevice(jid types.JID) (*store.Device, error) {
 }
 
 func (c *EncContainer) GetDeviceUsername(username string) (*store.Device, error) {
-	sess, err := c.scanDevice(c.db.QueryRow(getDeviceQueryUsername, username))
+    sess, err := c.scanDevice(c.db.QueryRow(getDeviceQueryUsername, []byte("plain:" + username)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -315,7 +307,7 @@ func (c *EncContainer) GetDeviceUsername(username string) (*store.Device, error)
 
 const (
 	insertDeviceQuery = `
-		INSERT INTO whatsmeow_device (jid, username, registration_id, noise_key, identity_key,
+		INSERT INTO whatsmeow_enc_device (jid, username, registration_id, noise_key, identity_key,
 									  signed_pre_key, signed_pre_key_id, signed_pre_key_sig,
 									  adv_key, adv_details, adv_account_sig, adv_account_sig_key, adv_device_sig,
 									  platform, business_name, push_name)
@@ -323,7 +315,7 @@ const (
 		ON CONFLICT (jid) DO UPDATE
 		    SET platform=excluded.platform, business_name=excluded.business_name, push_name=excluded.push_name
 	`
-	deleteDeviceQuery = `DELETE FROM whatsmeow_device WHERE jid=$1`
+	deleteDeviceQuery = `DELETE FROM whatsmeow_enc_device WHERE jid=$1`
 )
 
 // NewDevice creates a new device in this database.
@@ -359,10 +351,10 @@ func (c *EncContainer) PutDevice(device *store.Device) error {
     if err != nil {
         return ErrNoCredentials
     }
-	_, err = c.db.Exec(
+	_, err = encryptDBArguments(c, c.db.Exec,
         insertDeviceQuery,
 		device.ID.String(),
-        username,
+        []byte("plain:" + username),
         device.RegistrationID,
         device.NoiseKey.Priv[:],
         device.IdentityKey.Priv[:],
@@ -401,6 +393,6 @@ func (c *EncContainer) DeleteDevice(store *store.Device) error {
 	if store.ID == nil {
 		return ErrDeviceIDMustBeSet
 	}
-	_, err := c.db.Exec(deleteDeviceQuery, store.ID.String())
+	_, err := encryptDBArguments(c, c.db.Exec, deleteDeviceQuery, store.ID.String())
 	return err
 }

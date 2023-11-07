@@ -147,7 +147,7 @@ services:
       - donotstart
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission DENIED --credentials-dir /usr/src/whatupy-data/sessions/ ${SESSION_NAME}
+    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission READWRITE --credentials-dir /usr/src/whatupy-data/sessions/ ${SESSION_NAME}
 
   bot-chatbot:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
