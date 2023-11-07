@@ -25,7 +25,7 @@ type SessionManager struct {
 	sessionIdToSession  map[string]*Session
 	usernameToSessionId map[string]string
 	secretKey           []byte
-    dbUri               string
+	dbUri               string
 
 	log waLog.Logger
 
@@ -37,7 +37,7 @@ func NewSessionManager(secretKey []byte, dbUri string, log waLog.Logger) *Sessio
 		sessionIdToSession:  make(map[string]*Session),
 		usernameToSessionId: make(map[string]string),
 		secretKey:           secretKey,
-        dbUri: dbUri,
+		dbUri:               dbUri,
 		log:                 log,
 	}
 }
