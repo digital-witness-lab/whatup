@@ -11,39 +11,39 @@ import (
 	"fmt"
 )
 
-type upgradeFunc func(*sql.Tx, *Container) error
+type upgradeFunc func(*sql.Tx, *EncContainer) error
 
 // Upgrades is a list of functions that will upgrade a database to the latest version.
 //
 // This may be of use if you want to manage the database fully manually, but in most cases you
-// should just call Container.Upgrade to let the library handle everything.
+// should just call EncContainer.Upgrade to let the library handle everything.
 var Upgrades = [...]upgradeFunc{upgradeV1, upgradeV2, upgradeV3, upgradeV4, upgradeV5}
 
-func (c *Container) getVersion() (int, error) {
-	_, err := c.db.Exec("CREATE TABLE IF NOT EXISTS whatmeow_enc_version (version INTEGER)")
+func (c *EncContainer) getVersion() (int, error) {
+	_, err := c.db.Exec("CREATE TABLE IF NOT EXISTS whatsmeow_enc_version (version INTEGER)")
 	if err != nil {
 		return -1, err
 	}
 
 	version := 0
-	row := c.db.QueryRow("SELECT version FROM whatmeow_enc_version LIMIT 1")
+	row := c.db.QueryRow("SELECT version FROM whatsmeow_enc_version LIMIT 1")
 	if row != nil {
 		_ = row.Scan(&version)
 	}
 	return version, nil
 }
 
-func (c *Container) setVersion(tx *sql.Tx, version int) error {
-	_, err := tx.Exec("DELETE FROM whatmeow_enc_version")
+func (c *EncContainer) setVersion(tx *sql.Tx, version int) error {
+	_, err := tx.Exec("DELETE FROM whatsmeow_enc_version")
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec("INSERT INTO whatmeow_enc_version (version) VALUES ($1)", version)
+	_, err = tx.Exec("INSERT INTO whatsmeow_enc_version (version) VALUES ($1)", version)
 	return err
 }
 
 // Upgrade upgrades the database from the current to the latest version available.
-func (c *Container) Upgrade() error {
+func (c *EncContainer) Upgrade() error {
 	version, err := c.getVersion()
 	if err != nil {
 		return err
@@ -76,23 +76,24 @@ func (c *Container) Upgrade() error {
 	return nil
 }
 
-func upgradeV1(tx *sql.Tx, _ *Container) error {
-	_, err := tx.Exec(`CREATE TABLE whatmeow_enc_device (
+func upgradeV1(tx *sql.Tx, _ *EncContainer) error {
+	_, err := tx.Exec(`CREATE TABLE whatsmeow_enc_device (
 		jid TEXT PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
 
-		registration_id BIGINT NOT NULL CHECK ( registration_id >= 0 AND registration_id < 4294967296 ),
+		registration_id BIGINT NOT NULL CHECK,
 
-		noise_key    bytea NOT NULL CHECK ( length(noise_key) = 32 ),
-		identity_key bytea NOT NULL CHECK ( length(identity_key) = 32 ),
+		noise_key    bytea NOT NULL,
+		identity_key bytea NOT NULL,
 
-		signed_pre_key     bytea   NOT NULL CHECK ( length(signed_pre_key) = 32 ),
-		signed_pre_key_id  INTEGER NOT NULL CHECK ( signed_pre_key_id >= 0 AND signed_pre_key_id < 16777216 ),
-		signed_pre_key_sig bytea   NOT NULL CHECK ( length(signed_pre_key_sig) = 64 ),
+		signed_pre_key     bytea   NOT NULL,
+		signed_pre_key_id  INTEGER NOT NULL,
+		signed_pre_key_sig bytea   NOT NULL,
 
 		adv_key         bytea NOT NULL,
 		adv_details     bytea NOT NULL,
-		adv_account_sig bytea NOT NULL CHECK ( length(adv_account_sig) = 64 ),
-		adv_device_sig  bytea NOT NULL CHECK ( length(adv_device_sig) = 64 ),
+		adv_account_sig bytea NOT NULL,
+		adv_device_sig  bytea NOT NULL,
 
 		platform      TEXT NOT NULL DEFAULT '',
 		business_name TEXT NOT NULL DEFAULT '',
@@ -101,53 +102,57 @@ func upgradeV1(tx *sql.Tx, _ *Container) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`CREATE TABLE whatmeow_enc_identity_keys (
+	_, err = tx.Exec(`CREATE INDEX enc_device_username ON whatsmeow_enc_device (username)`)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`CREATE TABLE whatsmeow_enc_identity_keys (
 		our_jid  TEXT,
 		their_id TEXT,
-		identity bytea NOT NULL CHECK ( length(identity) = 32 ),
+		identity bytea NOT NULL,
 
 		PRIMARY KEY (our_jid, their_id),
-		FOREIGN KEY (our_jid) REFERENCES whatmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
+		FOREIGN KEY (our_jid) REFERENCES whatsmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
 	)`)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`CREATE TABLE whatmeow_enc_pre_keys (
+	_, err = tx.Exec(`CREATE TABLE whatsmeow_enc_pre_keys (
 		jid      TEXT,
-		key_id   INTEGER          CHECK ( key_id >= 0 AND key_id < 16777216 ),
-		key      bytea   NOT NULL CHECK ( length(key) = 32 ),
+		key_id   INTEGER,
+		key      bytea   NOT NULL,
 		uploaded BOOLEAN NOT NULL,
 
 		PRIMARY KEY (jid, key_id),
-		FOREIGN KEY (jid) REFERENCES whatmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
+		FOREIGN KEY (jid) REFERENCES whatsmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
 	)`)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`CREATE TABLE whatmeow_enc_sessions (
+	_, err = tx.Exec(`CREATE TABLE whatsmeow_enc_sessions (
 		our_jid  TEXT,
 		their_id TEXT,
 		session  bytea,
 
 		PRIMARY KEY (our_jid, their_id),
-		FOREIGN KEY (our_jid) REFERENCES whatmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
+		FOREIGN KEY (our_jid) REFERENCES whatsmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
 	)`)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`CREATE TABLE whatmeow_enc_sender_keys (
+	_, err = tx.Exec(`CREATE TABLE whatsmeow_enc_sender_keys (
 		our_jid    TEXT,
 		chat_id    TEXT,
 		sender_id  TEXT,
 		sender_key bytea NOT NULL,
 
 		PRIMARY KEY (our_jid, chat_id, sender_id),
-		FOREIGN KEY (our_jid) REFERENCES whatmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
+		FOREIGN KEY (our_jid) REFERENCES whatsmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
 	)`)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`CREATE TABLE whatmeow_enc_app_state_sync_keys (
+	_, err = tx.Exec(`CREATE TABLE whatsmeow_enc_app_state_sync_keys (
 		jid         TEXT,
 		key_id      bytea,
 		key_data    bytea  NOT NULL,
@@ -155,37 +160,37 @@ func upgradeV1(tx *sql.Tx, _ *Container) error {
 		fingerprint bytea  NOT NULL,
 
 		PRIMARY KEY (jid, key_id),
-		FOREIGN KEY (jid) REFERENCES whatmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
+		FOREIGN KEY (jid) REFERENCES whatsmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
 	)`)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`CREATE TABLE whatmeow_enc_app_state_version (
+	_, err = tx.Exec(`CREATE TABLE whatsmeow_enc_app_state_version (
 		jid     TEXT,
 		name    TEXT,
 		version BIGINT NOT NULL,
-		hash    bytea  NOT NULL CHECK ( length(hash) = 128 ),
+		hash    bytea  NOT NULL ),
 
 		PRIMARY KEY (jid, name),
-		FOREIGN KEY (jid) REFERENCES whatmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
+		FOREIGN KEY (jid) REFERENCES whatsmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
 	)`)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`CREATE TABLE whatmeow_enc_app_state_mutation_macs (
+	_, err = tx.Exec(`CREATE TABLE whatsmeow_enc_app_state_mutation_macs (
 		jid       TEXT,
 		name      TEXT,
 		version   BIGINT,
-		index_mac bytea          CHECK ( length(index_mac) = 32 ),
-		value_mac bytea NOT NULL CHECK ( length(value_mac) = 32 ),
+		index_mac bytea,
+		value_mac bytea NOT NULL ),
 
 		PRIMARY KEY (jid, name, version, index_mac),
-		FOREIGN KEY (jid, name) REFERENCES whatmeow_enc_app_state_version(jid, name) ON DELETE CASCADE ON UPDATE CASCADE
+		FOREIGN KEY (jid, name) REFERENCES whatsmeow_enc_app_state_version(jid, name) ON DELETE CASCADE ON UPDATE CASCADE
 	)`)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`CREATE TABLE whatmeow_enc_contacts (
+	_, err = tx.Exec(`CREATE TABLE whatsmeow_enc_contacts (
 		our_jid       TEXT,
 		their_jid     TEXT,
 		first_name    TEXT,
@@ -194,12 +199,12 @@ func upgradeV1(tx *sql.Tx, _ *Container) error {
 		business_name TEXT,
 
 		PRIMARY KEY (our_jid, their_jid),
-		FOREIGN KEY (our_jid) REFERENCES whatmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
+		FOREIGN KEY (our_jid) REFERENCES whatsmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
 	)`)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`CREATE TABLE whatmeow_enc_chat_settings (
+	_, err = tx.Exec(`CREATE TABLE whatsmeow_enc_chat_settings (
 		our_jid       TEXT,
 		chat_jid      TEXT,
 		muted_until   BIGINT  NOT NULL DEFAULT 0,
@@ -207,7 +212,7 @@ func upgradeV1(tx *sql.Tx, _ *Container) error {
 		archived      BOOLEAN NOT NULL DEFAULT false,
 
 		PRIMARY KEY (our_jid, chat_jid),
-		FOREIGN KEY (our_jid) REFERENCES whatmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
+		FOREIGN KEY (our_jid) REFERENCES whatsmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
 	)`)
 	if err != nil {
 		return err
@@ -216,27 +221,27 @@ func upgradeV1(tx *sql.Tx, _ *Container) error {
 }
 
 const fillSigKeyPostgres = `
-UPDATE whatmeow_enc_device SET adv_account_sig_key=(
+UPDATE whatsmeow_enc_device SET adv_account_sig_key=(
 	SELECT identity
-	FROM whatmeow_enc_identity_keys
-	WHERE our_jid=whatmeow_enc_device.jid
-	  AND their_id=concat(split_part(whatmeow_enc_device.jid, '.', 1), ':0')
+	FROM whatsmeow_enc_identity_keys
+	WHERE our_jid=whatsmeow_enc_device.jid
+	  AND their_id=concat(split_part(whatsmeow_enc_device.jid, '.', 1), ':0')
 );
-DELETE FROM whatmeow_enc_device WHERE adv_account_sig_key IS NULL;
-ALTER TABLE whatmeow_enc_device ALTER COLUMN adv_account_sig_key SET NOT NULL;
+DELETE FROM whatsmeow_enc_device WHERE adv_account_sig_key IS NULL;
+ALTER TABLE whatsmeow_enc_device ALTER COLUMN adv_account_sig_key SET NOT NULL;
 `
 
 const fillSigKeySQLite = `
-UPDATE whatmeow_enc_device SET adv_account_sig_key=(
+UPDATE whatsmeow_enc_device SET adv_account_sig_key=(
 	SELECT identity
-	FROM whatmeow_enc_identity_keys
-	WHERE our_jid=whatmeow_enc_device.jid
-	  AND their_id=substr(whatmeow_enc_device.jid, 0, instr(whatmeow_enc_device.jid, '.')) || ':0'
+	FROM whatsmeow_enc_identity_keys
+	WHERE our_jid=whatsmeow_enc_device.jid
+	  AND their_id=substr(whatsmeow_enc_device.jid, 0, instr(whatsmeow_enc_device.jid, '.')) || ':0'
 )
 `
 
-func upgradeV2(tx *sql.Tx, container *Container) error {
-	_, err := tx.Exec("ALTER TABLE whatmeow_enc_device ADD COLUMN adv_account_sig_key bytea CHECK ( length(adv_account_sig_key) = 32 )")
+func upgradeV2(tx *sql.Tx, container *EncContainer) error {
+	_, err := tx.Exec("ALTER TABLE whatsmeow_enc_device ADD COLUMN adv_account_sig_key bytea")
 	if err != nil {
 		return err
 	}
@@ -248,8 +253,8 @@ func upgradeV2(tx *sql.Tx, container *Container) error {
 	return err
 }
 
-func upgradeV3(tx *sql.Tx, container *Container) error {
-	_, err := tx.Exec(`CREATE TABLE whatmeow_enc_message_secrets (
+func upgradeV3(tx *sql.Tx, container *EncContainer) error {
+	_, err := tx.Exec(`CREATE TABLE whatsmeow_enc_message_secrets (
 		our_jid    TEXT,
 		chat_jid   TEXT,
 		sender_jid TEXT,
@@ -257,13 +262,13 @@ func upgradeV3(tx *sql.Tx, container *Container) error {
 		key        bytea NOT NULL,
 
 		PRIMARY KEY (our_jid, chat_jid, sender_jid, message_id),
-		FOREIGN KEY (our_jid) REFERENCES whatmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
+		FOREIGN KEY (our_jid) REFERENCES whatsmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
 	)`)
 	return err
 }
 
-func upgradeV4(tx *sql.Tx, container *Container) error {
-	_, err := tx.Exec(`CREATE TABLE whatmeow_enc_privacy_tokens (
+func upgradeV4(tx *sql.Tx, container *EncContainer) error {
+	_, err := tx.Exec(`CREATE TABLE whatsmeow_enc_privacy_tokens (
 		our_jid   TEXT,
 		their_jid TEXT,
 		token     bytea  NOT NULL,
@@ -273,7 +278,7 @@ func upgradeV4(tx *sql.Tx, container *Container) error {
 	return err
 }
 
-func upgradeV5(tx *sql.Tx, container *Container) error {
+func upgradeV5(tx *sql.Tx, container *EncContainer) error {
 	if container.dialect == "sqlite" {
 		var foreignKeysEnabled bool
 		err := tx.QueryRow("PRAGMA foreign_keys").Scan(&foreignKeysEnabled)
@@ -283,6 +288,6 @@ func upgradeV5(tx *sql.Tx, container *Container) error {
 			return fmt.Errorf("foreign keys are not enabled")
 		}
 	}
-	_, err := tx.Exec("UPDATE whatmeow_enc_device SET jid=REPLACE(jid, '.0', '')")
+	_, err := tx.Exec("UPDATE whatsmeow_enc_device SET jid=REPLACE(jid, '.0', '')")
 	return err
 }

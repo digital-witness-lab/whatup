@@ -14,11 +14,11 @@ import (
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
+	"github.com/digital-witness-lab/whatup/whatupcore2/pkg/encsqlstore"
 	"github.com/lib/pq"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/store"
-	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
@@ -129,7 +129,7 @@ func NewWhatsAppClient(username string, passphrase string, dbUri string, log waL
         // DELETE
     }
 
-    sqlstore.PostgresArrayWrapper = pq.Array
+    encsqlstore.PostgresArrayWrapper = pq.Array
 	db, err := sql.Open("postgres", dbUri)
 	if err != nil {
 		dbLog.Errorf("Could not open database: %w", err)
@@ -141,7 +141,12 @@ func NewWhatsAppClient(username string, passphrase string, dbUri string, log waL
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	container := sqlstore.NewWithDB(db, "postgres", dbLog)
+	container, err := encsqlstore.NewWithDB(db, "postgres", dbLog).WithCredentials(username, passphrase)
+	if err != nil {
+        dbLog.Errorf("Could not create encrypted SQL store: %w", err)
+		return nil, fmt.Errorf("Could not create encrypted SQL store: %w", err)
+	}
+
 	err = container.Upgrade()
 	if err != nil {
 		dbLog.Errorf("Could not upgrade database: %w", err)

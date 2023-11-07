@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
+	_ "github.com/mattn/go-sqlite3"
 	"go.mau.fi/whatsmeow/types"
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
