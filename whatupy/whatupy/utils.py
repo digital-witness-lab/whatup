@@ -12,11 +12,14 @@ import typing as T
 import warnings
 from collections import namedtuple
 from functools import wraps
+import logging
 
 import qrcode
 from google.protobuf.json_format import MessageToDict, ParseDict
 
 from .protos import whatupcore_pb2 as wuc
+
+logger = logging.getLogger(__name__)
 
 WORDLIST_SIZE = None
 RANDOM_SALT = random.randbytes(32)
@@ -123,13 +126,14 @@ def protobuf_to_json_list(proto_objs) -> str:
 
 def jsons_to_protobuf(jsons: str, proto_type: Generic) -> Generic:
     data = json.loads(jsons, cls=WhatUpyJSONDecoder)
-    return ParseDict(data, proto_type, ignore_unknown_fields=True)
+    return ParseDict(data, proto_type(), ignore_unknown_fields=True)
 
-def jsons_to_protobuf_list(jsons: str, proto_type: Generic) -> T.List[Generic]:
+def json_list_to_protobuf_list(jsons: str, proto_type: Generic) -> T.List[Generic]:
     data = json.loads(jsons, cls=WhatUpyJSONDecoder)
     object_list : T.List[Generic] = []
     for item in data:
-        object_list.append(ParseDict(item, proto_type))
+        item_object = proto_type()
+        object_list.append(ParseDict(item, item_object, ignore_unknown_fields=True))
     return object_list
 
 def protobuf_to_dict(proto_obj) -> dict[str, T.Any]:

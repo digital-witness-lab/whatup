@@ -366,7 +366,7 @@ class BaseBot:
         self.logger.info("Loading archive file: %s", filename)
         filename_path = Path(filename)
         with filename_path.open() as fd:
-            message: wuc.WUMessage = utils.jsons_to_protobuf(fd.read(), wuc.WUMessage())
+            message: wuc.WUMessage = utils.jsons_to_protobuf(fd.read(), wuc.WUMessage)
         chat_id = utils.jid_to_str(message.info.source.chat)
         metadata = {"WUMessage": message, "GroupInfo": None, "CommunityInfo": None, "MediaContent": None}
         if chat_id:
@@ -377,7 +377,7 @@ class BaseBot:
                 try:
                     with group_info_path.open() as fd:
                         group_info: wuc.GroupInfo = utils.jsons_to_protobuf(
-                            fd.read(), wuc.GroupInfo()
+                            fd.read(), wuc.GroupInfo
                         )
                     metadata["GroupInfo"] = group_info
                     group_infos[chat_id] = group_info
@@ -385,24 +385,23 @@ class BaseBot:
                     self.logger.critical(
                         "Could not find group info in path: %s", group_info_path
                     )
-                
-                if community_info_filename := message.provenance.get(
-                    "archivebot__communityInfoPath"
-                ):
-                    community_info_path = filename_path.parent / community_info_filename
-                    try:
-                        with community_info_path.open() as fd:
-                            community_info_list: T.List[wuc.GroupInfo] = utils.jsons_to_protobuf_list(
-                                fd.read(), wuc.GroupInfo()
-                            )
-                        metadata["CommunityInfo"] = community_info_list
-                    except FileNotFoundError:
-                        self.logger.critical(
-                            "Could not find community info in path: %s", community_info_path
-                        )
-
             elif chat_id in group_infos:
                 metadata["GroupInfo"] = group_infos[chat_id]
+                
+            if community_info_filename := message.provenance.get(
+                "archivebot__communityInfoPath"
+            ):
+                community_info_path = filename_path.parent / community_info_filename
+                try:
+                    with community_info_path.open() as fd:
+                        community_info_list: T.List[wuc.GroupInfo] = utils.json_list_to_protobuf_list(
+                            fd.read(), wuc.GroupInfo
+                        )
+                    metadata["CommunityInfo"] = community_info_list
+                except FileNotFoundError:
+                    self.logger.critical(
+                        "Could not find community info in path: %s", community_info_path
+                    )
 
         if media_filename := message.provenance.get("archivebot__mediaPath"):
             media_path = filename_path.parent / media_filename
