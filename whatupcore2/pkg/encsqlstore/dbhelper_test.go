@@ -46,28 +46,32 @@ var (
 func CompareResults(t *testing.T, expected, found []any) {
 	for i, item := range expected {
 		t.Logf("Comparing results for type %T. Wanted %s. Got %s", item, item, found[i])
-		switch expectedValue := item.(type) {
-		case bool:
-			if expectedValue != found[i] {
-				t.Fatalf("Didn't find expected found for %T: %v != %v", expectedValue, found[i], expectedValue)
-			}
-		case string:
-			if expectedValue != found[i] {
-				t.Fatalf("Didn't find expected found for %T: %s != %s", expectedValue, found[i], expectedValue)
-			}
-		case []byte:
-			if !bytes.Equal(expectedValue, found[i].([]byte)) {
-				t.Fatalf("Didn't find expected found for %T: %s != %s", expectedValue, found[i], expectedValue)
-			}
-		case pq.ByteaArray:
-			foundBytea := found[i].(pq.ByteaArray)
-			if len(foundBytea) != len(expectedValue) {
-				t.Fatalf("Didn't find correct array length for %T: %v != %v", expectedValue, found[i], expectedValue)
-			}
-			for j := 0; j < len(expectedValue); j += 1 {
-				if !bytes.Equal(expectedValue[j], foundBytea[j]) {
-					t.Fatalf("Didn't find expected found for %T: %v != %v", expectedValue, found[i], expectedValue)
-				}
+		CompareResult(t, item, found[i])
+	}
+}
+
+func CompareResult(t *testing.T, item, foundValue any) {
+	switch expectedValue := item.(type) {
+	case bool:
+		if expectedValue != foundValue {
+			t.Fatalf("Didn't find expected found for %T: %v != %v", expectedValue, foundValue, expectedValue)
+		}
+	case string:
+		if expectedValue != foundValue {
+			t.Fatalf("Didn't find expected found for %T: %s != %s", expectedValue, foundValue, expectedValue)
+		}
+	case []byte:
+		if !bytes.Equal(expectedValue, foundValue.([]byte)) {
+			t.Fatalf("Didn't find expected found for %T: %s != %s", expectedValue, foundValue, expectedValue)
+		}
+	case pq.ByteaArray:
+		foundBytea := foundValue.(pq.ByteaArray)
+		if len(foundBytea) != len(expectedValue) {
+			t.Fatalf("Didn't find correct array length for %T: %v != %v", expectedValue, foundValue, expectedValue)
+		}
+		for j := 0; j < len(expectedValue); j += 1 {
+			if !bytes.Equal(expectedValue[j], foundBytea[j]) {
+				t.Fatalf("Didn't find expected found for %T: %v != %v", expectedValue, foundValue, expectedValue)
 			}
 		}
 	}
@@ -141,6 +145,44 @@ func RandString(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
+}
+
+func TestEncryptBytesDeterministic(t *testing.T) {
+	ec, err := NewWithDB(nil, "", nil).WithCredentials("username", "passphrase")
+	if err != nil {
+		t.Fatalf("Could not add credentials to container: %v", err)
+	}
+	plain := []byte("TESTTEST")
+	cipher1, err := ec.Encrypt(plain)
+	if err != nil {
+		t.Fatalf("Could not encrypt: %s", err)
+	}
+	cipher2, err := ec.Encrypt(plain)
+	if err != nil {
+		t.Fatalf("Could not encrypt: %s", err)
+	}
+	if !bytes.Equal(cipher1, cipher2) {
+		t.Fatalf("Enc/Dec didn't yield same byte slice")
+	}
+}
+
+func TestEncryptStringDeterministic(t *testing.T) {
+	ec, err := NewWithDB(nil, "", nil).WithCredentials("username", "passphrase")
+	if err != nil {
+		t.Fatalf("Could not add credentials to container: %v", err)
+	}
+	plain := string("TESTTEST")
+	cipher1, err := ec.EncryptString(plain)
+	if err != nil {
+		t.Fatalf("Could not encrypt: %s", err)
+	}
+	cipher2, err := ec.EncryptString(plain)
+	if err != nil {
+		t.Fatalf("Could not encrypt: %s", err)
+	}
+	if cipher1 != cipher2 {
+		t.Fatalf("Enc/Dec didn't yield same byte slice")
+	}
 }
 
 func TestEncryptBytes(t *testing.T) {
@@ -222,7 +264,7 @@ func TestEncryptDBArguments(t *testing.T) {
 		t.Fatalf("Could not add credentials to container: %v", err)
 	}
 
-	output, err := encryptDBArguments(sec, StubDBMethod, "", TestPlaintext...)
+	output, err := encryptQueryRows(sec, StubDBMethod, "", TestPlaintext...)
 	if err != nil {
 		t.Fatalf("Error running DB encryption: %v", err)
 	}
@@ -236,18 +278,30 @@ func TestDecryptDBArguments(t *testing.T) {
 		t.Fatalf("Could not add credentials to container: %v", err)
 	}
 
-	output := make([]any, len(TestCipher))
-	copy(output, TestCipher)
-	dests := make([]any, len(output))
-	for i := range output {
-		dests[i] = &output[i]
-	}
-
 	stubScannable := &StubScannable{}
-	err = decryptDBScan(sec, stubScannable, dests...)
-	if err != nil {
-		t.Fatalf("Error running DB decryption: %v", err)
+	for i, value := range TestCipher {
+		switch v := value.(type) {
+		// I wish i didn't need this switch that runs the same exact code,
+		// but everything i try doing sends a *interface{} to the decrypt
+		// function and this seemed to work.... *shrug*
+		case []byte:
+			err = decryptDBScan(sec, stubScannable, &v)
+			CompareResult(t, TestPlaintext[i], v)
+		case string:
+			err = decryptDBScan(sec, stubScannable, &v)
+			CompareResult(t, TestPlaintext[i], v)
+		case bool:
+			err = decryptDBScan(sec, stubScannable, &v)
+			CompareResult(t, TestPlaintext[i], v)
+		case int:
+			err = decryptDBScan(sec, stubScannable, &v)
+			CompareResult(t, TestPlaintext[i], v)
+		case pq.ByteaArray:
+			err = decryptDBScan(sec, stubScannable, &v)
+			CompareResult(t, TestPlaintext[i], v)
+		}
+		if err != nil {
+			t.Fatalf("Error running DB decryption: %v", err)
+		}
 	}
-
-	CompareResults(t, TestPlaintext, output)
 }
