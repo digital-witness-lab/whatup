@@ -10,7 +10,8 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
+	"crypto/hmac"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"errors"
@@ -164,20 +165,19 @@ func (ec *EncContainer) Encrypt(plaintext []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// We need a 12-byte nonce for GCM (modifiable if you use cipher.NewGCMWithNonceSize())
-	// A nonce should always be randomly generated for every encryption.
-	nonce := make([]byte, gcm.NonceSize())
-	_, err = rand.Read(nonce)
-	if err != nil {
-		return nil, err
-	}
+	// We need a 12-byte nonce for GCM.
+	// We use the HMAC of the given message in order to have a deterministic
+	// message for proper database operation
+	mac := hmac.New(sha256.New, key)
+	mac.Write(plaintext)
+	nonce := mac.Sum(nil)[:12]
 
 	// ciphertext here is actually nonce+ciphertext
 	// So that when we decrypt, just knowing the nonce size
 	// is enough to separate it from the ciphertext.
 	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
 
-	return ciphertext, nil
+	return append([]byte("enc:"), ciphertext...), nil
 }
 
 func (ec *EncContainer) EncryptString(plaintext string) (string, error) {
@@ -206,6 +206,7 @@ func (ec *EncContainer) decrypt(ciphertext []byte) ([]byte, error) {
 
 	// Since we know the ciphertext is actually nonce+ciphertext
 	// And len(nonce) == NonceSize(). We can separate the two.
+	ciphertext = ciphertext[4:] // remove "enc:" prefix
 	nonceSize := gcm.NonceSize()
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
 
@@ -248,6 +249,7 @@ func (c *EncContainer) scanDevice(row scannable) (*store.Device, error) {
 	var noisePriv, identityPriv, preKeyPriv, preKeySig []byte
 	var account waProto.ADVSignedDeviceIdentity
 
+	fmt.Println("About to decrypt device request")
 	err := decryptDBScan(c, row,
 		&device.ID, &device.RegistrationID, &noisePriv, &identityPriv,
 		&preKeyPriv, &device.SignedPreKey.KeyID, &preKeySig,
@@ -256,7 +258,7 @@ func (c *EncContainer) scanDevice(row scannable) (*store.Device, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan session: %w", err)
 	} else if len(noisePriv) != 32 || len(identityPriv) != 32 || len(preKeyPriv) != 32 || len(preKeySig) != 64 {
-		c.log.Errorf("Scanned device has wrong key lengths")
+		c.log.Errorf("Scanned device has wrong key lengths: %s", noisePriv)
 		return nil, ErrInvalidLength
 	}
 
@@ -289,7 +291,7 @@ func (c *EncContainer) scanDevice(row scannable) (*store.Device, error) {
 //
 // Note that the parameter usually must be an AD-JID.
 func (c *EncContainer) GetDevice(jid types.JID) (*store.Device, error) {
-	sess, err := c.scanDevice(c.db.QueryRow(getDeviceQuery, jid))
+	sess, err := c.scanDevice(encryptQueryRow(c, c.db.QueryRow, getDeviceQuery, jid))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -297,7 +299,7 @@ func (c *EncContainer) GetDevice(jid types.JID) (*store.Device, error) {
 }
 
 func (c *EncContainer) GetDeviceUsername(username string) (*store.Device, error) {
-	sess, err := c.scanDevice(c.db.QueryRow(getDeviceQueryUsername, []byte("plain:"+username)))
+	sess, err := c.scanDevice(encryptQueryRow(c, c.db.QueryRow, getDeviceQueryUsername, []byte("plain:"+username)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -350,7 +352,7 @@ func (c *EncContainer) PutDevice(device *store.Device) error {
 	if err != nil {
 		return ErrNoCredentials
 	}
-	_, err = encryptDBArguments(c, c.db.Exec,
+	_, err = encryptQueryRows(c, c.db.Exec,
 		insertDeviceQuery,
 		device.ID.String(),
 		[]byte("plain:"+username),
@@ -392,6 +394,6 @@ func (c *EncContainer) DeleteDevice(store *store.Device) error {
 	if store.ID == nil {
 		return ErrDeviceIDMustBeSet
 	}
-	_, err := encryptDBArguments(c, c.db.Exec, deleteDeviceQuery, store.ID.String())
+	_, err := encryptQueryRows(c, c.db.Exec, deleteDeviceQuery, store.ID.String())
 	return err
 }

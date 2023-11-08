@@ -80,29 +80,30 @@ const (
 )
 
 func (s *EncSQLStore) PutIdentity(address string, key [32]byte) error {
-	_, err := encryptDBArguments(s, s.db.Exec, putIdentityQuery, s.JID, address, key[:])
+	_, err := encryptQueryRows(s, s.db.Exec, putIdentityQuery, s.JID, address, key[:])
 	return err
 }
 
 func (s *EncSQLStore) DeleteAllIdentities(phone string) error {
-	_, err := encryptDBArguments(s, s.db.Exec, deleteAllIdentitiesQuery, s.JID, phone+":%")
+	_, err := encryptQueryRows(s, s.db.Exec, deleteAllIdentitiesQuery, s.JID, phone+":%")
 	return err
 }
 
 func (s *EncSQLStore) DeleteIdentity(address string) error {
-	_, err := encryptDBArguments(s, s.db.Exec, deleteAllIdentitiesQuery, s.JID, address)
+	_, err := encryptQueryRows(s, s.db.Exec, deleteAllIdentitiesQuery, s.JID, address)
 	return err
 }
 
 func (s *EncSQLStore) IsTrustedIdentity(address string, key [32]byte) (bool, error) {
 	var existingIdentity []byte
-	err := decryptDBScan(s, s.db.QueryRow(getIdentityQuery, s.JID, address), &existingIdentity)
+	err := decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getIdentityQuery, s.JID, address), &existingIdentity)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Trust if not known, it'll be saved automatically later
 		return true, nil
 	} else if err != nil {
 		return false, err
 	} else if len(existingIdentity) != 32 {
+		s.log.Errorf("existingIdentify is the wrong length: %d != 32: %s", len(existingIdentity), existingIdentity)
 		return false, ErrInvalidLength
 	}
 	return *(*[32]byte)(existingIdentity) == key, nil
@@ -120,7 +121,7 @@ const (
 )
 
 func (s *EncSQLStore) GetSession(address string) (session []byte, err error) {
-	err = decryptDBScan(s, s.db.QueryRow(getSessionQuery, s.JID, address), &session)
+	err = decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getSessionQuery, s.JID, address), &session)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil
 	}
@@ -128,7 +129,7 @@ func (s *EncSQLStore) GetSession(address string) (session []byte, err error) {
 }
 
 func (s *EncSQLStore) HasSession(address string) (has bool, err error) {
-	err = decryptDBScan(s, s.db.QueryRow(hasSessionQuery, s.JID, address), &has)
+	err = decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, hasSessionQuery, s.JID, address), &has)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil
 	}
@@ -136,17 +137,17 @@ func (s *EncSQLStore) HasSession(address string) (has bool, err error) {
 }
 
 func (s *EncSQLStore) PutSession(address string, session []byte) error {
-	_, err := encryptDBArguments(s, s.db.Exec, putSessionQuery, s.JID, address, session)
+	_, err := encryptQueryRows(s, s.db.Exec, putSessionQuery, s.JID, address, session)
 	return err
 }
 
 func (s *EncSQLStore) DeleteAllSessions(phone string) error {
-	_, err := encryptDBArguments(s, s.db.Exec, deleteAllSessionsQuery, s.JID, phone+":%")
+	_, err := encryptQueryRows(s, s.db.Exec, deleteAllSessionsQuery, s.JID, phone+":%")
 	return err
 }
 
 func (s *EncSQLStore) DeleteSession(address string) error {
-	_, err := encryptDBArguments(s, s.db.Exec, deleteSessionQuery, s.JID, address)
+	_, err := encryptQueryRows(s, s.db.Exec, deleteSessionQuery, s.JID, address)
 	return err
 }
 
@@ -162,13 +163,13 @@ const (
 
 func (s *EncSQLStore) genOnePreKey(id uint32, markUploaded bool) (*keys.PreKey, error) {
 	key := keys.NewPreKey(id)
-	_, err := encryptDBArguments(s, s.db.Exec, insertPreKeyQuery, s.JID, key.KeyID, key.Priv[:], markUploaded)
+	_, err := encryptQueryRows(s, s.db.Exec, insertPreKeyQuery, s.JID, key.KeyID, key.Priv[:], markUploaded)
 	return key, err
 }
 
 func (s *EncSQLStore) getNextPreKeyID() (uint32, error) {
 	var lastKeyID sql.NullInt32
-	err := decryptDBScan(s, s.db.QueryRow(getLastPreKeyIDQuery, s.JID), &lastKeyID)
+	err := decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getLastPreKeyIDQuery, s.JID), &lastKeyID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to query next prekey ID: %w", err)
 	}
@@ -189,7 +190,7 @@ func (s *EncSQLStore) GetOrGenPreKeys(count uint32) ([]*keys.PreKey, error) {
 	s.preKeyLock.Lock()
 	defer s.preKeyLock.Unlock()
 
-	res, err := s.db.Query(getUnuploadedPreKeysQuery, s.JID, count)
+	res, err := encryptQueryRows(s, s.db.Query, getUnuploadedPreKeysQuery, s.JID, count)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query existing prekeys: %w", err)
 	}
@@ -243,21 +244,21 @@ func (s *EncSQLStore) scanPreKey(row scannable) (*keys.PreKey, error) {
 }
 
 func (s *EncSQLStore) GetPreKey(id uint32) (*keys.PreKey, error) {
-	return s.scanPreKey(s.db.QueryRow(getPreKeyQuery, s.JID, id))
+	return s.scanPreKey(encryptQueryRow(s, s.db.QueryRow, getPreKeyQuery, s.JID, id))
 }
 
 func (s *EncSQLStore) RemovePreKey(id uint32) error {
-	_, err := encryptDBArguments(s, s.db.Exec, deletePreKeyQuery, s.JID, id)
+	_, err := encryptQueryRows(s, s.db.Exec, deletePreKeyQuery, s.JID, id)
 	return err
 }
 
 func (s *EncSQLStore) MarkPreKeysAsUploaded(upToID uint32) error {
-	_, err := encryptDBArguments(s, s.db.Exec, markPreKeysAsUploadedQuery, s.JID, upToID)
+	_, err := encryptQueryRows(s, s.db.Exec, markPreKeysAsUploadedQuery, s.JID, upToID)
 	return err
 }
 
 func (s *EncSQLStore) UploadedPreKeyCount() (count int, err error) {
-	err = decryptDBScan(s, s.db.QueryRow(getUploadedPreKeyCountQuery, s.JID), &count)
+	err = decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getUploadedPreKeyCountQuery, s.JID), &count)
 	return
 }
 
@@ -270,12 +271,12 @@ const (
 )
 
 func (s *EncSQLStore) PutSenderKey(group, user string, session []byte) error {
-	_, err := encryptDBArguments(s, s.db.Exec, putSenderKeyQuery, s.JID, group, user, session)
+	_, err := encryptQueryRows(s, s.db.Exec, putSenderKeyQuery, s.JID, group, user, session)
 	return err
 }
 
 func (s *EncSQLStore) GetSenderKey(group, user string) (key []byte, err error) {
-	err = decryptDBScan(s, s.db.QueryRow(getSenderKeyQuery, s.JID, group, user), &key)
+	err = decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getSenderKeyQuery, s.JID, group, user), &key)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil
 	}
@@ -294,13 +295,13 @@ const (
 )
 
 func (s *EncSQLStore) PutAppStateSyncKey(id []byte, key store.AppStateSyncKey) error {
-	_, err := encryptDBArguments(s, s.db.Exec, putAppStateSyncKeyQuery, s.JID, id, key.Data, key.Timestamp, key.Fingerprint)
+	_, err := encryptQueryRows(s, s.db.Exec, putAppStateSyncKeyQuery, s.JID, id, key.Data, key.Timestamp, key.Fingerprint)
 	return err
 }
 
 func (s *EncSQLStore) GetAppStateSyncKey(id []byte) (*store.AppStateSyncKey, error) {
 	var key store.AppStateSyncKey
-	err := decryptDBScan(s, s.db.QueryRow(getAppStateSyncKeyQuery, s.JID, id), &key.Data, &key.Timestamp, &key.Fingerprint)
+	err := decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getAppStateSyncKeyQuery, s.JID, id), &key.Data, &key.Timestamp, &key.Fingerprint)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -309,7 +310,7 @@ func (s *EncSQLStore) GetAppStateSyncKey(id []byte) (*store.AppStateSyncKey, err
 
 func (s *EncSQLStore) GetLatestAppStateSyncKeyID() ([]byte, error) {
 	var keyID []byte
-	err := decryptDBScan(s, s.db.QueryRow(getLatestAppStateSyncKeyIDQuery, s.JID), &keyID)
+	err := decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getLatestAppStateSyncKeyIDQuery, s.JID), &keyID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -330,13 +331,13 @@ const (
 )
 
 func (s *EncSQLStore) PutAppStateVersion(name string, version uint64, hash [128]byte) error {
-	_, err := encryptDBArguments(s, s.db.Exec, putAppStateVersionQuery, s.JID, name, version, hash[:])
+	_, err := encryptQueryRows(s, s.db.Exec, putAppStateVersionQuery, s.JID, name, version, hash[:])
 	return err
 }
 
 func (s *EncSQLStore) GetAppStateVersion(name string) (version uint64, hash [128]byte, err error) {
 	var uncheckedHash []byte
-	err = decryptDBScan(s, s.db.QueryRow(getAppStateVersionQuery, s.JID, name), &version, &uncheckedHash)
+	err = decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getAppStateVersionQuery, s.JID, name), &version, &uncheckedHash)
 	if errors.Is(err, sql.ErrNoRows) {
 		// version will be 0 and hash will be an empty array, which is the correct initial state
 		err = nil
@@ -344,6 +345,7 @@ func (s *EncSQLStore) GetAppStateVersion(name string) (version uint64, hash [128
 		// There's an error, just return it
 	} else if len(uncheckedHash) != 128 {
 		// This shouldn't happen
+		s.log.Errorf("uncheckedHash is an invalid length: %d", len(uncheckedHash))
 		err = ErrInvalidLength
 	} else {
 		// No errors, convert hash slice to array
@@ -353,7 +355,7 @@ func (s *EncSQLStore) GetAppStateVersion(name string) (version uint64, hash [128
 }
 
 func (s *EncSQLStore) DeleteAppStateVersion(name string) error {
-	_, err := encryptDBArguments(s, s.db.Exec, deleteAppStateVersionQuery, s.JID, name)
+	_, err := encryptQueryRows(s, s.db.Exec, deleteAppStateVersionQuery, s.JID, name)
 	return err
 }
 
@@ -373,7 +375,7 @@ func (s *EncSQLStore) putAppStateMutationMACs(tx execable, name string, version 
 		values[baseIndex+1] = mutation.ValueMAC
 		queryParts[i] = fmt.Sprintf(placeholderSyntax, baseIndex+1, baseIndex+2)
 	}
-	_, err := encryptDBArguments(s, tx.Exec, putAppStateMutationMACsQuery+strings.Join(queryParts, ","), values...)
+	_, err := encryptQueryRows(s, tx.Exec, putAppStateMutationMACsQuery+strings.Join(queryParts, ","), values...)
 	return err
 }
 
@@ -414,7 +416,7 @@ func (s *EncSQLStore) DeleteAppStateMutationMACs(name string, indexMACs [][]byte
 		return
 	}
 	if s.dialect == "postgres" && PostgresArrayWrapper != nil {
-		_, err = encryptDBArguments(s, s.db.Exec, deleteAppStateMutationMACsQueryPostgres, s.JID, name, PostgresArrayWrapper(indexMACs))
+		_, err = encryptQueryRows(s, s.db.Exec, deleteAppStateMutationMACsQueryPostgres, s.JID, name, PostgresArrayWrapper(indexMACs))
 	} else {
 		args := make([]interface{}, 2+len(indexMACs))
 		args[0] = s.JID
@@ -424,13 +426,13 @@ func (s *EncSQLStore) DeleteAppStateMutationMACs(name string, indexMACs [][]byte
 			args[2+i] = item
 			queryParts[i] = fmt.Sprintf("$%d", i+3)
 		}
-		_, err = encryptDBArguments(s, s.db.Exec, deleteAppStateMutationMACsQueryGeneric+"("+strings.Join(queryParts, ",")+")", args...)
+		_, err = encryptQueryRows(s, s.db.Exec, deleteAppStateMutationMACsQueryGeneric+"("+strings.Join(queryParts, ",")+")", args...)
 	}
 	return
 }
 
 func (s *EncSQLStore) GetAppStateMutationMAC(name string, indexMAC []byte) (valueMAC []byte, err error) {
-	err = decryptDBScan(s, s.db.QueryRow(getAppStateMutationMACQuery, s.JID, name, indexMAC), &valueMAC)
+	err = decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getAppStateMutationMACQuery, s.JID, name, indexMAC), &valueMAC)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil
 	}
@@ -472,7 +474,7 @@ func (s *EncSQLStore) PutPushName(user types.JID, pushName string) (bool, string
 		return false, "", err
 	}
 	if cached.PushName != pushName {
-		_, err = encryptDBArguments(s, s.db.Exec, putPushNameQuery, s.JID, user, pushName)
+		_, err = encryptQueryRows(s, s.db.Exec, putPushNameQuery, s.JID, user, pushName)
 		if err != nil {
 			return false, "", err
 		}
@@ -493,7 +495,7 @@ func (s *EncSQLStore) PutBusinessName(user types.JID, businessName string) (bool
 		return false, "", err
 	}
 	if cached.BusinessName != businessName {
-		_, err = encryptDBArguments(s, s.db.Exec, putBusinessNameQuery, s.JID, user, businessName)
+		_, err = encryptQueryRows(s, s.db.Exec, putBusinessNameQuery, s.JID, user, businessName)
 		if err != nil {
 			return false, "", err
 		}
@@ -514,7 +516,7 @@ func (s *EncSQLStore) PutContactName(user types.JID, firstName, fullName string)
 		return err
 	}
 	if cached.FirstName != firstName || cached.FullName != fullName {
-		_, err = encryptDBArguments(s, s.db.Exec, putContactNameQuery, s.JID, user, firstName, fullName)
+		_, err = encryptQueryRows(s, s.db.Exec, putContactNameQuery, s.JID, user, firstName, fullName)
 		if err != nil {
 			return err
 		}
@@ -554,7 +556,7 @@ func (s *EncSQLStore) putContactNamesBatch(tx execable, contacts []store.Contact
 		queryParts = append(queryParts, fmt.Sprintf(placeholderSyntax, baseIndex+1, baseIndex+2, baseIndex+3))
 		i++
 	}
-	_, err := encryptDBArguments(s, tx.Exec, fmt.Sprintf(putManyContactNamesQuery, strings.Join(queryParts, ",")), values...)
+	_, err := encryptQueryRows(s, tx.Exec, fmt.Sprintf(putManyContactNamesQuery, strings.Join(queryParts, ",")), values...)
 	return err
 }
 
@@ -603,7 +605,7 @@ func (s *EncSQLStore) getContact(user types.JID) (*types.ContactInfo, error) {
 	}
 
 	var first, full, push, business sql.NullString
-	err := decryptDBScan(s, s.db.QueryRow(getContactQuery, s.JID, user), &first, &full, &push, &business)
+	err := decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getContactQuery, s.JID, user), &first, &full, &push, &business)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
@@ -631,7 +633,7 @@ func (s *EncSQLStore) GetContact(user types.JID) (types.ContactInfo, error) {
 func (s *EncSQLStore) GetAllContacts() (map[types.JID]types.ContactInfo, error) {
 	s.contactCacheLock.Lock()
 	defer s.contactCacheLock.Unlock()
-	rows, err := s.db.Query(getAllContactsQuery, s.JID)
+	rows, err := encryptQueryRows(s, s.db.Query, getAllContactsQuery, s.JID)
 	if err != nil {
 		return nil, err
 	}
@@ -671,23 +673,23 @@ func (s *EncSQLStore) PutMutedUntil(chat types.JID, mutedUntil time.Time) error 
 	if !mutedUntil.IsZero() {
 		val = mutedUntil.Unix()
 	}
-	_, err := encryptDBArguments(s, s.db.Exec, fmt.Sprintf(putChatSettingQuery, "muted_until"), s.JID, chat, val)
+	_, err := encryptQueryRows(s, s.db.Exec, fmt.Sprintf(putChatSettingQuery, "muted_until"), s.JID, chat, val)
 	return err
 }
 
 func (s *EncSQLStore) PutPinned(chat types.JID, pinned bool) error {
-	_, err := encryptDBArguments(s, s.db.Exec, fmt.Sprintf(putChatSettingQuery, "pinned"), s.JID, chat, pinned)
+	_, err := encryptQueryRows(s, s.db.Exec, fmt.Sprintf(putChatSettingQuery, "pinned"), s.JID, chat, pinned)
 	return err
 }
 
 func (s *EncSQLStore) PutArchived(chat types.JID, archived bool) error {
-	_, err := encryptDBArguments(s, s.db.Exec, fmt.Sprintf(putChatSettingQuery, "archived"), s.JID, chat, archived)
+	_, err := encryptQueryRows(s, s.db.Exec, fmt.Sprintf(putChatSettingQuery, "archived"), s.JID, chat, archived)
 	return err
 }
 
 func (s *EncSQLStore) GetChatSettings(chat types.JID) (settings types.LocalChatSettings, err error) {
 	var mutedUntil int64
-	err = decryptDBScan(s, s.db.QueryRow(getChatSettingsQuery, s.JID, chat), &mutedUntil, &settings.Pinned, &settings.Archived)
+	err = decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getChatSettingsQuery, s.JID, chat), &mutedUntil, &settings.Pinned, &settings.Archived)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil
 	} else if err != nil {
@@ -718,7 +720,7 @@ func (s *EncSQLStore) PutMessageSecrets(inserts []store.MessageSecretInsert) (er
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	for _, insert := range inserts {
-		_, err = encryptDBArguments(s, tx.Exec, putMsgSecret, s.JID, insert.Chat.ToNonAD(), insert.Sender.ToNonAD(), insert.ID, insert.Secret)
+		_, err = encryptQueryRows(s, tx.Exec, putMsgSecret, s.JID, insert.Chat.ToNonAD(), insert.Sender.ToNonAD(), insert.ID, insert.Secret)
 	}
 	err = tx.Commit()
 	if err != nil {
@@ -728,12 +730,12 @@ func (s *EncSQLStore) PutMessageSecrets(inserts []store.MessageSecretInsert) (er
 }
 
 func (s *EncSQLStore) PutMessageSecret(chat, sender types.JID, id types.MessageID, secret []byte) (err error) {
-	_, err = encryptDBArguments(s, s.db.Exec, putMsgSecret, s.JID, chat.ToNonAD(), sender.ToNonAD(), id, secret)
+	_, err = encryptQueryRows(s, s.db.Exec, putMsgSecret, s.JID, chat.ToNonAD(), sender.ToNonAD(), id, secret)
 	return
 }
 
 func (s *EncSQLStore) GetMessageSecret(chat, sender types.JID, id types.MessageID) (secret []byte, err error) {
-	err = decryptDBScan(s, s.db.QueryRow(getMsgSecret, s.JID, chat.ToNonAD(), sender.ToNonAD(), id), &secret)
+	err = decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getMsgSecret, s.JID, chat.ToNonAD(), sender.ToNonAD(), id), &secret)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil
 	}
@@ -760,7 +762,7 @@ func (s *EncSQLStore) PutPrivacyTokens(tokens ...store.PrivacyToken) error {
 		placeholders[i] = fmt.Sprintf("($1, $%d, $%d, $%d)", i*3+2, i*3+3, i*3+4)
 	}
 	query := strings.ReplaceAll(putPrivacyTokens, "($1, $2, $3, $4)", strings.Join(placeholders, ","))
-	_, err := encryptDBArguments(s, s.db.Exec, query, args...)
+	_, err := encryptQueryRows(s, s.db.Exec, query, args...)
 	return err
 }
 
@@ -768,7 +770,7 @@ func (s *EncSQLStore) GetPrivacyToken(user types.JID) (*store.PrivacyToken, erro
 	var token store.PrivacyToken
 	token.User = user.ToNonAD()
 	var ts int64
-	err := decryptDBScan(s, s.db.QueryRow(getPrivacyToken, s.JID, token.User), &token.Token, &ts)
+	err := decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getPrivacyToken, s.JID, token.User), &token.Token, &ts)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	} else if err != nil {
