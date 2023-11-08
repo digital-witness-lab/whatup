@@ -389,7 +389,7 @@ class DatabaseBot(BaseBot):
 
         group_info_flat["id"] = chat_jid
         group_info_flat["last_update"] = now
-        group_info_flat["isCommunityDefaultGroup"] = group_info_flat.get("isAnnounce")
+        #group_info_flat["isCommunityDefaultGroup"] = group_info_flat.get("isAnnounce")
         group_participants = [flatten_proto_message(p) for p in group_info.participants]
 
         if group_info_prev:

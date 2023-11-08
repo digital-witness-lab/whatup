@@ -321,6 +321,7 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 		return nil, status.Errorf(codes.Unknown, "%v", err)
 	}
 	groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+	groupInfoProto.IsCommunityDefaultGroup = groupInfo.IsAnnounce
 	return AnonymizeInterface(session.Client.anonLookup, groupInfoProto), nil
 }
 
@@ -350,7 +351,7 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
 	}
 	communityInfoProto := GroupInfoToProto(communityInfo, session.Client.Store)
 	communityInfoProto.IsCommunity = true
-	if err := server.Send(communityInfoProto); err != nil {
+	if err := server.Send(AnonymizeInterface(session.Client.anonLookup, communityInfoProto)); err != nil {
 		s.log.Errorf("Could not send message to client: %v", err)
 		return nil
 	}
@@ -369,7 +370,7 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
 		groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
 		groupInfoProto.IsCommunityDefaultGroup = subgroup.IsDefaultSubGroup
 		groupInfoProto.IsPartialInfo = isPartial
-		if err := server.Send(groupInfoProto); err != nil {
+		if err := server.Send(AnonymizeInterface(session.Client.anonLookup, groupInfoProto)); err != nil {
 			s.log.Errorf("Could not send message to client: %v", err)
 			return nil
 		}
