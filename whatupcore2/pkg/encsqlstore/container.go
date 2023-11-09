@@ -237,7 +237,6 @@ SELECT jid, registration_id, noise_key, identity_key,
        platform, business_name, push_name
 FROM whatsmeow_enc_device
 `
-
 const getDeviceQuery = getAllDevicesQuery + " WHERE jid=$1"
 const getDeviceQueryUsername = getAllDevicesQuery + " WHERE username=$1"
 
@@ -316,7 +315,8 @@ const (
 		ON CONFLICT (jid) DO UPDATE
 		    SET platform=excluded.platform, business_name=excluded.business_name, push_name=excluded.push_name
 	`
-	deleteDeviceQuery = `DELETE FROM whatsmeow_enc_device WHERE jid=$1`
+	deleteDeviceQuery         = `DELETE FROM whatsmeow_enc_device WHERE jid=$1`
+	deleteDeviceQueryUsername = `DELETE FROM whatsmeow_enc_device WHERE username=$1`
 )
 
 // NewDevice creates a new device in this database.
@@ -395,5 +395,10 @@ func (c *EncContainer) DeleteDevice(store *store.Device) error {
 		return ErrDeviceIDMustBeSet
 	}
 	_, err := encryptQueryRows(c, c.db.Exec, deleteDeviceQuery, store.ID.String())
+	return err
+}
+
+func (c *EncContainer) DeleteUsername(username string) error {
+	_, err := encryptQueryRows(c, c.db.Exec, deleteDeviceQueryUsername, username)
 	return err
 }
