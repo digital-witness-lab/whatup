@@ -1,20 +1,10 @@
 package whatupcore2
 
 import (
-	"fmt"
-	"os"
 	"reflect"
 
 	"github.com/nyaruka/phonenumbers"
 )
-
-func MustGetEnv(key string) string {
-	value, ok := os.LookupEnv(key)
-	if !ok {
-		panic(fmt.Errorf("Could not find envvar %s", key))
-	}
-	return value
-}
 
 func UserToCountry(user string) string {
 	num, err := phonenumbers.Parse("+"+user, "IN")
