@@ -90,6 +90,9 @@ type ACLStore struct {
 }
 
 func NewACLStore(db *sql.DB, username string, log waLog.Logger) *ACLStore {
+	if log == nil {
+		log = waLog.Noop
+	}
 	log.Debugf("Starting now ACLStore")
 	acls := &ACLStore{db: db, username: username, log: log}
 	acls.Upgrade()
@@ -268,4 +271,9 @@ func (acls *ACLStore) GetAll() ([]*ACLEntry, error) {
 	}
 	return aclEntries, nil
 
+}
+
+func (acls *ACLStore) Delete() error {
+	_, err := acls.db.Exec("DELETE FROM aclstore_permissions WHERE username = $1", acls.username)
+	return err
 }

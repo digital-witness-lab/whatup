@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -51,22 +50,7 @@ func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(cont
 	}
 }
 
-func getDbUriFromEnv() string {
-	var (
-		host         = "db"
-		username     = MustGetEnv("POSTGRES_DATABASE")
-		passwordFile = MustGetEnv("POSTGRES_PASSWORD_FILE")
-		database     = MustGetEnv("POSTGRES_DATABASE")
-	)
-	passwordBytes, err := os.ReadFile(passwordFile)
-	if err != nil {
-		panic(err)
-	}
-	passwordStr := strings.TrimSpace(string(passwordBytes))
-	return fmt.Sprintf("postgresql://%s:%s@%s/%s?sslmode=disable", username, passwordStr, host, database)
-}
-
-func StartRPC(port uint32, logLevel string) error {
+func StartRPC(port uint32, dbUri string, logLevel string) error {
 	Log = waLog.Stdout("RPC", logLevel, true)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
@@ -75,7 +59,6 @@ func StartRPC(port uint32, logLevel string) error {
 		return err
 	}
 
-	dbUri := getDbUriFromEnv()
 	sessionManager := NewSessionManager(JWT_SECRET, dbUri, Log.Sub("SessionManager"))
 	sessionManager.Start()
 	defer sessionManager.Close()

@@ -105,15 +105,20 @@ func New(dialect, address string, log waLog.Logger) (*EncContainer, error) {
 //	container := sqlstore.NewWithDB(...)
 //	err := container.Upgrade()
 func NewWithDB(db *sql.DB, dialect string, log waLog.Logger) *EncContainer {
-	if log == nil {
-		log = waLog.Noop
-	}
-	return &EncContainer{
+	ec := &EncContainer{
 		db:          db,
 		dialect:     dialect,
 		log:         log,
 		userContext: context.Background(),
 	}
+	ec.SetLogger(log)
+	return ec
+}
+
+func DeleteUsername(db *sql.DB, username string) error {
+	// no encryption needed here
+	_, err := db.Exec(deleteDeviceQueryUsername, username)
+	return err
 }
 
 func (ec *EncContainer) WithCredentials(username, passphrase string) (*EncContainer, error) {
@@ -127,6 +132,13 @@ func (ec *EncContainer) WithCredentials(username, passphrase string) (*EncContai
 	c = context.WithValue(c, "key", key)
 	newEc.userContext = c
 	return &newEc, nil
+}
+
+func (ec *EncContainer) SetLogger(log waLog.Logger) {
+	if log == nil {
+		log = waLog.Noop
+	}
+	ec.log = log
 }
 
 func (ec *EncContainer) HasCredentials() bool {
@@ -395,10 +407,5 @@ func (c *EncContainer) DeleteDevice(store *store.Device) error {
 		return ErrDeviceIDMustBeSet
 	}
 	_, err := encryptQueryRows(c, c.db.Exec, deleteDeviceQuery, store.ID.String())
-	return err
-}
-
-func (c *EncContainer) DeleteUsername(username string) error {
-	_, err := encryptQueryRows(c, c.db.Exec, deleteDeviceQueryUsername, username)
 	return err
 }

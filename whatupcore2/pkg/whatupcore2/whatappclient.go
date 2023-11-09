@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -36,6 +35,8 @@ var (
 	clientCreationLock     = NewMutexMap()
 	appNameSuffix          = os.Getenv("APP_NAME_SUFFIX")
 )
+var _DeviceContainer *encsqlstore.EncContainer
+var _DB *sql.DB
 
 type RegistrationState struct {
 	QRCodes   chan string
@@ -43,6 +44,27 @@ type RegistrationState struct {
 	Completed bool
 	Success   bool
 	*sync.WaitGroup
+}
+
+func getDeviceContainer(dbUri string, dbLog waLog.Logger) (*encsqlstore.EncContainer, *sql.DB, error) {
+	if _DeviceContainer != nil {
+		return _DeviceContainer, _DB, nil
+	}
+	dbLog.Infof("Initializing DB Connection and global Device Store")
+	encsqlstore.PostgresArrayWrapper = pq.Array
+	var err error
+	_DB, err = sql.Open("postgres", dbUri)
+	if err != nil {
+		dbLog.Errorf("Could not open database: %w", err)
+		return nil, nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	err = _DB.Ping()
+	if err != nil {
+		dbLog.Errorf("Could not ping database: %w", err)
+		return nil, nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	_DeviceContainer = encsqlstore.NewWithDB(_DB, "postgres", dbLog)
+	return _DeviceContainer, _DB, nil
 }
 
 func NewRegistrationState() *RegistrationState {
@@ -68,31 +90,6 @@ func hashStringHex(unhashed string) string {
 	h.Write([]byte(unhashed))
 	hash := hex.EncodeToString(h.Sum(nil))
 	return hash
-}
-
-func CreateDBFilePath(username string, n_subdirs int) (string, error) {
-	if n_subdirs < 1 {
-		return "", fmt.Errorf("n_subdirs must be >= 1: %d", n_subdirs)
-	}
-	username_safe := hashStringHex(username)
-	path_username := filepath.Join(strings.Split(username_safe[0:n_subdirs], "")...)
-	path := filepath.Join(".", DB_ROOT, path_username)
-	err := os.MkdirAll(path, 0700)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(path, fmt.Sprintf("%s.db", username_safe)), nil
-}
-
-func ClearFileAndParents(path string) error {
-	for path != DB_ROOT && path != "." {
-		err := os.Remove(path)
-		if err != nil {
-			return err
-		}
-		path = filepath.Dir(path)
-	}
-	return nil
 }
 
 type WhatsAppClient struct {
@@ -122,29 +119,19 @@ func NewWhatsAppClient(username string, passphrase string, dbUri string, log waL
 	store.SetOSInfo(appName, WhatUpCoreVersionInts)
 	store.DeviceProps.RequireFullSync = proto.Bool(true)
 	dbLog := log.Sub("DB")
-	passphrase_safe := hashStringHex(passphrase)
-	if passphrase_safe == "" {
-		// DELETE
-	}
-
-	encsqlstore.PostgresArrayWrapper = pq.Array
-	db, err := sql.Open("postgres", dbUri)
-	if err != nil {
-		dbLog.Errorf("Could not open database: %w", err)
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	err = db.Ping()
-	if err != nil {
-		dbLog.Errorf("Could not ping database: %w", err)
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
 
 	// TODO the encsqlstore NewWithDB should be global and this fxn should just do a "WithCredentials" to get the user version
-	container, err := encsqlstore.NewWithDB(db, "postgres", dbLog).WithCredentials(username, passphrase)
+	deviceContainer, db, err := getDeviceContainer(dbUri, dbLog)
+	if err != nil {
+		dbLog.Errorf("Could not create connection to DB and device container: %w", err)
+		return nil, err
+	}
+	container, err := deviceContainer.WithCredentials(username, passphrase)
 	if err != nil {
 		dbLog.Errorf("Could not create encrypted SQL store: %w", err)
 		return nil, fmt.Errorf("Could not create encrypted SQL store: %w", err)
 	}
+	container.SetLogger(dbLog)
 
 	err = container.Upgrade()
 	if err != nil {
@@ -192,7 +179,6 @@ func NewWhatsAppClient(username string, passphrase string, dbUri string, log waL
 func (wac *WhatsAppClient) Close() {
 	wac.Log.Infof("Closing WhatsApp Client")
 	wac.Disconnect()
-	wac.dbConn.Close()
 }
 
 func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
@@ -207,10 +193,10 @@ func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
 	}
 }
 
-func (wac *WhatsAppClient) removeUserDB() error {
-	// TODO: figure out deleteuser
-	// wac.Store.DeleteSomething(...?)
-	return nil
+func (wac *WhatsAppClient) cleanupUserDB() error {
+	err_container := encsqlstore.DeleteUsername(wac.dbConn, wac.username)
+	err_acl := wac.aclStore.Delete()
+	return errors.Join(err_acl, err_container)
 }
 
 func (wac *WhatsAppClient) IsLoggedIn() bool {
@@ -258,7 +244,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions 
 				state.Close()
 				if !wac.IsLoggedIn() && isNewDB {
 					wac.Log.Infof("No login detected. Deleting user info")
-					wac.removeUserDB()
+					wac.cleanupUserDB()
 				}
 				return
 			}
