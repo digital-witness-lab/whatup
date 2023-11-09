@@ -112,7 +112,7 @@ func (sm *SessionManager) AddRegistration(ctx context.Context, username string, 
 	}
 
 	session, state, err := NewSessionRegister(ctx, username, passphrase, registerOptions, sm.secretKey, sm.dbUri, sm.log.Sub(username))
-	if err != nil {
+	if err != nil || state == nil {
 		return nil, nil, err
 	}
 	if err := sm.addSession(session); err != nil {

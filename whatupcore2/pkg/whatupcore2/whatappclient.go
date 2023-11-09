@@ -235,7 +235,11 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions 
 	isNewDB := wac.Store.ID == nil
 
 	defaultPermission := registerOptions.DefaultGroupPermission
-	wac.aclStore.SetDefault(&defaultPermission)
+	err := wac.aclStore.SetDefault(&defaultPermission)
+	if err != nil {
+		wac.Log.Errorf("Could not set default permission: %w", err)
+		return nil
+	}
 
 	go func(state *RegistrationState) {
 		for {

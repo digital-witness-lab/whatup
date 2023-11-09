@@ -161,7 +161,7 @@ func upgradeV1(tx *sql.Tx, acls *ACLStore) error {
 	if err != nil {
 		return err
 	}
-    // This is the primary-key for the table:
+	// This is the primary-key for the table:
 	_, err = tx.Exec(`CREATE UNIQUE INDEX acl_userjid ON aclstore_permissions ( username, jid )`)
 	if err != nil {
 		return err
@@ -199,13 +199,18 @@ func (acls *ACLStore) GetDefault() (*ACLEntry, error) {
 }
 
 func (acls *ACLStore) setByString(jidStr string, permission *pb.GroupPermission) error {
-	_, err := acls.db.Exec(`REPLACE INTO
-        aclstore_permissions (jid, username, permission, updatedAt)
-        VALUES($1, $2, $3, $4)`,
-		jidStr,
+	_, err := acls.db.Exec(`
+        INSERT INTO aclstore_permissions (username, jid, permission, updatedAt)
+        VALUES($1, $2, $3, $4)
+        ON CONFLICT (username, jid) DO UPDATE
+        SET
+            permission = EXCLUDED.permission,
+            updatedAt = EXCLUDED.updatedAt
+        `,
 		acls.username,
+		jidStr,
 		permission.Number(),
-		time.Now().Unix(),
+		time.Now(),
 	)
 	return err
 }
