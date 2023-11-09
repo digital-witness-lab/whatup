@@ -82,15 +82,16 @@ func (aclEntry *ACLEntry) Proto() (*pb.GroupACL, error) {
 }
 
 type ACLStore struct {
-	db  *sql.DB
-	log waLog.Logger
+	db       *sql.DB
+	log      waLog.Logger
+	username string
 
 	defaultACLEntry *ACLEntry
 }
 
-func NewACLStore(db *sql.DB, log waLog.Logger) *ACLStore {
+func NewACLStore(db *sql.DB, username string, log waLog.Logger) *ACLStore {
 	log.Debugf("Starting now ACLStore")
-	acls := &ACLStore{db: db, log: log}
+	acls := &ACLStore{db: db, username: username, log: log}
 	acls.Upgrade()
 	return acls
 }
@@ -152,10 +153,20 @@ func (acls *ACLStore) Upgrade() error {
 
 func upgradeV1(tx *sql.Tx, acls *ACLStore) error {
 	_, err := tx.Exec(`CREATE TABLE aclstore_permissions (
-		JID TEXT PRIMARY KEY,
+		JID bytea NOT NULL,
+        username TEXT NOT NULL,
         permission INT NOT NULL,
         updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`)
+	if err != nil {
+		return err
+	}
+    // This is the primary-key for the table:
+	_, err = tx.Exec(`CREATE UNIQUE INDEX acl_userjid ON aclstore_permissions ( username, jid )`)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`CREATE INDEX acl_username ON aclstore_permissions ( username )`)
 	if err != nil {
 		return err
 	}
@@ -189,9 +200,10 @@ func (acls *ACLStore) GetDefault() (*ACLEntry, error) {
 
 func (acls *ACLStore) setByString(jidStr string, permission *pb.GroupPermission) error {
 	_, err := acls.db.Exec(`REPLACE INTO
-        aclstore_permissions (jid, permission, updatedAt)
-        VALUES($1, $2, $3)`,
+        aclstore_permissions (jid, username, permission, updatedAt)
+        VALUES($1, $2, $3, $4)`,
 		jidStr,
+		acls.username,
 		permission.Number(),
 		time.Now().Unix(),
 	)
@@ -210,8 +222,8 @@ func (acls *ACLStore) GetByJID(jid *types.JID) (*ACLEntry, error) {
         SELECT
             JID, permission, updatedAt
         FROM aclstore_permissions
-        WHERE jid = $1`,
-		jidStr,
+        WHERE jid = $1 AND username = $2`,
+		jidStr, acls.username,
 	)
 	if row.Err() != nil {
 		return nil, row.Err()
@@ -235,8 +247,8 @@ func (acls *ACLStore) GetAll() ([]*ACLEntry, error) {
         SELECT
             JID, permission, updatedAt
         FROM aclstore_permissions
-        WHERE jid != $1
-    `, defaultJID)
+        WHERE jid != $1 AND username = $2
+    `, defaultJID, acls.username)
 	if err != nil {
 		return nil, err
 	}

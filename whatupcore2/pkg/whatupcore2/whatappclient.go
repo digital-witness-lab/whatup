@@ -114,8 +114,6 @@ type WhatsAppClient struct {
 }
 
 func NewWhatsAppClient(username string, passphrase string, dbUri string, log waLog.Logger) (*WhatsAppClient, error) {
-	// TODO: there is a memory leak here... we need to remove unused locks that
-	// haven't been used in a while
 	lock := clientCreationLock.Lock(username)
 	defer lock.Unlock()
 
@@ -170,7 +168,7 @@ func NewWhatsAppClient(username string, passphrase string, dbUri string, log waL
 	wmClient.AutoTrustIdentity = true // don't do this for non-bot accounts
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 
-	aclStore := NewACLStore(db, log.Sub("ACL"))
+	aclStore := NewACLStore(db, username, log.Sub("ACL"))
 	client := &WhatsAppClient{
 		Client:               wmClient,
 		aclStore:             aclStore,

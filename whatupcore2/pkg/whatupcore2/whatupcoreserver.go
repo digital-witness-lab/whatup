@@ -501,8 +501,7 @@ func (s *WhatUpCoreServer) Unregister(ctx context.Context, options *pb.Unregiste
 
 	session.Client.Logout()
 	session.Client.Disconnect()
-	// TODO: figure out deleteuser
-	//session.Client.Store.Delete()
+	session.Client.Store.Delete()
 
 	return &pb.ConnectionStatus{
 		IsConnected: session.Client.IsConnected(),
