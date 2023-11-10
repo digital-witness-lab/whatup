@@ -10,6 +10,8 @@ from collections import defaultdict, deque, namedtuple
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import grpc
+
 from .. import utils
 from ..connection import create_whatupcore_clients
 from ..protos import whatsappweb_pb2 as waw
@@ -27,6 +29,10 @@ CONTROL_CACHE = deque(maxlen=1028)
 
 DownloadMediaCallback = T.Type[T.Callable[[wuc.WUMessage, bytes], T.Awaitable[None]]]
 MediaType = enum.Enum("MediaType", wuc.SendMessageMedia.MediaType.items())
+
+
+class InvalidCredentialsException(Exception):
+    pass
 
 
 class BotCommandArgsException(Exception):
@@ -107,7 +113,12 @@ class BaseBot:
     async def login(self, username: str, passphrase: str, **kwargs) -> T.Self:
         self.logger = self.logger.getChild(username)
         self.logger.info("Logging in")
-        await self.authenticator.login(username, passphrase)
+        try:
+            await self.authenticator.login(username, passphrase)
+        except grpc.aio._call.AioRpcError as e:
+            if e.details() == "the store doesn't contain a device JID":
+                raise InvalidCredentialsException
+            raise e
         return self
 
     async def start(self, **kwargs):
@@ -302,7 +313,7 @@ class BaseBot:
         await self.download_queue.put((message, callback))
 
     async def send_text_message(
-        self, recipient: wuc.JID, text: str, composing_time: int = 5
+        self, recipient: wuc.JID, text: str, composing_time: int = 2
     ) -> wuc.SendMessageReceipt:
         recipient_nonad = utils.jid_noad(recipient)
         options = wuc.SendMessageOptions(
@@ -319,7 +330,7 @@ class BaseBot:
         caption: T.Optional[str] = None,
         mimetype: T.Optional[str] = None,
         filename: T.Optional[str] = None,
-        composing_time: int = 5,
+        composing_time: int = 2,
     ) -> wuc.SendMessageReceipt:
         recipient_nonad = utils.jid_noad(recipient)
         options = wuc.SendMessageOptions(

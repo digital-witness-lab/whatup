@@ -4,7 +4,7 @@ import logging
 from collections import abc, defaultdict
 import typing as T
 
-from ..bots import BaseBot
+from ..bots import BaseBot, InvalidCredentialsException
 from .credentials_listener import CredentialsListener
 
 
@@ -24,11 +24,13 @@ class DeviceManager:
         self,
         bot_factory: abc.Callable[[], BaseBot],
         credential_listeners: T.List[CredentialsListener],
+        unregister_invalid_credentials: bool = True,
         logger=logger,
     ):
         self.bot_factory = bot_factory
         self.credential_listeners: T.List[CredentialsListener] = credential_listeners
         self.devices: T.Dict[str, DeviceObject] = {}
+        self.unregister_invalid_credentials = unregister_invalid_credentials
         self.logger = logger.getChild(self.__class__.__name__)
         self.reconnect_backoff = defaultdict(int)
 
@@ -41,15 +43,14 @@ class DeviceManager:
             # well. Maybe this is also a good way to have a restart mechanism
             # on error with exp backoff?
 
-    async def _start_bot(self, bot: BaseBot, username: str, credentials):
+    async def _start_bot(self, bot: BaseBot, username: str):
         try:
-            bot = await bot.login(**credentials)
             await bot.start()
         except Exception:
             self.logger.exception("Exception running bot")
         await self._on_bot_dead(username)
 
-    async def on_credentials(self, credentials):
+    async def on_credentials(self, listener: CredentialsListener, credentials):
         username = credentials["username"]
         if backoff := self.reconnect_backoff[username]:
             t = 2 ** min(backoff, 11)  # max of 35min backoff time
@@ -60,10 +61,19 @@ class DeviceManager:
                 t,
             )
             await asyncio.sleep(t)
+
         bot = self.bot_factory()
-        task = asyncio.create_task(
-            self._start_bot(bot, username, credentials), name=username
-        )
+        try:
+            bot = await bot.login(**credentials)
+        except InvalidCredentialsException as e:
+            if self.unregister_invalid_credentials:
+                self.logger.critical(
+                    "Invalid credentials for user... unregistering: %s", username
+                )
+                await self.unregister(username)
+                return
+            raise e
+        task = asyncio.create_task(self._start_bot(bot, username), name=username)
         device = DeviceObject(username=username, bot=bot, task=task)
         self.devices[username] = device
         asyncio.get_event_loop().call_later(
@@ -98,7 +108,7 @@ class DeviceManager:
             await self.on_bot_dead(device)
         except KeyError:
             self.logger.exception(
-                "Bot task finished but we can't find reference to it: %s", task
+                "Bot task finished but we can't find reference to it: %s", username
             )
 
     async def on_bot_dead(self, device: DeviceObject):
@@ -108,12 +118,13 @@ class DeviceManager:
         pass
 
     async def unregister(self, username: str):
-        device = self.devices.pop(username)
-        self.logger.warning("Calling unregister")
-        device.unregistered = True
-        await device.bot.unregister()
+        self.logger.warning("Calling unregister for user: %s", username)
         for listener in self.credential_listeners:
-            listener.unregister(device.username)
-        device.task.cancel()
-        device.bot.stop()
-        self.reconnect_backoff.pop(device.username, None)
+            listener.unregister(username)
+        device = self.devices.pop(username, None)
+        if device is not None:
+            device.unregistered = True
+            await device.bot.unregister()
+            device.task.cancel()
+            device.bot.stop()
+            self.reconnect_backoff.pop(device.username, None)

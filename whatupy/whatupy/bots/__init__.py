@@ -5,6 +5,7 @@ from .basebot import (
     BaseBot,
     BotCommandArgs,
     BotCommandArgsException,
+    InvalidCredentialsException,
     MediaType,
 )
 

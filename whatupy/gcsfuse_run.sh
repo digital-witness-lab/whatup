@@ -2,6 +2,7 @@
 set -eo pipefail
 
 app_command=$1
+gcs_params=""
 
 if [ -z "${app_command:-}" ]; then
     echo "App command is required as an argument."
@@ -11,12 +12,12 @@ fi
 echo "Mounting $SESSIONS_BUCKET bucket using GCS Fuse."
 # Create mount directory for service
 mkdir -p "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}"
-gcsfuse "$SESSIONS_BUCKET" "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}"
+gcsfuse ${gcs_params} "$SESSIONS_BUCKET" "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}"
 
 if [ -n "${MESSAGE_ARCHIVE_BUCKET:-}" ]; then
     echo "Mounting $MESSAGE_ARCHIVE_BUCKET bucket using GCS Fuse."
     mkdir -p "${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}"
-    gcsfuse "$MESSAGE_ARCHIVE_BUCKET" "${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}"
+    gcsfuse ${gcs_params} "$MESSAGE_ARCHIVE_BUCKET" "${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}"
 fi
 
 echo "Mounting completed."
@@ -49,6 +50,7 @@ case $app_command in
         whatupy --host "${WHATUPCORE2_HOST}" \
             --port 443 \
             onboard \
+            --default-group-permission READWRITE  \
             --credentials-dir "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}" "${WHATUPY_ONBOARD_BOT_NAME}"
     ;;
 
