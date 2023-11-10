@@ -39,12 +39,14 @@ type EncryptableContainer interface {
 	Encrypt([]byte) ([]byte, error)
 	EncryptString(string) (string, error)
 	HasCredentials() bool
+	Log() waLog.Logger
 }
 
 type DecryptableContainer interface {
 	decrypt([]byte) ([]byte, error)
 	decryptString(string) (string, error)
 	HasCredentials() bool
+	Log() waLog.Logger
 }
 
 type scannable interface {
@@ -119,6 +121,10 @@ func DeleteUsername(db *sql.DB, username string) error {
 	// no encryption needed here
 	_, err := db.Exec(deleteDeviceQueryUsername, username)
 	return err
+}
+
+func (ec *EncContainer) Log() waLog.Logger {
+	return ec.log
 }
 
 func (ec *EncContainer) WithCredentials(username, passphrase string) (*EncContainer, error) {
@@ -260,7 +266,6 @@ func (c *EncContainer) scanDevice(row scannable) (*store.Device, error) {
 	var noisePriv, identityPriv, preKeyPriv, preKeySig []byte
 	var account waProto.ADVSignedDeviceIdentity
 
-	fmt.Println("About to decrypt device request")
 	err := decryptDBScan(c, row,
 		&device.ID, &device.RegistrationID, &noisePriv, &identityPriv,
 		&preKeyPriv, &device.SignedPreKey.KeyID, &preKeySig,
@@ -310,7 +315,7 @@ func (c *EncContainer) GetDevice(jid types.JID) (*store.Device, error) {
 }
 
 func (c *EncContainer) GetDeviceUsername(username string) (*store.Device, error) {
-	sess, err := c.scanDevice(encryptQueryRow(c, c.db.QueryRow, getDeviceQueryUsername, []byte("plain:"+username)))
+	sess, err := c.scanDevice(encryptQueryRow(c, c.db.QueryRow, getDeviceQueryUsername, string("plain:"+username)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -367,7 +372,7 @@ func (c *EncContainer) PutDevice(device *store.Device) error {
 	_, err = encryptQueryRows(c, c.db.Exec,
 		insertDeviceQuery,
 		device.ID.String(),
-		[]byte("plain:"+username),
+		string("plain:"+username),
 		device.RegistrationID,
 		device.NoiseKey.Priv[:],
 		device.IdentityKey.Priv[:],
