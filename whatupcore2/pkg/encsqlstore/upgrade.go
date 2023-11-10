@@ -79,7 +79,7 @@ func (c *EncContainer) Upgrade() error {
 func upgradeV1(tx *sql.Tx, _ *EncContainer) error {
 	_, err := tx.Exec(`CREATE TABLE whatsmeow_enc_device (
 		jid TEXT PRIMARY KEY,
-        username bytea UNIQUE NOT NULL,
+        username TEXT UNIQUE NOT NULL,
 
 		registration_id BIGINT NOT NULL,
 

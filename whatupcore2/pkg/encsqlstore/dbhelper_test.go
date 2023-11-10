@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/lib/pq"
+	"go.mau.fi/whatsmeow/types"
+	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
 func str2hexstr(str string) string {
@@ -17,6 +19,7 @@ func str2hexstr(str string) string {
 }
 
 var (
+	log             = waLog.Stdout("dbhelper_test", "DEBUG", true)
 	ErrNotEncrypted = errors.New("Cipher text does not represent an encrypted blob")
 	TestPlaintext   = []any{
 		true,
@@ -27,18 +30,18 @@ var (
 		string("234872938572@s.whatsapp.net"),
 		string("9089034863@g.us"),
 		string("1234567890:99"),
-		//pq.ByteaArray([][]byte{[]byte("test1"), []byte("test2")}),
+		pq.ByteaArray([][]byte{[]byte("test1"), []byte("test2")}),
 	}
 	TestCipher = []any{
 		true,
 		42,
 		[]byte("enc#(testbytes)"),
-		str2hexstr(string("enc#(teststring)")),
+		str2hexstr("enc#(teststring)"),
 		string("plain:username"),
-		string("234872938572@s.whatsapp.net"),
-		string("9089034863@g.us"),
+		str2hexstr("enc#(234872938572@s.whatsapp.net)"),
+		str2hexstr("enc#(9089034863@g.us)"),
 		str2hexstr("enc#(1234567890)") + ":99",
-		//pq.ByteaArray([][]byte{[]byte("enc#(test1)"), []byte("enc#(test2)")}),
+		pq.ByteaArray([][]byte{[]byte("enc#(test1)"), []byte("enc#(test2)")}),
 	}
 	DecryptRegex = regexp.MustCompile(`^enc#\((.+)\)$`)
 )
@@ -82,7 +85,7 @@ type StubEncContainer struct {
 }
 
 func NewStubEncContainer() *StubEncContainer {
-	ec := NewWithDB(nil, "dialect", nil)
+	ec := NewWithDB(nil, "dialect", log)
 	return &StubEncContainer{EncContainer: ec}
 }
 
@@ -148,7 +151,7 @@ func RandString(n int) string {
 }
 
 func TestEncryptBytesDeterministic(t *testing.T) {
-	ec, err := NewWithDB(nil, "", nil).WithCredentials("username", "passphrase")
+	ec, err := NewWithDB(nil, "", log).WithCredentials("username", "passphrase")
 	if err != nil {
 		t.Fatalf("Could not add credentials to container: %v", err)
 	}
@@ -167,7 +170,7 @@ func TestEncryptBytesDeterministic(t *testing.T) {
 }
 
 func TestEncryptStringDeterministic(t *testing.T) {
-	ec, err := NewWithDB(nil, "", nil).WithCredentials("username", "passphrase")
+	ec, err := NewWithDB(nil, "", log).WithCredentials("username", "passphrase")
 	if err != nil {
 		t.Fatalf("Could not add credentials to container: %v", err)
 	}
@@ -186,7 +189,7 @@ func TestEncryptStringDeterministic(t *testing.T) {
 }
 
 func TestEncryptBytes(t *testing.T) {
-	ec, err := NewWithDB(nil, "", nil).WithCredentials("username", "passphrase")
+	ec, err := NewWithDB(nil, "", log).WithCredentials("username", "passphrase")
 	if err != nil {
 		t.Fatalf("Could not add credentials to container: %v", err)
 	}
@@ -208,7 +211,7 @@ func TestEncryptBytes(t *testing.T) {
 }
 
 func TestEncryptStrings(t *testing.T) {
-	ec, err := NewWithDB(nil, "", nil).WithCredentials("username", "passphrase")
+	ec, err := NewWithDB(nil, "", log).WithCredentials("username", "passphrase")
 	if err != nil {
 		t.Fatalf("Could not add credentials to container: %v", err)
 	}
@@ -303,5 +306,32 @@ func TestDecryptDBArguments(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error running DB decryption: %v", err)
 		}
+	}
+}
+
+func TestDecryptDBArgumentsJID(t *testing.T) {
+	ec, err := NewWithDB(nil, "", log).WithCredentials("username", "passphrase")
+	if err != nil {
+		t.Fatalf("Could not add credentials to container: %v", err)
+	}
+
+	JIDValue := "1234@s.whatssapp.net"
+	stubScannable := &StubScannable{}
+	encrypted, err := encryptQueryRows(ec, StubDBMethod, "", JIDValue)
+	if err != nil {
+		t.Fatalf("Could not encrypt JID value: %v", err)
+	}
+	jid := &types.JID{}
+	jid.Scan(encrypted[0])
+	if err != nil {
+		t.Fatalf("Could not parse encrypted JID: %v", err)
+	}
+	err = decryptDBScan(ec, stubScannable, &jid)
+	if err != nil {
+		t.Fatalf("Could not decrypt JID: %v", err)
+	}
+
+	if jid.String() != JIDValue {
+		t.Fatalf("Scanning string JID field into types.JID failed: %s != %s", jid.String(), JIDValue)
 	}
 }

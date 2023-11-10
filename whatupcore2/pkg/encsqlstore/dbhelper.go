@@ -1,6 +1,7 @@
 package encsqlstore
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -10,19 +11,7 @@ import (
 )
 
 var (
-	JIDServers = []string{
-		types.DefaultUserServer,
-		types.GroupServer,
-		types.LegacyUserServer,
-		types.BroadcastServer,
-		types.HiddenUserServer,
-		types.MessengerServer,
-		types.InteropServer,
-		types.NewsletterServer,
-		types.HostedServer,
-	}
 	findAddress = regexp.MustCompile(`^(.+):([0-9]+)$`)
-	findJID     = regexp.MustCompile(fmt.Sprintf(`@(%s)$`, strings.Join(JIDServers, "|")))
 )
 
 func encryptQueryRow[T any](c EncryptableContainer, dbMethod func(string, ...any) T, query string, args ...any) T {
@@ -55,22 +44,17 @@ func encryptArguments(c EncryptableContainer, args []any) ([]any, error) {
 		case string:
 			if strings.HasPrefix(v, "plain:") {
 				encArgs[i] = v
-			} else if findJID.MatchString(v) {
-				encArgs[i] = v
 			} else if matches := findAddress.FindStringSubmatch(v); matches != nil {
 				var encAddress string
 				encAddress, err = c.EncryptString(matches[1])
 				encArgs[i] = fmt.Sprintf("%s:%s", encAddress, matches[2])
 			} else {
-				var encValue string
-				encValue, err = c.EncryptString(v)
-				encArgs[i] = encValue
+				encArgs[i], err = c.EncryptString(v)
 			}
-
+		case types.JID:
+			encArgs[i], err = c.EncryptString(v.String())
 		case []byte:
-			var encValue []byte
-			encValue, err = c.Encrypt(v)
-			encArgs[i] = encValue
+			encArgs[i], err = c.Encrypt(v)
 		case pq.ByteaArray:
 			newArray := make(pq.ByteaArray, len(v))
 			for i, item := range v {
@@ -108,8 +92,6 @@ func decryptDBScan(c DecryptableContainer, s scannable, dests ...any) error {
 		case *string:
 			if strings.HasPrefix(*d, "plain:") {
 				continue
-			} else if findJID.MatchString(*d) {
-				continue
 			} else if matches := findAddress.FindStringSubmatch(*d); matches != nil {
 				var plainAddress string
 				plainAddress, err = c.decryptString(matches[1])
@@ -133,6 +115,18 @@ func decryptDBScan(c DecryptableContainer, s scannable, dests ...any) error {
 				}
 			}
 			*d = newArray
+		case **types.JID:
+			// When the JID was first Scan'd (types.JID.Scan), since there was
+			// no @ symbol the entire encrypted blob was put in the server
+			// attribute
+			jidPlain, errDec := c.decryptString((*d).Server)
+			jid, errParse := types.ParseJID(jidPlain)
+			err = errors.Join(errDec, errParse)
+			*d = &jid
+		case *uint32:
+			continue
+		default:
+			c.Log().Debugf("Could not decrypt Scan field: %T: %+v", d, d)
 		}
 		if err != nil {
 			return fmt.Errorf("Could not decrypt SQL scan destination: %+v (%T): %w", dest, dest, err)
