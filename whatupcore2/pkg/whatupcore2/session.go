@@ -162,6 +162,9 @@ func (session *Session) UpdateLastAccessWhileAlive(ctx context.Context) {
 		case <-ctx.Done():
 			session.log.Debugf("Stopping last-access refresher")
 			return
+		case <-session.Client.Done():
+			session.log.Debugf("Client disconnected")
+			return
 		}
 	}
 }
