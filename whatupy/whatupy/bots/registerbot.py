@@ -1,14 +1,18 @@
 import json
 from pathlib import Path
+import re
 
 import qrcode
 import dataset
 
-from .. import NotRegisteredError, utils
+from .. import NotRegisteredError, UsernameInUseError, utils
 from . import BaseBot
 from . import BotCommandArgs, MediaType
 from ..protos import whatupcore_pb2 as wuc
 from ..connection import create_whatupcore_clients
+
+
+VALID_ALIAS = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
 class RegisterBot(BaseBot):
@@ -67,8 +71,8 @@ class RegisterBot(BaseBot):
                 f"Unknown command: {params.command}",
             )
 
-        alias = params.alias or "-".join(utils.random_words(5))
-        if not alias.isalnum():
+        alias = str(params.alias) or "-".join(utils.random_words(5))
+        if not alias or VALID_ALIAS.match(alias) is None:
             return await self.send_text_message(
                 sender,
                 f"Invalid alias... must only be alpha-numeric: {alias}",
@@ -82,12 +86,6 @@ class RegisterBot(BaseBot):
         username: str,
         is_bot: bool,
     ):
-        user_state = self.db["registered_users"].find_one(username=username)
-        if user_state is not None:
-            return await self.send_text_message(
-                handler_jid, "Alias is already in use. Please select a different one"
-            )
-
         if is_bot:
             default_group_permission = wuc.GroupPermission.READWRITE
         else:
@@ -106,15 +104,20 @@ class RegisterBot(BaseBot):
                     handler_jid,
                     MediaType.MediaImage,
                     content=content,
-                    caption=f"Registration QR code",
+                    caption=f"Registration QR code for {username}",
                     mimetype="image/png",
                     filename=f"register-{username}",
                 )
-
         except NotRegisteredError:
-            logger.exception("Could not register user")
+            logger.exception(f"Could not register user {username}")
             return
-        logger.info("User registered")
+        except UsernameInUseError:
+            logger.error("Tried to register with existing username: %s", username)
+            return await self.send_text_message(
+                handler_jid,
+                f'Alias "{username}" is already in use. Please select a different one',
+            )
+        logger.info(f"User {username} registered")
 
         credentials = {"username": username, "passphrase": passphrase}
         credentials_file = self.sessions_dir / f"{username}.json"
@@ -124,6 +127,7 @@ class RegisterBot(BaseBot):
         connection_status = await core_client.GetConnectionStatus(
             wuc.ConnectionStatusOptions()
         )
+        self.db["registered_users"].delete(username=username)
         self.db["registered_users"].insert(
             {
                 "username": username,
@@ -134,9 +138,9 @@ class RegisterBot(BaseBot):
         # now how to trigger user services.... ?
         await self.send_text_message(
             handler_jid,
-            "User registered",
+            f"User {username} registered",
         )
         await self.send_text_message(
             connection_status.JID,
-            "Welcome to the WhatsApp Watch system! It's time to get you onboarded.",
+            "Welcome to the WhatsApp Watch system! You have been added to our first trial which will last until Dec 1, 2023",
         )

@@ -95,6 +95,8 @@ func hashStringHex(unhashed string) string {
 type WhatsAppClient struct {
 	*whatsmeow.Client
 
+	ctx                   context.Context
+	cancelCtx             context.CancelFunc
 	username              string
 	historyMessages       chan *Message
 	historyMessagesActive bool
@@ -103,9 +105,9 @@ type WhatsAppClient struct {
 
 	aclStore *ACLStore
 
-	presenceHandler uint32
-	historyHandler  uint32
-	archiveHandler  uint32
+	connectionHandler uint32
+	historyHandler    uint32
+	archiveHandler    uint32
 
 	anonLookup *AnonLookup
 }
@@ -155,9 +157,14 @@ func NewWhatsAppClient(username string, passphrase string, dbUri string, log waL
 	wmClient.AutoTrustIdentity = true // don't do this for non-bot accounts
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
 	aclStore := NewACLStore(db, username, log.Sub("ACL"))
 	client := &WhatsAppClient{
-		Client:               wmClient,
+		Client: wmClient,
+
+		ctx:                  ctx,
+		cancelCtx:            cancelCtx,
 		aclStore:             aclStore,
 		dbConn:               db,
 		username:             username,
@@ -165,7 +172,7 @@ func NewWhatsAppClient(username string, passphrase string, dbUri string, log waL
 		shouldRequestHistory: make(map[string]bool),
 	}
 	client.anonLookup = NewAnonLookup(client)
-	client.presenceHandler = wmClient.AddEventHandler(client.setConnectPresence)
+	client.connectionHandler = wmClient.AddEventHandler(client.connectionEvents)
 	client.historyHandler = wmClient.AddEventHandler(client.getHistorySync)
 	if strings.HasSuffix(username, "-a") {
 		client.Log.Warnf("HACK adding archive handler to request history on archive-state change")
@@ -176,12 +183,17 @@ func NewWhatsAppClient(username string, passphrase string, dbUri string, log waL
 	return client, nil
 }
 
+func (wac *WhatsAppClient) Done() <-chan struct{} {
+	return wac.ctx.Done()
+}
+
 func (wac *WhatsAppClient) Close() {
 	wac.Log.Infof("Closing WhatsApp Client")
 	wac.Disconnect()
+	wac.cancelCtx()
 }
 
-func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
+func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
 	switch evt.(type) {
 	case *events.Connected:
 		wac.Log.Infof("Setting presence and active delivery")
@@ -190,7 +202,19 @@ func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
 			wac.Log.Errorf("Could not send presence: %+v", err)
 		}
 		wac.SetForceActiveDeliveryReceipts(false)
+	case *events.LoggedOut:
+		wac.Log.Warnf("User has logged out on their device")
+		wac.Unregister()
+		wac.Close()
 	}
+}
+
+func (wac *WhatsAppClient) Unregister() {
+	wac.Log.Warnf("Unregistering user and clearing database!")
+	wac.Logout()
+	wac.Store.Delete()
+	wac.aclStore.Delete()
+	wac.Close()
 }
 
 func (wac *WhatsAppClient) cleanupUserDB() error {
@@ -289,6 +313,8 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 			}
 		case <-ctx.Done():
 			return false
+		case <-wac.ctx.Done():
+			return false
 		}
 	}
 }
@@ -383,7 +409,12 @@ func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 		}
 	})
 	go func() {
-		<-ctx.Done()
+		select {
+		case <-ctx.Done():
+			wac.Log.Debugf("GetMessages completed. Closing")
+		case <-wac.ctx.Done():
+			wac.Log.Infof("Closing GetMessages because client disconnected")
+		}
 		wac.Log.Debugf("GetMessages completed. Closing")
 		wac.RemoveEventHandler(handlerId)
 		close(msgChan)
