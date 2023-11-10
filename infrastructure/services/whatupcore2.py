@@ -6,6 +6,7 @@ from pulumi_gcp import serviceaccount, cloudrunv2, storage
 from service import Service, ServiceArgs
 from network import vpc, private_services_network
 from storage import whatupcore2_bucket
+from config import is_prod_stack
 
 service_name = "whatupcore2"
 
@@ -64,6 +65,10 @@ whatupcore2_service = Service(
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_BUCKET_MNT_DIR",
                 value="/db/",
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="APP_NAME_SUFFIX",
+                value="" if is_prod_stack() else get_stack(),
             ),
         ],
     ),

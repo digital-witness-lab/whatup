@@ -8,17 +8,16 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/digital-witness-lab/whatup/whatupcore2/pkg/encsqlstore"
+	"github.com/lib/pq"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/store"
-	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
@@ -34,7 +33,10 @@ const (
 var (
 	ErrInvalidMediaMessage = errors.New("Invalid MediaMessage")
 	clientCreationLock     = NewMutexMap()
+	appNameSuffix          = os.Getenv("APP_NAME_SUFFIX")
 )
+var _DeviceContainer *encsqlstore.EncContainer
+var _DB *sql.DB
 
 type RegistrationState struct {
 	QRCodes   chan string
@@ -42,6 +44,27 @@ type RegistrationState struct {
 	Completed bool
 	Success   bool
 	*sync.WaitGroup
+}
+
+func getDeviceContainer(dbUri string, dbLog waLog.Logger) (*encsqlstore.EncContainer, *sql.DB, error) {
+	if _DeviceContainer != nil {
+		return _DeviceContainer, _DB, nil
+	}
+	dbLog.Infof("Initializing DB Connection and global Device Store")
+	encsqlstore.PostgresArrayWrapper = pq.Array
+	var err error
+	_DB, err = sql.Open("postgres", dbUri)
+	if err != nil {
+		dbLog.Errorf("Could not open database: %w", err)
+		return nil, nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	err = _DB.Ping()
+	if err != nil {
+		dbLog.Errorf("Could not ping database: %w", err)
+		return nil, nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	_DeviceContainer = encsqlstore.NewWithDB(_DB, "postgres", dbLog)
+	return _DeviceContainer, _DB, nil
 }
 
 func NewRegistrationState() *RegistrationState {
@@ -69,109 +92,86 @@ func hashStringHex(unhashed string) string {
 	return hash
 }
 
-func CreateDBFilePath(username string, n_subdirs int) (string, error) {
-	if n_subdirs < 1 {
-		return "", fmt.Errorf("n_subdirs must be >= 1: %d", n_subdirs)
-	}
-	username_safe := hashStringHex(username)
-	path_username := filepath.Join(strings.Split(username_safe[0:n_subdirs], "")...)
-	path := filepath.Join(".", DB_ROOT, path_username)
-	err := os.MkdirAll(path, 0700)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(path, fmt.Sprintf("%s.db", username_safe)), nil
-}
-
-func ClearFileAndParents(path string) error {
-	for path != DB_ROOT && path != "." {
-		err := os.Remove(path)
-		if err != nil {
-			return err
-		}
-		path = filepath.Dir(path)
-	}
-	return nil
-}
-
 type WhatsAppClient struct {
 	*whatsmeow.Client
 
+	ctx                   context.Context
+	cancelCtx             context.CancelFunc
 	username              string
 	historyMessages       chan *Message
 	historyMessagesActive bool
 	shouldRequestHistory  map[string]bool
-	dbPath                string
 	dbConn                *sql.DB
 
 	aclStore *ACLStore
 
-	presenceHandler uint32
-	historyHandler  uint32
-	archiveHandler  uint32
+	connectionHandler uint32
+	historyHandler    uint32
+	archiveHandler    uint32
 
 	anonLookup *AnonLookup
 }
 
-func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*WhatsAppClient, error) {
-	// TODO: there is a memory leak here... we need to remove unused locks that
-	// haven't been used in a while
+func NewWhatsAppClient(username string, passphrase string, dbUri string, log waLog.Logger) (*WhatsAppClient, error) {
 	lock := clientCreationLock.Lock(username)
 	defer lock.Unlock()
 
 	//store.SetOSInfo("Mac OS", [3]uint32{10, 15, 7})
-	store.SetOSInfo("WA by DWL", WhatUpCoreVersionInts)
+	appName := strings.TrimSpace(fmt.Sprintf("WA by DWL %s", appNameSuffix))
+	store.SetOSInfo(appName, WhatUpCoreVersionInts)
 	store.DeviceProps.RequireFullSync = proto.Bool(true)
 	dbLog := log.Sub("DB")
-	passphrase_safe := hashStringHex(passphrase)
-	dbPath, err := CreateDBFilePath(username, 4)
+
+	deviceContainer, db, err := getDeviceContainer(dbUri, dbLog)
 	if err != nil {
-		dbLog.Errorf("Could not create database path: %v: %w", dbPath, err)
+		dbLog.Errorf("Could not create connection to DB and device container: %w", err)
 		return nil, err
 	}
-	dbLog.Infof("Using database file: %s", dbPath)
-	dbUri := fmt.Sprintf("file:%s?_foreign_keys=on&_key=%s", dbPath, passphrase_safe)
+	container, err := deviceContainer.WithCredentials(username, passphrase)
+	if err != nil {
+		dbLog.Errorf("Could not create encrypted SQL store: %w", err)
+		return nil, fmt.Errorf("Could not create encrypted SQL store: %w", err)
+	}
+	container.SetLogger(dbLog)
 
-	db, err := sql.Open("sqlite3", dbUri)
-	if err != nil {
-		dbLog.Errorf("Could not open database: %w", err)
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	err = db.Ping()
-	if err != nil {
-		dbLog.Errorf("Could not ping database: %w", err)
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	container := sqlstore.NewWithDB(db, "sqlite3", dbLog)
 	err = container.Upgrade()
 	if err != nil {
 		dbLog.Errorf("Could not upgrade database: %w", err)
 		return nil, fmt.Errorf("failed to upgrade database: %w", err)
 	}
 
-	deviceStore, err := container.GetFirstDevice()
+	var deviceStore *store.Device
+	deviceStore, err = container.GetDeviceUsername(username)
 	if err != nil {
 		dbLog.Errorf("Could't get device from store: %w", err)
 		return nil, err
 	}
+	if deviceStore == nil {
+		deviceStore = container.NewDevice()
+	}
+
 	wmClient := whatsmeow.NewClient(deviceStore, log.Sub("WMC"))
 	wmClient.EnableAutoReconnect = true
 	wmClient.EmitAppStateEventsOnFullSync = true
 	wmClient.AutoTrustIdentity = true // don't do this for non-bot accounts
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 
-	aclStore := NewACLStore(db, log.Sub("ACL"))
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	aclStore := NewACLStore(db, username, log.Sub("ACL"))
 	client := &WhatsAppClient{
-		Client:               wmClient,
+		Client: wmClient,
+
+		ctx:                  ctx,
+		cancelCtx:            cancelCtx,
 		aclStore:             aclStore,
-		dbPath:               dbPath,
 		dbConn:               db,
 		username:             username,
 		historyMessages:      make(chan *Message, 512),
 		shouldRequestHistory: make(map[string]bool),
 	}
 	client.anonLookup = NewAnonLookup(client)
-	client.presenceHandler = wmClient.AddEventHandler(client.setConnectPresence)
+	client.connectionHandler = wmClient.AddEventHandler(client.connectionEvents)
 	client.historyHandler = wmClient.AddEventHandler(client.getHistorySync)
 	if strings.HasSuffix(username, "-a") {
 		client.Log.Warnf("HACK adding archive handler to request history on archive-state change")
@@ -182,7 +182,17 @@ func NewWhatsAppClient(username string, passphrase string, log waLog.Logger) (*W
 	return client, nil
 }
 
-func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
+func (wac *WhatsAppClient) Done() <-chan struct{} {
+	return wac.ctx.Done()
+}
+
+func (wac *WhatsAppClient) Close() {
+	wac.Log.Infof("Closing WhatsApp Client")
+	wac.Disconnect()
+	wac.cancelCtx()
+}
+
+func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
 	switch evt.(type) {
 	case *events.Connected:
 		wac.Log.Infof("Setting presence and active delivery")
@@ -191,12 +201,25 @@ func (wac *WhatsAppClient) setConnectPresence(evt interface{}) {
 			wac.Log.Errorf("Could not send presence: %+v", err)
 		}
 		wac.SetForceActiveDeliveryReceipts(false)
+	case *events.LoggedOut:
+		wac.Log.Warnf("User has logged out on their device")
+		wac.Unregister()
+		wac.Close()
 	}
 }
 
-func (wac *WhatsAppClient) cleanupDBFile() error {
-	path := wac.dbPath
-	return ClearFileAndParents(path)
+func (wac *WhatsAppClient) Unregister() {
+	wac.Log.Warnf("Unregistering user and clearing database!")
+	wac.Logout()
+	wac.Store.Delete()
+	wac.aclStore.Delete()
+	wac.Close()
+}
+
+func (wac *WhatsAppClient) cleanupUserDB() error {
+	err_container := encsqlstore.DeleteUsername(wac.dbConn, wac.username)
+	err_acl := wac.aclStore.Delete()
+	return errors.Join(err_acl, err_container)
 }
 
 func (wac *WhatsAppClient) IsLoggedIn() bool {
@@ -221,7 +244,11 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions 
 	isNewDB := wac.Store.ID == nil
 
 	defaultPermission := registerOptions.DefaultGroupPermission
-	wac.aclStore.SetDefault(&defaultPermission)
+	err := wac.aclStore.SetDefault(&defaultPermission)
+	if err != nil {
+		wac.Log.Errorf("Could not set default permission: %w", err)
+		return nil
+	}
 
 	go func(state *RegistrationState) {
 		for {
@@ -239,8 +266,8 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions 
 
 				state.Close()
 				if !wac.IsLoggedIn() && isNewDB {
-					wac.Log.Infof("No login detected. deleting temporary DB file: %s", wac.dbPath)
-					wac.cleanupDBFile()
+					wac.Log.Infof("No login detected. Deleting user info")
+					wac.cleanupUserDB()
 				}
 				return
 			}
@@ -284,6 +311,8 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 				return false
 			}
 		case <-ctx.Done():
+			return false
+		case <-wac.ctx.Done():
 			return false
 		}
 	}
@@ -379,7 +408,12 @@ func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 		}
 	})
 	go func() {
-		<-ctx.Done()
+		select {
+		case <-ctx.Done():
+			wac.Log.Debugf("GetMessages completed. Closing")
+		case <-wac.ctx.Done():
+			wac.Log.Infof("Closing GetMessages because client disconnected")
+		}
 		wac.Log.Debugf("GetMessages completed. Closing")
 		wac.RemoveEventHandler(handlerId)
 		close(msgChan)

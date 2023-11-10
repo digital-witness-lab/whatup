@@ -11,6 +11,10 @@ function create_user_and_database() {
         CREATE DATABASE $database;
         GRANT ALL PRIVILEGES ON DATABASE $database TO $database;
 EOSQL
+
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$database" <<-EOSQL
+        GRANT ALL ON SCHEMA public TO $database;
+EOSQL
 }
 
 if [ -n "$POSTGRES_DATABASES" ]; then

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
+	_ "github.com/mattn/go-sqlite3"
 	"go.mau.fi/whatsmeow/types"
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
@@ -18,14 +19,14 @@ func createDb() *sql.DB {
 	return db
 }
 
-func createACL() *ACLStore {
+func createACL(username string) *ACLStore {
 	log := waLog.Stdout("acltest", "DEBUG", true)
 	db := createDb()
-	return NewACLStore(db, log)
+	return NewACLStore(db, username, log)
 }
 
 func TestDefault(t *testing.T) {
-	acl := createACL()
+	acl := createACL("username")
 
 	for _, permission_num := range pb.GroupPermission_value {
 		permission := pb.GroupPermission(permission_num)
@@ -49,7 +50,7 @@ func TestDefault(t *testing.T) {
 }
 
 func TestJIDs(t *testing.T) {
-	acl := createACL()
+	acl := createACL("username")
 
 	var err error
 	defaultPermission := pb.GroupPermission(2)
@@ -82,8 +83,69 @@ func TestJIDs(t *testing.T) {
 	}
 }
 
+func TestMutliUser(t *testing.T) {
+	acl1 := createACL("user1")
+	acl2 := createACL("user2")
+
+	JID1 := types.NewJID("jid1", types.GroupServer)
+	JID2 := types.NewJID("jid2", types.GroupServer)
+
+	permission1 := pb.GroupPermission(1)
+	permission2 := pb.GroupPermission(2)
+
+	acl1.SetByJID(&JID1, &permission1)
+	acl2.SetByJID(&JID1, &permission2)
+	acl2.SetByJID(&JID2, &permission1)
+
+	found_11, err := acl1.GetByJID(&JID1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found_12, err := acl1.GetByJID(&JID2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found_21, err := acl2.GetByJID(&JID1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found_22, err := acl2.GetByJID(&JID2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if found_11.Permission != 1 {
+		t.Fatalf("Unexpected permission found user1/jid1: %d != %d", found_11.Permission, 1)
+	}
+	if found_12.Permission != 0 {
+		t.Fatalf("Unexpected permission found user1/jid2: %d != %d", found_11.Permission, 0)
+	}
+	if found_21.Permission != 2 {
+		t.Fatalf("Unexpected permission found user2/jid1: %d != %d", found_21.Permission, 2)
+	}
+	if found_22.Permission != 1 {
+		t.Fatalf("Unexpected permission found user2/jid2: %d != %d", found_22.Permission, 1)
+	}
+
+	acl1All, err := acl1.GetAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	acl2All, err := acl2.GetAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(acl1All) != 1 {
+		t.Fatalf("Didn't find correct number of entries for ACL1: %d", len(acl1All))
+	}
+	if len(acl2All) != 2 {
+		t.Fatalf("Didn't find correct number of entries for ACL2: %d", len(acl2All))
+	}
+}
+
 func TestListACL(t *testing.T) {
-	acl := createACL()
+	acl := createACL("username")
 
 	aclValues, err := acl.GetAll()
 	if err != nil {

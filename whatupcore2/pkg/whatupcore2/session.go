@@ -49,25 +49,25 @@ func NewSessionDisconnected(username, passphrase string, secretKey []byte, log w
 	return session, nil
 }
 
-func NewSessionLogin(username string, passphrase string, secretKey []byte, log waLog.Logger) (*Session, error) {
+func NewSessionLogin(username string, passphrase string, secretKey []byte, dbUri string, log waLog.Logger) (*Session, error) {
 	session, err := NewSessionDisconnected(username, passphrase, secretKey, log)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = session.Login(username, passphrase); err != nil {
+	if err = session.Login(username, passphrase, dbUri); err != nil {
 		return nil, err
 	}
 	return session, nil
 }
 
-func NewSessionRegister(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions, secretKey []byte, log waLog.Logger) (*Session, *RegistrationState, error) {
+func NewSessionRegister(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions, secretKey []byte, dbUri string, log waLog.Logger) (*Session, *RegistrationState, error) {
 	session, err := NewSessionDisconnected(username, passphrase, secretKey, log)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	state, err := session.LoginOrRegister(ctx, username, passphrase, registerOptions)
+	state, err := session.LoginOrRegister(ctx, username, passphrase, registerOptions, dbUri)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -76,8 +76,7 @@ func NewSessionRegister(ctx context.Context, username string, passphrase string,
 
 func (session *Session) Close() {
 	session.log.Debugf("Closing session")
-	session.Client.Disconnect()
-	session.Client.dbConn.Close()
+	session.Client.Close()
 }
 
 func (session *Session) ToProto() *pb.SessionToken {
@@ -85,8 +84,8 @@ func (session *Session) ToProto() *pb.SessionToken {
 	return &pb.SessionToken{Token: session.TokenString(), ExpirationTime: timestamppb.New(expirationTime)}
 }
 
-func (session *Session) Login(username string, passphrase string) error {
-	client, err := NewWhatsAppClient(username, passphrase, session.log.Sub("WAC"))
+func (session *Session) Login(username string, passphrase string, dbUri string) error {
+	client, err := NewWhatsAppClient(username, passphrase, dbUri, session.log.Sub("WAC"))
 	if err != nil {
 		return err
 	}
@@ -98,8 +97,8 @@ func (session *Session) Login(username string, passphrase string) error {
 	return nil
 }
 
-func (session *Session) LoginOrRegister(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions) (*RegistrationState, error) {
-	client, err := NewWhatsAppClient(username, passphrase, session.log.Sub("WAC"))
+func (session *Session) LoginOrRegister(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions, dbUri string) (*RegistrationState, error) {
+	client, err := NewWhatsAppClient(username, passphrase, dbUri, session.log.Sub("WAC"))
 	if err != nil {
 		return nil, err
 	}
@@ -162,6 +161,9 @@ func (session *Session) UpdateLastAccessWhileAlive(ctx context.Context) {
 			continue
 		case <-ctx.Done():
 			session.log.Debugf("Stopping last-access refresher")
+			return
+		case <-session.Client.Done():
+			session.log.Debugf("Client disconnected")
 			return
 		}
 	}
