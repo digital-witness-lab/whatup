@@ -3,7 +3,12 @@ from pulumi import Output, ResourceOptions
 
 from pulumi_gcp import sql
 
-from config import db_names, db_password, db_root_password, location, is_prod_stack
+from config import (
+    db_configs,
+    db_root_password,
+    location,
+    is_prod_stack,
+)
 from network import (
     private_vpc_connection,
     private_ip_address_range,
@@ -55,33 +60,36 @@ primary_cloud_sql_instance = sql.DatabaseInstance(
     # instance settings.
     deletion_protection=False,
     root_password=db_root_password,
-    opts=ResourceOptions(depends_on=private_vpc_connection, protect=is_prod_stack()),
+    opts=ResourceOptions(
+        depends_on=private_vpc_connection, protect=is_prod_stack()
+    ),
 )
 
 databases: List[sql.Database] = []
-for db_name in db_names:
+for db in db_configs.values():
     databases.append(
         sql.Database(
-            f"{db_name}",
+            f"{db.name}",
             instance=primary_cloud_sql_instance.name,
-            name=db_name,
+            name=db.name,
         )
     )
 
     sql.User(
-        f"{db_name}",
-        name=db_name,
+        f"{db.name}",
+        name=db.name,
         instance=primary_cloud_sql_instance.name,
-        password=db_password,
+        password=db.password,
     )
 
 
 def get_sql_instance_url(db_name: str) -> Output[str]:
+    c = db_configs[db_name]
     return Output.concat(
         "postgres://",
         db_name,
         ":",
-        db_password,
+        c.password,
         "@",
         primary_cloud_sql_instance.private_ip_address,
         "5432",

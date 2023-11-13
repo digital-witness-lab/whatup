@@ -1,1 +1,2 @@
 GRANT ALL PRIVILEGES ON DATABASE messages TO messages;
+GRANT ALL PRIVILEGES ON DATABASE whatupcore TO whatupcore;

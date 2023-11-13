@@ -1,15 +1,37 @@
-from pulumi import get_stack
+from typing import Dict
 
+from pulumi import get_stack
 from pulumi_gcp import secretmanager
 
 from database import get_sql_instance_url
+from config import db_root_password, db_configs
 
-from config import db_root_password
 
-messages_db_url_secret = secretmanager.Secret(
-    "msgs-db-url",
+db_url_secrets: Dict[str, secretmanager.Secret] = {}
+for db in db_configs.values():
+    db_url_secrets[db.name] = secret = secretmanager.Secret(
+        f"{db.name_short}-db-url",
+        secretmanager.SecretArgs(
+            secret_id=f"{db.name_short}-db-url-{get_stack()}",
+            replication=secretmanager.SecretReplicationArgs(
+                auto=secretmanager.SecretReplicationAutoArgs(),
+            ),
+        ),
+    )
+    secretmanager.SecretVersion(
+        f"{db.name_short}-db-url-secret",
+        secretmanager.SecretVersionArgs(
+            secret=secret.id,
+            secret_data=get_sql_instance_url(db.name),
+            enabled=True,
+        ),
+    )
+
+
+db_root_pass_secret = secretmanager.Secret(
+    "db-root",
     secretmanager.SecretArgs(
-        secret_id=f"msgs-db-url-{get_stack()}",
+        secret_id=f"db-root-{get_stack()}",
         replication=secretmanager.SecretReplicationArgs(
             auto=secretmanager.SecretReplicationAutoArgs(),
         ),
@@ -17,28 +39,9 @@ messages_db_url_secret = secretmanager.Secret(
 )
 
 secretmanager.SecretVersion(
-    "msgs-db-url-secret",
+    "db-root-secret",
     secretmanager.SecretVersionArgs(
-        secret=messages_db_url_secret.id,
-        secret_data=get_sql_instance_url("messages"),
-        enabled=True,
-    ),
-)
-
-messages_db_root_pass_secret = secretmanager.Secret(
-    "msgs-db-root",
-    secretmanager.SecretArgs(
-        secret_id=f"msgs-db-root-{get_stack()}",
-        replication=secretmanager.SecretReplicationArgs(
-            auto=secretmanager.SecretReplicationAutoArgs(),
-        ),
-    ),
-)
-
-secretmanager.SecretVersion(
-    "msgs-db-root-secret",
-    secretmanager.SecretVersionArgs(
-        secret=messages_db_root_pass_secret.id,
+        secret=db_root_pass_secret.id,
         secret_data=db_root_password,
         enabled=True,
     ),
