@@ -60,7 +60,7 @@ func getDeviceContainer(dbUri string, dbLog waLog.Logger) (*encsqlstore.EncConta
 	}
 	err = _DB.Ping()
 	if err != nil {
-		dbLog.Errorf("Could not ping database: %w", err)
+        dbLog.Errorf("Could not ping database: %w", err)
 		return nil, nil, fmt.Errorf("failed to open database: %w", err)
 	}
 	_DeviceContainer = encsqlstore.NewWithDB(_DB, "postgres", dbLog)

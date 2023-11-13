@@ -104,7 +104,7 @@ bot_register = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="ONBOARD_BOT",
-                value="alice",
+                value="gertrude",
             ),
             # Create an implicit dependency on the migrations
             # job completing successfully.
