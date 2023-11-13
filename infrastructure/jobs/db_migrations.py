@@ -10,7 +10,7 @@ from pulumi_gcp.cloudrunv2 import (
 
 from job import JobArgs, Job
 from network import vpc, private_services_network_with_db
-from dwl_secrets import messages_db_root_pass_secret
+from dwl_secrets import db_root_pass_secret
 from database import primary_cloud_sql_instance
 
 from .execute_job import run_job_sync
@@ -27,7 +27,7 @@ service_account = serviceaccount.Account(
 secret_manager_perm = secretmanager.SecretIamMember(
     "db-mig-secret-perm",
     secretmanager.SecretIamMemberArgs(
-        secret_id=messages_db_root_pass_secret.id,
+        secret_id=db_root_pass_secret.id,
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
@@ -35,7 +35,7 @@ secret_manager_perm = secretmanager.SecretIamMember(
 
 db_root_pass_secret_source = JobTemplateTemplateContainerEnvValueSourceArgs(
     secret_key_ref=JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-        secret=messages_db_root_pass_secret.name,
+        secret=db_root_pass_secret.name,
         version="latest",
     )
 )

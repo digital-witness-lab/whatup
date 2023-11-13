@@ -8,7 +8,7 @@ from pulumi_gcp.cloudrunv2 import (
 )  # noqa: E501
 
 from network import vpc, private_services_network_with_db
-from dwl_secrets import messages_db_url_secret
+from dwl_secrets import db_url_secrets
 from jobs.db_migrations import migrations_job_complete
 from service import Service, ServiceArgs
 from storage import sessions_bucket
@@ -38,7 +38,7 @@ sessions_bucket_perm = storage.BucketIAMMember(
 secret_manager_perm = secretmanager.SecretIamMember(
     "bot-db-secret-perm",
     secretmanager.SecretIamMemberArgs(
-        secret_id=messages_db_url_secret.id,
+        secret_id=db_url_secrets["messages"].id,
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
@@ -46,7 +46,7 @@ secret_manager_perm = secretmanager.SecretIamMember(
 
 db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
-        secret=messages_db_url_secret.name,
+        secret=db_url_secrets["messages"].name,
         version="latest",
     )
 )
