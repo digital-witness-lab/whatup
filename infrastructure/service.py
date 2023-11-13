@@ -9,6 +9,7 @@ from pulumi_gcp import cloudrunv2, serviceaccount
 from pulumi_gcp import artifactregistry
 
 from config import location, project
+from storage import repository
 from network_firewall import firewall_policy
 
 
@@ -66,16 +67,6 @@ class Service(ComponentResource):
             )
 
         child_opts = ResourceOptions(parent=self)
-
-        # Create an Artifact Registry repository
-        repository = artifactregistry.Repository(
-            props.image_name + "-repo",
-            repository_id=f"{props.image_name}-{get_stack()}-repo",
-            description=f"Repository for {props.image_name} container image",
-            format="DOCKER",
-            location=location,
-            opts=child_opts,
-        )
 
         # Form the repository URL
         repo_url = Output.concat(
