@@ -191,6 +191,11 @@ func (sm *SessionManager) GetSessionLogin(username, passphrase string) (*Session
 		sm.log.Warnf("Invalid login attempt for user: %s", username)
 		return nil, ErrInvalidPassphrase
 	}
+    if !session.Client.IsLoggedIn() {
+        sm.log.Warnf("Trying to log into a disconnected client")
+        sm.removeSession(session)
+        return nil, nil
+    }
 	session.log.Infof("User logged in to existing session")
 	return session, nil
 }

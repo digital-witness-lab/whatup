@@ -35,6 +35,10 @@ class InvalidCredentialsException(Exception):
     pass
 
 
+class EndOfMessagesException(Exception):
+    pass
+
+
 class BotCommandArgsException(Exception):
     def __init__(self, error_msg, help_text, *args, **kwargs):
         self.help_text = help_text
@@ -134,6 +138,10 @@ class BaseBot:
                 if self.read_historical_messages:
                     tg.create_task(self.listen_historical_messages())
                 tg.create_task(self.post_start())
+        except EndOfMessagesException:
+            self.logger.critical(
+                "Reached the end of the messages. This shouldn't happen unless the user un-registered."
+            )
         except Exception:
             self.logger.exception("Exception in main run loop of bot")
         self.stop()
@@ -146,38 +154,35 @@ class BaseBot:
         pass
 
     async def listen_historical_messages(self):
-        while True:
-            self.logger.info("Reading historical messages")
-            messages: T.AsyncIterator[
-                wuc.WUMessage
-            ] = self.core_client.GetPendingHistory(
-                wuc.PendingHistoryOptions(historyReadTimeout=60)
+        self.logger.info("Reading historical messages")
+        messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetPendingHistory(
+            wuc.PendingHistoryOptions(historyReadTimeout=60)
+        )
+        async for message in messages:
+            jid_from: wuc.JID = message.info.source.chat
+            self.logger.debug(
+                "Got historical message: %s: %s",
+                utils.jid_to_str(jid_from),
+                message.info.id,
             )
-            async for message in messages:
-                jid_from: wuc.JID = message.info.source.chat
-                self.logger.debug(
-                    "Got historical message: %s: %s",
-                    utils.jid_to_str(jid_from),
-                    message.info.id,
+            try:
+                await self._dispatch_message(
+                    message, skip_control=True, is_history=True
                 )
-                try:
-                    await self._dispatch_message(
-                        message, skip_control=True, is_history=True
-                    )
-                except Exception:
-                    self.logger.exception(
-                        "Exception handling historical message... attempting to continue"
-                    )
+            except Exception:
+                self.logger.exception(
+                    "Exception handling historical message... attempting to continue"
+                )
 
     async def listen_messages(self):
-        while True:
-            self.logger.info("Reading messages")
-            messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetMessages(
-                wuc.MessagesOptions(markMessagesRead=self.mark_messages_read)
-            )
-            async with asyncio.TaskGroup() as tg:
-                async for message in messages:
-                    tg.create_task(self._dispatch_message(message))
+        self.logger.info("Reading messages")
+        messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetMessages(
+            wuc.MessagesOptions(markMessagesRead=self.mark_messages_read)
+        )
+        async with asyncio.TaskGroup() as tg:
+            async for message in messages:
+                tg.create_task(self._dispatch_message(message))
+        raise EndOfMessagesException
 
     async def _dispatch_message(
         self,
