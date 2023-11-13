@@ -352,8 +352,10 @@ class DatabaseBot(BaseBot):
         chat: wuc.JID,
         is_archive: bool,
         archive_data: ArchiveData,
+        group_from_community: wuc.GroupInfo = None, # type: ignore
+        from_community: bool = False
     ):
-        chat_jid = utils.jid_to_str(chat)
+        chat_jid = utils.jid_to_str(chat) if not from_community else utils.jid_to_str(group_from_community.JID)
         logger = self.logger.getChild(chat_jid)
         now = datetime.now()
         if is_archive:
@@ -369,10 +371,12 @@ class DatabaseBot(BaseBot):
 
         if is_archive:
             group_info = archive_data.GroupInfo
+        elif from_community:
+            group_info = group_from_community
         else:
             group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
 
-        if utils.jid_to_str(group_info.parentJID) != None: # this group is in a community
+        if not from_community and utils.jid_to_str(group_info.parentJID) != None: # this group is in a community
             self.logger.info("Updating community for group: %s", group_info.JID)
             await self._update_community(
                 db, chat, group_info.parentJID, is_archive, archive_data
@@ -408,6 +412,12 @@ class DatabaseBot(BaseBot):
                 group_info_flat["previous_version_id"] = id_
                 if group_first_seen := group_info_prev.get("first_seen"):
                     group_info_flat["first_seen"] = group_first_seen
+
+                if from_community and group_info_flat["groupName_updatedAt"] == group_info_prev["groupName_updatedAt"]: # we will have more information preserved in prev compared to what we get from community info on groups
+                    group_info_flat["groupName_updatedBy_country_code"] = group_info_prev["groupName_updatedBy_country_code"] 
+                    group_info_flat["groupName_updatedBy_country_iso"] = group_info_prev["groupName_updatedBy_country_iso"]
+                    group_info_flat["groupName_updatedBy_national_number"] = group_info_prev["groupName_updatedBy_national_number"]
+                
                 db["group_info"].delete(id=prev_id)
                 db["group_info"].insert(group_info_prev)
                 db["group_info"].upsert(group_info_flat, ["id"])
@@ -490,70 +500,7 @@ class DatabaseBot(BaseBot):
         for group in community_info[1:]: 
             if not utils.same_jid(group.JID, chat):
                 group.provenance.update(community_info[0].provenance)
-                await self._update_group_from_comm_info(db, group)
-    
-    async def _update_group_from_comm_info(
-        self,
-        db: dataset.Database,
-        group: wuc.GroupInfo
-    ):
-        chat_jid = utils.jid_to_str(group.JID)
-        logger = self.logger.getChild(chat_jid)
-        now = datetime.now()
-
-        group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
-        last_update: datetime = group_info_prev.get("last_update", datetime.min)
-        
-        group_info_flat = flatten_proto_message(
-            group,
-            preface_keys=True,
-            skip_keys=set(["participants", "participantVersionId"]),
-        )
-        keys = set(group_info_prev.keys()).intersection(group_info_flat.keys())
-        keys.discard("provenance")
-
-        group_info_flat["id"] = chat_jid
-        group_info_flat["last_update"] = now
-        group_participants = [flatten_proto_message(p) for p in group.participants]
-
-        if group_info_prev:
-            if changed_keys := [
-                k for k in keys if group_info_flat.get(k) != group_info_prev.get(k)
-            ]:
-                logger.debug(
-                    "Found previous out-of-date entry, updating: %s: %s",
-                    chat_jid,
-                    changed_keys,
-                )
-                group_info_prev["n_versions"] = group_info_prev.get("n_versions") or 0
-                prev_id = group_info_prev["id"]
-                N = group_info_flat["n_versions"] = group_info_prev["n_versions"] + 1
-                id_ = group_info_prev["id"] = f"{chat_jid}-{N:06d}"
-                group_info_prev["last_update"] = now
-                group_info_flat["previous_version_id"] = id_
-                if group_info_flat["groupName_updatedAt"] == group_info_prev["groupName_updatedAt"]: # we will have more information preserved in prev 
-                    group_info_flat["groupName_updatedBy_country_code"] = group_info_prev["groupName_updatedBy_country_code"] 
-                    group_info_flat["groupName_updatedBy_country_iso"] = group_info_prev["groupName_updatedBy_country_iso"]
-                    group_info_flat["groupName_updatedBy_national_number"] = group_info_prev["groupName_updatedBy_national_number"]
-                if group_first_seen := group_info_prev.get("first_seen"):
-                    group_info_flat["first_seen"] = group_first_seen
-                db["group_info"].delete(id=prev_id)
-                db["group_info"].insert(group_info_prev)
-                db["group_info"].upsert(group_info_flat, ["id"])
-            else:
-                db["group_info"].update({"id": chat_jid, "last_update": now}, ["id"])
-        elif not group_info_prev:
-            group_info_flat["first_seen"] = now
-            db["group_info"].insert(group_info_flat)
-
-        for participant in group_participants:
-            if group_first_seen := group_info_prev.get("first_seen"): participant["first_seen"] = group_first_seen
-            else: participant["first_seen"] = now
-            participant["last_seen"] = now
-            participant["chat_jid"] = chat_jid
-
-        logger.debug("Updating group info: %s", chat_jid)
-        db["group_participants"].upsert_many(group_participants, ["JID", "chat_jid"])
+                await self._update_group(db, group.JID, False, archive_data, group, True)
 
     async def _update_edit(self, message: wuc.WUMessage):
         message_flat = flatten_proto_message(message)
