@@ -389,7 +389,6 @@ class DatabaseBot(BaseBot):
 
         group_info_flat["id"] = chat_jid
         group_info_flat["last_update"] = now
-        #group_info_flat["isCommunityDefaultGroup"] = group_info_flat.get("isAnnounce")
         group_participants = [flatten_proto_message(p) for p in group_info.participants]
 
         if group_info_prev:
@@ -407,8 +406,8 @@ class DatabaseBot(BaseBot):
                 id_ = group_info_prev["id"] = f"{chat_jid}-{N:06d}"
                 group_info_prev["last_update"] = now
                 group_info_flat["previous_version_id"] = id_
-                if first_seen := group_info_prev.get("first_seen"):
-                    group_info_flat["first_seen"] = first_seen
+                if group_first_seen := group_info_prev.get("first_seen"):
+                    group_info_flat["first_seen"] = group_first_seen
                 db["group_info"].delete(id=prev_id)
                 db["group_info"].insert(group_info_prev)
                 db["group_info"].upsert(group_info_flat, ["id"])
@@ -419,6 +418,8 @@ class DatabaseBot(BaseBot):
             db["group_info"].insert(group_info_flat)
 
         for participant in group_participants:
+            if group_first_seen := group_info_prev.get("first_seen"): participant["first_seen"] = group_first_seen
+            else: participant["first_seen"] = now
             participant["last_seen"] = now
             participant["chat_jid"] = chat_jid
 
@@ -534,8 +535,8 @@ class DatabaseBot(BaseBot):
                     group_info_flat["groupName_updatedBy_country_code"] = group_info_prev["groupName_updatedBy_country_code"] 
                     group_info_flat["groupName_updatedBy_country_iso"] = group_info_prev["groupName_updatedBy_country_iso"]
                     group_info_flat["groupName_updatedBy_national_number"] = group_info_prev["groupName_updatedBy_national_number"]
-                if first_seen := group_info_prev.get("first_seen"):
-                    group_info_flat["first_seen"] = first_seen
+                if group_first_seen := group_info_prev.get("first_seen"):
+                    group_info_flat["first_seen"] = group_first_seen
                 db["group_info"].delete(id=prev_id)
                 db["group_info"].insert(group_info_prev)
                 db["group_info"].upsert(group_info_flat, ["id"])
@@ -546,6 +547,8 @@ class DatabaseBot(BaseBot):
             db["group_info"].insert(group_info_flat)
 
         for participant in group_participants:
+            if group_first_seen := group_info_prev.get("first_seen"): participant["first_seen"] = group_first_seen
+            else: participant["first_seen"] = now
             participant["last_seen"] = now
             participant["chat_jid"] = chat_jid
 
