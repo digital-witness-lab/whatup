@@ -8,7 +8,7 @@ from pulumi_gcp.cloudrunv2 import (
 
 from service import Service, ServiceArgs
 from network import vpc, private_services_network_with_db
-from dwl_secrets import db_url_secrets
+from dwl_secrets import db_url_secrets, whatup_salt_secret
 from storage import whatupcore2_bucket
 from config import is_prod_stack, whatup_salt
 
@@ -29,7 +29,7 @@ bucket_perm = storage.BucketIAMMember(
     ),
 )
 
-secret_manager_perm = secretmanager.SecretIamMember(
+db_secret_manager_perm = secretmanager.SecretIamMember(
     "whatupcore-secret-perm",
     secretmanager.SecretIamMemberArgs(
         secret_id=db_url_secrets["whatupcore"].id,
@@ -45,10 +45,19 @@ db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     )
 )
 
+salt_secret_manager_perm = secretmanager.SecretIamMember(
+    "whatupcore-salt-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=whatup_salt_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+
 whatup_salt_secret_source = (
     cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
         secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
-            secret=whatup_salt,
+            secret=whatup_salt_secret.name,
             version="latest",
         )
     )

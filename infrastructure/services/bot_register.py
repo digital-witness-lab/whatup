@@ -50,7 +50,7 @@ db_usr_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     )
 )
 
-bot_db = Service(
+bot_register = Service(
     service_name,
     ServiceArgs(
         app_path=path.join("..", "whatupy"),
@@ -60,7 +60,7 @@ bot_db = Service(
         cpu="1",
         # Route all egress traffic via the VPC network.
         egress="ALL_TRAFFIC",
-        image_name=service_name,
+        image_name="whatupy",
         # We want this service to only be reachable from within
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
