@@ -383,6 +383,10 @@ func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 		wac.Log.Debugf("GetMessages handler got something: %T", evt)
 		switch wmMsg := evt.(type) {
 		case *events.Message:
+            if ! MessageHasContent(wmMsg) {
+                return
+            }
+
 			aclEntry, err := wac.aclStore.GetByJID(&wmMsg.Info.Chat)
 			if err != nil {
 				wac.Log.Errorf("Could not read ACL for JID: %s: %+v", wmMsg.Info.Chat.String(), err)
@@ -465,6 +469,9 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 					wac.Log.Errorf("Failed to parse raw history message: %v", err)
 					continue
 				}
+                if ! MessageHasContent(wmMsg) {
+                    continue
+                }
 				if oldestMsgInfo == nil || wmMsg.Info.Timestamp.Before(oldestMsgInfo.Timestamp) {
 					oldestMsgInfo = &wmMsg.Info
 				}

@@ -177,7 +177,7 @@ services:
       - ssl-cert
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert registerbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --sessions-dir  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/gertrude.json"
+    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert registerbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --sessions-dir  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/erica.json"
 
   bot-userservices:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
@@ -194,7 +194,7 @@ services:
       - ssl-cert
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
-    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert userservicesbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --sessions-dir  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/gertrude.json"
+    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert userservicesbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --sessions-dir  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/erica.json"
 
   bot-user-archive:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
