@@ -47,7 +47,7 @@ case $app_command in
             --port 443 \
             registerbot \
             --database-url "${DATABASE_URL}" \
-            "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}/${SESSIONS_USER_SUBDIR}" \
+            --sessions-dir "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}/${SESSIONS_USER_SUBDIR}" \
             "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}/${ONBOARD_BOT}.json" &
     ;;
 

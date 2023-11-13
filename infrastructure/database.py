@@ -86,13 +86,12 @@ for db in db_configs.values():
 def get_sql_instance_url(db_name: str) -> Output[str]:
     c = db_configs[db_name]
     return Output.concat(
-        "postgres://",
+        "postgresql://",
         db_name,
         ":",
         c.password,
         "@",
         primary_cloud_sql_instance.private_ip_address,
-        "5432",
-        "/",
+        ":5432/",
         db_name,
     )
