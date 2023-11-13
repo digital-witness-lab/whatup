@@ -21,6 +21,7 @@ class RegisterBot(BaseBot):
         self.sessions_dir = sessions_dir
         self.db: dataset.Database = dataset.connect(database_url)
         kwargs["read_historical_messages"] = False
+        kwargs["mark_messages_read"] = True
         super().__init__(*args, **kwargs)
 
     def setup_command_args(self):
