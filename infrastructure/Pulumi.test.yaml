@@ -19,5 +19,7 @@ config:
     secure: AAABADidjer3HeL9MDtQF7uJ/cCA0T0aLaKA4Scm1DLzScD5s5oJhXR3fF+TurCdwU69uOUV08u1VzAbZABQcsH5UkBAY77Bm/G8PNxLxbTa6lLszF1+0fpRrPy0YzrK
   whatup:usr_password:
     secure: AAABAKiWovX77BLq0YB4lHfGiknqXyjpgr/IrzLOWzpSy5QcneSnCtYCwwKM6OAouyD81aAoC+ZVt+hJwY+bhg+J6xRQhpMwF+Opxz7ag7P4pEHWAsPXxEcYlZhjeNFq
+  whatup:whatupSalt:
+    secure: AAABABJ8V5h80V3CEsEaqWpE3Eno8N4febeytfHwicuc3o0cyjukO1r2qS3JnBjd4sKABHvcPQxnGq6zcFxI2ZM3LUsymBDT66zjHmZJQkBZYmUhEUp2Kfn81JICF5em
   whatup:wuc_password:
     secure: AAABAAlx6yD5dXMeWEkrrkS3fZ2gJcM/9yzsPGAk+ZjdqVOprNhjRuJqhV6g7WXlQz9vQIdOF1tdn3398YqSayP5Wt4ju/9sDc9GP24crFqUhoOlhn4TXmCI+Zm90Dpw

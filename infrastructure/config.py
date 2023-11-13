@@ -26,6 +26,7 @@ db_configs: Dict[str, DatabaseConfig] = {
 }
 
 db_root_password = config.require_secret("dbRootPassword")
+whatup_salt = config.require_secret("whatupSalt")
 create_load_archive_job = config.get_bool("createLoadArchiveJob")
 create_onboard_bulk_job = config.get_bool("createOnboardBulkJob")
 

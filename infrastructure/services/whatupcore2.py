@@ -10,7 +10,7 @@ from service import Service, ServiceArgs
 from network import vpc, private_services_network_with_db
 from dwl_secrets import db_url_secrets
 from storage import whatupcore2_bucket
-from config import is_prod_stack
+from config import is_prod_stack, whatup_salt
 
 service_name = "whatupcore2"
 
@@ -42,6 +42,15 @@ db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
         secret=db_url_secrets["whatupcore"].name,
         version="latest",
+    )
+)
+
+whatup_salt_secret_source = (
+    cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
+        secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
+            secret=whatup_salt,
+            version="latest",
+        )
     )
 )
 
@@ -93,6 +102,10 @@ whatupcore2_service = Service(
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="APP_NAME_SUFFIX",
                 value="" if is_prod_stack() else get_stack(),
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="ENC_KEY_SALT",
+                value_source=whatup_salt_secret_source,
             ),
         ],
     ),
