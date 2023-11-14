@@ -1,10 +1,11 @@
 from os import path
 
 from pulumi import get_stack, ResourceOptions, Output
-from pulumi_gcp import serviceaccount, cloudrunv2, storage
+from pulumi_gcp import cloudrunv2, kms, serviceaccount, storage
 
-from service import Service, ServiceArgs
+from kms import sessions_encryption_key
 from network import vpc, private_services_network
+from service import Service, ServiceArgs
 from storage import sessions_bucket, message_archive_bucket
 
 from .whatupcore2 import whatupcore2_service
@@ -39,6 +40,15 @@ sessions_bucket_perm = storage.BucketIAMMember(
     ),
 )
 
+encryption_key_perm = kms.CryptoKeyIAMMember(
+    "bot-archive-enc-key-perm",
+    kms.CryptoKeyIAMMemberArgs(
+        crypto_key_id=sessions_encryption_key.id,
+        member=Output.concat("serviceAccount:", service_account.email),
+        role="roles/cloudkms.cryptoKeyEncrypterDecrypter",
+    ),
+)
+
 whatupy = Service(
     service_name,
     ServiceArgs(
@@ -64,20 +74,12 @@ whatupy = Service(
         ),
         envs=[
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="WHATUPY_CONTROL_GROUPS",
-                value=whatupy_control_groups,
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="SESSIONS_BUCKET",
-                value=sessions_bucket.name,
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="BUCKET_MNT_DIR_PREFIX",
                 value="/usr/src/whatupy-data",
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="SESSIONS_BUCKET_MNT_DIR",
-                value="sessions/",
+                name="KEK_URI",
+                value=sessions_encryption_key.id,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="MESSAGE_ARCHIVE_BUCKET",
@@ -88,12 +90,28 @@ whatupy = Service(
                 value="message-archive/",
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="SESSIONS_BUCKET",
+                value=sessions_bucket.name,
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="SESSIONS_BUCKET_MNT_DIR",
+                value="sessions/",
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="WHATUPY_CONTROL_GROUPS",
+                value=whatupy_control_groups,
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_HOST",
                 value=whatupcore2_service.get_host(),
             ),
         ],
     ),
     opts=ResourceOptions(
-        depends_on=[message_archive_bucket_perm, sessions_bucket_perm]
+        depends_on=[
+            message_archive_bucket_perm,
+            sessions_bucket_perm,
+            encryption_key_perm,
+        ]
     ),
 )
