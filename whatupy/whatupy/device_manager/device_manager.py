@@ -52,6 +52,11 @@ class DeviceManager:
 
     async def on_credentials(self, listener: CredentialsListener, credentials):
         username = credentials["username"]
+        if username in self.devices:
+            self.logger.info(
+                "Got credentials for existing bot... skipping: %s", username
+            )
+            return
         if backoff := self.reconnect_backoff[username]:
             t = 2 ** min(backoff, 11)  # max of 35min backoff time
             self.logger.critical(

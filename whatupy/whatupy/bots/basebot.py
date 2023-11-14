@@ -138,6 +138,11 @@ class BaseBot:
                 if self.read_historical_messages:
                     tg.create_task(self.listen_historical_messages())
                 tg.create_task(self.post_start())
+        except grpc.aio._call.AioRpcError as e:
+            if e.details() == "Stream removed":
+                self.logger.critical("Stream connection disconnected. Reconnecting")
+            else:
+                self.logger.exception("GRPC error in bot main loop")
         except EndOfMessagesException:
             self.logger.critical(
                 "Reached the end of the messages. This shouldn't happen unless the user un-registered."
