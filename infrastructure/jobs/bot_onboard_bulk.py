@@ -1,10 +1,11 @@
 from os import path
 
 from pulumi import get_stack, ResourceOptions, Output
-from pulumi_gcp import serviceaccount, cloudrunv2, storage
+from pulumi_gcp import cloudrunv2, kms, serviceaccount, storage
 
 from config import create_onboard_bulk_job
 from job import JobArgs, Job
+from kms import sessions_encryption_key
 from network import vpc, private_services_network
 from storage import sessions_bucket
 
@@ -24,6 +25,15 @@ sessions_bucket_perm = storage.BucketIAMMember(
         bucket=sessions_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
         role="roles/storage.objectAdmin",
+    ),
+)
+
+encryption_key_perm = kms.CryptoKeyIAMMember(
+    "onboard-bot-enc-key-perm",
+    kms.CryptoKeyIAMMemberArgs(
+        crypto_key_id=sessions_encryption_key.id,
+        member=Output.concat("serviceAccount:", service_account.email),
+        role="roles/cloudkms.cryptoKeyEncrypterDecrypter",
     ),
 )
 
@@ -54,6 +64,10 @@ if create_onboard_bulk_job:
                     value="/usr/src/whatupy-data",
                 ),
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                    name="KEK_URI",
+                    value=sessions_encryption_key.id,
+                ),
+                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                     name="SESSIONS_BUCKET",
                     value=sessions_bucket.name,
                 ),
@@ -68,5 +82,7 @@ if create_onboard_bulk_job:
             ],
             timeout="3600s",
         ),
-        opts=ResourceOptions(depends_on=sessions_bucket_perm),
+        opts=ResourceOptions(
+            depends_on=[sessions_bucket_perm, encryption_key_perm]
+        ),
     )
