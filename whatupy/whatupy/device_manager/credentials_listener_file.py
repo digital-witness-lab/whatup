@@ -55,7 +55,6 @@ class CredentialsListenerFile(CredentialsListener):
         logger.debug("CredentialsListenerFile listening to paths: %s", self.paths)
         should_loop = True
         while should_loop or (await self.blocker.wait()):
-            logger.debug("Looking for new credentials")
             self.blocker.clear()
             should_loop, credentials = self._get_credentials()
             for credential_file in credentials:
