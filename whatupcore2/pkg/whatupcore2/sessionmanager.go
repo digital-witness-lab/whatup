@@ -25,17 +25,19 @@ type SessionManager struct {
 	sessionIdToSession  map[string]*Session
 	usernameToSessionId map[string]string
 	secretKey           []byte
+	dbUri               string
 
 	log waLog.Logger
 
 	cancelFunc context.CancelFunc
 }
 
-func NewSessionManager(secretKey []byte, log waLog.Logger) *SessionManager {
+func NewSessionManager(secretKey []byte, dbUri string, log waLog.Logger) *SessionManager {
 	return &SessionManager{
 		sessionIdToSession:  make(map[string]*Session),
 		usernameToSessionId: make(map[string]string),
 		secretKey:           secretKey,
+		dbUri:               dbUri,
 		log:                 log,
 	}
 }
@@ -88,7 +90,7 @@ func (sm *SessionManager) AddLogin(username string, passphrase string) (*Session
 		return session, nil
 	}
 
-	session, err = NewSessionLogin(username, passphrase, sm.secretKey, sm.log.Sub(username))
+	session, err = NewSessionLogin(username, passphrase, sm.secretKey, sm.dbUri, sm.log.Sub(username))
 	if err != nil {
 		return nil, err
 	}
@@ -109,8 +111,8 @@ func (sm *SessionManager) AddRegistration(ctx context.Context, username string, 
 		return session, nil, nil
 	}
 
-	session, state, err := NewSessionRegister(ctx, username, passphrase, registerOptions, sm.secretKey, sm.log.Sub(username))
-	if err != nil {
+	session, state, err := NewSessionRegister(ctx, username, passphrase, registerOptions, sm.secretKey, sm.dbUri, sm.log.Sub(username))
+	if err != nil || state == nil {
 		return nil, nil, err
 	}
 	if err := sm.addSession(session); err != nil {
@@ -188,6 +190,11 @@ func (sm *SessionManager) GetSessionLogin(username, passphrase string) (*Session
 	if !session.VerifyPassphrase(passphrase) {
 		sm.log.Warnf("Invalid login attempt for user: %s", username)
 		return nil, ErrInvalidPassphrase
+	}
+	if !session.Client.IsLoggedIn() {
+		sm.log.Warnf("Trying to log into a disconnected client")
+		sm.removeSession(session)
+		return nil, nil
 	}
 	session.log.Infof("User logged in to existing session")
 	return session, nil

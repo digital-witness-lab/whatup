@@ -45,8 +45,8 @@ class CredentialsListenerFile(CredentialsListener):
                     username,
                     credential_file,
                 )
-                await device_manager.on_credentials(credential)
                 self.active_usernames[username] = credential_file
+                await device_manager.on_credentials(self, credential)
         except ValueError:
             logger.exception(f"Could not parse credential: {credential_file}")
             return
@@ -55,7 +55,6 @@ class CredentialsListenerFile(CredentialsListener):
         logger.debug("CredentialsListenerFile listening to paths: %s", self.paths)
         should_loop = True
         while should_loop or (await self.blocker.wait()):
-            logger.debug("Looking for new credentials")
             self.blocker.clear()
             should_loop, credentials = self._get_credentials()
             for credential_file in credentials:
@@ -70,4 +69,9 @@ class CredentialsListenerFile(CredentialsListener):
     def unregister(self, username):
         credential_file = self.active_usernames.pop(username)
         logger.info("Removing session file: %s", credential_file)
-        credential_file.unlink(missing_ok=True)
+        try:
+            credential_file.unlink(missing_ok=True)
+        except OSError as e:
+            logger.critical(
+                "Could not remove credentials file: %s: %s", credential_file, e
+            )

@@ -10,6 +10,8 @@ from collections import defaultdict, deque, namedtuple
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import grpc
+
 from .. import utils
 from ..connection import create_whatupcore_clients
 from ..protos import whatsappweb_pb2 as waw
@@ -27,6 +29,14 @@ CONTROL_CACHE = deque(maxlen=1028)
 
 DownloadMediaCallback = T.Type[T.Callable[[wuc.WUMessage, bytes], T.Awaitable[None]]]
 MediaType = enum.Enum("MediaType", wuc.SendMessageMedia.MediaType.items())
+
+
+class InvalidCredentialsException(Exception):
+    pass
+
+
+class EndOfMessagesException(Exception):
+    pass
 
 
 class BotCommandArgsException(Exception):
@@ -107,7 +117,12 @@ class BaseBot:
     async def login(self, username: str, passphrase: str, **kwargs) -> T.Self:
         self.logger = self.logger.getChild(username)
         self.logger.info("Logging in")
-        await self.authenticator.login(username, passphrase)
+        try:
+            await self.authenticator.login(username, passphrase)
+        except grpc.aio._call.AioRpcError as e:
+            if e.details() == "the store doesn't contain a device JID":
+                raise InvalidCredentialsException
+            raise e
         return self
 
     async def start(self, **kwargs):
@@ -123,6 +138,15 @@ class BaseBot:
                 if self.read_historical_messages:
                     tg.create_task(self.listen_historical_messages())
                 tg.create_task(self.post_start())
+        except grpc.aio._call.AioRpcError as e:
+            if e.details() == "Stream removed":
+                self.logger.critical("Stream connection disconnected. Reconnecting")
+            else:
+                self.logger.exception("GRPC error in bot main loop")
+        except EndOfMessagesException:
+            self.logger.critical(
+                "Reached the end of the messages. This shouldn't happen unless the user un-registered."
+            )
         except Exception:
             self.logger.exception("Exception in main run loop of bot")
         self.stop()
@@ -135,38 +159,35 @@ class BaseBot:
         pass
 
     async def listen_historical_messages(self):
-        while True:
-            self.logger.info("Reading historical messages")
-            messages: T.AsyncIterator[
-                wuc.WUMessage
-            ] = self.core_client.GetPendingHistory(
-                wuc.PendingHistoryOptions(historyReadTimeout=60)
+        self.logger.info("Reading historical messages")
+        messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetPendingHistory(
+            wuc.PendingHistoryOptions(historyReadTimeout=60)
+        )
+        async for message in messages:
+            jid_from: wuc.JID = message.info.source.chat
+            self.logger.debug(
+                "Got historical message: %s: %s",
+                utils.jid_to_str(jid_from),
+                message.info.id,
             )
-            async for message in messages:
-                jid_from: wuc.JID = message.info.source.chat
-                self.logger.debug(
-                    "Got historical message: %s: %s",
-                    utils.jid_to_str(jid_from),
-                    message.info.id,
+            try:
+                await self._dispatch_message(
+                    message, skip_control=True, is_history=True
                 )
-                try:
-                    await self._dispatch_message(
-                        message, skip_control=True, is_history=True
-                    )
-                except Exception:
-                    self.logger.exception(
-                        "Exception handling historical message... attempting to continue"
-                    )
+            except Exception:
+                self.logger.exception(
+                    "Exception handling historical message... attempting to continue"
+                )
 
     async def listen_messages(self):
-        while True:
-            self.logger.info("Reading messages")
-            messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetMessages(
-                wuc.MessagesOptions(markMessagesRead=self.mark_messages_read)
-            )
-            async with asyncio.TaskGroup() as tg:
-                async for message in messages:
-                    tg.create_task(self._dispatch_message(message))
+        self.logger.info("Reading messages")
+        messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetMessages(
+            wuc.MessagesOptions(markMessagesRead=self.mark_messages_read)
+        )
+        async with asyncio.TaskGroup() as tg:
+            async for message in messages:
+                tg.create_task(self._dispatch_message(message))
+        raise EndOfMessagesException
 
     async def _dispatch_message(
         self,
@@ -302,7 +323,7 @@ class BaseBot:
         await self.download_queue.put((message, callback))
 
     async def send_text_message(
-        self, recipient: wuc.JID, text: str, composing_time: int = 5
+        self, recipient: wuc.JID, text: str, composing_time: int = 2
     ) -> wuc.SendMessageReceipt:
         recipient_nonad = utils.jid_noad(recipient)
         options = wuc.SendMessageOptions(
@@ -319,7 +340,7 @@ class BaseBot:
         caption: T.Optional[str] = None,
         mimetype: T.Optional[str] = None,
         filename: T.Optional[str] = None,
-        composing_time: int = 5,
+        composing_time: int = 2,
     ) -> wuc.SendMessageReceipt:
         recipient_nonad = utils.jid_noad(recipient)
         options = wuc.SendMessageOptions(

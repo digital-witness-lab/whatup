@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+gcs_params=""
+
 if [ -z "${WHATUPCORE2_BUCKET_MNT_DIR:-}" ]; then
     echo "WHATUPCORE2_BUCKET_MNT_DIR is required"
     exit 1
@@ -10,7 +12,7 @@ fi
 mkdir -p $WHATUPCORE2_BUCKET_MNT_DIR
 
 echo "Mounting $WHATUPCORE2_BUCKET using GCS Fuse."
-gcsfuse "$WHATUPCORE2_BUCKET" $WHATUPCORE2_BUCKET_MNT_DIR
+gcsfuse ${gcs_params} "$WHATUPCORE2_BUCKET" $WHATUPCORE2_BUCKET_MNT_DIR
 echo "Mounting completed."
 
 echo "Starting whatupcore2..."
