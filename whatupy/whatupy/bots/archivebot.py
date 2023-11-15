@@ -94,26 +94,26 @@ class ArchiveBot(BaseBot):
                     refresh_dt
                 )
                 self.logger.debug("Got metadata for group: %s", chat_id)
-                with meta_path.open("w+") as fd:
+                with meta_group_path.open("w+") as fd:
                     fd.write(utils.protobuf_to_json(metadata))
                 message.provenance["archivebot__groupInfoPath"] = str(
                     meta_group_path.relative_to(archive_filename.parent)
                 )
-            except grpc.RpcError:
-                self.logger.exception("Could not get group info")
-            # TODO do this again for the parent chat
             
-            if utils.jid_to_str(metadata.parentJID) != None:
-                self.logger.debug("Processing metadata for community with ID: %s", metadata.parentJID)
-                community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = self.core_client.GetCommunityInfo(metadata.parentJID)
-                community_info : T.List[wuc.GroupInfo] = await utils.aiter_to_list(community_info_iterator)
-                community_info[0].provenance.update(provenance)
-                community_info[0].provenance["archivebot__communityInfoRefreshTime"] = str(refresh_dt)
-                self.logger.debug("Got metadata for community: %s", chat_id)
-                with meta_community_path.open("w+") as fd:
-                    fd.write(utils.protobuf_to_json_list(community_info))
-                message.provenance["archivebot__communityInfoPath"] = str(meta_community_path.relative_to(archive_filename.parent))
+                if utils.jid_to_str(metadata.parentJID) != None:
+                    self.logger.debug("Processing metadata for community with ID: %s", metadata.parentJID)
+                    community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = self.core_client.GetCommunityInfo(metadata.parentJID)
+                    community_info : T.List[wuc.GroupInfo] = await utils.aiter_to_list(community_info_iterator)
+                    community_info[0].provenance.update(provenance)
+                    community_info[0].provenance["archivebot__communityInfoRefreshTime"] = str(refresh_dt)
+                    self.logger.debug("Got metadata for community: %s", chat_id)
+                    with meta_community_path.open("w+") as fd:
+                        fd.write(utils.protobuf_to_json_list(community_info))
+                    message.provenance["archivebot__communityInfoPath"] = str(meta_community_path.relative_to(archive_filename.parent))
 
+            except grpc.RpcError:
+                self.logger.exception("Could not get group info (and community info if applicable)")
+            
         if media_filename := utils.media_message_filename(message):
             media_dir: Path = conversation_dir / "media"
             media_dir.mkdir(parents=True, exist_ok=True)
