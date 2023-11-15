@@ -495,7 +495,7 @@ class DatabaseBot(BaseBot):
             community_info_flat["first_seen"] = now
             db["group_info"].insert(community_info_flat)
             
-        logger.debug("Updating community info for community", chat_parent_jid)
+        logger.debug("Updating community info for community %s", chat_parent_jid)
 
         for group in community_info[1:]: 
             if not utils.same_jid(group.JID, chat):
