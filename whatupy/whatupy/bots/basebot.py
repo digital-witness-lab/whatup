@@ -5,16 +5,16 @@ import logging
 import random
 import shlex
 import typing as T
-from contextlib import asynccontextmanager
 from collections import defaultdict, deque, namedtuple
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import grpc
 
 from .. import utils
-from ..credentials_manager.credential import Credential
 from ..connection import create_whatupcore_clients
+from ..credentials_manager.credential import Credential
 from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
 from ..protos.whatupcore_pb2_grpc import WhatUpCoreStub
@@ -166,22 +166,18 @@ class BaseBot:
     async def listen_historical_messages(self):
         self.logger.info("Reading historical messages")
         messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetPendingHistory(
-            wuc.PendingHistoryOptions(historyReadTimeout=60)
+            wuc.PendingHistoryOptions()
         )
-        async for message in messages:
-            jid_from: wuc.JID = message.info.source.chat
-            self.logger.debug(
-                "Got historical message: %s: %s",
-                utils.jid_to_str(jid_from),
-                message.info.id,
-            )
-            try:
-                await self._dispatch_message(
-                    message, skip_control=True, is_history=True
+        async with asyncio.TaskGroup() as tg:
+            async for message in messages:
+                jid_from: wuc.JID = message.info.source.chat
+                self.logger.debug(
+                    "Got historical message: %s: %s",
+                    utils.jid_to_str(jid_from),
+                    message.info.id,
                 )
-            except Exception:
-                self.logger.exception(
-                    "Exception handling historical message... attempting to continue"
+                tg.create_task(
+                    self._dispatch_message(message, skip_control=True, is_history=True)
                 )
 
     async def listen_messages(self):

@@ -234,25 +234,37 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	msgChan := session.Client.GetMessages(ctx)
 
-	for msg := range msgChan {
-		msg.log.Debugf("Recieved message for gRPC client")
-		if messageOptions.MarkMessagesRead {
-			msg.MarkRead()
-		}
-        msg.log.Infof("Sending message to client: %s: %s", msg.Info.Chat.String(), msg.Info.ID)
-		msgProto, ok := msg.ToProto()
-		anonMsgProto := AnonymizeInterface(session.Client.anonLookup, msgProto)
-		if !ok {
-			msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
-		} else if err := server.Send(anonMsgProto); err != nil {
-			s.log.Errorf("Could not send message to client: %v", err)
+	msgClient := session.Client.GetMessages()
+	defer msgClient.Close()
+	msgChan, err := msgClient.MessageChan()
+	if err != nil {
+		s.log.Errorf("Could not create message chan: %v", err)
+		return nil
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			session.log.Debugf("Client connection closed")
 			return nil
+		case <-session.ctx.Done():
+			session.log.Debugf("Session closed... disconnecting")
+			return nil
+		case msg := <-msgChan:
+			if messageOptions.MarkMessagesRead {
+				msg.MarkRead()
+			}
+			msg.log.Infof("Sending message to client: %s: %s", msg.Info.Chat.String(), msg.Info.ID)
+			msgProto, ok := msg.ToProto()
+			if !ok {
+				msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
+			} else if err := server.Send(AnonymizeInterface(session.Client.anonLookup, msgProto)); err != nil {
+				s.log.Errorf("Could not send message to client: %v", err)
+				return nil
+			}
 		}
 	}
-	session.log.Debugf("Ending GetMessages")
-	return nil
 }
 
 func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOptions, server pb.WhatUpCore_GetPendingHistoryServer) error {
@@ -262,21 +274,39 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(historyOptions.HistoryReadTimeout))
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	msgChan := session.Client.GetHistoryMessages(ctx)
 
-	for msg := range msgChan {
-		msgProto, ok := msg.ToProto()
-		anonMsgProto := AnonymizeInterface(session.Client.anonLookup, msgProto)
-		if !ok {
-			msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
-		} else if err := server.Send(anonMsgProto); err != nil {
+	msgClient := session.Client.GetHistoryMessages()
+	if msgClient == nil {
+		s.log.Errorf("Trying to read messages from an closed MessageQueue")
+		return nil
+	}
+	defer msgClient.Close()
+	msgChan, err := msgClient.MessageChan()
+	if err != nil {
+		s.log.Errorf("Could not create message chan: %v", err)
+		return nil
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			session.log.Debugf("Client connection closed")
 			return nil
+		case <-session.ctx.Done():
+			session.log.Debugf("Session closed... disconnecting")
+			return nil
+		case msg := <-msgChan:
+			msg.log.Debugf("Recieved history message for gRPC client")
+			msgProto, ok := msg.ToProto()
+			if !ok {
+				msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
+			} else if err := server.Send(AnonymizeInterface(session.Client.anonLookup, msgProto)); err != nil {
+				return nil
+			}
 		}
 	}
-	session.log.Debugf("Ending GetMessages")
-	return nil
 }
 
 func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptions *pb.DownloadMediaOptions) (*pb.MediaContent, error) {

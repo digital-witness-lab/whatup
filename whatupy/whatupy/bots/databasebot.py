@@ -138,6 +138,7 @@ class DatabaseBot(BaseBot):
         **kwargs,
     ):
         kwargs["mark_messages_read"] = True
+        kwargs["read_historical_messages"] = True
         super().__init__(*args, **kwargs)
         self.group_info_refresh_time = group_info_refresh_time
         self.db: dataset.Database = dataset.connect(database_url)
@@ -275,6 +276,7 @@ class DatabaseBot(BaseBot):
         self,
         message: wuc.WUMessage,
         is_archive: bool,
+        is_history: bool,
         archive_data: ArchiveData,
         **kwargs,
     ):
@@ -298,15 +300,19 @@ class DatabaseBot(BaseBot):
                     {"id": source_message_id, "isDelete": True}, ["id"]
                 )
         else:
-            await self._update_message(message, is_archive, archive_data)
+            await self._update_message(message, is_archive, is_history, archive_data)
 
     async def _update_message(
-        self, message: wuc.WUMessage, is_archive: bool, archive_data: ArchiveData
+        self,
+        message: wuc.WUMessage,
+        is_archive: bool,
+        is_history: bool,
+        archive_data: ArchiveData,
     ):
         message_flat = flatten_proto_message(message)
         media_filename = utils.media_message_filename(message)
         with self.db as db:
-            if message.info.source.isGroup:
+            if message.info.source.isGroup and not is_history:
                 self.logger.debug(
                     "Updating group or community groups: %s", message.info.id
                 )
