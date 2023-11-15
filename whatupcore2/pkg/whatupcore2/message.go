@@ -34,11 +34,11 @@ type Message struct {
 }
 
 func MessageHasContent(m *events.Message) bool {
-    // This is a place to filter out protocol messages that would otherwise seep to the bots
-    if m.RawMessage.GetSenderKeyDistributionMessage() != nil {
-        return false
-    }
-    return true
+	// This is a place to filter out protocol messages that would otherwise seep to the bots
+	if m.RawMessage.GetSenderKeyDistributionMessage() != nil {
+		return false
+	}
+	return true
 }
 
 func NewMessageFromWhatsMeow(client *WhatsAppClient, m *events.Message) (*Message, error) {
