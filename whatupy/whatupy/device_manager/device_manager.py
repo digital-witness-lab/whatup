@@ -1,12 +1,11 @@
-from dataclasses import dataclass, field
 import asyncio
 import logging
-from collections import abc, defaultdict
 import typing as T
+from collections import abc, defaultdict
+from dataclasses import dataclass, field
 
 from ..bots.basebot import BaseBot, InvalidCredentialsException
-from ..credentials_manager import CredentialsManager, Credential
-
+from ..credentials_manager import Credential, CredentialsManager
 
 logger = logging.getLogger(__name__)
 

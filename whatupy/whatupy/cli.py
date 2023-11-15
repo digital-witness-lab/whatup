@@ -3,26 +3,17 @@ import glob
 import json
 import logging
 import typing as T
-import asyncio
 from pathlib import Path
 
 import click
 from cloudpathlib import AnyPath
 
-from .bots import (
-    ArchiveBot,
-    ChatBot,
-    DatabaseBot,
-    OnboardBot,
-    DebugBot,
-    RegisterBot,
-    UserServicesBot,
-)
-from .device_manager import run_multi_bots
+from .bots import (ArchiveBot, ChatBot, DatabaseBot, DebugBot, OnboardBot,
+                   RegisterBot, UserServicesBot)
 from .credentials_manager import CredentialsManager
-from .utils import async_cli, str_to_jid
+from .device_manager import run_multi_bots
 from .protos import whatupcore_pb2 as wuc
-
+from .utils import async_cli, str_to_jid
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)

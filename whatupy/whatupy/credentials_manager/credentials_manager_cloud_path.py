@@ -1,17 +1,13 @@
-import logging
 import asyncio
-import json
 import glob
+import json
+import logging
 import typing as T
 
 from cloudpathlib import AnyPath
 
-from .credentials_manager import (
-    CredentialsManager,
-    Credential,
-    IncompleteCredentialsException,
-)
-
+from .credentials_manager import (Credential, CredentialsManager,
+                                  IncompleteCredentialsException)
 
 logger = logging.getLogger(__name__)
 

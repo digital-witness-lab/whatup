@@ -64,7 +64,7 @@ db_usr_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
 bot_register = Service(
     service_name,
     ServiceArgs(
-        args=["registerbot"],
+        args=["/usr/src/whatupy/run.sh", "registerbot"],
         concurrency=50,
         container_port=None,
         cpu="1",

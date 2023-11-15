@@ -53,7 +53,7 @@ encryption_key_perm = kms.CryptoKeyIAMMember(
 whatupy = Service(
     service_name,
     ServiceArgs(
-        args=["archivebot"],
+        args=["/usr/src/whatupy/run.sh", "archivebot"],
         concurrency=50,
         container_port=None,
         cpu="1",

@@ -60,7 +60,7 @@ class ChatBot(BaseBot):
             return
 
         anon_chat_JID: str = utils.jid_to_str(message.info.source.chat)
-        if anon_chat_JID is None: 
+        if anon_chat_JID is None:
             self.logger.critical("Message has no chat_JID")
             return
         if not anon_chat_JID in CHATBOT_FRIEND_JIDS.keys():

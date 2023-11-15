@@ -292,13 +292,8 @@ global___DownloadMediaOptions = DownloadMediaOptions
 @typing_extensions.final
 class PendingHistoryOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
-    HISTORYREADTIMEOUT_FIELD_NUMBER: builtins.int
-    historyReadTimeout: builtins.int
 
-    def __init__(self, *, historyReadTimeout: builtins.int=...) -> None:
-        ...
-
-    def ClearField(self, field_name: typing_extensions.Literal['historyReadTimeout', b'historyReadTimeout']) -> None:
+    def __init__(self) -> None:
         ...
 global___PendingHistoryOptions = PendingHistoryOptions
 

@@ -122,7 +122,8 @@ message DownloadMediaOptions {
 }
 
 message PendingHistoryOptions {
-    uint32 historyReadTimeout = 1;
+    reserved "historyReadTimeout";
+    reserved 1;
 }
 
 message SendMessageReceipt {

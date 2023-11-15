@@ -3,8 +3,9 @@ package whatupcore2
 import (
 	"reflect"
 
-	"go.mau.fi/whatsmeow/types"
 	"github.com/nyaruka/phonenumbers"
+	"go.mau.fi/whatsmeow/types"
+	"golang.org/x/exp/constraints"
 )
 
 func mergeGroupParticipants(participants []types.GroupParticipant, jids []types.JID) []types.GroupParticipant {
@@ -159,4 +160,11 @@ func findFieldNameFunc(input interface{}, fieldFunc func(string) bool) []reflect
 
 func getEnvAsBoolean(value string) bool {
 	return value == "true"
+}
+
+func min[T constraints.Ordered](a, b T) T {
+	if a < b {
+		return a
+	}
+	return b
 }

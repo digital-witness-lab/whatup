@@ -18,7 +18,8 @@ type Session struct {
 	token          *jwt.Token
 	tokenString    string
 
-	clients uint64
+	ctx       context.Context
+	ctxCancel context.CancelFunc
 
 	createdAt  time.Time
 	renewedAt  time.Time
@@ -36,10 +37,14 @@ func NewSessionDisconnected(username, passphrase string, secretKey []byte, log w
 		panic(err)
 	}
 
+	ctx, ctxCancel := context.WithCancel(context.Background())
+
 	session := &Session{
 		Username:       username,
 		passphraseHash: hash,
 		sessionId:      username,
+		ctx:            ctx,
+		ctxCancel:      ctxCancel,
 		createdAt:      now,
 		renewedAt:      now,
 		lastAccess:     now,
@@ -76,6 +81,7 @@ func NewSessionRegister(ctx context.Context, username string, passphrase string,
 
 func (session *Session) Close() {
 	session.log.Debugf("Closing session")
+	session.ctxCancel()
 	session.Client.Close()
 }
 
@@ -85,7 +91,7 @@ func (session *Session) ToProto() *pb.SessionToken {
 }
 
 func (session *Session) Login(username string, passphrase string, dbUri string) error {
-	client, err := NewWhatsAppClient(username, passphrase, dbUri, session.log.Sub("WAC"))
+	client, err := NewWhatsAppClient(session.ctx, username, passphrase, dbUri, session.log.Sub("WAC"))
 	if err != nil {
 		return err
 	}
@@ -98,7 +104,7 @@ func (session *Session) Login(username string, passphrase string, dbUri string) 
 }
 
 func (session *Session) LoginOrRegister(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions, dbUri string) (*RegistrationState, error) {
-	client, err := NewWhatsAppClient(username, passphrase, dbUri, session.log.Sub("WAC"))
+	client, err := NewWhatsAppClient(session.ctx, username, passphrase, dbUri, session.log.Sub("WAC"))
 	if err != nil {
 		return nil, err
 	}
@@ -162,8 +168,12 @@ func (session *Session) UpdateLastAccessWhileAlive(ctx context.Context) {
 		case <-ctx.Done():
 			session.log.Debugf("Stopping last-access refresher")
 			return
+		case <-session.ctx.Done():
+			session.log.Debugf("Session closed")
+			return
 		case <-session.Client.Done():
 			session.log.Debugf("Client disconnected")
+			session.Close()
 			return
 		}
 	}

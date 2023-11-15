@@ -1,12 +1,12 @@
 import json
 import logging
+import typing as T
 from datetime import datetime, timedelta
 from functools import partial
 from pathlib import Path
-import typing as T
 
-from packaging import version
 import grpc
+from packaging import version
 
 from .. import utils
 from ..protos import whatsappweb_pb2 as waw

@@ -1,10 +1,10 @@
-from pathlib import Path
-from functools import partial
 import typing as T
+from functools import partial
+from pathlib import Path
 
+from ..bots import BotType
 from ..credentials_manager import CredentialsManager
 from .device_manager import DeviceManager
-from ..bots import BotType
 
 
 async def run_multi_bots(
