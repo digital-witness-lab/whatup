@@ -323,7 +323,7 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 	groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
 	groupInfoProto.IsCommunityDefaultGroup = groupInfo.IsAnnounce
 	if groupInfo.IsAnnounce {
-		groupInfoProto.GroupTopic = nil//&pb.GroupTopic{}
+		groupInfoProto.GroupTopic = nil
 	}
 	return AnonymizeInterface(session.Client.anonLookup, groupInfoProto), nil
 }
