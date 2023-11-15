@@ -135,6 +135,7 @@ func GroupInfoToProto(gi *types.GroupInfo, device *store.Device) *pb.GroupInfo {
 		IsLocked:      gi.IsLocked,
 		IsAnnounce:    gi.IsAnnounce,
 		IsEphemeral:   gi.IsEphemeral,
+		DisappearingTimer: gi.DisappearingTimer,
 
 		ParticipantVersionId: gi.ParticipantVersionID,
 		Participants:         participants,
