@@ -15,6 +15,9 @@ func MustGetEnv(key string) string {
 }
 
 func getDbUriFromEnv() string {
+	if dbUri, ok := os.LookupEnv("DATABASE_URL"); ok {
+		return dbUri
+	}
 	var (
 		host         = "db"
 		username     = MustGetEnv("POSTGRES_DATABASE")

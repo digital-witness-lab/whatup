@@ -42,6 +42,15 @@ case $app_command in
             "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}" &
     ;;
 
+    registerbot)
+        whatupy --host "${WHATUPCORE2_HOST}" \
+            --port 443 \
+            registerbot \
+            --database-url "${DATABASE_URL}" \
+            --sessions-dir "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}/${SESSIONS_USER_SUBDIR}" \
+            "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}/${ONBOARD_BOT}.json" &
+    ;;
+
     onboard)
         if [ -z "${WHATUPY_ONBOARD_BOT_NAME:-}" ]; then
             echo "WHATUPY_ONBOARD_BOT_NAME env var is required."

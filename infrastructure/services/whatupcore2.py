@@ -1,12 +1,16 @@
 from os import path
 
 from pulumi import get_stack, ResourceOptions, Output
-from pulumi_gcp import serviceaccount, cloudrunv2, storage
+from pulumi_gcp import serviceaccount, cloudrunv2, storage, secretmanager
+from pulumi_gcp.cloudrunv2 import (
+    ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
+)  # noqa: E501
 
 from service import Service, ServiceArgs
-from network import vpc, private_services_network
+from network import vpc, private_services_network_with_db
+from dwl_secrets import db_url_secrets, whatup_salt_secret
 from storage import whatupcore2_bucket
-from config import is_prod_stack
+from config import is_prod_stack, whatup_salt
 
 service_name = "whatupcore2"
 
@@ -23,6 +27,40 @@ bucket_perm = storage.BucketIAMMember(
         member=Output.concat("serviceAccount:", service_account.email),
         role="roles/storage.objectAdmin",
     ),
+)
+
+db_secret_manager_perm = secretmanager.SecretIamMember(
+    "whatupcore-secret-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=db_url_secrets["whatupcore"].id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+
+db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
+    secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
+        secret=db_url_secrets["whatupcore"].name,
+        version="latest",
+    )
+)
+
+salt_secret_manager_perm = secretmanager.SecretIamMember(
+    "whatupcore-salt-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=whatup_salt_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+
+whatup_salt_secret_source = (
+    cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
+        secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
+            secret=whatup_salt_secret.name,
+            version="latest",
+        )
+    )
 )
 
 whatupcore2_service = Service(
@@ -51,7 +89,7 @@ whatupcore2_service = Service(
         # Direct VPC egress for outbound traffic based
         # on the value of the `egress` property above.
         subnet=cloudrunv2.ServiceTemplateVpcAccessNetworkInterfaceArgs(
-            network=vpc.id, subnetwork=private_services_network.id
+            network=vpc.id, subnetwork=private_services_network_with_db.id
         ),
         envs=[
             cloudrunv2.ServiceTemplateContainerEnvArgs(
@@ -67,8 +105,16 @@ whatupcore2_service = Service(
                 value="/db/",
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="DATABASE_URL",
+                value_source=db_url_secret_source,
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="APP_NAME_SUFFIX",
                 value="" if is_prod_stack() else get_stack(),
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="ENC_KEY_SALT",
+                value_source=whatup_salt_secret_source,
             ),
         ],
     ),
