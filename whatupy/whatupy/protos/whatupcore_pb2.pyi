@@ -467,6 +467,7 @@ class GroupInfo(google.protobuf.message.Message):
     ISLOCKED_FIELD_NUMBER: builtins.int
     ISANNOUNCE_FIELD_NUMBER: builtins.int
     ISEPHEMERAL_FIELD_NUMBER: builtins.int
+    DISAPPEARINGTIMER_FIELD_NUMBER: builtins.int
     ISCOMMUNITY_FIELD_NUMBER: builtins.int
     ISCOMMUNITYDEFAULTGROUP_FIELD_NUMBER: builtins.int
     ISPARTIALINFO_FIELD_NUMBER: builtins.int
@@ -499,6 +500,7 @@ class GroupInfo(google.protobuf.message.Message):
     isLocked: builtins.bool
     isAnnounce: builtins.bool
     isEphemeral: builtins.bool
+    disappearingTimer: builtins.int
     isCommunity: builtins.bool
     isCommunityDefaultGroup: builtins.bool
     isPartialInfo: builtins.bool
@@ -518,13 +520,13 @@ class GroupInfo(google.protobuf.message.Message):
     def provenance(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         ...
 
-    def __init__(self, *, createdAt: google.protobuf.timestamp_pb2.Timestamp | None=..., JID: global___JID | None=..., ownerJID: global___JID | None=..., groupName: global___GroupName | None=..., groupTopic: global___GroupTopic | None=..., memberAddMode: builtins.str=..., isLocked: builtins.bool=..., isAnnounce: builtins.bool=..., isEphemeral: builtins.bool=..., isCommunity: builtins.bool=..., isCommunityDefaultGroup: builtins.bool=..., isPartialInfo: builtins.bool=..., isIncognito: builtins.bool=..., participantVersionId: builtins.str=..., participants: collections.abc.Iterable[global___GroupParticipant] | None=..., parentJID: global___JID | None=..., provenance: collections.abc.Mapping[builtins.str, builtins.str] | None=...) -> None:
+    def __init__(self, *, createdAt: google.protobuf.timestamp_pb2.Timestamp | None=..., JID: global___JID | None=..., ownerJID: global___JID | None=..., groupName: global___GroupName | None=..., groupTopic: global___GroupTopic | None=..., memberAddMode: builtins.str=..., isLocked: builtins.bool=..., isAnnounce: builtins.bool=..., isEphemeral: builtins.bool=..., disappearingTimer: builtins.int=..., isCommunity: builtins.bool=..., isCommunityDefaultGroup: builtins.bool=..., isPartialInfo: builtins.bool=..., isIncognito: builtins.bool=..., participantVersionId: builtins.str=..., participants: collections.abc.Iterable[global___GroupParticipant] | None=..., parentJID: global___JID | None=..., provenance: collections.abc.Mapping[builtins.str, builtins.str] | None=...) -> None:
         ...
 
     def HasField(self, field_name: typing_extensions.Literal['JID', b'JID', 'createdAt', b'createdAt', 'groupName', b'groupName', 'groupTopic', b'groupTopic', 'ownerJID', b'ownerJID', 'parentJID', b'parentJID']) -> builtins.bool:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['JID', b'JID', 'createdAt', b'createdAt', 'groupName', b'groupName', 'groupTopic', b'groupTopic', 'isAnnounce', b'isAnnounce', 'isCommunity', b'isCommunity', 'isCommunityDefaultGroup', b'isCommunityDefaultGroup', 'isEphemeral', b'isEphemeral', 'isIncognito', b'isIncognito', 'isLocked', b'isLocked', 'isPartialInfo', b'isPartialInfo', 'memberAddMode', b'memberAddMode', 'ownerJID', b'ownerJID', 'parentJID', b'parentJID', 'participantVersionId', b'participantVersionId', 'participants', b'participants', 'provenance', b'provenance']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['JID', b'JID', 'createdAt', b'createdAt', 'disappearingTimer', b'disappearingTimer', 'groupName', b'groupName', 'groupTopic', b'groupTopic', 'isAnnounce', b'isAnnounce', 'isCommunity', b'isCommunity', 'isCommunityDefaultGroup', b'isCommunityDefaultGroup', 'isEphemeral', b'isEphemeral', 'isIncognito', b'isIncognito', 'isLocked', b'isLocked', 'isPartialInfo', b'isPartialInfo', 'memberAddMode', b'memberAddMode', 'ownerJID', b'ownerJID', 'parentJID', b'parentJID', 'participantVersionId', b'participantVersionId', 'participants', b'participants', 'provenance', b'provenance']) -> None:
         ...
 global___GroupInfo = GroupInfo
 

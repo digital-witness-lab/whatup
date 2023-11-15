@@ -177,6 +177,7 @@ message GroupInfo {
     bool isLocked = 41;
     bool isAnnounce = 42;
     bool isEphemeral = 43;
+    uint32 disappearingTimer = 48;
     
     bool isCommunity = 44;
     bool isCommunityDefaultGroup = 45;
