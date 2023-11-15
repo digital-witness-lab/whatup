@@ -1,11 +1,12 @@
 from typing import List, Optional
 from attr import dataclass
 
-from pulumi import ComponentResource, Output, ResourceOptions, get_stack
+from pulumi import ComponentResource, Output, ResourceOptions
 import pulumi_docker as docker
 from pulumi_gcp import artifactregistry, cloudrunv2, serviceaccount
 
 from config import location, project
+from storage import repository
 from network_firewall import firewall_policy
 
 
@@ -50,16 +51,6 @@ class Job(ComponentResource):
         super().__init__("dwl:cloudrun:Job", name, props.__dict__, opts)
 
         child_opts = ResourceOptions(parent=self)
-
-        # Create an Artifact Registry repository
-        repository = artifactregistry.Repository(
-            props.image_name + "-repo",
-            repository_id=f"{props.image_name}-{get_stack()}-repo",
-            description=f"Repository for {props.image_name} container image",
-            format="DOCKER",
-            location=location,
-            opts=child_opts,
-        )
 
         # Form the repository URL
         repo_url = Output.concat(

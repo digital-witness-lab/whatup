@@ -50,7 +50,7 @@ func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(cont
 	}
 }
 
-func StartRPC(port uint32, logLevel string) error {
+func StartRPC(port uint32, dbUri string, logLevel string) error {
 	Log = waLog.Stdout("RPC", logLevel, true)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
@@ -59,10 +59,14 @@ func StartRPC(port uint32, logLevel string) error {
 		return err
 	}
 
-	sessionManager := NewSessionManager(JWT_SECRET, Log.Sub("SessionManager"))
+	sessionManager := NewSessionManager(JWT_SECRET, dbUri, Log.Sub("SessionManager"))
 	sessionManager.Start()
 	defer sessionManager.Close()
 	authCheck := createAuthCheck(sessionManager, JWT_SECRET)
+    keepAliveEnforcement := grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+        MinTime:             5 * time.Second,
+        PermitWithoutStream: false,
+    })
 	keepAlive := grpc.KeepaliveParams(keepalive.ServerParameters{
 		Time: 10 * time.Second,
 	})
@@ -79,12 +83,14 @@ func StartRPC(port uint32, logLevel string) error {
 			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
 			grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
 			grpc.Creds(creds),
+            keepAliveEnforcement,
 			keepAlive,
 		)
 	} else {
 		s = grpc.NewServer(
 			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
 			grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
+            keepAliveEnforcement,
 			keepAlive,
 		)
 	}

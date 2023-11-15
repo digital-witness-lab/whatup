@@ -6,6 +6,7 @@ from pathlib import Path
 import typing as T
 
 from packaging import version
+import grpc
 
 from .. import utils
 from ..protos import whatsappweb_pb2 as waw
@@ -86,18 +87,20 @@ class ArchiveBot(BaseBot):
         meta_community_path.parent.mkdir(exist_ok=True, parents=True)
         if message.info.source.isGroup and not meta_group_path.exists():
             group: wuc.JID = message.info.source.chat
-            metadata: wuc.GroupInfo = await self.core_client.GetGroupInfo(group)
-
-            metadata.provenance.update(provenance)
-            metadata.provenance["archivebot__groupInfoRefreshTime"] = str(refresh_dt)
-            self.logger.debug("Got metadata for group: %s", chat_id)
-            with meta_group_path.open("w+") as fd:
-                fd.write(utils.protobuf_to_json(metadata))
-            self.logger.debug(utils.protobuf_to_json(metadata))
-            message.provenance["archivebot__groupInfoPath"] = str(
-                meta_group_path.relative_to(archive_filename.parent)
-            )
-            
+            try:
+                metadata: wuc.GroupInfo = await self.core_client.GetGroupInfo(group)
+                metadata.provenance.update(provenance)
+                metadata.provenance["archivebot__groupInfoRefreshTime"] = str(
+                    refresh_dt
+                )
+                self.logger.debug("Got metadata for group: %s", chat_id)
+                with meta_path.open("w+") as fd:
+                    fd.write(utils.protobuf_to_json(metadata))
+                message.provenance["archivebot__groupInfoPath"] = str(
+                    meta_group_path.relative_to(archive_filename.parent)
+                )
+            except grpc.RpcError:
+                self.logger.exception("Could not get group info")
             # TODO do this again for the parent chat
             
             if utils.jid_to_str(metadata.parentJID) != None:

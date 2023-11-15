@@ -8,7 +8,7 @@ from pulumi_gcp.cloudrunv2 import (
 )  # noqa: E501
 
 from config import create_load_archive_job
-from dwl_secrets import messages_db_url_secret
+from dwl_secrets import db_url_secrets
 from job import JobArgs, Job
 from jobs.db_migrations import migrations_job_complete
 from network import vpc, private_services_network_with_db
@@ -34,7 +34,7 @@ message_archive_bucket_perm = storage.BucketIAMMember(
 secret_manager_perm = secretmanager.SecretIamMember(
     "db-ld-archive-scrt-perm",
     secretmanager.SecretIamMemberArgs(
-        secret_id=messages_db_url_secret.id,
+        secret_id=db_url_secrets["messages"].id,
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
@@ -42,7 +42,7 @@ secret_manager_perm = secretmanager.SecretIamMember(
 
 db_url_secret_source = JobTemplateTemplateContainerEnvValueSourceArgs(
     secret_key_ref=JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-        secret=messages_db_url_secret.name,
+        secret=db_url_secrets["messages"].name,
         version="latest",
     )
 )

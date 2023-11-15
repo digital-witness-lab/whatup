@@ -21,6 +21,7 @@ class OnboardBot(BaseBot):
                 username, passphrase, default_group_permission
             ):
                 print(utils.qrcode_gen(qrcode))
+                logger.critical("QRCode: (%s)", qrcode)
         except NotRegisteredError:
             logger.exception("Could not register user")
             return

@@ -16,6 +16,10 @@ class NotRegisteredError(Exception):
     pass
 
 
+class UsernameInUseError(Exception):
+    pass
+
+
 def create_whatupcore_clients(host: str, port: int, cert: T.Optional[Path] = None):
     authenticator = WhatUpAuthentication()
 
@@ -23,7 +27,11 @@ def create_whatupcore_clients(host: str, port: int, cert: T.Optional[Path] = Non
     if cert:
         with cert.open("rb") as f:
             cert_bytes = f.read()
-    options = [("grpc.max_receive_message_length", 200 * 1024 * 1024)]
+    options = [
+        ("grpc.max_receive_message_length", 200 * 1024 * 1024),
+        ("grpc.keepalive_time_ms", 20000),
+        ("grpc.keepalive_timeout_ms", 5000),
+    ]
     channel = grpc.aio.secure_channel(
         f"{host}:{port}",
         grpc.composite_channel_credentials(
@@ -80,13 +88,20 @@ class WhatUpAuthentication:
             defaultGroupPermission=default_group_permission,
         )
         registerStream = self.auth_client.Register(register_options)
-        async for msg in registerStream:
-            if msg.qrcode:
-                yield msg.qrcode
-            elif msg.token:
-                self.session_token = msg.token
-                registerStream.cancel()
-                return
+        try:
+            async for msg in registerStream:
+                if msg.qrcode:
+                    yield msg.qrcode
+                elif msg.token:
+                    self.session_token = msg.token
+                    registerStream.cancel()
+                    return
+        except grpc.aio._call.AioRpcError as e:
+            if e.code() == grpc.StatusCode.UNAUTHENTICATED:
+                raise UsernameInUseError
+            self.logger.exception(
+                "Exception while handling register stream. Canceling registration"
+            )
         raise NotRegisteredError("Could not register user")
 
     async def start(self):
