@@ -1,6 +1,7 @@
 package encsqlstore
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"regexp"
@@ -55,6 +56,16 @@ func encryptArguments(c EncryptableContainer, args []any) ([]any, error) {
 			encArgs[i], err = c.EncryptString(v.String())
 		case []byte:
 			encArgs[i], err = c.Encrypt(v)
+		case sql.NullString:
+			encArgs[i] = v
+			if v.Valid {
+				var encString string
+				encString, err = c.EncryptString(v.String)
+				encArgs[i] = sql.NullString{
+					String: encString,
+					Valid:  true,
+				}
+			}
 		case pq.ByteaArray:
 			newArray := make(pq.ByteaArray, len(v))
 			for i, item := range v {
@@ -75,6 +86,23 @@ func encryptArguments(c EncryptableContainer, args []any) ([]any, error) {
 	return encArgs, nil
 }
 
+func decryptString(c DecryptableContainer, input string) (string, error) {
+	if strings.HasPrefix(input, "plain:") {
+		return input, nil
+	} else if matches := findAddress.FindStringSubmatch(input); matches != nil {
+		plainAddress, err := c.decryptString(matches[1])
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%s:%s", plainAddress, matches[2]), nil
+	}
+	plain, err := c.decryptString(input)
+	if err != nil {
+		return "", nil
+	}
+	return plain, nil
+}
+
 func decryptDBScan(c DecryptableContainer, s scannable, dests ...any) error {
 	err := s.Scan(dests...)
 	if err != nil {
@@ -90,21 +118,14 @@ func decryptDBScan(c DecryptableContainer, s scannable, dests ...any) error {
 			plain, err = c.decrypt(*d)
 			*d = plain
 		case *string:
-			if strings.HasPrefix(*d, "plain:") {
-				continue
-			} else if matches := findAddress.FindStringSubmatch(*d); matches != nil {
-				var plainAddress string
-				plainAddress, err = c.decryptString(matches[1])
-				if err == nil {
-					plainString := fmt.Sprintf("%s:%s", plainAddress, matches[2])
-					*d = plainString
-				}
-			} else {
+			var plain string
+			plain, err = decryptString(c, *d)
+			*d = plain
+		case *sql.NullString:
+			if d.Valid {
 				var plain string
-				plain, err = c.decryptString(*d)
-				if err == nil {
-					*d = plain
-				}
+				plain, err = decryptString(c, (*d).String)
+				(*d).String = plain
 			}
 		case *pq.ByteaArray:
 			newArray := make(pq.ByteaArray, len(*d))

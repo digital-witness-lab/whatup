@@ -60,7 +60,7 @@ func getDeviceContainer(dbUri string, dbLog waLog.Logger) (*encsqlstore.EncConta
 	}
 	err = _DB.Ping()
 	if err != nil {
-        dbLog.Errorf("Could not ping database: %w", err)
+		dbLog.Errorf("Could not ping database: %w", err)
 		return nil, nil, fmt.Errorf("failed to open database: %w", err)
 	}
 	_DeviceContainer = encsqlstore.NewWithDB(_DB, "postgres", dbLog)
@@ -383,9 +383,9 @@ func (wac *WhatsAppClient) GetMessages(ctx context.Context) chan *Message {
 		wac.Log.Debugf("GetMessages handler got something: %T", evt)
 		switch wmMsg := evt.(type) {
 		case *events.Message:
-            if ! MessageHasContent(wmMsg) {
-                return
-            }
+			if !MessageHasContent(wmMsg) {
+				return
+			}
 
 			aclEntry, err := wac.aclStore.GetByJID(&wmMsg.Info.Chat)
 			if err != nil {
@@ -469,9 +469,9 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 					wac.Log.Errorf("Failed to parse raw history message: %v", err)
 					continue
 				}
-                if ! MessageHasContent(wmMsg) {
-                    continue
-                }
+				if !MessageHasContent(wmMsg) {
+					continue
+				}
 				if oldestMsgInfo == nil || wmMsg.Info.Timestamp.Before(oldestMsgInfo.Timestamp) {
 					oldestMsgInfo = &wmMsg.Info
 				}
