@@ -48,12 +48,12 @@ func ProtoToMessageInfo(mi *pb.MessageInfo) types.MessageInfo {
 
 func MessageSourceToProto(source types.MessageSource, device *store.Device) *pb.MessageSource {
 	contact, _ := device.Contacts.GetContact(source.Sender)
-    var receiver types.JID
-    if device.ID != nil {
-        receiver = *device.ID
-    } else {
-        receiver = types.EmptyJID
-    }
+	var receiver types.JID
+	if device.ID != nil {
+		receiver = *device.ID
+	} else {
+		receiver = types.EmptyJID
+	}
 	return &pb.MessageSource{
 		Chat:               JIDToProto(source.Chat),
 		Sender:             JIDToProto(source.Sender),

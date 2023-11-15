@@ -2,6 +2,7 @@ package encsqlstore
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -30,6 +31,7 @@ var (
 		string("234872938572@s.whatsapp.net"),
 		string("9089034863@g.us"),
 		string("1234567890:99"),
+		sql.NullString{String: "teststring", Valid: true},
 		pq.ByteaArray([][]byte{[]byte("test1"), []byte("test2")}),
 	}
 	TestCipher = []any{
@@ -41,6 +43,7 @@ var (
 		str2hexstr("enc#(234872938572@s.whatsapp.net)"),
 		str2hexstr("enc#(9089034863@g.us)"),
 		str2hexstr("enc#(1234567890)") + ":99",
+		sql.NullString{String: str2hexstr("enc#(teststring)"), Valid: true},
 		pq.ByteaArray([][]byte{[]byte("enc#(test1)"), []byte("enc#(test2)")}),
 	}
 	DecryptRegex = regexp.MustCompile(`^enc#\((.+)\)$`)
@@ -66,6 +69,11 @@ func CompareResult(t *testing.T, item, foundValue any) {
 	case []byte:
 		if !bytes.Equal(expectedValue, foundValue.([]byte)) {
 			t.Fatalf("Didn't find expected found for %T: %s != %s", expectedValue, foundValue, expectedValue)
+		}
+	case sql.NullString:
+		foundNullString := foundValue.(sql.NullString)
+		if expectedValue.String != foundNullString.String {
+			t.Fatalf("Didn't find expected found for %T: %s != %s", expectedValue, foundNullString.String, expectedValue.String)
 		}
 	case pq.ByteaArray:
 		foundBytea := foundValue.(pq.ByteaArray)
@@ -297,6 +305,9 @@ func TestDecryptDBArguments(t *testing.T) {
 			err = decryptDBScan(sec, stubScannable, &v)
 			CompareResult(t, TestPlaintext[i], v)
 		case int:
+			err = decryptDBScan(sec, stubScannable, &v)
+			CompareResult(t, TestPlaintext[i], v)
+		case sql.NullString:
 			err = decryptDBScan(sec, stubScannable, &v)
 			CompareResult(t, TestPlaintext[i], v)
 		case pq.ByteaArray:
