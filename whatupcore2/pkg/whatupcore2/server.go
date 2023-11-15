@@ -63,6 +63,10 @@ func StartRPC(port uint32, dbUri string, logLevel string) error {
 	sessionManager.Start()
 	defer sessionManager.Close()
 	authCheck := createAuthCheck(sessionManager, JWT_SECRET)
+    keepAliveEnforcement := grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+        MinTime:             5 * time.Second,
+        PermitWithoutStream: false,
+    })
 	keepAlive := grpc.KeepaliveParams(keepalive.ServerParameters{
 		Time: 10 * time.Second,
 	})
@@ -79,12 +83,14 @@ func StartRPC(port uint32, dbUri string, logLevel string) error {
 			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
 			grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
 			grpc.Creds(creds),
+            keepAliveEnforcement,
 			keepAlive,
 		)
 	} else {
 		s = grpc.NewServer(
 			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
 			grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
+            keepAliveEnforcement,
 			keepAlive,
 		)
 	}

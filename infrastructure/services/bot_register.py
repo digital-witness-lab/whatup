@@ -16,52 +16,51 @@ from storage import sessions_bucket
 from .whatupcore2 import whatupcore2_service
 from .bot_archive import whatupy_control_groups
 
-service_name = "bot-db"
+service_name = "bot-register"
 
 service_account = serviceaccount.Account(
-    "bot-db",
-    account_id=f"whatup-bot-db-{get_stack()}",
+    "bot-register",
+    account_id=f"whatup-bot-reg-{get_stack()}",
     description=f"Service account for {service_name}",
 )
 
-# whatupy only needs read-only access to the sessions bucket
-# objects.
+# registerbot needs to be able to write new session files
 sessions_bucket_perm = storage.BucketIAMMember(
-    "bot-db-sess-perm",
+    "bot-reg-sess-perm",
     storage.BucketIAMMemberArgs(
         bucket=sessions_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
-        role="roles/storage.objectViewer",
+        role="roles/storage.objectAdmin",
     ),
 )
 
 secret_manager_perm = secretmanager.SecretIamMember(
-    "bot-db-secret-perm",
+    "bot-reg-secret-perm",
     secretmanager.SecretIamMemberArgs(
-        secret_id=db_url_secrets["messages"].id,
+        secret_id=db_url_secrets["user"].id,
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
 )
 
-db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
+db_usr_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
-        secret=db_url_secrets["messages"].name,
+        secret=db_url_secrets["user"].name,
         version="latest",
     )
 )
 
-bot_db = Service(
+bot_register = Service(
     service_name,
     ServiceArgs(
         app_path=path.join("..", "whatupy"),
-        args=["/usr/src/whatupy/gcsfuse_run.sh", "databasebot"],
+        args=["/usr/src/whatupy/gcsfuse_run.sh", "registerbot"],
         concurrency=50,
         container_port=None,
         cpu="1",
         # Route all egress traffic via the VPC network.
         egress="ALL_TRAFFIC",
-        image_name=service_name,
+        image_name="whatupy",
         # We want this service to only be reachable from within
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
@@ -81,7 +80,7 @@ bot_db = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="DATABASE_URL",
-                value_source=db_url_secret_source,
+                value_source=db_usr_secret_source,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="SESSIONS_BUCKET",
@@ -98,6 +97,14 @@ bot_db = Service(
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_HOST",
                 value=whatupcore2_service.get_host(),
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="SESSIONS_USER_SUBDIR",
+                value="users",
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="ONBOARD_BOT",
+                value="gertrude2",
             ),
             # Create an implicit dependency on the migrations
             # job completing successfully.
