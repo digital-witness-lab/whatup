@@ -45,7 +45,7 @@ secret_manager_perm = secretmanager.SecretIamMember(
 )
 
 encryption_key_perm = kms.CryptoKeyIAMMember(
-    "bot-archive-enc-key-perm",
+    "bot-reg-enc-key-perm",
     kms.CryptoKeyIAMMemberArgs(
         crypto_key_id=sessions_encryption_key.id,
         member=Output.concat("serviceAccount:", service_account.email),
