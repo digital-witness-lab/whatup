@@ -128,5 +128,7 @@ bot_register = Service(
             ),
         ],
     ),
-    opts=ResourceOptions(depends_on=sessions_bucket_perm),
+    opts=ResourceOptions(
+        depends_on=[sessions_bucket_perm, encryption_key_perm]
+    ),
 )
