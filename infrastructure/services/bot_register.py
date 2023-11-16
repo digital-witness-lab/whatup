@@ -1,7 +1,7 @@
 from os import path
 
 from pulumi import get_stack, ResourceOptions, Output
-from pulumi_gcp import serviceaccount, cloudrunv2, storage, secretmanager
+from pulumi_gcp import cloudrunv2, kms, secretmanager, serviceaccount, storage
 
 from pulumi_gcp.cloudrunv2 import (
     ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
@@ -10,6 +10,7 @@ from pulumi_gcp.cloudrunv2 import (
 from network import vpc, private_services_network_with_db
 from dwl_secrets import db_url_secrets
 from jobs.db_migrations import migrations_job_complete
+from kms import sessions_encryption_key
 from service import Service, ServiceArgs
 from storage import sessions_bucket
 
@@ -40,6 +41,15 @@ secret_manager_perm = secretmanager.SecretIamMember(
         secret_id=db_url_secrets["user"].id,
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+
+encryption_key_perm = kms.CryptoKeyIAMMember(
+    "bot-archive-enc-key-perm",
+    kms.CryptoKeyIAMMemberArgs(
+        crypto_key_id=sessions_encryption_key.id,
+        member=Output.concat("serviceAccount:", service_account.email),
+        role="roles/cloudkms.cryptoKeyEncrypterDecrypter",
     ),
 )
 
@@ -81,6 +91,10 @@ bot_register = Service(
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="DATABASE_URL",
                 value_source=db_usr_secret_source,
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="KEK_URI",
+                value=sessions_encryption_key.id,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="SESSIONS_BUCKET",
