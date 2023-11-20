@@ -100,7 +100,7 @@ class ArchiveBot(BaseBot):
                     meta_group_path.relative_to(archive_filename.parent)
                 )
             
-                if utils.jid_to_str(metadata.parentJID) != None:
+                if utils.jid_to_str(metadata.parentJID) is not None:
                     self.logger.debug("Processing metadata for community with ID: %s", metadata.parentJID)
                     community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = self.core_client.GetCommunityInfo(metadata.parentJID)
                     community_info : T.List[wuc.GroupInfo] = await utils.aiter_to_list(community_info_iterator)

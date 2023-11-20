@@ -7,7 +7,6 @@ from functools import partial
 import dataset
 from dataset.util import DatasetException
 from google.protobuf.timestamp_pb2 import Timestamp
-from phonenumbers.phonenumberutil import region_code_for_number
 from sqlalchemy.sql import func
 
 from .. import utils
@@ -412,11 +411,6 @@ class DatabaseBot(BaseBot):
                 group_info_flat["previous_version_id"] = id_
                 if group_first_seen := group_info_prev.get("first_seen"):
                     group_info_flat["first_seen"] = group_first_seen
-
-                if from_community and group_info_flat["groupName_updatedAt"] == group_info_prev["groupName_updatedAt"]: # we will have more information preserved in prev compared to what we get from community info on groups
-                    group_info_flat["groupName_updatedBy_country_code"] = group_info_prev["groupName_updatedBy_country_code"] 
-                    group_info_flat["groupName_updatedBy_country_iso"] = group_info_prev["groupName_updatedBy_country_iso"]
-                    group_info_flat["groupName_updatedBy_national_number"] = group_info_prev["groupName_updatedBy_national_number"]
                 
                 db["group_info"].delete(id=prev_id)
                 db["group_info"].insert(group_info_prev)

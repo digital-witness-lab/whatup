@@ -120,6 +120,17 @@ func GroupInfoToProto(gi *types.GroupInfo, device *store.Device) *pb.GroupInfo {
 			JoinError:    uint32(p.Error),
 		}
 	}
+	grouptopic := &pb.GroupTopic{
+		Topic:        gi.GroupTopic.Topic,
+		TopicId:      gi.GroupTopic.TopicID,
+		UpdatedAt:    timestamppb.New(gi.GroupTopic.TopicSetAt),
+		UpdatedBy:    JIDToProto(gi.GroupTopic.TopicSetBy),
+		TopicDeleted: gi.GroupTopic.TopicDeleted,
+	}
+	if gi.IsAnnounce {
+		grouptopic = nil
+	}
+
 	return &pb.GroupInfo{
 		CreatedAt: timestamppb.New(gi.GroupCreated),
 		JID:       JIDToProto(gi.JID),
@@ -129,19 +140,15 @@ func GroupInfoToProto(gi *types.GroupInfo, device *store.Device) *pb.GroupInfo {
 			UpdatedAt: timestamppb.New(gi.GroupName.NameSetAt),
 			UpdatedBy: JIDToProto(gi.GroupName.NameSetBy),
 		},
-		GroupTopic: &pb.GroupTopic{
-			Topic:        gi.GroupTopic.Topic,
-			TopicId:      gi.GroupTopic.TopicID,
-			UpdatedAt:    timestamppb.New(gi.GroupTopic.TopicSetAt),
-			UpdatedBy:    JIDToProto(gi.GroupTopic.TopicSetBy),
-			TopicDeleted: gi.GroupTopic.TopicDeleted,
-		},
+		GroupTopic: grouptopic,
 		ParentJID:     JIDToProto(gi.LinkedParentJID),
 		MemberAddMode: string(gi.MemberAddMode),
 		IsLocked:      gi.IsLocked,
 		IsAnnounce:    gi.IsAnnounce,
 		IsEphemeral:   gi.GroupEphemeral.IsEphemeral,
 		DisappearingTimer: gi.GroupEphemeral.DisappearingTimer,
+
+		IsCommunityDefaultGroup: gi.IsAnnounce,
 
 		ParticipantVersionId: gi.ParticipantVersionID,
 		Participants:         participants,
