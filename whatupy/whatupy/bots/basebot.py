@@ -13,6 +13,7 @@ from pathlib import Path
 import grpc
 
 from .. import utils
+from ..credentials_manager.credential import Credential
 from ..connection import create_whatupcore_clients
 from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
@@ -82,6 +83,7 @@ class BaseBot:
         self.host = host
         self.port = port
         self.cert = cert
+        self.meta = dict()
         self.logger = logger.getChild(self.__class__.__name__)
 
         self.control_groups = control_groups
@@ -114,11 +116,12 @@ class BaseBot:
             await self.send_text_message(sender, e.message())
             return None
 
-    async def login(self, username: str, passphrase: str, **kwargs) -> T.Self:
-        self.logger = self.logger.getChild(username)
+    async def login(self, credential: Credential, **kwargs) -> T.Self:
+        self.logger = self.logger.getChild(credential.username)
         self.logger.info("Logging in")
+        self.meta.update(credential.meta or {})
         try:
-            await self.authenticator.login(username, passphrase)
+            await self.authenticator.login(credential.username, credential.passphrase)
         except grpc.aio._call.AioRpcError as e:
             if e.details() == "the store doesn't contain a device JID":
                 raise InvalidCredentialsException

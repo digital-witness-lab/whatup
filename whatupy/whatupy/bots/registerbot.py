@@ -9,7 +9,7 @@ from . import BaseBot
 from . import BotCommandArgs, MediaType
 from ..protos import whatupcore_pb2 as wuc
 from ..connection import create_whatupcore_clients
-from ..device_manager.credentials_manager import CredentialsManager, Credential
+from ..credentials_manager import CredentialsManager, Credential
 
 
 VALID_ALIAS = re.compile(r"^[a-zA-Z0-9_-]+$")

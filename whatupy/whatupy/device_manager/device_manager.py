@@ -5,7 +5,7 @@ from collections import abc, defaultdict
 import typing as T
 
 from ..bots.basebot import BaseBot, InvalidCredentialsException
-from .credentials_manager import CredentialsManager, Credential
+from ..credentials_manager import CredentialsManager, Credential
 
 
 logger = logging.getLogger(__name__)

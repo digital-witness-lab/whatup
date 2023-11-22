@@ -1,20 +1,11 @@
 import re
-from dataclasses import asdict, dataclass, field
-from typing import List, Any, Dict, Optional
+from typing import List, Any
+
+from .credential import Credential
 
 
 class IncompleteCredentialsException(ValueError):
     pass
-
-
-@dataclass
-class Credential:
-    username: str
-    passphrase: str
-    meta: Optional[Dict[str, Any]] = field(default=None)
-
-    def asdict(self):
-        return asdict(self)
 
 
 class CredentialsManager:
@@ -25,7 +16,7 @@ class CredentialsManager:
         super().__init_subclass__(**kwargs)
         cls._registry.append(cls)
 
-    def __init__(self, paths: List[str], **kwargs):
+    def __init__(self, url: str, **kwargs):
         pass
 
     @classmethod
