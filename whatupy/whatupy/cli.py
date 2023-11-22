@@ -15,7 +15,7 @@ from .bots import (
     UserServicesBot,
 )
 from .device_manager import run_multi_bots
-from .device_manager.credentials_manager import CredentialsManager
+from .credentials_manager import CredentialsManager
 from .utils import async_cli, str_to_jid
 from .protos import whatupcore_pb2 as wuc
 

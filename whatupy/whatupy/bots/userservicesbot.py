@@ -13,7 +13,7 @@ from . import BaseBot, MediaType
 from .. import utils
 from ..protos import whatupcore_pb2 as wuc
 from ..device_manager import DeviceManager
-from ..device_manager.credentials_manager import CredentialsManagerCloudPath
+from ..credentials_manager import CredentialsManagerCloudPath
 from .static import static_files
 
 

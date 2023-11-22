@@ -3,7 +3,7 @@ from datetime import datetime
 from .. import NotRegisteredError, utils
 from . import BaseBot
 from ..protos import whatupcore_pb2 as wuc
-from ..device_manager.credentials_manager import CredentialsManager, Credential
+from ..credentials_manager import CredentialsManager, Credential
 
 
 class OnboardBot(BaseBot):
