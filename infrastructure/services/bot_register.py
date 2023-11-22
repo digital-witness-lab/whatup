@@ -101,10 +101,6 @@ bot_register = Service(
                 value=sessions_bucket.name,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="SESSIONS_BUCKET_MNT_DIR",
-                value="sessions/",
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPY_CONTROL_GROUPS",
                 value=whatupy_control_groups,
             ),
