@@ -4,8 +4,8 @@ import logging
 from collections import abc, defaultdict
 import typing as T
 
-from ..bots import BaseBot, InvalidCredentialsException
-from .credentials_listener import CredentialsListener
+from ..bots.basebot import BaseBot, InvalidCredentialsException
+from .credentials_manager import CredentialsManager, Credential
 
 
 logger = logging.getLogger(__name__)
@@ -23,12 +23,12 @@ class DeviceManager:
     def __init__(
         self,
         bot_factory: abc.Callable[[], BaseBot],
-        credential_listeners: T.List[CredentialsListener],
+        credential_managers: T.List[CredentialsManager],
         unregister_invalid_credentials: bool = True,
         logger=logger,
     ):
         self.bot_factory = bot_factory
-        self.credential_listeners: T.List[CredentialsListener] = credential_listeners
+        self.credential_managers: T.List[CredentialsManager] = credential_managers
         self.devices: T.Dict[str, DeviceObject] = {}
         self.unregister_invalid_credentials = unregister_invalid_credentials
         self.logger = logger.getChild(self.__class__.__name__)
@@ -37,8 +37,8 @@ class DeviceManager:
     async def start(self):
         self.logger.info("Starting device manager")
         async with asyncio.TaskGroup() as tg:
-            for listener in self.credential_listeners:
-                tg.create_task(listener.listen(self))
+            for manager in self.credential_managers:
+                tg.create_task(manager.listen(self))
             # figure out how to wait for the bot tasks from the devices list as
             # well. Maybe this is also a good way to have a restart mechanism
             # on error with exp backoff?
@@ -50,8 +50,8 @@ class DeviceManager:
             self.logger.exception("Exception running bot")
         await self._on_bot_dead(username)
 
-    async def on_credentials(self, listener: CredentialsListener, credentials):
-        username = credentials["username"]
+    async def on_credentials(self, manager: CredentialsManager, credential: Credential):
+        username = credential.username
         if username in self.devices:
             self.logger.info(
                 "Got credentials for existing bot... skipping: %s", username
@@ -69,7 +69,7 @@ class DeviceManager:
 
         bot = self.bot_factory()
         try:
-            bot = await bot.login(**credentials)
+            bot = await bot.login(credential.username, credential.passphrase)
         except InvalidCredentialsException as e:
             if self.unregister_invalid_credentials:
                 self.logger.critical(
@@ -108,8 +108,8 @@ class DeviceManager:
                 return
             device.bot.stop()
             self.reconnect_backoff[username] += 1
-            for listener in self.credential_listeners:
-                listener.mark_dead(username)
+            for manager in self.credential_managers:
+                manager.mark_dead(username)
             await self.on_bot_dead(device)
         except KeyError:
             self.logger.exception(
@@ -124,8 +124,8 @@ class DeviceManager:
 
     async def unregister(self, username: str):
         self.logger.warning("Calling unregister for user: %s", username)
-        for listener in self.credential_listeners:
-            listener.unregister(username)
+        for manager in self.credential_managers:
+            manager.unregister(username)
         device = self.devices.pop(username, None)
         if device is not None:
             device.unregistered = True
