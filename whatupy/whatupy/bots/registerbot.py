@@ -1,5 +1,4 @@
-import json
-from pathlib import Path
+from datetime import datetime
 import re
 
 import qrcode
@@ -10,15 +9,22 @@ from . import BaseBot
 from . import BotCommandArgs, MediaType
 from ..protos import whatupcore_pb2 as wuc
 from ..connection import create_whatupcore_clients
+from ..device_manager.credentials_manager import CredentialsManager, Credential
 
 
 VALID_ALIAS = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
 class RegisterBot(BaseBot):
-    def __init__(self, sessions_dir: Path, database_url: str, *args, **kwargs):
+    def __init__(
+        self,
+        credentials_manager: CredentialsManager,
+        database_url: str,
+        *args,
+        **kwargs,
+    ):
         self.connection_params = {f: kwargs[f] for f in ("host", "port", "cert")}
-        self.sessions_dir = sessions_dir
+        self.credentials_manager = credentials_manager
         self.db: dataset.Database = dataset.connect(database_url)
         kwargs["read_historical_messages"] = False
         kwargs["mark_messages_read"] = True
@@ -120,10 +126,15 @@ class RegisterBot(BaseBot):
             )
         logger.info(f"User {username} registered")
 
-        credentials = {"username": username, "passphrase": passphrase}
-        credentials_file = self.sessions_dir / f"{username}.json"
-        with credentials_file.open("w+") as fd:
-            json.dump(credentials, fd)
+        meta = {
+            "registerbot__timestamp": datetime.now().isoformat(),
+            "registerbot__triggered_by": handler_jid,
+            "registerbot__default_permission": wuc.GroupPermission.Name(
+                default_group_permission
+            ),
+        }
+        credential = Credential(username=username, passphrase=passphrase, meta=meta)
+        self.credentials_manager.write_credential(credential)
 
         connection_status = await core_client.GetConnectionStatus(
             wuc.ConnectionStatusOptions()

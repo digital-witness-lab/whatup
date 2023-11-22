@@ -12,7 +12,8 @@ import dataset
 from . import BaseBot, MediaType
 from .. import utils
 from ..protos import whatupcore_pb2 as wuc
-from ..device_manager import DeviceManager, CredentialsListenerFile
+from ..device_manager import DeviceManager
+from ..device_manager.credentials_manager import CredentialsManagerCloudPath
 from .static import static_files
 
 
@@ -99,10 +100,10 @@ class UserServicesBot(BaseBot):
         self.users: T.Dict[str, _UserBot] = {}
 
         bot_factory = partial(_UserBot, services_bot=self, logger=self.logger, **kwargs)
-        credential_listener = CredentialsListenerFile([sessions_dir])
+        credential_manager = CredentialsManagerCloudPath([sessions_dir])
         self.device_manager = DeviceManager(
             bot_factory=bot_factory,
-            credential_listeners=[credential_listener],
+            credential_managers=[credential_manager],
         )
 
     async def post_start(self):

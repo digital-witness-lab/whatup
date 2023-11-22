@@ -15,6 +15,7 @@ from .bots import (
     UserServicesBot,
 )
 from .device_manager import run_multi_bots
+from .device_manager.credentials_manager import CredentialsManager
 from .utils import async_cli, str_to_jid
 from .protos import whatupcore_pb2 as wuc
 
@@ -97,26 +98,26 @@ async def chatbot(ctx, credentials, response_time, response_time_sigma):
     default="DENIED",
 )
 @click.option(
-    "--credentials-dir",
-    type=click.Path(file_okay=False, writable=True, path_type=Path),
-    default=Path("./credentials/"),
+    "--credentials-url",
+    default="./credentials/",
 )
 @click.argument("name", type=str)
 @click.pass_context
-async def onboard(ctx, name, credentials_dir: Path, default_group_permission: str):
+async def onboard(
+    ctx, name, credentials_url: CredentialsManager, default_group_permission: str
+):
     """
     Creates a QR code for provided bot. The command will exit on a sucessful QR
     code scan. The credential file will be saved to <credential-dir>/<name>.json
     """
-    credentials_dir.mkdir(parents=True, exist_ok=True)
-    credential_file = credentials_dir / f"{name}.json"
+    credentials_manager = CredentialsManager.from_url(credentials_url)
     bot = OnboardBot(**ctx.obj["connection_params"])
     logger.info(
         "Registering user %s with default permission %s", name, default_group_permission
     )
     await bot.register(
         name,
-        credential_file,
+        credentials_manager,
         default_group_permission=GROUP_PERMISSIONS[default_group_permission],
     )
 
@@ -124,12 +125,11 @@ async def onboard(ctx, name, credentials_dir: Path, default_group_permission: st
 @cli.command()
 @async_cli
 @click.option(
-    "--credentials-dir",
-    type=click.Path(file_okay=False, writable=True, path_type=Path),
-    default=Path("./credentials/"),
+    "--credentials-url",
+    default="./credentials/",
 )
 @click.pass_context
-async def onboard_bulk(ctx, credentials_dir: Path):
+async def onboard_bulk(ctx, credentials_url: str):
     """
     Starts an interaction to simplify onboarding multiple bots. You will be
     prompted for a name to provide the bot and then be shown a QR code to scan.
@@ -142,7 +142,7 @@ async def onboard_bulk(ctx, credentials_dir: Path):
         ├── <bot-name1>.json
         └── <bot-name2>.json
     """
-    credentials_dir.mkdir(parents=True, exist_ok=True)
+    credentials_manager = CredentialsManager.from_url(credentials_url)
     while True:
         name: str = click.prompt(
             "Enter name for the next user to be onboarded", type=str
@@ -155,11 +155,10 @@ async def onboard_bulk(ctx, credentials_dir: Path):
             type=click.Choice(list(GROUP_PERMISSIONS.keys())),
             default="DENIED",
         )
-        credential_file = credentials_dir / f"{name}.json"
         bot = OnboardBot(**ctx.obj["connection_params"])
         await bot.register(
             name,
-            credential_file,
+            credentials_manager,
             default_group_permission=GROUP_PERMISSIONS[default_group_permission_str],
         )
 
@@ -273,9 +272,9 @@ async def databasebot_load_archive(
 @async_cli
 @click.option("--database-url", type=str)
 @click.option(
-    "--sessions-dir",
-    type=click.Path(path_type=Path, file_okay=False, readable=True),
-    help="Directory to store sessions for newly registered users",
+    "--sessions-url",
+    type=str,
+    help="Credentials manager URL to store sessions for newly registered users",
 )
 @click.argument(
     "credential", type=click.Path(path_type=Path, dir_okay=False, exists=True), nargs=1
@@ -285,7 +284,7 @@ async def userservicesbot(
     ctx,
     credential,
     database_url,
-    sessions_dir,
+    sessions_url,
 ):
     """
     Start a userservices bot that will manage onboarding new users completely
@@ -293,9 +292,10 @@ async def userservicesbot(
     registered user metadata and state should be stored. The sessions directory
     specifies where newly registered user's session file should be stored.
     """
+    credentials_manager = CredentialsManager.from_url(sessions_url)
     params = {
         "database_url": database_url,
-        "sessions_dir": sessions_dir,
+        "credentials_manager": credentials_manager,
         **ctx.obj["connection_params"],
     }
     async with asyncio.TaskGroup() as tg:
@@ -309,9 +309,9 @@ async def userservicesbot(
 @async_cli
 @click.option("--database-url", type=str)
 @click.option(
-    "--sessions-dir",
-    type=click.Path(path_type=Path, file_okay=False, writable=True),
-    help="Directory to store sessions for newly registered users",
+    "--sessions-url",
+    type=str,
+    help="Credentials manager URL to store sessions for newly registered users",
 )
 @click.argument(
     "credential", type=click.Path(path_type=Path, dir_okay=False, exists=True), nargs=1
@@ -321,7 +321,7 @@ async def registerbot(
     ctx,
     credential,
     database_url,
-    sessions_dir,
+    sessions_url,
 ):
     """
     Start a registration bot that will manage registering new users completely
@@ -329,9 +329,10 @@ async def registerbot(
     registered user metadata and state should be stored. The sessions directory
     specifies where newly registered user's session file should be stored.
     """
+    credentials_manager = CredentialsManager.from_url(sessions_url)
     params = {
         "database_url": database_url,
-        "sessions_dir": sessions_dir,
+        "credentials_manager": credentials_manager,
         **ctx.obj["connection_params"],
     }
     async with asyncio.TaskGroup() as tg:

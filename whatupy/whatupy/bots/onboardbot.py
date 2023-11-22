@@ -1,16 +1,16 @@
-import json
-from pathlib import Path
+from datetime import datetime
 
 from .. import NotRegisteredError, utils
 from . import BaseBot
 from ..protos import whatupcore_pb2 as wuc
+from ..device_manager.credentials_manager import CredentialsManager, Credential
 
 
 class OnboardBot(BaseBot):
     async def register(
         self,
         username: str,
-        credentials_file: Path,
+        credentials_manager: CredentialsManager,
         default_group_permission: wuc.GroupPermission.ValueType,
     ):
         logger = self.logger.getChild(username)
@@ -26,9 +26,15 @@ class OnboardBot(BaseBot):
             logger.exception("Could not register user")
             return
         logger.info("User registered")
-        credentials = {"username": username, "passphrase": passphrase}
-        with credentials_file.open("w+") as fd:
-            json.dump(credentials, fd)
+
+        meta = {
+            "onboardbot__timestamp": datetime.now().isoformat(),
+            "onboardbot__default_permission": wuc.GroupPermission.Name(
+                default_group_permission
+            ),
+        }
+        credential = Credential(username, passphrase, meta=meta)
+        credentials_manager.write_credential(credential)
 
     async def login(self, *args, **kwargs):
         raise NotImplementedError()
