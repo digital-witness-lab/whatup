@@ -345,6 +345,7 @@ class DatabaseBot(BaseBot):
         datum["content"] = content
         self.db["media"].insert(datum)
 
+
     async def _update_group_or_community( 
         self,
         db: dataset.Database,
@@ -357,41 +358,44 @@ class DatabaseBot(BaseBot):
 
         group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
         last_update: datetime = group_info_prev.get("last_update", datetime.min)
-        if not is_archive and last_update + self.group_info_refresh_time > now:
-            return
-
+        #if not is_archive and last_update + self.group_info_refresh_time > now:
+        #    return
+    
+        community_processing = False
         if is_archive:
-            if archive_data.GroupInfo is None:
+            if archive_data.CommunityInfo is not None:
+                community_info = archive_data.CommunityInfo
+                community_jid = community_info[0].JID
+                community_processing = True
+            elif archive_data.GroupInfo is not None:
+                group_info = archive_data.GroupInfo
+            else:
                 return
             now = archive_data.WUMessage.info.timestamp.ToDatetime()
             self.logger.debug("Storing archived message timestamp: %s", now)
-
-            group_info = archive_data.GroupInfo
         else:
             group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
-
-        if utils.jid_to_str(group_info.parentJID) != None: # this group is in a community
-            community_jid = utils.jid_to_str(group_info.parentJID)
-            if is_archive:
-                if archive_data.CommunityInfo is None:
-                    return
-                community_info = archive_data.CommunityInfo
-            else:
+            if utils.jid_to_str(group_info.parentJID) != None: # this group is in a community
+                community_processing = True
+                community_jid = utils.jid_to_str(group_info.parentJID)
                 community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = self.core_client.GetCommunityInfo(group_info.parentJID)
                 community_info : T.List[wuc.GroupInfo] = await utils.aiter_to_list(community_info_iterator)
 
+        if community_processing:
+            self.logger.info("Using community info to update groups for community: %s", community_jid)
             for group_from_community in community_info: 
-                await self.update_group_db_code(db, group_from_community, community_jid, now)
-        else: # this group is a standalone group
-            await self.update_group_db_code(db, group_info, chat_jid, now)
+                await self.update_group_db_code(db, group_from_community, now)
+        else:
+            self.logger.info("Using group info to update group: %s", chat_jid)
+            await self.update_group_db_code(db, group_info, now)
 
     async def update_group_db_code(
         self,
         db: dataset.Database,
         group_info: wuc.GroupInfo,
-        chat_jid: str,
         update_time: datetime
     ):
+        chat_jid = utils.jid_to_str(group_info.JID)
         logger = self.logger.getChild(chat_jid)
         group_info_flat = flatten_proto_message(
             group_info,
@@ -435,7 +439,7 @@ class DatabaseBot(BaseBot):
 
         logger.info("Updating group: %s", chat_jid)
 
-        if not group_info_flat["isCommunity"]:
+        if not group_info.isCommunity:
             group_participants = [flatten_proto_message(p) for p in group_info.participants]
             for participant in group_participants:
                 if group_first_seen := group_info_prev.get("first_seen"): participant["first_seen"] = group_first_seen
