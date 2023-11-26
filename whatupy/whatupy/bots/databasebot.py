@@ -358,8 +358,8 @@ class DatabaseBot(BaseBot):
 
         group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
         last_update: datetime = group_info_prev.get("last_update", datetime.min)
-        #if not is_archive and last_update + self.group_info_refresh_time > now:
-        #    return
+        if not is_archive and last_update + self.group_info_refresh_time > now:
+            return
     
         community_processing = False
         if is_archive:
@@ -384,12 +384,12 @@ class DatabaseBot(BaseBot):
         if community_processing:
             self.logger.info("Using community info to update groups for community: %s", community_jid)
             for group_from_community in community_info: 
-                await self.update_group_db_code(db, group_from_community, now)
+                await self.insert_group_info(db, group_from_community, now)
         else:
             self.logger.info("Using group info to update group: %s", chat_jid)
-            await self.update_group_db_code(db, group_info, now)
+            await self.insert_group_info(db, group_info, now)
 
-    async def update_group_db_code(
+    async def insert_group_info(
         self,
         db: dataset.Database,
         group_info: wuc.GroupInfo,
@@ -403,12 +403,26 @@ class DatabaseBot(BaseBot):
             skip_keys=set(["participants", "participantVersionId"]),
         )
 
+        db_provenance =  {
+            "databasebot__timestamp": datetime.now().isoformat(),
+            "databasebot__version": self.__version__
+        }
         group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
+        if group_info_prev.get("provenance") is None: 
+            group_info_prev.update(provenance = db_provenance) 
+        else: 
+             group_info_prev["provenance"].update(db_provenance)
+
         keys = set(group_info_prev.keys()).intersection(group_info_flat.keys())
         keys.discard("provenance")
 
         group_info_flat["id"] = chat_jid
         group_info_flat["last_update"] = update_time
+
+        if group_info_flat.get("provenance") is None: 
+            group_info_flat.update(provenance = db_provenance)
+        else: 
+            group_info_flat["provenance"].update(db_provenance)
 
         if group_info_prev:
             if changed_keys := [
@@ -432,23 +446,22 @@ class DatabaseBot(BaseBot):
                 db["group_info"].insert(group_info_prev)
                 db["group_info"].upsert(group_info_flat, ["id"])
             else:
-                db["group_info"].update({"id": chat_jid, "last_update": update_time}, ["id"])
+                db["group_info"].update({"id": chat_jid, "last_update": update_time, "provenance": group_info_prev.get("provenance")}, ["id"])
         elif not group_info_prev:
             group_info_flat["first_seen"] = update_time
             db["group_info"].insert(group_info_flat)
 
         logger.info("Updating group: %s", chat_jid)
 
-        if not group_info.isCommunity:
-            group_participants = [flatten_proto_message(p) for p in group_info.participants]
-            for participant in group_participants:
-                if group_first_seen := group_info_prev.get("first_seen"): participant["first_seen"] = group_first_seen
-                else: participant["first_seen"] = update_time
-                participant["last_seen"] = update_time
-                participant["chat_jid"] = chat_jid
+        group_participants = [flatten_proto_message(p) for p in group_info.participants]
+        for participant in group_participants:
+            if group_first_seen := group_info_prev.get("first_seen"): participant["first_seen"] = group_first_seen
+            else: participant["first_seen"] = update_time
+            participant["last_seen"] = update_time
+            participant["chat_jid"] = chat_jid
 
-            logger.info("Updating group participants for group: %s", chat_jid)
-            db["group_participants"].upsert_many(group_participants, ["JID", "chat_jid"])
+        logger.info("Updating participants for group/community: %s", chat_jid)
+        db["group_participants"].upsert_many(group_participants, ["JID", "chat_jid"])
 
     async def _update_edit(self, message: wuc.WUMessage):
         message_flat = flatten_proto_message(message)
