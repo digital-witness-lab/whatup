@@ -365,7 +365,6 @@ class DatabaseBot(BaseBot):
         if is_archive:
             if archive_data.CommunityInfo is not None:
                 community_info = archive_data.CommunityInfo
-                community_jid = community_info[0].JID
                 community_processing = True
             elif archive_data.GroupInfo is not None:
                 group_info = archive_data.GroupInfo
@@ -377,12 +376,11 @@ class DatabaseBot(BaseBot):
             group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
             if utils.jid_to_str(group_info.parentJID) != None: # this group is in a community
                 community_processing = True
-                community_jid = utils.jid_to_str(group_info.parentJID)
                 community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = self.core_client.GetCommunityInfo(group_info.parentJID)
                 community_info : T.List[wuc.GroupInfo] = await utils.aiter_to_list(community_info_iterator)
 
         if community_processing:
-            self.logger.info("Using community info to update groups for community: %s", community_jid)
+            self.logger.info("Using community info to update groups for community")
             for group_from_community in community_info: 
                 await self.insert_group_info(db, group_from_community, now)
         else:
