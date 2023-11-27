@@ -160,7 +160,12 @@ func (msg *Message) IsReaction() bool {
 }
 
 func (msg *Message) IsInvite() bool {
-	return msg.MessageEvent.Message.GetExtendedTextMessage().GetInviteLinkGroupTypeV2() > 0
+	invite_link := false
+	if (msg.MessageEvent.Message.GetExtendedTextMessage() != nil) {
+		invite_link = (msg.MessageEvent.Message.GetExtendedTextMessage().InviteLinkGroupTypeV2 != nil)
+	}
+	
+	return (invite_link || msg.MessageEvent.Message.GroupInviteMessage != nil) 
 }
 
 func (msg *Message) IsDelete() bool {
