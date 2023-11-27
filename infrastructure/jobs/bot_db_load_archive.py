@@ -13,6 +13,7 @@ from job import JobArgs, Job
 from jobs.db_migrations import migrations_job_complete
 from network import vpc, private_services_network_with_db
 from storage import message_archive_bucket
+from artifact_registry import whatupy_image
 
 service_name = "bot-db-load-archive"
 
@@ -52,12 +53,11 @@ if create_load_archive_job:
     db_migrations_job = Job(
         service_name,
         JobArgs(
-            app_path=path.join("..", "whatupy"),
             args=["/usr/src/whatupy/gcsfuse_run.sh", "load-archive"],
             cpu="1",
             # Route all egress traffic via the VPC network.
             egress="ALL_TRAFFIC",
-            image_name=service_name,
+            image=whatupy_image,
             # We want this service to only be reachable from within
             # our VPC network.
             ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",

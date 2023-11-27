@@ -11,6 +11,7 @@ from network import vpc, private_services_network_with_db
 from dwl_secrets import db_url_secrets, whatup_salt_secret
 from storage import whatupcore2_bucket
 from config import is_prod_stack, whatup_salt
+from artifact_registry import whatupcore2_image
 
 service_name = "whatupcore2"
 
@@ -66,7 +67,6 @@ whatup_salt_secret_source = (
 whatupcore2_service = Service(
     service_name,
     ServiceArgs(
-        app_path=path.join("..", "whatupcore2"),
         args=["/gcsfuse_run.sh", "--log-level=DEBUG"],
         concurrency=50,
         container_port=3447,
@@ -78,7 +78,7 @@ whatupcore2_service = Service(
         # will cause the websocket connection to WhatsApp to
         # fail due to dial timeout.
         egress="PRIVATE_RANGES_ONLY",
-        image_name=service_name,
+        image=whatupcore2_image,
         # We want this service to only be reachable from within
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",

@@ -6,7 +6,6 @@ import pulumi_docker as docker
 from pulumi_gcp import artifactregistry, cloudrunv2, serviceaccount
 
 from config import location, project
-from storage import repository
 from network_firewall import firewall_policy
 
 
@@ -16,13 +15,12 @@ class JobArgs:
     Args for creating a CloudRun job.
     """
 
-    app_path: str
     # This is passed to the ENTRYPOINT defined in the Dockerfile.
     args: List[str]
     cpu: str
     # Possible values are: `ALL_TRAFFIC`, `PRIVATE_RANGES_ONLY`.
     egress: str
-    image_name: str
+    image: docker.Image
     # Possible values for `ingress` are:
     # - `INGRESS_TRAFFIC_ALL`
     # - `INGRESS_TRAFFIC_INTERNAL_ONLY`
@@ -52,30 +50,6 @@ class Job(ComponentResource):
 
         child_opts = ResourceOptions(parent=self)
 
-        # Form the repository URL
-        repo_url = Output.concat(
-            location,
-            "-docker.pkg.dev/",
-            project,
-            "/",
-            repository.repository_id,
-        )
-
-        # Create a container image for the service.
-        # Before running `pulumi up`, configure Docker for
-        # Artifact Registry authentication.
-        # as described here:
-        # https://cloud.google.com/artifact-registry/docs/docker/authentication
-        image = docker.Image(
-            props.image_name + "-img",
-            image_name=Output.concat(repo_url, "/", props.image_name),
-            build=docker.DockerBuildArgs(
-                context=props.app_path,
-                platform="linux/amd64",
-            ),
-            opts=child_opts,
-        )
-
         resources = cloudrunv2.JobTemplateTemplateContainerResourcesArgs(
             limits=dict(
                 memory=props.memory,
@@ -89,7 +63,7 @@ class Job(ComponentResource):
             containers=[
                 cloudrunv2.JobTemplateTemplateContainerArgs(
                     args=props.args,
-                    image=image.repo_digest,
+                    image=props.image.repo_digest,
                     resources=resources,
                     envs=props.envs,
                 ),

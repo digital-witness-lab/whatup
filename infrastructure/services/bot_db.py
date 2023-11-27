@@ -13,6 +13,7 @@ from jobs.db_migrations import migrations_job_complete
 from kms import sessions_encryption_key
 from service import Service, ServiceArgs
 from storage import sessions_bucket
+from artifact_registry import whatupy_image
 
 from .whatupcore2 import whatupcore2_service
 from .bot_archive import whatupy_control_groups
@@ -64,14 +65,13 @@ db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
 bot_db = Service(
     service_name,
     ServiceArgs(
-        app_path=path.join("..", "whatupy"),
         args=["/usr/src/whatupy/gcsfuse_run.sh", "databasebot"],
         concurrency=50,
         container_port=None,
         cpu="1",
         # Route all egress traffic via the VPC network.
         egress="ALL_TRAFFIC",
-        image_name=service_name,
+        image=whatupy_image,
         # We want this service to only be reachable from within
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",

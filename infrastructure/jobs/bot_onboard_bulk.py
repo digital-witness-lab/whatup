@@ -8,6 +8,7 @@ from job import JobArgs, Job
 from kms import sessions_encryption_key
 from network import vpc, private_services_network
 from storage import sessions_bucket
+from artifact_registry import whatupy_image
 
 from services.whatupcore2 import whatupcore2_service
 
@@ -41,12 +42,11 @@ if create_onboard_bulk_job:
     bot_onboard_bulk_job = Job(
         service_name,
         JobArgs(
-            app_path=path.join("..", "whatupy"),
             args=["/usr/src/whatupy/gcsfuse_run.sh", "onboard"],
             cpu="1",
             # Route all egress traffic via the VPC network.
             egress="ALL_TRAFFIC",
-            image_name=service_name,
+            image=whatupy_image,
             # We want this service to only be reachable from within
             # our VPC network.
             ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
