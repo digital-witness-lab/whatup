@@ -324,6 +324,58 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 	return AnonymizeInterface(session.Client.anonLookup, groupInfoProto), nil
 }
 
+func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_GetCommunityInfoServer) error {
+	ctx := server.Context()
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	JID := ProtoToJID(pJID)
+	subgroups, err := session.Client.GetSubGroups(JID)
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, "Could not get community subgroups: %v", err)
+	}
+
+	communityInfo, err := session.Client.GetGroupInfo(JID)
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, "Could not get community metadata: %v", err)
+	}
+	communityParticipants, err := session.Client.GetLinkedGroupsParticipants(JID)
+	if err == nil {
+		communityInfo.Participants = mergeGroupParticipants(communityInfo.Participants, communityParticipants)
+	}
+	communityInfoProto := GroupInfoToProto(communityInfo, session.Client.Store)
+	communityInfoProto.IsCommunity = true
+	if err := server.Send(AnonymizeInterface(session.Client.anonLookup, communityInfoProto)); err != nil {
+		s.log.Errorf("Could not send message to client: %v", err)
+		return nil
+	}
+
+	for _, subgroup := range subgroups {
+		gJID := subgroup.JID
+		groupInfo, err := session.Client.GetGroupInfo(gJID)
+		isPartial := false
+		if err != nil {
+			groupInfo = &types.GroupInfo{
+				JID:       gJID,
+				GroupName: subgroup.GroupName,
+			}
+			isPartial = true
+		}
+		groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+		groupInfoProto.IsPartialInfo = isPartial
+		if err := server.Send(AnonymizeInterface(session.Client.anonLookup, groupInfoProto)); err != nil {
+			s.log.Errorf("Could not send message to client: %v", err)
+			return nil
+		}
+	}
+	return nil
+}
+
 func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context, inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
 	session, ok := ctx.Value("session").(*Session)
 	if !ok {

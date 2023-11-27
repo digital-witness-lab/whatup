@@ -150,29 +150,31 @@ class DatabaseBot(BaseBot):
             primary_type=db.types.text,
             primary_increment=False,
         )
-        try:
-            group_info.create_index(["JID"])
-        except DatasetException:
-            self.logger.warn(
-                "Could not create group_participants indicies because table doesn't exist yet"
-            )
+        group_info.create_column(
+            "JID",
+            type=db.types.text, 
+        )
+        group_info.create_index(["JID"])
+
         db["group_info"].create_column(
             "first_seen", type=db.types.datetime, server_default=func.now()
         )
         db["group_info"].create_column(
             "last_update", type=db.types.datetime, server_default=func.now()
         )
+
         group_participants = db.create_table("group_participants")
         try:
             group_participants.create_index(["chat_jid"])
             group_participants.create_index(["JID", "chat_jid"])
         except DatasetException:
             self.logger.warn(
-                "Could not create group_participants indicies because table doesn't exist yet"
+                "Could not create group_participants indices because table doesn't exist yet"
             )
         group_participants.create_column(
             "first_seen", type=db.types.datetime, server_default=func.now()
         )
+
         db.create_table(
             "messages",
             primary_id="id",
@@ -304,11 +306,11 @@ class DatabaseBot(BaseBot):
         media_filename = utils.media_message_filename(message)
         with self.db as db:
             if message.info.source.isGroup:
-                self.logger.debug("Updating group: %s", message.info.id)
-                await self._update_group(
+                self.logger.debug("Updating group or community groups: %s", message.info.id)
+                await self._update_group_or_community(
                     db, message.info.source.chat, is_archive, archive_data
                 )
-                self.logger.debug("Done upading group: %s", message.info.id)
+                self.logger.debug("Done updating group or community groups: %s", message.info.id)
             if media_filename:
                 self.logger.debug("Getting media: %s", message.info.id)
                 message_flat["mediaFilename"] = media_filename
@@ -330,7 +332,7 @@ class DatabaseBot(BaseBot):
                     else:
                         await self.download_message_media_eventually(message, callback)
             db["messages"].upsert(message_flat, ["id"])
-        self.logger.debug("Done upading message: %s", message.info.id)
+        self.logger.debug("Done updating message: %s", message.info.id)
 
     async def _handle_media_content(
         self, message: wuc.WUMessage, content: bytes, datum: dict
@@ -343,42 +345,82 @@ class DatabaseBot(BaseBot):
         datum["content"] = content
         self.db["media"].insert(datum)
 
-    async def _update_group(
+
+    async def _update_group_or_community( 
         self,
         db: dataset.Database,
         chat: wuc.JID,
         is_archive: bool,
-        archive_data: ArchiveData,
+        archive_data: ArchiveData
     ):
         chat_jid = utils.jid_to_str(chat)
-        logger = self.logger.getChild(chat_jid)
         now = datetime.now()
-        if is_archive:
-            if archive_data.GroupInfo is None:
-                return
-            now = archive_data.WUMessage.info.timestamp.ToDatetime()
-            self.logger.debug("Replacing date with archived message timestamp: %s", now)
 
         group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
         last_update: datetime = group_info_prev.get("last_update", datetime.min)
         if not is_archive and last_update + self.group_info_refresh_time > now:
             return
-
+    
+        community_processing = False
         if is_archive:
-            group_info = archive_data.GroupInfo
+            if archive_data.CommunityInfo is not None:
+                community_info = archive_data.CommunityInfo
+                community_processing = True
+            elif archive_data.GroupInfo is not None:
+                group_info = archive_data.GroupInfo
+            else:
+                return
+            now = archive_data.WUMessage.info.timestamp.ToDatetime()
+            self.logger.debug("Storing archived message timestamp: %s", now)
         else:
             group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
+            if utils.jid_to_str(group_info.parentJID) != None: # this group is in a community
+                community_processing = True
+                community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = self.core_client.GetCommunityInfo(group_info.parentJID)
+                community_info : T.List[wuc.GroupInfo] = await utils.aiter_to_list(community_info_iterator)
+
+        if community_processing:
+            self.logger.info("Using community info to update groups for community")
+            for group_from_community in community_info: 
+                await self.insert_group_info(db, group_from_community, now)
+        else:
+            self.logger.info("Using group info to update group: %s", chat_jid)
+            await self.insert_group_info(db, group_info, now)
+
+    async def insert_group_info(
+        self,
+        db: dataset.Database,
+        group_info: wuc.GroupInfo,
+        update_time: datetime
+    ):
+        chat_jid = utils.jid_to_str(group_info.JID)
+        logger = self.logger.getChild(chat_jid)
         group_info_flat = flatten_proto_message(
             group_info,
             preface_keys=True,
             skip_keys=set(["participants", "participantVersionId"]),
         )
+
+        db_provenance =  {
+            "databasebot__timestamp": datetime.now().isoformat(),
+            "databasebot__version": self.__version__
+        }
+        group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
+        if group_info_prev.get("provenance") is None: 
+            group_info_prev.update(provenance = db_provenance) 
+        else: 
+             group_info_prev["provenance"].update(db_provenance)
+
         keys = set(group_info_prev.keys()).intersection(group_info_flat.keys())
         keys.discard("provenance")
 
         group_info_flat["id"] = chat_jid
-        group_info_flat["last_update"] = now
-        group_participants = [flatten_proto_message(p) for p in group_info.participants]
+        group_info_flat["last_update"] = update_time
+
+        if group_info_flat.get("provenance") is None: 
+            group_info_flat.update(provenance = db_provenance)
+        else: 
+            group_info_flat["provenance"].update(db_provenance)
 
         if group_info_prev:
             if changed_keys := [
@@ -393,35 +435,31 @@ class DatabaseBot(BaseBot):
                 prev_id = group_info_prev["id"]
                 N = group_info_flat["n_versions"] = group_info_prev["n_versions"] + 1
                 id_ = group_info_prev["id"] = f"{chat_jid}-{N:06d}"
-                group_info_prev["last_update"] = now
+                group_info_prev["last_update"] = update_time
                 group_info_flat["previous_version_id"] = id_
-                if first_seen := group_info_prev.get("first_seen"):
-                    group_info_flat["first_seen"] = first_seen
+                if group_first_seen := group_info_prev.get("first_seen"):
+                    group_info_flat["first_seen"] = group_first_seen
+                
                 db["group_info"].delete(id=prev_id)
                 db["group_info"].insert(group_info_prev)
                 db["group_info"].upsert(group_info_flat, ["id"])
             else:
-                db["group_info"].update({"id": chat_jid, "last_update": now}, ["id"])
+                db["group_info"].update({"id": chat_jid, "last_update": update_time, "provenance": group_info_prev.get("provenance")}, ["id"])
         elif not group_info_prev:
-            group_info_flat["first_seen"] = now
+            group_info_flat["first_seen"] = update_time
             db["group_info"].insert(group_info_flat)
 
+        logger.info("Updating group: %s", chat_jid)
+
+        group_participants = [flatten_proto_message(p) for p in group_info.participants]
         for participant in group_participants:
-            participant["last_seen"] = now
+            if group_first_seen := group_info_prev.get("first_seen"): participant["first_seen"] = group_first_seen
+            else: participant["first_seen"] = update_time
+            participant["last_seen"] = update_time
             participant["chat_jid"] = chat_jid
 
-        logger.debug("Updating group info: %s", chat_jid)
+        logger.info("Updating participants for group/community: %s", chat_jid)
         db["group_participants"].upsert_many(group_participants, ["JID", "chat_jid"])
-
-        if group_info.parentJID.ByteSize() > 0 and not is_archive:
-            # TODO: this in archive mode
-            logger.debug("Updating chat's parent: %s", chat_jid)
-            await self._update_group(
-                db,
-                group_info.parentJID,
-                is_archive=is_archive,
-                archive_data=archive_data,
-            )
 
     async def _update_edit(self, message: wuc.WUMessage):
         message_flat = flatten_proto_message(message)

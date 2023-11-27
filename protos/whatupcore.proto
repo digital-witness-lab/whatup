@@ -23,6 +23,7 @@ service WhatUpCore {
 
     rpc GetJoinedGroups(GetJoinedGroupsOptions) returns (stream JoinedGroup) {}
     rpc GetGroupInfo(JID) returns (GroupInfo) {}
+    rpc GetCommunityInfo(JID) returns (stream GroupInfo) {}
     rpc GetGroupInfoInvite(InviteCode) returns (GroupInfo) {}
     rpc JoinGroup(InviteCode) returns (GroupInfo) {}
 
@@ -167,20 +168,30 @@ message GroupInfo {
     // types.GroupInfo
     google.protobuf.Timestamp createdAt = 1;
     JID JID = 2;
+    JID ownerJID = 3;
     
-    GroupName groupName = 3;
-    GroupTopic groupTopic = 4;
-    string memberAddMode = 5;
-    bool isLocked = 6;
-    bool isAnnounce = 7;
-    bool isEphemeral = 8;
+    GroupName groupName = 20;
+    GroupTopic groupTopic = 21;
 
-    string participantVersionId = 9;
-    repeated GroupParticipant participants = 10;
+    string memberAddMode = 40;
+    bool isLocked = 41;
+    bool isAnnounce = 42;
+    bool isEphemeral = 43;
+    uint32 disappearingTimer = 48;
+    
+    bool isCommunity = 44;
+    bool isCommunityDefaultGroup = 45;
+    bool isPartialInfo = 46;
+    bool isIncognito = 47;
 
-    JID parentJID = 11;
+    // TODO: add profile pic?
 
-    map<string, string> provenance = 90;
+    string participantVersionId = 60;
+    repeated GroupParticipant participants = 61;
+
+    JID parentJID = 80;
+
+    map<string, string> provenance = 100;
 }
 
 message ConnectionStatusOptions {

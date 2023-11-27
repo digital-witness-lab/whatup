@@ -15,7 +15,7 @@ whatupcore.pb.go: whatupcore.proto
 	cd ../whatupcore2/protos/ ; go mod tidy
 
 ../whatupy/whatupy/whatupcore_pb2_grpc.py: whatupcore.proto
-	pip install protoletariat grpclib protobuf grpcio-tools mypy mypy-protobuf
+	python -m pip install protoletariat grpclib protobuf grpcio-tools mypy mypy-protobuf
 	python -m grpc_tools.protoc \
 		-I . \
 		--python_out=../whatupy/whatupy/protos/ \
