@@ -13,7 +13,6 @@ from job import JobArgs, Job
 from jobs.db_migrations import migrations_job_complete
 from network import vpc, private_services_network_with_db
 from storage import message_archive_bucket
-from kms import sessions_encryption_key
 
 service_name = "bot-db-load-archive"
 
@@ -41,14 +40,6 @@ secret_manager_perm = secretmanager.SecretIamMember(
     ),
 )
 
-encryption_key_perm = kms.CryptoKeyIAMMember(
-    "db-ld-enc-key-perm",
-    kms.CryptoKeyIAMMemberArgs(
-        crypto_key_id=sessions_encryption_key.id,
-        member=Output.concat("serviceAccount:", service_account.email),
-        role="roles/cloudkms.cryptoKeyEncrypterDecrypter",
-    ),
-)
 
 db_url_secret_source = JobTemplateTemplateContainerEnvValueSourceArgs(
     secret_key_ref=JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
@@ -84,10 +75,6 @@ if create_load_archive_job:
                     value_source=db_url_secret_source,
                 ),
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                    name="KEK_URI",
-                    value=sessions_encryption_key.id,
-                ),
-                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                     name="MESSAGE_ARCHIVE_BUCKET",
                     value=message_archive_bucket.name,
                 ),
@@ -108,7 +95,6 @@ if create_load_archive_job:
             depends_on=[
                 message_archive_bucket_perm,
                 secret_manager_perm,
-                encryption_key_perm,
             ]
         ),
     )
