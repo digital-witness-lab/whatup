@@ -85,10 +85,6 @@ bot_register = Service(
         ),
         envs=[
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="BUCKET_MNT_DIR_PREFIX",
-                value="/usr/src/whatupy-data",
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="DATABASE_URL",
                 value_source=db_usr_secret_source,
             ),

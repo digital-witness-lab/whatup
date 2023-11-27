@@ -55,7 +55,8 @@ case $app_command in
             --port 443 \
             onboard \
             --default-group-permission READWRITE  \
-            --credentials-dir "kek+gcs://${SESSIONS_BUCKET}/" &
+            --credentials-dir "kek+gcs://${SESSIONS_BUCKET}/" \
+            "${WHATUPY_ONBOARD_BOT_NAME}"
     ;;
 
     load-archive)
