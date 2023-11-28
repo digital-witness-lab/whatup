@@ -192,6 +192,10 @@ func (wac *WhatsAppClient) Close() {
 	wac.cancelCtx()
 }
 
+func (wac *WhatsAppClient) IsClosed() bool {
+    return wac.ctx.Err() != nil
+}
+
 func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
 	switch evt.(type) {
 	case *events.Connected:

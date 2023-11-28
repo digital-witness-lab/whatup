@@ -40,32 +40,23 @@ class CredentialsManagerTink(CredentialsManagerCloudPath):
 
         aead.register()
         try:
-            print(kek_uri)
             self.client = gcpkms.GcpKmsClient(kek_uri, kms_credentials_path)
         except tink.TinkError as e:
             logging.exception("Error creating GCP KMS client: %s", e)
             raise
 
+        logger.debug("Managing encrypted credentials for url: %s", url)
         if url.startswith("kek+"):
             url = url[len("kek+") :]
         super().__init__(url, *args, **kwargs)
 
     def read_credential(self, path: AnyPath) -> Credential:
-        enc_credential_data = json.load(path.open())
-        try:
-            enc_credential = Credential(**enc_credential_data)
-        except TypeError:
-            raise IncompleteCredentialsException(
-                f"Incomplete credentials: {credential.keys()}"
-            )
+        enc_credential = super().read_credential(path)
         return self.decrypt(enc_credential)
 
     def write_credential(self, plain_credential: Credential):
-        self.path.mkdir(parents=True, exist_ok=True)
-        path = self.path / f"{plain_credential.username}.json"
         enc_credential = self.encrypt(plain_credential)
-        with path.open("w+") as fd:
-            json.dump(enc_credential.asdict(), fd)
+        super().write_credential(enc_credential)
 
     def _get_env_aead(self) -> aead.KmsEnvelopeAead:
         try:

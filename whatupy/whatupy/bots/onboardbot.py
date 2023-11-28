@@ -21,9 +21,12 @@ class OnboardBot(BaseBot):
                 username, passphrase, default_group_permission
             ):
                 # print(utils.qrcode_gen(qrcode))
-                logger.critical("QRCode: (%s)", qrcode)
+                logger.critical("QRCode: %s", qrcode)
         except NotRegisteredError:
             logger.exception("Could not register user")
+            return
+        except Exception:
+            logger.exception("Exception while registering user")
             return
         logger.info("User registered")
 
@@ -33,6 +36,7 @@ class OnboardBot(BaseBot):
                 default_group_permission
             ),
         }
+        logger.debug("Creating credentials file with meta: %s", meta)
         credential = Credential(username, passphrase, meta=meta)
         credentials_manager.write_credential(credential)
 

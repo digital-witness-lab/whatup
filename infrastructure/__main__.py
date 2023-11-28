@@ -13,4 +13,5 @@ from jobs import (
     bot_db_load_archive,
     bot_onboard_bulk,
     db_migrations,
+    whatupcore_remove_user,
 )
