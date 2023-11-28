@@ -6,7 +6,6 @@ from pulumi_gcp.cloudrunv2 import (
 
 from job import JobArgs, Job
 from network import vpc, private_services_network_with_db
-from storage import whatupcore2_bucket
 from artifact_registry import whatupcore2_image
 
 from dwl_secrets import db_url_secrets, whatup_salt_secret
@@ -17,15 +16,6 @@ service_account = serviceaccount.Account(
     "remove-user",
     account_id=f"whatupcore-rmuser-{get_stack()}",
     description=f"Service account for {service_name}",
-)
-
-bucket_perm = storage.BucketIAMMember(
-    "wu-rmu-core-strg-perm",
-    storage.BucketIAMMemberArgs(
-        bucket=whatupcore2_bucket.name,
-        member=Output.concat("serviceAccount:", service_account.email),
-        role="roles/storage.objectAdmin",
-    ),
 )
 
 salt_secret_manager_perm = secretmanager.SecretIamMember(
@@ -65,7 +55,7 @@ db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
 whatupcore2_rmuser_job = Job(
     service_name,
     JobArgs(
-        args=["/gcsfuse_run.sh", "remove-user"],
+        args=["remove-user"],
         cpu="1",
         # Route all egress traffic via the VPC network.
         egress="PRIVATE_RANGES_ONLY",
@@ -80,14 +70,6 @@ whatupcore2_rmuser_job = Job(
         service_account=service_account,
         envs=[
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="WHATUPCORE2_BUCKET",
-                value=whatupcore2_bucket.name,
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="WHATUPCORE2_BUCKET_MNT_DIR",
-                value="/db/",
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="DATABASE_URL",
                 value_source=db_url_secret_source,
             ),
@@ -100,7 +82,6 @@ whatupcore2_rmuser_job = Job(
     ),
     opts=ResourceOptions(
         depends_on=[
-            bucket_perm,
             salt_secret_manager_perm,
             db_secret_manager_perm,
         ],

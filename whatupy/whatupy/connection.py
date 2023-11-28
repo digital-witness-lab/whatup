@@ -29,8 +29,9 @@ def create_whatupcore_clients(host: str, port: int, cert: T.Optional[Path] = Non
             cert_bytes = f.read()
     options = [
         ("grpc.max_receive_message_length", 200 * 1024 * 1024),
-        ("grpc.keepalive_time_ms", 20000),
+        ("grpc.keepalive_time_ms", 10000),
         ("grpc.keepalive_timeout_ms", 5000),
+        ("grpc.keepalive_permit_without_calls", 1),
     ]
     channel = grpc.aio.secure_channel(
         f"{host}:{port}",

@@ -9,8 +9,7 @@ from pulumi_gcp.cloudrunv2 import (
 from service import Service, ServiceArgs
 from network import vpc, private_services_network_with_db
 from dwl_secrets import db_url_secrets, whatup_salt_secret
-from storage import whatupcore2_bucket
-from config import is_prod_stack, whatup_salt
+from config import is_prod_stack
 from artifact_registry import whatupcore2_image
 
 service_name = "whatupcore2"
@@ -19,15 +18,6 @@ service_account = serviceaccount.Account(
     "whatupcore",
     account_id=f"whatupcore-{get_stack()}",
     description=f"Service account for {service_name}",
-)
-
-bucket_perm = storage.BucketIAMMember(
-    "wu-core-strg-perm",
-    storage.BucketIAMMemberArgs(
-        bucket=whatupcore2_bucket.name,
-        member=Output.concat("serviceAccount:", service_account.email),
-        role="roles/storage.objectAdmin",
-    ),
 )
 
 db_secret_manager_perm = secretmanager.SecretIamMember(
@@ -67,7 +57,7 @@ whatup_salt_secret_source = (
 whatupcore2_service = Service(
     service_name,
     ServiceArgs(
-        args=["/gcsfuse_run.sh", "rpc", "--log-level=DEBUG"],
+        args=["rpc", "--log-level=INFO"],
         concurrency=50,
         container_port=3447,
         cpu="1",
@@ -97,14 +87,6 @@ whatupcore2_service = Service(
                 value="false",
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="WHATUPCORE2_BUCKET",
-                value=whatupcore2_bucket.name,
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="WHATUPCORE2_BUCKET_MNT_DIR",
-                value="/db/",
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="DATABASE_URL",
                 value_source=db_url_secret_source,
             ),
@@ -120,7 +102,6 @@ whatupcore2_service = Service(
     ),
     opts=ResourceOptions(
         depends_on=[
-            bucket_perm,
             db_secret_manager_perm,
             salt_secret_manager_perm,
         ]

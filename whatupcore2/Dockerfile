@@ -12,22 +12,6 @@ RUN apt update \
     libssl-dev \
     libpcre2-8-0
 
-# Install dependencies for gcsfuse.
-# https://cloud.google.com/run/docs/tutorials/network-filesystems-fuse#defining_your_environment_configuration_with_the_dockerfile
-RUN apt install -y \
-    curl \
-    gnupg \
-    lsb-release \
-    tini
-# Install gcsfuse for the current distro.
-RUN gcsFuseRepo=gcsfuse-`lsb_release -c -s` && \
-    echo "deb https://packages.cloud.google.com/apt $gcsFuseRepo main" | \
-    tee /etc/apt/sources.list.d/gcsfuse.list && \
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
-    apt-key add - && \
-    apt update && \
-    apt install -y gcsfuse
-
 RUN apt auto-clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -42,7 +26,7 @@ ENV GOMODCACHE /usr/local/cache/go-mod-cache/
 COPY . .
 
 # Ensure the script is executable.
-RUN chmod +x /build/gcsfuse_run.sh
+RUN chmod +x /build/run.sh
 
 RUN \
     --mount=type=cache,target=/usr/local/cache/go-build-cache/ \
@@ -66,15 +50,11 @@ COPY --from=builder /lib64/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2
 COPY --from=builder /bin/bash /bin/bash
 COPY --from=builder /usr/bin/env /usr/bin/env
 COPY --from=builder /bin/mkdir /bin/mkdir
-COPY --from=builder /usr/bin/tini /usr/bin/tini
-COPY --from=builder /usr/bin/gcsfuse /usr/bin/gcsfuse
 
 # Finally, copy the app binary and related scripts.
 COPY --from=builder /build/whatupcore2 /whatupcore2
-COPY --from=builder /build/gcsfuse_run.sh /gcsfuse_run.sh
+COPY --from=builder /build/run.sh /run.sh
 
 EXPOSE 3447
 
-# Use tini to manage zombie processes and signal forwarding.
-# https://github.com/krallin/tini
-ENTRYPOINT ["/usr/bin/tini", "--"]
+ENTRYPOINT ["/run.sh"]

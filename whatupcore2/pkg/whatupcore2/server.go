@@ -65,10 +65,11 @@ func StartRPC(port uint32, dbUri string, logLevel string) error {
 	authCheck := createAuthCheck(sessionManager, JWT_SECRET)
     keepAliveEnforcement := grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
         MinTime:             5 * time.Second,
-        PermitWithoutStream: false,
+        PermitWithoutStream: true,
     })
 	keepAlive := grpc.KeepaliveParams(keepalive.ServerParameters{
 		Time: 10 * time.Second,
+
 	})
 
 	var s *grpc.Server
