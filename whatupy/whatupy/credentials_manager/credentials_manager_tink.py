@@ -82,6 +82,6 @@ class CredentialsManagerTink(CredentialsManagerCloudPath):
         passphrase_bytes = env_aead.decrypt(
             cipher_bytes, enc_credential.username.encode("utf8")
         )
-        plain_credential = Credential(**plain_credential.asdict())
+        plain_credential = Credential(**enc_credential.asdict())
         plain_credential.passphrase = passphrase_bytes.decode("utf8")
         return plain_credential

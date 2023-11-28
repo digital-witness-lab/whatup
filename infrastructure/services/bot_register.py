@@ -64,7 +64,7 @@ db_usr_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
 bot_register = Service(
     service_name,
     ServiceArgs(
-        args=["/usr/src/whatupy/gcsfuse_run.sh", "registerbot"],
+        args=["registerbot"],
         concurrency=50,
         container_port=None,
         cpu="1",
@@ -110,7 +110,7 @@ bot_register = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="ONBOARD_BOT",
-                value="gertrude2",
+                value="flo",
             ),
             # Create an implicit dependency on the migrations
             # job completing successfully.

@@ -42,7 +42,7 @@ if create_onboard_bulk_job:
     bot_onboard_bulk_job = Job(
         service_name,
         JobArgs(
-            args=["/usr/src/whatupy/gcsfuse_run.sh", "onboard"],
+            args=["onboard"],
             cpu="1",
             # Route all egress traffic via the VPC network.
             egress="ALL_TRAFFIC",

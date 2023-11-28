@@ -7,6 +7,7 @@ import asyncio
 from pathlib import Path
 
 import click
+from cloudpathlib import AnyPath
 
 from .bots import (
     ArchiveBot,
@@ -77,7 +78,7 @@ def cli(ctx, debug, host, port, control_groups: list, cert: T.Optional[Path]):
     default=60 * 60 * 2,
     help="Response time sigma (seconds)",
 )
-@click.argument("credentials", type=click.Path(path_type=Path), nargs=-1)
+@click.argument("credentials", nargs=-1)
 @click.pass_context
 async def chatbot(ctx, credentials, response_time, response_time_sigma):
     """
@@ -170,7 +171,7 @@ async def onboard_bulk(ctx, credentials_url: str):
 @async_cli
 @click.option("--host", type=str, default="localhost", help="What host to serve on")
 @click.option("--port", type=int, default=6666, help="What port to serve on")
-@click.argument("credential", type=click.Path(path_type=Path))
+@click.argument("credential")
 @click.pass_context
 async def debugbot(ctx, host, port, credential):
     """
@@ -189,12 +190,12 @@ async def debugbot(ctx, host, port, credential):
 @async_cli
 @click.option(
     "--archive-dir",
-    type=click.Path(file_okay=False, writable=True, path_type=Path),
+    type=click.Path(path_type=AnyPath),
     default=Path("./archive/"),
 )
-@click.argument("credentials", type=click.Path(path_type=Path), nargs=-1)
+@click.argument("credentials", nargs=-1)
 @click.pass_context
-async def archivebot(ctx, credentials, archive_dir: Path):
+async def archivebot(ctx, credentials, archive_dir: AnyPath):
     """
     Bot to archive all the data the provided bots have access to. Give as many
     credentials to specify which bots should be listened to. Data gets saved in
@@ -208,6 +209,9 @@ async def archivebot(ctx, credentials, archive_dir: Path):
             │   └── <message-id>_imageMessage.jpg
             └── metadata.json
     """
+    logger.info(
+        "Starting archivebot with archive_dir: %s: %s", archive_dir, type(archive_dir)
+    )
     archive_dir.mkdir(parents=True, exist_ok=True)
     params = {"archive_dir": archive_dir, **ctx.obj["connection_params"]}
     await run_multi_bots(ArchiveBot, credentials, params)
@@ -222,7 +226,7 @@ async def archivebot(ctx, credentials, archive_dir: Path):
     default=None,
     help="File glob for archived messages to load. Will load the messages then quit",
 )
-@click.argument("credentials", type=click.Path(path_type=Path), nargs=-1)
+@click.argument("credentials", nargs=-1)
 @click.pass_context
 async def databasebot(
     ctx,
@@ -279,9 +283,7 @@ async def databasebot_load_archive(
     type=str,
     help="Credentials manager URL to store sessions for newly registered users",
 )
-@click.argument(
-    "credential", type=click.Path(path_type=Path, dir_okay=False, exists=True), nargs=1
-)
+@click.argument("credential", nargs=1)
 @click.pass_context
 async def userservicesbot(
     ctx,
@@ -316,9 +318,7 @@ async def userservicesbot(
     type=str,
     help="Credentials manager URL to store sessions for newly registered users",
 )
-@click.argument(
-    "credential", type=click.Path(path_type=Path, dir_okay=False, exists=True), nargs=1
-)
+@click.argument("credential", nargs=1)
 @click.pass_context
 async def registerbot(
     ctx,

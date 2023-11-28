@@ -13,4 +13,4 @@ sqlalchemy-bigquery[bqstorage]
 phonenumbers
 
 cloudpathlib[gs]
-tink
+tink[gcpkms]

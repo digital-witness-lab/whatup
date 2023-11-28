@@ -38,7 +38,7 @@ class CredentialsManagerCloudPath(CredentialsManager):
             credentials.append(path)
         elif path.is_dir():
             should_loop = True
-            credentials.extend(path / filename for filename in path.glob("*.json"))
+            credentials.extend(path.glob("*.json"))
         else:
             should_loop = True
             credentials.extend(path / filename for filename in glob.glob(str(path)))
