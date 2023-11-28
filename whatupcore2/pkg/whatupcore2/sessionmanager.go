@@ -192,7 +192,7 @@ func (sm *SessionManager) GetSessionLogin(username, passphrase string) (*Session
 		return nil, ErrInvalidPassphrase
 	}
 	if session.Client.IsClosed() || !session.Client.IsLoggedIn() {
-		sm.log.Warnf("Trying to log into a disconnected client")
+		sm.log.Warnf("Trying to log into a disconnected client!")
 		sm.removeSession(session)
 		return nil, nil
 	}

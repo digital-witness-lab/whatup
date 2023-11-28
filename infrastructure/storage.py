@@ -8,19 +8,6 @@ from config import location, is_prod_stack
 # in Cloud Run services.
 # https://cloud.google.com/run/docs/tutorials/network-filesystems-fuse
 
-whatupcore2_bucket = storage.Bucket(
-    "dwl-core2",
-    storage.BucketArgs(
-        location=location,
-        # Enabling versioning will produce unpredictable behavior with
-        # gcsfuse.
-        versioning=storage.BucketVersioningArgs(enabled=False),
-        public_access_prevention="enforced",
-        force_destroy=False if is_prod_stack() else True,
-    ),
-    opts=ResourceOptions(protect=is_prod_stack()),
-)
-
 sessions_bucket = storage.Bucket(
     "dwl-sess",
     storage.BucketArgs(
