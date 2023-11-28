@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+app_command=$1
 gcs_params=""
 
 if [ -z "${WHATUPCORE2_BUCKET_MNT_DIR:-}" ]; then
@@ -18,7 +19,20 @@ echo "Mounting completed."
 echo "Starting whatupcore2..."
 
 # Start the application
-/whatupcore2 rpc $@ &
+case $app_command in
+    rpc)
+        /whatupcore2 $@ &
+    ;;
+
+    remove-user)
+        if [ -z "${WHATUPCORE2_REMOVE_USER:-}" ]; then
+            echo "WHATUPCORE2_REMOVE_USER env var is required."
+            exit 1
+        fi
+        /whatupcore2 remove-user ${WHATUPCORE2_REMOVE_USER} &
+    ;;
+esac
+
 
 # Exit immediately when one of the background processes terminate.
 wait -n

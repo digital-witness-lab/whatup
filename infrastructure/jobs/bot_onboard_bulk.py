@@ -5,7 +5,7 @@ from pulumi_gcp import cloudrunv2, kms, serviceaccount, storage
 
 from config import create_onboard_bulk_job
 from job import JobArgs, Job
-from kms import sessions_encryption_key
+from kms import sessions_encryption_key, sessions_encryption_key_uri
 from network import vpc, private_services_network
 from storage import sessions_bucket
 from artifact_registry import whatupy_image
@@ -61,7 +61,7 @@ if create_onboard_bulk_job:
             envs=[
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                     name="KEK_URI",
-                    value=sessions_encryption_key.id,
+                    value=sessions_encryption_key_uri,
                 ),
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                     name="SESSIONS_BUCKET",

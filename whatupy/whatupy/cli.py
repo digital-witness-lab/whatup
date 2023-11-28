@@ -115,7 +115,7 @@ async def onboard(
     logger.info(
         "Registering user %s with default permission %s", name, default_group_permission
     )
-    await bot.register(
+    return await bot.register(
         name,
         credentials_manager,
         default_group_permission=GROUP_PERMISSIONS[default_group_permission],

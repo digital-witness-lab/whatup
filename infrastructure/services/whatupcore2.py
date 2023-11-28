@@ -67,7 +67,7 @@ whatup_salt_secret_source = (
 whatupcore2_service = Service(
     service_name,
     ServiceArgs(
-        args=["/gcsfuse_run.sh", "--log-level=DEBUG"],
+        args=["/gcsfuse_run.sh", "rpc", "--log-level=DEBUG"],
         concurrency=50,
         container_port=3447,
         cpu="1",
@@ -118,5 +118,11 @@ whatupcore2_service = Service(
             ),
         ],
     ),
-    opts=ResourceOptions(depends_on=bucket_perm),
+    opts=ResourceOptions(
+        depends_on=[
+            bucket_perm,
+            db_secret_manager_perm,
+            salt_secret_manager_perm,
+        ]
+    ),
 )

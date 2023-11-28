@@ -3,7 +3,7 @@ from os import path
 from pulumi import get_stack, ResourceOptions, Output
 from pulumi_gcp import cloudrunv2, kms, serviceaccount, storage
 
-from kms import sessions_encryption_key
+from kms import sessions_encryption_key, sessions_encryption_key_uri
 from network import vpc, private_services_network
 from service import Service, ServiceArgs
 from storage import sessions_bucket, message_archive_bucket
@@ -79,7 +79,7 @@ whatupy = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="KEK_URI",
-                value=sessions_encryption_key.id,
+                value=sessions_encryption_key_uri,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="MESSAGE_ARCHIVE_BUCKET",

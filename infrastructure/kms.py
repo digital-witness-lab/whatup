@@ -1,3 +1,4 @@
+from pulumi import Output
 from pulumi_gcp import kms
 
 from config import location
@@ -11,4 +12,13 @@ sessions_encryption_key = kms.CryptoKey(
         purpose="ENCRYPT_DECRYPT",
         rotation_period="2630000s",  # every month
     ),
+)
+
+sessions_encryption_key_version = kms.CryptoKeyVersion(
+    "sessions-version", crypto_key=sessions_encryption_key.id, state="ENABLED"
+)
+
+sessions_encryption_key_uri = Output.concat(
+    "gcp-kms://",
+    sessions_encryption_key_version.id,
 )

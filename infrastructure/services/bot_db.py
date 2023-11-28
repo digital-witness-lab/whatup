@@ -10,7 +10,7 @@ from pulumi_gcp.cloudrunv2 import (
 from network import vpc, private_services_network_with_db
 from dwl_secrets import db_url_secrets
 from jobs.db_migrations import migrations_job_complete
-from kms import sessions_encryption_key
+from kms import sessions_encryption_key, sessions_encryption_key_uri
 from service import Service, ServiceArgs
 from storage import sessions_bucket
 from artifact_registry import whatupy_image
@@ -91,7 +91,7 @@ bot_db = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="KEK_URI",
-                value=sessions_encryption_key.id,
+                value=sessions_encryption_key_uri,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="SESSIONS_BUCKET",

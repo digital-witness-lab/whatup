@@ -18,13 +18,14 @@ logger = logging.getLogger(__name__)
 
 class CredentialsManagerCloudPath(CredentialsManager):
     url_patterns = [
-        r"^gcs://",  # google cloud storage
+        r"^gs://",  # google cloud storage
         r"^/",  # absolute file spec
         r"^\./",  # relative file spec
     ]
 
     def __init__(self, path: str, timeout: int = 60):
         self.path = AnyPath(path)
+        logger.info("Managing credentials for path: %s", self.path)
         self.active_usernames: T.Dict[str, AnyPath] = {}
         self.timeout = timeout
         self.blocker = asyncio.Event()
@@ -44,6 +45,7 @@ class CredentialsManagerCloudPath(CredentialsManager):
         return should_loop, credentials
 
     def read_credential(self, path: AnyPath) -> Credential:
+        logger.info("Reading credentials: %s", str(path))
         credential = json.load(path.open())
         try:
             return Credential(**credential)
@@ -55,6 +57,7 @@ class CredentialsManagerCloudPath(CredentialsManager):
     def write_credential(self, credential: Credential):
         self.path.mkdir(parents=True, exist_ok=True)
         path = self.path / f"{credential.username}.json"
+        logger.info("Writing credentials: %s", str(path))
         with path.open("w+") as fd:
             json.dump(credential.asdict(), fd)
 
@@ -75,7 +78,7 @@ class CredentialsManagerCloudPath(CredentialsManager):
             return
 
     async def listen(self, device_manager):
-        logger.debug("CredentialsManagerFile listening to path: %s", self.path)
+        logger.info("CredentialsManagerFile listening to path: %s", self.path)
         should_loop = True
         while should_loop or (await self.blocker.wait()):
             self.blocker.clear()

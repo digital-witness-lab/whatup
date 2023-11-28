@@ -26,7 +26,7 @@ case $app_command in
             --port 443 \
             archivebot \
             --archive-dir "${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}" \
-            "kek+gcs://${SESSIONS_BUCKET}/" &
+            "kek+gs://${SESSIONS_BUCKET}/" &
     ;;
 
     databasebot)
@@ -34,7 +34,7 @@ case $app_command in
             --port 443 \
             databasebot \
             --database-url "${DATABASE_URL}" \
-            "kek+gcs://${SESSIONS_BUCKET}/" &
+            "kek+gs://${SESSIONS_BUCKET}/" &
     ;;
 
     registerbot)
@@ -42,8 +42,8 @@ case $app_command in
             --port 443 \
             registerbot \
             --database-url "${DATABASE_URL}" \
-            --sessions-dir "kek+gcs://${SESSIONS_BUCKET}/${SESSIONS_USER_SUBDIR}/" \
-            "kek+gcs://${SESSIONS_BUCKET}/${ONBOARD_BOT}.json" &
+            --sessions-url "kek+gs://${SESSIONS_BUCKET}/${SESSIONS_USER_SUBDIR}/" \
+            "kek+gs://${SESSIONS_BUCKET}/${ONBOARD_BOT}.json" &
     ;;
 
     onboard)
@@ -55,12 +55,12 @@ case $app_command in
             --port 443 \
             onboard \
             --default-group-permission READWRITE  \
-            --credentials-dir "kek+gcs://${SESSIONS_BUCKET}/" \
-            "${WHATUPY_ONBOARD_BOT_NAME}"
+            --credentials-url "kek+gs://${SESSIONS_BUCKET}/" \
+            "${WHATUPY_ONBOARD_BOT_NAME}" &
     ;;
 
     load-archive)
-        ls "${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}" | xargs -n 1 -P 6 -I{} whatupy databasebot-load-archive --database-url ${DATABASE_URL} '${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}{}/*_*.json'
+        ( ls "${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}" | xargs -n 1 -P 6 -I{} whatupy databasebot-load-archive --database-url ${DATABASE_URL} '${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}{}/*_*.json' ) &
     ;;
 
     *)
