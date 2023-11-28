@@ -9,11 +9,6 @@ if [ -z "${app_command:-}" ]; then
     exit 1
 fi
 
-echo "Mounting $SESSIONS_BUCKET bucket using GCS Fuse."
-# Create mount directory for service
-mkdir -p "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}"
-gcsfuse ${gcs_params} "$SESSIONS_BUCKET" "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}"
-
 if [ -n "${MESSAGE_ARCHIVE_BUCKET:-}" ]; then
     echo "Mounting $MESSAGE_ARCHIVE_BUCKET bucket using GCS Fuse."
     mkdir -p "${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}"
@@ -31,7 +26,7 @@ case $app_command in
             --port 443 \
             archivebot \
             --archive-dir "${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}" \
-            "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}" &
+            "kek+gs://${SESSIONS_BUCKET}/" &
     ;;
 
     databasebot)
@@ -39,7 +34,7 @@ case $app_command in
             --port 443 \
             databasebot \
             --database-url "${DATABASE_URL}" \
-            "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}" &
+            "kek+gs://${SESSIONS_BUCKET}/" &
     ;;
 
     registerbot)
@@ -47,8 +42,8 @@ case $app_command in
             --port 443 \
             registerbot \
             --database-url "${DATABASE_URL}" \
-            --sessions-dir "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}/${SESSIONS_USER_SUBDIR}" \
-            "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}/${ONBOARD_BOT}.json" &
+            --sessions-url "kek+gs://${SESSIONS_BUCKET}/${SESSIONS_USER_SUBDIR}/" \
+            "kek+gs://${SESSIONS_BUCKET}/${ONBOARD_BOT}.json" &
     ;;
 
     onboard)
@@ -60,11 +55,12 @@ case $app_command in
             --port 443 \
             onboard \
             --default-group-permission READWRITE  \
-            --credentials-dir "${BUCKET_MNT_DIR_PREFIX}/${SESSIONS_BUCKET_MNT_DIR}" "${WHATUPY_ONBOARD_BOT_NAME}"
+            --credentials-url "kek+gs://${SESSIONS_BUCKET}/" \
+            "${WHATUPY_ONBOARD_BOT_NAME}" &
     ;;
 
     load-archive)
-        ls "${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}" | xargs -n 1 -P 6 -I{} whatupy databasebot-load-archive --database-url ${DATABASE_URL} '${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}{}/*_*.json'
+        ( ls "${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}" | xargs -n 1 -P 6 -I{} whatupy databasebot-load-archive --database-url ${DATABASE_URL} '${BUCKET_MNT_DIR_PREFIX}/${MESSAGE_ARCHIVE_BUCKET_MNT_DIR}{}/*_*.json' ) &
     ;;
 
     *)

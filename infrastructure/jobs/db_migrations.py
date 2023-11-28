@@ -12,11 +12,11 @@ from job import JobArgs, Job
 from network import vpc, private_services_network_with_db
 from dwl_secrets import db_root_pass_secret
 from database import primary_cloud_sql_instance
+from artifact_registry import migrations_image
 
 from .execute_job import run_job_sync
 
 job_name = "db-migrations"
-app_path = path.join("..", "migrations")
 
 service_account = serviceaccount.Account(
     "db-migrations",
@@ -43,12 +43,11 @@ db_root_pass_secret_source = JobTemplateTemplateContainerEnvValueSourceArgs(
 db_migrations_job = Job(
     job_name,
     JobArgs(
-        app_path=app_path,
         args=["/run_migrations.sh"],
         cpu="1",
         # Route all egress traffic via the VPC network.
         egress="ALL_TRAFFIC",
-        image_name=job_name,
+        image=migrations_image,
         # We want this service to only be reachable from within
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
