@@ -1,7 +1,7 @@
 from os import path
 
 from pulumi import get_stack, ResourceOptions, Output
-from pulumi_gcp import serviceaccount, cloudrunv2, storage, secretmanager
+from pulumi_gcp import cloudrunv2, kms, secretmanager, serviceaccount, storage
 
 from pulumi_gcp.cloudrunv2 import (
     ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
@@ -10,8 +10,10 @@ from pulumi_gcp.cloudrunv2 import (
 from network import vpc, private_services_network_with_db
 from dwl_secrets import db_url_secrets
 from jobs.db_migrations import migrations_job_complete
+from kms import sessions_encryption_key, sessions_encryption_key_uri
 from service import Service, ServiceArgs
 from storage import sessions_bucket
+from artifact_registry import whatupy_image
 
 from .whatupcore2 import whatupcore2_service
 from .bot_archive import whatupy_control_groups
@@ -44,6 +46,15 @@ secret_manager_perm = secretmanager.SecretIamMember(
     ),
 )
 
+encryption_key_perm = kms.CryptoKeyIAMMember(
+    "bot-db-enc-key-perm",
+    kms.CryptoKeyIAMMemberArgs(
+        crypto_key_id=sessions_encryption_key.id,
+        member=Output.concat("serviceAccount:", service_account.email),
+        role="roles/cloudkms.cryptoKeyEncrypterDecrypter",
+    ),
+)
+
 db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
         secret=db_url_secrets["messages"].name,
@@ -54,14 +65,13 @@ db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
 bot_db = Service(
     service_name,
     ServiceArgs(
-        app_path=path.join("..", "whatupy"),
         args=["/usr/src/whatupy/gcsfuse_run.sh", "databasebot"],
         concurrency=50,
         container_port=None,
         cpu="1",
         # Route all egress traffic via the VPC network.
         egress="ALL_TRAFFIC",
-        image_name=service_name,
+        image=whatupy_image,
         # We want this service to only be reachable from within
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
@@ -76,20 +86,16 @@ bot_db = Service(
         ),
         envs=[
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="BUCKET_MNT_DIR_PREFIX",
-                value="/usr/src/whatupy-data",
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="DATABASE_URL",
                 value_source=db_url_secret_source,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="SESSIONS_BUCKET",
-                value=sessions_bucket.name,
+                name="KEK_URI",
+                value=sessions_encryption_key_uri,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="SESSIONS_BUCKET_MNT_DIR",
-                value="sessions/",
+                name="SESSIONS_BUCKET",
+                value=sessions_bucket.name,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPY_CONTROL_GROUPS",
@@ -107,5 +113,7 @@ bot_db = Service(
             ),
         ],
     ),
-    opts=ResourceOptions(depends_on=sessions_bucket_perm),
+    opts=ResourceOptions(
+        depends_on=[sessions_bucket_perm, encryption_key_perm]
+    ),
 )

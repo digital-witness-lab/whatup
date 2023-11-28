@@ -11,3 +11,6 @@ dataset
 psycopg2_binary
 sqlalchemy-bigquery[bqstorage]
 phonenumbers
+
+cloudpathlib[gs]
+tink

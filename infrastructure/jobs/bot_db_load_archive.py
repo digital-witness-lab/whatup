@@ -1,7 +1,7 @@
 from os import path
 
 from pulumi import get_stack, ResourceOptions, Output
-from pulumi_gcp import serviceaccount, cloudrunv2, storage, secretmanager
+from pulumi_gcp import cloudrunv2, kms, secretmanager, serviceaccount, storage
 from pulumi_gcp.cloudrunv2 import (
     JobTemplateTemplateContainerEnvValueSourceArgs,
     JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
@@ -13,6 +13,7 @@ from job import JobArgs, Job
 from jobs.db_migrations import migrations_job_complete
 from network import vpc, private_services_network_with_db
 from storage import message_archive_bucket
+from artifact_registry import whatupy_image
 
 service_name = "bot-db-load-archive"
 
@@ -40,6 +41,7 @@ secret_manager_perm = secretmanager.SecretIamMember(
     ),
 )
 
+
 db_url_secret_source = JobTemplateTemplateContainerEnvValueSourceArgs(
     secret_key_ref=JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
         secret=db_url_secrets["messages"].name,
@@ -51,12 +53,11 @@ if create_load_archive_job:
     db_migrations_job = Job(
         service_name,
         JobArgs(
-            app_path=path.join("..", "whatupy"),
             args=["/usr/src/whatupy/gcsfuse_run.sh", "load-archive"],
             cpu="1",
             # Route all egress traffic via the VPC network.
             egress="ALL_TRAFFIC",
-            image_name=service_name,
+            image=whatupy_image,
             # We want this service to only be reachable from within
             # our VPC network.
             ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
@@ -91,6 +92,9 @@ if create_load_archive_job:
             timeout="3600s",
         ),
         opts=ResourceOptions(
-            depends_on=[message_archive_bucket_perm, secret_manager_perm]
+            depends_on=[
+                message_archive_bucket_perm,
+                secret_manager_perm,
+            ]
         ),
     )

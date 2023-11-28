@@ -1,12 +1,14 @@
 from os import path
 
 from pulumi import get_stack, ResourceOptions, Output
-from pulumi_gcp import serviceaccount, cloudrunv2, storage
+from pulumi_gcp import cloudrunv2, kms, serviceaccount, storage
 
 from config import create_onboard_bulk_job
 from job import JobArgs, Job
+from kms import sessions_encryption_key, sessions_encryption_key_uri
 from network import vpc, private_services_network
 from storage import sessions_bucket
+from artifact_registry import whatupy_image
 
 from services.whatupcore2 import whatupcore2_service
 
@@ -27,16 +29,24 @@ sessions_bucket_perm = storage.BucketIAMMember(
     ),
 )
 
+encryption_key_perm = kms.CryptoKeyIAMMember(
+    "onboard-bot-enc-key-perm",
+    kms.CryptoKeyIAMMemberArgs(
+        crypto_key_id=sessions_encryption_key.id,
+        member=Output.concat("serviceAccount:", service_account.email),
+        role="roles/cloudkms.cryptoKeyEncrypterDecrypter",
+    ),
+)
+
 if create_onboard_bulk_job:
     bot_onboard_bulk_job = Job(
         service_name,
         JobArgs(
-            app_path=path.join("..", "whatupy"),
             args=["/usr/src/whatupy/gcsfuse_run.sh", "onboard"],
             cpu="1",
             # Route all egress traffic via the VPC network.
             egress="ALL_TRAFFIC",
-            image_name=service_name,
+            image=whatupy_image,
             # We want this service to only be reachable from within
             # our VPC network.
             ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
@@ -50,16 +60,12 @@ if create_onboard_bulk_job:
             ),
             envs=[
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                    name="BUCKET_MNT_DIR_PREFIX",
-                    value="/usr/src/whatupy-data",
+                    name="KEK_URI",
+                    value=sessions_encryption_key_uri,
                 ),
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                     name="SESSIONS_BUCKET",
                     value=sessions_bucket.name,
-                ),
-                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                    name="SESSIONS_BUCKET_MNT_DIR",
-                    value="sessions/",
                 ),
                 cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                     name="WHATUPCORE2_HOST",
@@ -68,5 +74,7 @@ if create_onboard_bulk_job:
             ],
             timeout="3600s",
         ),
-        opts=ResourceOptions(depends_on=sessions_bucket_perm),
+        opts=ResourceOptions(
+            depends_on=[sessions_bucket_perm, encryption_key_perm]
+        ),
     )

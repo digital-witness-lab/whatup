@@ -1,21 +1,12 @@
-from pulumi import ResourceOptions, get_stack
+from pulumi import ResourceOptions
 
-from pulumi_gcp import storage, artifactregistry
+from pulumi_gcp import storage
 
 from config import location, is_prod_stack
 
 # Cloud Storage buckets will be used as network filesystem using gcsfuse
 # in Cloud Run services.
 # https://cloud.google.com/run/docs/tutorials/network-filesystems-fuse
-
-# Create an Artifact Registry repository
-repository = artifactregistry.Repository(
-    "whatup-repo",
-    repository_id=f"whatup-{get_stack()}-repo",
-    description="Repository for whatup container image",
-    format="DOCKER",
-    location=location,
-)
 
 whatupcore2_bucket = storage.Bucket(
     "dwl-core2",
