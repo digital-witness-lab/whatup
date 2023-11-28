@@ -152,7 +152,7 @@ class DatabaseBot(BaseBot):
         )
         group_info.create_column(
             "JID",
-            type=db.types.text, 
+            type=db.types.text,
         )
         group_info.create_index(["JID"])
 
@@ -284,6 +284,7 @@ class DatabaseBot(BaseBot):
             return
         message.provenance["databasebot__timestamp"] = datetime.now().isoformat()
         message.provenance["databasebot__version"] = self.__version__
+        message.provenance.update(self.meta)
         self.db["messages_seen"].insert({"id": msg_id, **message.provenance})
 
         if message.messageProperties.isReaction:
@@ -306,13 +307,17 @@ class DatabaseBot(BaseBot):
         media_filename = utils.media_message_filename(message)
         with self.db as db:
             if message.info.source.isGroup:
-                self.logger.debug("Updating group or community groups: %s", message.info.id)
+                self.logger.debug(
+                    "Updating group or community groups: %s", message.info.id
+                )
                 await self._update_group_or_community(
                     db, message.info.source.chat, is_archive, archive_data
                 )
-                self.logger.debug("Done updating group or community groups: %s", message.info.id)
+                self.logger.debug(
+                    "Done updating group or community groups: %s", message.info.id
+                )
             if media_filename:
-                self.logger.debug("Getting media: %s", message.info.id)
+                self.logger.info("Getting media: %s", message.info.id)
                 message_flat["mediaFilename"] = media_filename
                 existingMedia = db["media"].count(filename=media_filename)
                 if not existingMedia:
@@ -345,13 +350,12 @@ class DatabaseBot(BaseBot):
         datum["content"] = content
         self.db["media"].insert(datum)
 
-
-    async def _update_group_or_community( 
+    async def _update_group_or_community(
         self,
         db: dataset.Database,
         chat: wuc.JID,
         is_archive: bool,
-        archive_data: ArchiveData
+        archive_data: ArchiveData,
     ):
         chat_jid = utils.jid_to_str(chat)
         now = datetime.now()
@@ -360,7 +364,7 @@ class DatabaseBot(BaseBot):
         last_update: datetime = group_info_prev.get("last_update", datetime.min)
         if not is_archive and last_update + self.group_info_refresh_time > now:
             return
-    
+
         community_processing = False
         if is_archive:
             if archive_data.CommunityInfo is not None:
@@ -374,24 +378,27 @@ class DatabaseBot(BaseBot):
             self.logger.debug("Storing archived message timestamp: %s", now)
         else:
             group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
-            if utils.jid_to_str(group_info.parentJID) != None: # this group is in a community
+            if (
+                utils.jid_to_str(group_info.parentJID) != None
+            ):  # this group is in a community
                 community_processing = True
-                community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = self.core_client.GetCommunityInfo(group_info.parentJID)
-                community_info : T.List[wuc.GroupInfo] = await utils.aiter_to_list(community_info_iterator)
+                community_info_iterator: T.AsyncIterator[
+                    wuc.GroupInfo
+                ] = self.core_client.GetCommunityInfo(group_info.parentJID)
+                community_info: T.List[wuc.GroupInfo] = await utils.aiter_to_list(
+                    community_info_iterator
+                )
 
         if community_processing:
-            self.logger.info("Using community info to update groups for community")
-            for group_from_community in community_info: 
+            self.logger.debug("Using community info to update groups for community")
+            for group_from_community in community_info:
                 await self.insert_group_info(db, group_from_community, now)
         else:
-            self.logger.info("Using group info to update group: %s", chat_jid)
+            self.logger.debug("Using group info to update group: %s", chat_jid)
             await self.insert_group_info(db, group_info, now)
 
     async def insert_group_info(
-        self,
-        db: dataset.Database,
-        group_info: wuc.GroupInfo,
-        update_time: datetime
+        self, db: dataset.Database, group_info: wuc.GroupInfo, update_time: datetime
     ):
         chat_jid = utils.jid_to_str(group_info.JID)
         logger = self.logger.getChild(chat_jid)
@@ -401,15 +408,16 @@ class DatabaseBot(BaseBot):
             skip_keys=set(["participants", "participantVersionId"]),
         )
 
-        db_provenance =  {
+        db_provenance = {
             "databasebot__timestamp": datetime.now().isoformat(),
-            "databasebot__version": self.__version__
+            "databasebot__version": self.__version__,
+            **self.meta,
         }
         group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
-        if group_info_prev.get("provenance") is None: 
-            group_info_prev.update(provenance = db_provenance) 
-        else: 
-             group_info_prev["provenance"].update(db_provenance)
+        if group_info_prev.get("provenance") is None:
+            group_info_prev.update(provenance=db_provenance)
+        else:
+            group_info_prev["provenance"].update(db_provenance)
 
         keys = set(group_info_prev.keys()).intersection(group_info_flat.keys())
         keys.discard("provenance")
@@ -417,9 +425,9 @@ class DatabaseBot(BaseBot):
         group_info_flat["id"] = chat_jid
         group_info_flat["last_update"] = update_time
 
-        if group_info_flat.get("provenance") is None: 
-            group_info_flat.update(provenance = db_provenance)
-        else: 
+        if group_info_flat.get("provenance") is None:
+            group_info_flat.update(provenance=db_provenance)
+        else:
             group_info_flat["provenance"].update(db_provenance)
 
         if group_info_prev:
@@ -439,12 +447,19 @@ class DatabaseBot(BaseBot):
                 group_info_flat["previous_version_id"] = id_
                 if group_first_seen := group_info_prev.get("first_seen"):
                     group_info_flat["first_seen"] = group_first_seen
-                
+
                 db["group_info"].delete(id=prev_id)
                 db["group_info"].insert(group_info_prev)
                 db["group_info"].upsert(group_info_flat, ["id"])
             else:
-                db["group_info"].update({"id": chat_jid, "last_update": update_time, "provenance": group_info_prev.get("provenance")}, ["id"])
+                db["group_info"].update(
+                    {
+                        "id": chat_jid,
+                        "last_update": update_time,
+                        "provenance": group_info_prev.get("provenance"),
+                    },
+                    ["id"],
+                )
         elif not group_info_prev:
             group_info_flat["first_seen"] = update_time
             db["group_info"].insert(group_info_flat)
@@ -453,12 +468,14 @@ class DatabaseBot(BaseBot):
 
         group_participants = [flatten_proto_message(p) for p in group_info.participants]
         for participant in group_participants:
-            if group_first_seen := group_info_prev.get("first_seen"): participant["first_seen"] = group_first_seen
-            else: participant["first_seen"] = update_time
+            if group_first_seen := group_info_prev.get("first_seen"):
+                participant["first_seen"] = group_first_seen
+            else:
+                participant["first_seen"] = update_time
             participant["last_seen"] = update_time
             participant["chat_jid"] = chat_jid
 
-        logger.info("Updating participants for group/community: %s", chat_jid)
+        logger.debug("Updating participants for group/community: %s", chat_jid)
         db["group_participants"].upsert_many(group_participants, ["JID", "chat_jid"])
 
     async def _update_edit(self, message: wuc.WUMessage):
