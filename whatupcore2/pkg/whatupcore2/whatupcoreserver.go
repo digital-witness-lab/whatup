@@ -241,6 +241,7 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		if messageOptions.MarkMessagesRead {
 			msg.MarkRead()
 		}
+        msg.log.Infof("Sending message to client: %s: %s", msg.Info.Chat.String(), msg.Info.ID)
 		msgProto, ok := msg.ToProto()
 		anonMsgProto := AnonymizeInterface(session.Client.anonLookup, msgProto)
 		if !ok {

@@ -186,13 +186,23 @@ class BaseBot:
 
     async def listen_messages(self):
         self.logger.info("Reading messages")
-        messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetMessages(
-            wuc.MessagesOptions(markMessagesRead=self.mark_messages_read)
-        )
         async with asyncio.TaskGroup() as tg:
-            async for message in messages:
-                tg.create_task(self._dispatch_message(message))
-        raise EndOfMessagesException
+            while True:
+                messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetMessages(
+                    wuc.MessagesOptions(markMessagesRead=self.mark_messages_read)
+                )
+                while True:
+                    try:
+                        message = await asyncio.wait_for(
+                            anext(messages),
+                            timeout=60 * 60 * 15 * (random.random() * 0.05),
+                        )
+                        tg.create_task(self._dispatch_message(message))
+                    except TimeoutError:
+                        self.logger.info(
+                            "Re-starting message loop because of a ~15min idle"
+                        )
+                        break
 
     async def _dispatch_message(
         self,

@@ -45,7 +45,7 @@ class CredentialsManagerCloudPath(CredentialsManager):
         return should_loop, credentials
 
     def read_credential(self, path: AnyPath) -> Credential:
-        logger.info("Reading credentials: %s", str(path))
+        logger.debug("Reading credentials: %s", str(path))
         credential = json.load(path.open())
         try:
             return Credential(**credential)
