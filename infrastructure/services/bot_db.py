@@ -65,7 +65,7 @@ db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
 bot_db = Service(
     service_name,
     ServiceArgs(
-        args=["/usr/src/whatupy/gcsfuse_run.sh", "databasebot"],
+        args=["databasebot"],
         concurrency=50,
         container_port=None,
         cpu="1",

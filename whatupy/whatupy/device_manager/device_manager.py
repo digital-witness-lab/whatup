@@ -69,7 +69,7 @@ class DeviceManager:
 
         bot = self.bot_factory()
         try:
-            bot = await bot.login(credential.username, credential.passphrase)
+            bot = await bot.login(credential)
         except InvalidCredentialsException as e:
             if self.unregister_invalid_credentials:
                 self.logger.critical(

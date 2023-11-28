@@ -53,7 +53,7 @@ if create_load_archive_job:
     db_migrations_job = Job(
         service_name,
         JobArgs(
-            args=["/usr/src/whatupy/gcsfuse_run.sh", "load-archive"],
+            args=["load-archive"],
             cpu="1",
             # Route all egress traffic via the VPC network.
             egress="ALL_TRAFFIC",

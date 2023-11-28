@@ -20,5 +20,5 @@ sessions_encryption_key_version = kms.CryptoKeyVersion(
 
 sessions_encryption_key_uri = Output.concat(
     "gcp-kms://",
-    sessions_encryption_key_version.id,
+    sessions_encryption_key.id,
 )
