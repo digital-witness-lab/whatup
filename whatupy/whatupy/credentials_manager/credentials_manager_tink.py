@@ -1,6 +1,6 @@
 import os
 import logging
-import json
+from dataclasses import dataclass, field
 import base64
 import typing as T
 
@@ -9,14 +9,34 @@ import tink
 from tink import aead
 from tink.integration import gcpkms
 
-from . import (
-    CredentialsManagerCloudPath,
-    Credential,
-    IncompleteCredentialsException,
-)
-
+from . import CredentialsManagerCloudPath, Credential
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class LazyDecryptedCredential:
+    username: str
+    passphrase_cipher: str
+    decrypt_func: T.Callable[[str, str], str]
+    meta: T.Optional[T.Dict[str, T.Any]] = field(default=None)
+
+    @property
+    def passphrase(self):
+        logger.getChild(self.username).debug("Lazy decrypting credentials")
+        return self.decrypt_func(self.username, self.passphrase_cipher)
+
+    @classmethod
+    def from_credential(cls, **kwargs):
+        kwargs["passphrase_cipher"] = kwargs.pop("passphrase")
+        return cls(**kwargs)
+
+    def asdict(self):
+        return {
+            "username": self.username,
+            "passphrase": self.passphrase_cipher,
+            "meta": self.meta,
+        }
 
 
 class CredentialsManagerTink(CredentialsManagerCloudPath):
@@ -50,9 +70,17 @@ class CredentialsManagerTink(CredentialsManagerCloudPath):
             url = url[len("kek+") :]
         super().__init__(url, *args, **kwargs)
 
-    def read_credential(self, path: AnyPath) -> Credential:
-        enc_credential = super().read_credential(path)
-        return self.decrypt(enc_credential)
+    def read_credential(self, path: AnyPath) -> LazyDecryptedCredential:
+        enc_credential: Credential = super().read_credential(path)
+        lazy_plaintext_credential = LazyDecryptedCredential.from_credential(
+            decrypt_func=self.decrypt_str,
+            **enc_credential.asdict(),
+        )
+        logger.debug(
+            "Read and made lazy decryptable credentials: %s",
+            lazy_plaintext_credential.username,
+        )
+        return lazy_plaintext_credential
 
     def write_credential(self, plain_credential: Credential):
         enc_credential = self.encrypt(plain_credential)
@@ -76,12 +104,8 @@ class CredentialsManagerTink(CredentialsManagerCloudPath):
         enc_credential.passphrase = base64.b64encode(cipher).decode("utf8")
         return enc_credential
 
-    def decrypt(self, enc_credential: Credential) -> Credential:
-        cipher_bytes: bytes = base64.b64decode(enc_credential.passphrase)
+    def decrypt_str(self, username: str, cipher: str) -> str:
+        cipher_bytes: bytes = base64.b64decode(cipher)
         env_aead = self._get_env_aead()
-        passphrase_bytes = env_aead.decrypt(
-            cipher_bytes, enc_credential.username.encode("utf8")
-        )
-        plain_credential = Credential(**enc_credential.asdict())
-        plain_credential.passphrase = passphrase_bytes.decode("utf8")
-        return plain_credential
+        passphrase_bytes = env_aead.decrypt(cipher_bytes, username.encode("utf8"))
+        return passphrase_bytes.decode("utf8")
