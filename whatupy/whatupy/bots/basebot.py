@@ -191,6 +191,9 @@ class BaseBot:
                 messages: grpc.aio.UnaryStreamCall = self.core_client.GetMessages(
                     wuc.MessagesOptions(markMessagesRead=self.mark_messages_read)
                 )
+                # HACK: the following is a hack to get around the max
+                # connection time from cloudrun. this should be resolved when
+                # #93 is completed
                 while True:
                     try:
                         message: wuc.WUMessage = await asyncio.wait_for(
@@ -203,6 +206,7 @@ class BaseBot:
                             "Re-starting message loop because of a ~15min idle"
                         )
                         break
+                # /HACK
 
     async def _dispatch_message(
         self,
