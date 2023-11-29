@@ -189,6 +189,11 @@ def random_words(n_words=3) -> T.List[str]:
     return words
 
 
+def short_hash(item: str, N=5) -> str:
+    h = hashlib.new("sha256", item.encode("utf8"))
+    return h.hexdigest()[:N]
+
+
 def random_hash(item: str, iterations=1_000) -> bytes:
     return hashlib.pbkdf2_hmac(
         "sha256", item.encode("utf8"), salt=RANDOM_SALT, iterations=iterations
