@@ -188,14 +188,14 @@ class BaseBot:
         self.logger.info("Reading messages")
         async with asyncio.TaskGroup() as tg:
             while True:
-                messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetMessages(
+                messages: grpc.aio.UnaryStreamCall = self.core_client.GetMessages(
                     wuc.MessagesOptions(markMessagesRead=self.mark_messages_read)
                 )
                 while True:
                     try:
-                        message = await asyncio.wait_for(
-                            anext(messages),
-                            timeout=60 * 60 * 15 * (random.random() * 0.05),
+                        message: wuc.WUMessage = await asyncio.wait_for(
+                            messages.read(),
+                            timeout=60 * 15 * (1 + random.uniform(-1, 1) * 0.01),
                         )
                         tg.create_task(self._dispatch_message(message))
                     except TimeoutError:
