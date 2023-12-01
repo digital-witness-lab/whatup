@@ -2,6 +2,9 @@ config:
   gcp:project: whatup-deploy
   gcp:region: us-central1
   gcp:zone: us-central1-a
+  google-native:project: whatup-deploy
+  google-native:region: us-central1
+  google-native:zone: us-central1-a
   whatup:createOnboardBulkJob: "true"
   whatup:databases:
     - name: messages
