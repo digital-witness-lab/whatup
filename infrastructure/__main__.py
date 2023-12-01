@@ -17,6 +17,19 @@ from jobs import (
     whatupcore_remove_user,
 )
 
-from bigquery import bigquery_sql_connection
+from bigquery import bigquery_sql_connection, create_automated_bq_transfer_jobs
+
+source_tables = [
+    "reactions",
+    "group_info",
+    "group_participants",
+    "messages_seen",
+    "messages",
+    # TODO: Exclude binary objects when dealing
+    # with the media table.
+    # "media",
+]
+
+create_automated_bq_transfer_jobs(source_tables)
 
 pulumi.export("bigquery_connection_id", bigquery_sql_connection.connection_id)

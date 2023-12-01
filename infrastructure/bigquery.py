@@ -1,3 +1,4 @@
+from typing import List
 from pulumi import Output
 
 from pulumi_gcp import projects
@@ -55,36 +56,36 @@ projects.IAMMember(
     role="roles/cloudsql.client",
 )
 
-source_tables = [
-    "reactions",
-    "group_info",
-    "group_participants",
-    "messages_seen",
-    "messages",
-    # TODO: Exclude binary objects when dealing
-    # with the media table.
-    # "media",
-]
 
-for table in source_tables:
-    query = (
-        Output.concat("SELECT * FROM EXTERNAL_QUERY(")
-        .concat(bigquery_sql_connection.id)
-        .concat(", ")
-        .concat(f"SELECT * FROM {table};")
-        .concat(");")
-    )
-    dts.v1.TransferConfig(
-        f"messages-{table}",
-        dts.v1.TransferConfigArgs(
-            destination_dataset_id=messages_dataset.id,
-            display_name=f"Copy messages.{table} data",
-            data_source_id="scheduled_query",
-            params={
-                "query": query,
-                "write_disposition": "WRITE_TRUNCATE",
-                "partitioning_field": "",
-            },
-            schedule="every 24 hours",
-        ),
-    )
+def create_automated_bq_transfer_jobs(source_tables: List[str]):
+    """
+    Creates data transfer in Big Query (BQ) for
+    each table in `source_tables` that need
+    to be copied over to BQ. The data
+    transfers use scheduled queries.
+
+    https://cloud.google.com/bigquery/docs/scheduling-queries
+    """
+
+    for table in source_tables:
+        query = (
+            Output.concat("SELECT * FROM EXTERNAL_QUERY(")
+            .concat(bigquery_sql_connection.id)
+            .concat(", ")
+            .concat(f"SELECT * FROM {table};")
+            .concat(");")
+        )
+        dts.v1.TransferConfig(
+            f"messages-{table}",
+            dts.v1.TransferConfigArgs(
+                destination_dataset_id=messages_dataset.id,
+                display_name=f"Copy messages.{table} data",
+                data_source_id="scheduled_query",
+                params={
+                    "query": query,
+                    "write_disposition": "WRITE_TRUNCATE",
+                    "partitioning_field": "",
+                },
+                schedule="every 24 hours",
+            ),
+        )
