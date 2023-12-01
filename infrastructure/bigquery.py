@@ -1,4 +1,3 @@
-from typing import List
 from pulumi import Output
 
 from pulumi_gcp import projects
@@ -14,7 +13,7 @@ from pulumi_google_native.bigqueryconnection.v1beta1 import (
     CloudSqlPropertiesType,
 )
 
-from config import location, project
+from config import location, project, is_prod_stack
 from database import primary_cloud_sql_instance
 
 messages_dataset = bigquery.v2.Dataset(
@@ -56,8 +55,19 @@ projects.IAMMember(
     role="roles/cloudsql.client",
 )
 
+source_tables = [
+    "reactions",
+    "group_info",
+    "group_participants",
+    "messages_seen",
+    "messages",
+    # TODO: Exclude binary objects when dealing
+    # with the media table.
+    # "media",
+]
 
-def create_automated_bq_transfer_jobs(source_tables: List[str]):
+
+def create_automated_bq_transfer_jobs():
     """
     Creates data transfer in Big Query (BQ) for
     each table in `source_tables` that need
@@ -89,3 +99,7 @@ def create_automated_bq_transfer_jobs(source_tables: List[str]):
                 schedule="every 24 hours",
             ),
         )
+
+
+if is_prod_stack():
+    create_automated_bq_transfer_jobs()
