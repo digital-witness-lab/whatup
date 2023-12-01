@@ -52,6 +52,7 @@ projects.IAMMember(
         ),
         "@gcp-sa-bigqueryconnection.iam.gserviceaccount.com",
     ),
+    project=project,
     role="roles/cloudsql.client",
 )
 
