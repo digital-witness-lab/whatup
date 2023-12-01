@@ -61,7 +61,9 @@ source_tables = [
     "group_participants",
     "messages_seen",
     "messages",
-    "media",
+    # TODO: Exclude binary objects when dealing
+    # with the media table.
+    # "media",
 ]
 
 for table in source_tables:
