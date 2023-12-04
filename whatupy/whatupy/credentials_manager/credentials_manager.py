@@ -1,5 +1,5 @@
-import re
 import logging
+import re
 from typing import Any, List
 
 from ..utils import short_hash
@@ -20,9 +20,9 @@ class CredentialsManager:
         super().__init_subclass__(**kwargs)
         cls._registry.append(cls)
 
-    def __init__(self, path: str, **kwargs):
-        self.logger = logger.getChild(short_hash(str(path)))
-        self.logger.info("Managing credentials for path: %s", self.path)
+    def __init__(self, url: str, **kwargs):
+        self.logger = logger.getChild(short_hash(f"{url}{id(self)}"))
+        self.logger.info("Managing credentials for path: %s", url)
 
     @classmethod
     def from_url(cls, url, **kwargs):

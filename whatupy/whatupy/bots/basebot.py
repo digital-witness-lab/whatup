@@ -5,12 +5,13 @@ import logging
 import random
 import shlex
 import typing as T
-from collections import defaultdict, deque, namedtuple
+from collections import abc, defaultdict, deque, namedtuple
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import grpc
+from google.protobuf.timestamp_pb2 import Timestamp
 
 from .. import utils
 from ..connection import create_whatupcore_clients
@@ -38,7 +39,7 @@ class InvalidCredentialsException(Exception):
     pass
 
 
-class EndOfMessagesException(Exception):
+class StreamMissedHeartbeat(TimeoutError):
     pass
 
 
@@ -79,6 +80,7 @@ class BaseBot:
         control_groups: T.List[wuc.JID] = [],
         archive_files: T.Optional[str] = None,
         connect: bool = True,
+        stream_heartbeat_timeout=10,
         logger=logger,
         **kwargs,
     ):
@@ -93,6 +95,7 @@ class BaseBot:
         self.read_messages = read_messages
         self.read_historical_messages = read_historical_messages
         self.archive_files = archive_files
+        self.stream_heartbeat_timeout = stream_heartbeat_timeout
 
         self.download_queue = asyncio.Queue()
         if connect:
@@ -144,14 +147,7 @@ class BaseBot:
                     tg.create_task(self.listen_historical_messages())
                 tg.create_task(self.post_start())
         except grpc.aio._call.AioRpcError as e:
-            if e.details() == "Stream removed":
-                self.logger.critical("Stream connection disconnected. Reconnecting")
-            else:
-                self.logger.exception("GRPC error in bot main loop")
-        except EndOfMessagesException:
-            self.logger.critical(
-                "Reached the end of the messages. This shouldn't happen unless the user un-registered."
-            )
+            self.logger.exception("GRPC error in bot main loop")
         except Exception:
             self.logger.exception("Exception in main run loop of bot")
         self.stop()
@@ -165,12 +161,14 @@ class BaseBot:
 
     async def listen_historical_messages(self):
         self.logger.info("Reading historical messages")
-        messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetPendingHistory(
-            wuc.PendingHistoryOptions()
+        messages: grpc.aio.UnaryStreamCall = self.core_client.GetPendingHistory(
+            wuc.PendingHistoryOptions(
+                heartbeatTimeout=self.stream_heartbeat_timeout,
+            )
         )
         async with asyncio.TaskGroup() as tg:
             try:
-                async for message in messages:
+                async for message in self._listen_message_stream(messages):
                     jid_from: wuc.JID = message.info.source.chat
                     self.logger.debug(
                         "Got historical message: %s: %s",
@@ -178,8 +176,15 @@ class BaseBot:
                         message.info.id,
                     )
                     tg.create_task(
-                        self._dispatch_message(message, skip_control=True, is_history=True)
+                        self._dispatch_message(
+                            message, skip_control=True, is_history=True
+                        )
                     )
+            except StreamMissedHeartbeat:
+                self.logger.info(
+                    "History handler missed a heartbeat... closing handler"
+                )
+                return
             except grpc.aio._call.AioRpcError as e:
                 if e.code == grpc.StatusCode.UNAVAILABLE:
                     self.logger.info("Closing history handler")
@@ -188,22 +193,48 @@ class BaseBot:
 
     async def listen_messages(self):
         self.logger.info("Reading messages")
+        last_timestamp: T.Optional[Timestamp] = None
         async with asyncio.TaskGroup() as tg:
             while True:
                 messages: grpc.aio.UnaryStreamCall = self.core_client.GetMessages(
-                    wuc.MessagesOptions(markMessagesRead=self.mark_messages_read),
-                    #timeout=60 * 30 * (1 + random.uniform(-1, 1) * 0.01),
+                    wuc.MessagesOptions(
+                        markMessagesRead=self.mark_messages_read,
+                        lastMessageTimestamp=last_timestamp,
+                        heartbeatTimeout=self.stream_heartbeat_timeout,
+                    ),
                 )
                 try:
-                    async for message in messages:
+                    message: wuc.WUMessage
+                    async for message in self._listen_message_stream(messages):
+                        last_timestamp = message.info.timestamp
                         tg.create_task(self._dispatch_message(message))
-                except grpc.aio._call.AioRpcError as e:
-                    if e.code == grpc.StatusCode.DEADLINE_EXCEEDED:
-                        self.logger.info(
-                            "Re-starting message loop because of a ~15min idle"
-                        )
-                        break
-                    raise e
+                except StreamMissedHeartbeat:
+                    self.logger.info(
+                        "Re-triggering GetMessages after a missed heartbeat: %ds",
+                        self.stream_heartbeat_timeout,
+                    )
+
+    async def _listen_message_stream(
+        self, stream: grpc.aio.UnaryStreamCall
+    ) -> T.AsyncIterator[wuc.WUMessage]:
+        while True:
+            try:
+                message: wuc.MessageStream | grpc.aio.EOF = await asyncio.wait_for(
+                    stream.read(),
+                    timeout=self.stream_heartbeat_timeout * (1 + 0.05),
+                )
+                if isinstance(message, grpc.aio._typing.EOFType):
+                    return
+                elif not message.isHeartbeat:
+                    yield message.content
+                else:
+                    self.logger.debug("Got heartbeat")
+            except TimeoutError as e:
+                raise StreamMissedHeartbeat from e
+            except grpc.aio._call.AioRpcError as e:
+                if e.details() == "Stream removed":
+                    raise StreamMissedHeartbeat from e
+                raise e
 
     async def _dispatch_message(
         self,

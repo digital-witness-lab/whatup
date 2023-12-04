@@ -19,10 +19,9 @@ class CredentialsManagerCloudPath(CredentialsManager):
         r"^\./",  # relative file spec
     ]
 
-    def __init__(self, path: str, timeout: int = 60):
-        super().__init__(path)
-        self.path = AnyPath(path)
-        self.logger.info("Managing credentials for path: %s", self.path)
+    def __init__(self, url: str, timeout: int = 60):
+        super().__init__(url)
+        self.path = AnyPath(url)
         self.active_usernames: T.Dict[str, AnyPath] = {}
         self.timeout = timeout
         self.blocker = asyncio.Event()
@@ -64,7 +63,8 @@ class CredentialsManagerCloudPath(CredentialsManager):
             username = credential.username
             if username not in self.active_usernames:
                 self.logger.info(
-                    "Found new credential to connect to: %s: %s",
+                    "Found new credential to connect to: %s: %s: %s",
+                    list(self.active_usernames.keys()),
                     username,
                     credential_file,
                 )

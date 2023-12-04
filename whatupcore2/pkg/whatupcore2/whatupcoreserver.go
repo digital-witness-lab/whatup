@@ -232,6 +232,11 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
+	var lastMessageTimestamp time.Time
+	if messageOptions.LastMessageTimestamp != nil {
+		lastMessageTimestamp = messageOptions.LastMessageTimestamp.AsTime()
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -243,6 +248,17 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		return nil
 	}
 
+	var heartbeatTicker *time.Ticker
+	if messageOptions.HeartbeatTimeout > 0 {
+		heartbeatTicker = time.NewTicker(
+			time.Duration(messageOptions.HeartbeatTimeout) * time.Second,
+		)
+		defer heartbeatTicker.Stop()
+	} else {
+		heartbeatTicker = time.NewTicker(time.Second)
+		heartbeatTicker.Stop()
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -251,15 +267,38 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		case <-session.ctx.Done():
 			session.log.Debugf("Session closed... disconnecting")
 			return nil
+		case <-heartbeatTicker.C:
+			msg := &pb.MessageStream{
+				Timestamp:   timestamppb.New(time.Now()),
+				IsHeartbeat: true,
+			}
+			if err := server.Send(msg); err != nil {
+				s.log.Errorf("Could not send message to client: %v", err)
+				return nil
+			}
 		case msg := <-msgChan:
 			if messageOptions.MarkMessagesRead {
 				msg.MarkRead()
+			}
+			if !lastMessageTimestamp.IsZero() {
+				if !msg.Info.Timestamp.After(lastMessageTimestamp) {
+					msg.log.Debugf("Skipping message because it is before client's last message: %s < %s", msg.Info.Timestamp, lastMessageTimestamp)
+					break
+				} else {
+					// once we are back in sync, reset the lastMessageTimestamp
+					// var so we don't need to do time comparisons for future
+					// messages
+					lastMessageTimestamp = time.Time{}
+				}
 			}
 			msg.log.Infof("Sending message to client: %s: %s", msg.Info.Chat.String(), msg.Info.ID)
 			msgProto, ok := msg.ToProto()
 			if !ok {
 				msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
-			} else if err := server.Send(AnonymizeInterface(session.Client.anonLookup, msgProto)); err != nil {
+				break
+			}
+			msgAnon := AnonymizeInterface(session.Client.anonLookup, msgProto)
+			if err := server.Send(&pb.MessageStream{Content: msgAnon}); err != nil {
 				s.log.Errorf("Could not send message to client: %v", err)
 				return nil
 			}
@@ -289,11 +328,31 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 		return nil
 	}
 
+	var heartbeatTicker *time.Ticker
+	if historyOptions.HeartbeatTimeout > 0 {
+		heartbeatTicker = time.NewTicker(
+			time.Duration(historyOptions.HeartbeatTimeout) * time.Second,
+		)
+		defer heartbeatTicker.Stop()
+	} else {
+		heartbeatTicker = time.NewTicker(time.Second)
+		heartbeatTicker.Stop()
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			session.log.Debugf("Client connection closed")
 			return nil
+		case <-heartbeatTicker.C:
+			msg := &pb.MessageStream{
+				Timestamp:   timestamppb.New(time.Now()),
+				IsHeartbeat: true,
+			}
+			if err := server.Send(msg); err != nil {
+				s.log.Errorf("Could not send message to client: %v", err)
+				return nil
+			}
 		case <-session.ctx.Done():
 			session.log.Debugf("Session closed... disconnecting")
 			return nil
@@ -302,7 +361,10 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 			msgProto, ok := msg.ToProto()
 			if !ok {
 				msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
-			} else if err := server.Send(AnonymizeInterface(session.Client.anonLookup, msgProto)); err != nil {
+				break
+			}
+			msgAnon := AnonymizeInterface(session.Client.anonLookup, msgProto)
+			if err := server.Send(&pb.MessageStream{Content: msgAnon}); err != nil {
 				return nil
 			}
 		}
@@ -328,7 +390,7 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 		return nil, status.Errorf(codes.InvalidArgument, "Message not downloadable")
 	}
 
-	body, err := session.Client.DownloadAnyRetry(ctx, mediaMessage, &info)
+	body, err := session.Client.DownloadAnyRetry(ctx, mediaMessage, info)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not download media: %v", err)
 	}
