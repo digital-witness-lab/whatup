@@ -34,8 +34,8 @@ func MessageInfoToProto(info types.MessageInfo, device *store.Device) *pb.Messag
 	}
 }
 
-func ProtoToMessageInfo(mi *pb.MessageInfo) types.MessageInfo {
-	return types.MessageInfo{
+func ProtoToMessageInfo(mi *pb.MessageInfo) *types.MessageInfo {
+	return &types.MessageInfo{
 		MessageSource: ProtoToMessageSource(mi.Source),
 		Timestamp:     mi.Timestamp.AsTime(),
 		ID:            mi.Id,

@@ -29,7 +29,7 @@ services:
       - ssl-cert
       - ssl-key
       - postgres-whatupcore-passwd
-    command: rpc
+    command: rpc --log-level DEBUG
 
   db:
     image: postgres:15-alpine
@@ -58,7 +58,7 @@ services:
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
       - ./data/message-archive/:/usr/src/whatupy-data/message-archive/
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
+    command: whatupy --debug --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
 
   bot-debug:
     # run with,

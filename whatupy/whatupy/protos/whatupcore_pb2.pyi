@@ -42,6 +42,32 @@ UNKNOWN: GroupPermission.ValueType
 global___GroupPermission = GroupPermission
 
 @typing_extensions.final
+class MessageStream(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    TIMESTAMP_FIELD_NUMBER: builtins.int
+    ISHEARTBEAT_FIELD_NUMBER: builtins.int
+    CONTENT_FIELD_NUMBER: builtins.int
+
+    @property
+    def timestamp(self) -> google.protobuf.timestamp_pb2.Timestamp:
+        ...
+    isHeartbeat: builtins.bool
+
+    @property
+    def content(self) -> global___WUMessage:
+        ...
+
+    def __init__(self, *, timestamp: google.protobuf.timestamp_pb2.Timestamp | None=..., isHeartbeat: builtins.bool=..., content: global___WUMessage | None=...) -> None:
+        ...
+
+    def HasField(self, field_name: typing_extensions.Literal['content', b'content', 'timestamp', b'timestamp']) -> builtins.bool:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['content', b'content', 'isHeartbeat', b'isHeartbeat', 'timestamp', b'timestamp']) -> None:
+        ...
+global___MessageStream = MessageStream
+
+@typing_extensions.final
 class UnregisterOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -292,8 +318,13 @@ global___DownloadMediaOptions = DownloadMediaOptions
 @typing_extensions.final
 class PendingHistoryOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    HEARTBEATTIMEOUT_FIELD_NUMBER: builtins.int
+    heartbeatTimeout: builtins.int
 
-    def __init__(self) -> None:
+    def __init__(self, *, heartbeatTimeout: builtins.int=...) -> None:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['heartbeatTimeout', b'heartbeatTimeout']) -> None:
         ...
 global___PendingHistoryOptions = PendingHistoryOptions
 
@@ -537,13 +568,23 @@ global___ConnectionStatusOptions = ConnectionStatusOptions
 class MessagesOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     MARKMESSAGESREAD_FIELD_NUMBER: builtins.int
+    LASTMESSAGETIMESTAMP_FIELD_NUMBER: builtins.int
+    HEARTBEATTIMEOUT_FIELD_NUMBER: builtins.int
     markMessagesRead: builtins.bool
     'Whether to mark messages as read when they are recieved'
 
-    def __init__(self, *, markMessagesRead: builtins.bool=...) -> None:
+    @property
+    def lastMessageTimestamp(self) -> google.protobuf.timestamp_pb2.Timestamp:
+        """last message seen by client in order to only recieve newer messages"""
+    heartbeatTimeout: builtins.int
+
+    def __init__(self, *, markMessagesRead: builtins.bool=..., lastMessageTimestamp: google.protobuf.timestamp_pb2.Timestamp | None=..., heartbeatTimeout: builtins.int=...) -> None:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['markMessagesRead', b'markMessagesRead']) -> None:
+    def HasField(self, field_name: typing_extensions.Literal['lastMessageTimestamp', b'lastMessageTimestamp']) -> builtins.bool:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['heartbeatTimeout', b'heartbeatTimeout', 'lastMessageTimestamp', b'lastMessageTimestamp', 'markMessagesRead', b'markMessagesRead']) -> None:
         ...
 global___MessagesOptions = MessagesOptions
 

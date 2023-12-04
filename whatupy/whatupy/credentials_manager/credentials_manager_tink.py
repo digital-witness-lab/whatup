@@ -52,7 +52,11 @@ class CredentialsManagerTink(CredentialsManagerCloudPath):
         kms_credentials_path: T.Optional[str] = None,
         **kwargs,
     ):
-        super().__init__(url, *args, **kwargs)
+        url_cp = url
+        if url_cp.startswith("kek+"):
+            url_cp = url_cp[len("kek+") :]
+        super().__init__(url_cp, *args, **kwargs)
+
         if kek_uri is None:
             kek_uri = os.environ.get("KEK_URI")
             if kek_uri is None:
@@ -63,12 +67,10 @@ class CredentialsManagerTink(CredentialsManagerCloudPath):
         try:
             self.client = gcpkms.GcpKmsClient(kek_uri, kms_credentials_path)
         except tink.TinkError as e:
-            logging.exception("Error creating GCP KMS client: %s", e)
+            self.logger.exception("Error creating GCP KMS client: %s", e)
             raise
 
         self.logger.debug("Managing encrypted credentials for url: %s", url)
-        if url.startswith("kek+"):
-            url = url[len("kek+") :]
 
     def read_credential(self, path: AnyPath) -> LazyDecryptedCredential:
         enc_credential: Credential = super().read_credential(path)

@@ -57,7 +57,7 @@ whatup_salt_secret_source = (
 whatupcore2_service = Service(
     service_name,
     ServiceArgs(
-        args=["rpc", "--log-level=INFO"],
+        args=["rpc", "--log-level=DEBUG"],
         concurrency=50,
         container_port=3447,
         cpu="1",
