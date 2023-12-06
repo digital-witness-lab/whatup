@@ -154,6 +154,8 @@ func decryptDBScan(c DecryptableContainer, s scannable, dests ...any) error {
 			*d = jid
 		case *uint32:
 			continue
+		case *bool:
+			continue
 		default:
 			c.Log().Debugf("Could not decrypt Scan field: %T: %+v", d, d)
 		}

@@ -4,8 +4,12 @@ import (
 	"container/list"
 	"context"
 	"errors"
+	"fmt"
+	"math/rand"
 	"sync"
 	"time"
+
+	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
 var nowFunc func() time.Time = time.Now
@@ -18,10 +22,12 @@ type MessageClient struct {
 	newMessageAlert chan bool
 	ctx             context.Context
 	ctxCancel       context.CancelFunc
+	log             waLog.Logger
 }
 
 func NewMessageClient(queue *MessageQueue) *MessageClient {
 	ctx, ctxCancel := context.WithCancel(queue.ctx)
+	log := queue.log.Sub(fmt.Sprintf("c-%0.3d", rand.Intn(999)))
 	return &MessageClient{
 		position: queue.getFront(),
 		queue:    queue,
@@ -29,6 +35,7 @@ func NewMessageClient(queue *MessageQueue) *MessageClient {
 
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
+		log:       log,
 	}
 }
 
@@ -36,22 +43,25 @@ func (mc *MessageClient) MessageChan() (chan *Message, error) {
 	if mc.newMessageAlert != nil {
 		return nil, errors.New("Can only have one message chan per client")
 	}
-	mc.newMessageAlert = make(chan bool)
+	mc.log.Debugf("creating channel")
+	mc.newMessageAlert = make(chan bool, 128)
 	msgChan := make(chan *Message)
 	go func() {
 		defer func() { mc.newMessageAlert = nil }()
+		mc.newMessageAlert <- true
 		for {
-			ok := mc.depleteQueueToChan(msgChan)
-			if !ok {
-				return
-			}
+			mc.log.Debugf("waiting for new message or done")
 			select {
 			case <-mc.ctx.Done():
+				mc.log.Debugf("done by context")
 				mc.Close()
 				return
 			case <-mc.newMessageAlert:
+				mc.log.Debugf("saw new message alert")
 				ok := mc.depleteQueueToChan(msgChan)
 				if !ok {
+					mc.log.Debugf("!ok from deplete")
+					mc.Close()
 					return
 				}
 			}
@@ -64,10 +74,13 @@ func (mc *MessageClient) depleteQueueToChan(msgChan chan *Message) bool {
 	for {
 		msg, ok := mc.ReadMessage()
 		if !ok {
+			mc.log.Debugf("depletion found queue closed")
 			return ok
 		} else if msg == nil {
+			mc.log.Debugf("depletion found nil message")
 			return ok
 		}
+		mc.log.Debugf("depleting queue saw message: %s", msg.DebugString())
 		msgChan <- msg
 	}
 }
@@ -77,23 +90,28 @@ func (mc *MessageClient) ReadMessage() (*Message, bool) {
 		return nil, false
 	}
 	var cursor *list.Element
-	if mc.position == nil {
+	if mc.position == nil || mc.position.Value == nil {
+		mc.log.Debugf("client resetting queue position")
 		mc.position = mc.queue.getFront()
 		cursor = mc.position
 	} else {
 		cursor = mc.position.Next()
 		if cursor != nil {
 			mc.position = cursor
+		} else {
+			mc.log.Debugf("could not advance position")
 		}
 	}
 	var msg *Message
 	if cursor != nil {
 		msg = cursor.Value.(*Message)
 	}
+	mc.log.Debugf("reading from queue: (msg == nil) = %t: (position == nil) = %t: len(q) = %d: %s", msg == nil, mc.position == nil, mc.queue.messages.Len(), msg.DebugString())
 	return msg, true
 }
 
 func (mc *MessageClient) Close() {
+	mc.log.Debugf("Client closing")
 	mc.ctxCancel()
 	mc.valid = false
 	mc.position = nil
@@ -117,9 +135,11 @@ type MessageQueue struct {
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
+
+	log waLog.Logger
 }
 
-func NewMessageQueue(ctx context.Context, pruneTime time.Duration, maxNumElements int, maxMessageAge time.Duration) *MessageQueue {
+func NewMessageQueue(ctx context.Context, pruneTime time.Duration, maxNumElements int, maxMessageAge time.Duration, log waLog.Logger) *MessageQueue {
 	clients := make([]*MessageClient, 0)
 	ctx, ctxCancel := context.WithCancel(ctx)
 	return &MessageQueue{
@@ -133,6 +153,7 @@ func NewMessageQueue(ctx context.Context, pruneTime time.Duration, maxNumElement
 
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
+		log:       log,
 	}
 }
 
@@ -140,6 +161,7 @@ func (mq *MessageQueue) NewClient() *MessageClient {
 	if !mq.valid {
 		return nil
 	}
+	mq.log.Debugf("Creating new client")
 	client := NewMessageClient(mq)
 	mq.clients = append(mq.clients, client)
 	return client
@@ -150,8 +172,10 @@ func (mq *MessageQueue) Start() {
 		ticker := time.NewTicker(mq.pruneTime)
 		select {
 		case <-ticker.C:
+			mq.log.Debugf("Pruning")
 			mq.PruneAll()
 		case <-mq.ctx.Done():
+			mq.log.Debugf("Closing")
 			mq.Close()
 			return
 		}
@@ -159,6 +183,7 @@ func (mq *MessageQueue) Start() {
 }
 
 func (mq *MessageQueue) Stop() {
+	mq.log.Debugf("Stop")
 	mq.ctxCancel()
 	mq.valid = false
 	mq.messages.Init()
@@ -178,17 +203,24 @@ func (mq *MessageQueue) PruneMessages() {
 	defer mq.lock.Unlock()
 
 	now := nowFunc()
+	N := mq.messages.Len()
+	n := 0
 	var next *list.Element
 	for e := mq.messages.Front(); e != nil; e = next {
 		next = e.Next()
 		if mq.maxNumElements > 0 && mq.messages.Len() > mq.maxNumElements {
+			e.Value = nil
 			mq.messages.Remove(e)
+			n++
 		} else if mq.maxMessageAge > 0 && now.Sub(e.Value.(*Message).Info.Timestamp) > mq.maxMessageAge {
+			e.Value = nil
 			mq.messages.Remove(e)
+			n++
 		} else {
 			break
 		}
 	}
+	mq.log.Debugf("Prune messages: %d / %d messages removed", n, N)
 }
 
 func (mq *MessageQueue) PruneClients() {
@@ -201,7 +233,11 @@ func (mq *MessageQueue) PruneClients() {
 			n++
 		}
 	}
-	mq.clients = mq.clients[:n]
+	if n > 0 {
+		mq.log.Debugf("Pruning clients: %d", n)
+		mq.clients = mq.clients[:n]
+	}
+	mq.log.Debugf("After prune, remaining clients: %d", len(mq.clients))
 }
 
 func (mq *MessageQueue) SendMessage(msg *Message) {
@@ -214,15 +250,18 @@ func (mq *MessageQueue) SendMessage(msg *Message) {
 	msgTimestamp := msg.Info.Timestamp
 	e := mq.messages.Back()
 	if e == nil {
+		mq.log.Debugf("Message queue empty. Adding message to front: %s", msg.DebugString())
 		mq.messages.PushFront(msg)
 	} else {
 		for ; e != nil; e = prev {
-			if msgTimestamp.Compare(e.Value.(*Message).Info.Timestamp) > 0 {
+			if msgTimestamp.After(e.Value.(*Message).Info.Timestamp) {
+				mq.log.Debugf("Adding message after: %d: %s (goes after) %s", mq.messages.Len(), msg.DebugString(), e.Value.(*Message).DebugString())
 				mq.messages.InsertAfter(msg, e)
 				break
 			}
 			prev = e.Prev()
 			if prev == nil {
+				mq.log.Debugf("Adding message to front: %d: %s", mq.messages.Len(), msg.DebugString())
 				mq.messages.PushFront(msg)
 				break
 			}
@@ -232,6 +271,7 @@ func (mq *MessageQueue) SendMessage(msg *Message) {
 
 	for _, client := range mq.clients {
 		if client.newMessageAlert != nil {
+			client.log.Debugf("Queue notifying client of message")
 			client.newMessageAlert <- true
 		}
 	}
@@ -248,6 +288,7 @@ func (mq *MessageQueue) getFront() *list.Element {
 }
 
 func (mq *MessageQueue) Close() {
+	mq.log.Warnf("Closing message queue")
 	mq.lock.Lock()
 	defer mq.lock.Unlock()
 	mq.ctxCancel()

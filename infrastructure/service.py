@@ -82,7 +82,7 @@ class Service(ComponentResource):
                     scaling=cloudrunv2.ServiceTemplateScalingArgs(
                         min_instance_count=1, max_instance_count=1
                     ),
-                    timeout=f"{60*60}s",  # this is the max time allowed by cloudrun
+                    timeout=f"{5*60}s",  # 1hr is the max time allowed by cloudrun
                     vpc_access=cloudrunv2.ServiceTemplateVpcAccessArgs(
                         egress=props.egress, network_interfaces=[props.subnet]
                     ),

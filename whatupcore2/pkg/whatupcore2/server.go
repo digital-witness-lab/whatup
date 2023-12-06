@@ -116,7 +116,21 @@ func StartRPC(port uint32, dbUri string, logLevel string) error {
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGTERM, syscall.SIGINT)
 	sig := <-sigchan
+
 	Log.Infof("Got signal... exiting gracefully: %v", sig)
-	s.Stop()
+	sessionManager.Stop()
+	ctx, doneShutdown := context.WithCancel(context.Background())
+	timer := time.After(10 * time.Second)
+	go func() {
+		s.GracefulStop()
+		doneShutdown()
+	}()
+
+	select {
+	case <-ctx.Done():
+	case <-timer:
+		Log.Infof("Forcefully shutting down")
+		s.Stop()
+	}
 	return nil
 }

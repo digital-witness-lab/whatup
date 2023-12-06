@@ -292,3 +292,10 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 	}
 	return protoMsg, true
 }
+
+func (msg *Message) DebugString() string {
+	if msg == nil {
+		return "[nil msg]"
+	}
+	return fmt.Sprintf("[%s @ %s] %s => %s", msg.Info.ID, msg.Info.Timestamp, msg.Info.Sender.String(), msg.Info.Chat.String())
+}

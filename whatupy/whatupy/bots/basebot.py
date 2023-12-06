@@ -5,7 +5,7 @@ import logging
 import random
 import shlex
 import typing as T
-from collections import abc, defaultdict, deque, namedtuple
+from collections import defaultdict, deque, namedtuple
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -89,6 +89,7 @@ class BaseBot:
         self.cert = cert
         self.meta = dict()
         self.logger = logger.getChild(self.__class__.__name__)
+        self._stop_on_event: T.Optional[asyncio.Event] = None
 
         self.control_groups = control_groups
         self.mark_messages_read = mark_messages_read
@@ -136,6 +137,7 @@ class BaseBot:
     async def start(self, **kwargs):
         self.logger.info("Starting bot for user")
         BOT_REGISTRY[self.__class__.__name__][id(self)] = self
+        self._stop_on_event = asyncio.Event()
         try:
             async with asyncio.TaskGroup() as tg:
                 self.logger.info("Starting bot")
@@ -146,13 +148,20 @@ class BaseBot:
                 if self.read_historical_messages:
                     tg.create_task(self.listen_historical_messages())
                 tg.create_task(self.post_start())
-        except grpc.aio._call.AioRpcError as e:
-            self.logger.exception("GRPC error in bot main loop")
+                tg.create_task(self._throw_on_unlock(self._stop_on_event))
+        except grpc.aio._call.AioRpcError:
+            self.logger.exception("GRPC error in bot main loop: %s")
         except Exception:
             self.logger.exception("Exception in main run loop of bot")
         self.stop()
 
+    async def _throw_on_unlock(self, cond: asyncio.Event):
+        await cond.wait()
+        raise Exception("Stopping bot from condition")
+
     def stop(self):
+        if self._stop_on_event is not None:
+            self._stop_on_event.set()
         self.logger.critical("Bot Stopping")
         BOT_REGISTRY[self.__class__.__name__].pop(id(self), None)
 
@@ -194,6 +203,7 @@ class BaseBot:
     async def listen_messages(self):
         self.logger.info("Reading messages")
         last_timestamp: T.Optional[Timestamp] = None
+        backoff = 0
         async with asyncio.TaskGroup() as tg:
             while True:
                 messages: grpc.aio.UnaryStreamCall = self.core_client.GetMessages(
@@ -205,14 +215,25 @@ class BaseBot:
                 )
                 try:
                     message: wuc.WUMessage
+                    backoff = 0
                     async for message in self._listen_message_stream(messages):
                         last_timestamp = message.info.timestamp
                         tg.create_task(self._dispatch_message(message))
+                    self.logger.info("Message stream ended. Reconnecting")
                 except StreamMissedHeartbeat:
+                    backoff += 1
+                    if last_timestamp:
+                        t = last_timestamp.ToDatetime().isoformat()
+                    else:
+                        t = "no messages seen"
+                    sleep_time = min(2**backoff, 60)
                     self.logger.info(
-                        "Re-triggering GetMessages after a missed heartbeat: %ds",
+                        "Re-triggering GetMessages after a missed heartbeat: %s: %ds: sleepin %f",
+                        t,
                         self.stream_heartbeat_timeout,
+                        sleep_time,
                     )
+                    await asyncio.sleep(sleep_time)
 
     async def _listen_message_stream(
         self, stream: grpc.aio.UnaryStreamCall
@@ -253,42 +274,52 @@ class BaseBot:
             source_hash == sa and pb.expiration_time > now
             for sa, pb in COMMAND_PINNING.items()
         )
-        if is_control:
-            if skip_control:
-                self.logger.info(
-                    "Skipping control message: %s: %s",
-                    utils.jid_to_str(jid_from),
-                    message.info.id,
-                )
+        try:
+            if is_control:
+                message_age = now - message.info.timestamp.ToDatetime()
+                if skip_control:
+                    self.logger.info(
+                        "Skipping control message: %s: %s",
+                        utils.jid_to_str(jid_from),
+                        message.info.id,
+                    )
+                elif message_age > timedelta(seconds=60):
+                    self.logger.info(
+                        "Skipping control message because it's >1min old: %s: %s: %s",
+                        utils.jid_to_str(jid_from),
+                        message.info.id,
+                        message_age
+                    )
+                else:
+                    self.logger.info(
+                        "Got control message: %s: %s",
+                        utils.jid_to_str(jid_from),
+                        message.info.id,
+                    )
+                    await self._dispatch_control(message, source_hash)
             else:
                 self.logger.info(
-                    "Got control message: %s: %s",
+                    "Got normal message: %s: %s",
                     utils.jid_to_str(jid_from),
                     message.info.id,
                 )
-                try:
-                    await self._dispatch_control(message, source_hash)
-                except Exception:
-                    self.logger.exception(
-                        "Exception handling message... attempting to continue"
-                    )
-        else:
-            self.logger.info(
-                "Got normal message: %s: %s",
-                utils.jid_to_str(jid_from),
-                message.info.id,
-            )
-            try:
                 await self.on_message(
                     message,
                     is_history=is_history,
                     is_archive=is_archive,
                     archive_data=archive_data,
                 )
-            except Exception:
-                self.logger.exception(
-                    "Exception handling message... attempting to continue"
-                )
+        except grpc.aio._call.AioRpcError as e:
+            if e.code() == grpc.StatusCode.UNAUTHENTICATED:
+                self.logger.critical("Bot unauthenticated. Disconnecting")
+                raise e
+            self.logger.exception(
+                "Exception handling message... attempting to continue"
+            )
+        except Exception:
+            self.logger.exception(
+                "Exception handling message... attempting to continue"
+            )
 
     async def _dispatch_control(self, message, source_hash):
         if message.info.source.isFromMe:

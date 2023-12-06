@@ -8,7 +8,7 @@ echo "Starting whatupcore2..."
 # Start the application
 case $app_command in
     rpc)
-        eval /whatupcore2 $@
+        exec /whatupcore2 $@
     ;;
 
     remove-user)
@@ -16,7 +16,7 @@ case $app_command in
             echo "WHATUPCORE2_REMOVE_USER env var is required."
             exit 1
         fi
-        eval /whatupcore2 remove-user ${WHATUPCORE2_REMOVE_USER}
+        exec /whatupcore2 remove-user ${WHATUPCORE2_REMOVE_USER}
     ;;
 esac
 

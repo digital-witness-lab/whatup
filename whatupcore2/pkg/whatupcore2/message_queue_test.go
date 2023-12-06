@@ -8,6 +8,7 @@ import (
 
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
+	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
 func MessageFromTime(t time.Time) *Message {
@@ -42,7 +43,7 @@ func CheckMsgReadInOrder(t *testing.T, client *MessageClient, low, high int) {
 
 func TestMessageQueueOrder(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 0, 0)
+	mq := NewMessageQueue(ctx, 0, 0, 0, waLog.Noop)
 
 	for i := 50; i < 0; i-- {
 		mq.SendMessage(MessageFromUnix(int64(i)))
@@ -59,7 +60,7 @@ func TestMessageQueueOrder(t *testing.T) {
 
 func TestMessageQueueMaxLen(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 10, 0)
+	mq := NewMessageQueue(ctx, 0, 10, 0, waLog.Noop)
 
 	for i := 1; i < 100; i++ {
 		mq.SendMessage(MessageNow())
@@ -69,9 +70,35 @@ func TestMessageQueueMaxLen(t *testing.T) {
 	}
 }
 
+func TestMessageClientReadPrunedMessage(t *testing.T) {
+	ctx := context.Background()
+	mq := NewMessageQueue(ctx, 0, 0, 1*time.Second, waLog.Noop)
+
+	// fix the queue's time
+	now := time.Now()
+	offset := time.Duration(0)
+	nowFunc = func() time.Time { return now.Add(offset) }
+	defer func() { nowFunc = time.Now }()
+
+	mq.SendMessage(MessageFromTime(now))
+	client := mq.NewClient()
+	offset = time.Hour
+
+	mq.PruneAll()
+	if mq.messages.Len() != 0 {
+		t.Fatalf("Queue should be empty")
+	}
+	mq.SendMessage(MessageFromTime(now.Add(offset)))
+
+	msg, _ := client.ReadMessage()
+	if !msg.Info.Timestamp.Equal(now.Add(offset)) {
+		t.Fatalf("Should be able to read most current, non-pruned message")
+	}
+}
+
 func TestMessageQueueMaxAge(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 0, 50*time.Second)
+	mq := NewMessageQueue(ctx, 0, 0, 50*time.Second, waLog.Noop)
 
 	// fix the queue's time
 	now := time.Now()
@@ -88,7 +115,7 @@ func TestMessageQueueMaxAge(t *testing.T) {
 
 func TestMessageMultiClient(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 50, 0)
+	mq := NewMessageQueue(ctx, 0, 50, 0, waLog.Noop)
 	client := mq.NewClient()
 	clientSlow := mq.NewClient()
 
@@ -114,7 +141,7 @@ func TestMessageMultiClient(t *testing.T) {
 
 func TestMessageSingleClient(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 50, 0)
+	mq := NewMessageQueue(ctx, 0, 50, 0, waLog.Noop)
 	client := mq.NewClient()
 
 	for i := 1; i < 100; i++ {
@@ -146,7 +173,7 @@ func TestMessageSingleClient(t *testing.T) {
 
 func TestMessageBackgroundPrune(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 200*time.Millisecond, 0, 60*time.Second)
+	mq := NewMessageQueue(ctx, 200*time.Millisecond, 0, 60*time.Second, waLog.Noop)
 	mq.Start()
 	defer mq.Stop()
 
@@ -174,7 +201,7 @@ func TestMessageBackgroundPrune(t *testing.T) {
 
 func TestMessagePruneClients(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 50, 0)
+	mq := NewMessageQueue(ctx, 0, 50, 0, waLog.Noop)
 
 	clients := []*MessageClient{
 		mq.NewClient(),
@@ -216,7 +243,7 @@ func TestMessagePruneClients(t *testing.T) {
 
 func TestMessageMsgChan(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 50, 0)
+	mq := NewMessageQueue(ctx, 0, 50, 0, waLog.Noop)
 	client := mq.NewClient()
 
 	for i := 1; i < 100; i++ {
