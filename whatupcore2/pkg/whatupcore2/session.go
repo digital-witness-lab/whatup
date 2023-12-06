@@ -163,7 +163,6 @@ func (session *Session) UpdateLastAccessWhileAlive(ctx context.Context) {
 		session.UpdateLastAccess()
 		select {
 		case <-ticker.C:
-			session.log.Debugf("Updating session last-access")
 			continue
 		case <-ctx.Done():
 			session.log.Debugf("Stopping last-access refresher")

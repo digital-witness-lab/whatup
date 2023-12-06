@@ -58,7 +58,7 @@ whatupcore2_service = Service(
     service_name,
     ServiceArgs(
         args=["rpc", "--log-level=DEBUG"],
-        concurrency=50,
+        concurrency=500,
         container_port=3447,
         cpu="1",
         # Route only egress traffic bound for private IPs

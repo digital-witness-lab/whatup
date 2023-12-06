@@ -277,12 +277,9 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 				return nil
 			}
 		case msg := <-msgChan:
-			if messageOptions.MarkMessagesRead {
-				msg.MarkRead()
-			}
 			if !lastMessageTimestamp.IsZero() {
 				if !msg.Info.Timestamp.After(lastMessageTimestamp) {
-					msg.log.Debugf("Skipping message because it is before client's last message: %s < %s", msg.Info.Timestamp, lastMessageTimestamp)
+					msg.log.Debugf("Skipping message because it is before client's last message: %s < %s: %s", msg.Info.Timestamp, lastMessageTimestamp, msg.DebugString())
 					break
 				} else {
 					// once we are back in sync, reset the lastMessageTimestamp
@@ -291,10 +288,13 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 					lastMessageTimestamp = time.Time{}
 				}
 			}
-			msg.log.Infof("Sending message to client: %s: %s", msg.Info.Chat.String(), msg.Info.ID)
+			if messageOptions.MarkMessagesRead {
+				msg.MarkRead()
+			}
+			msg.log.Infof("Sending message to client: %s", msg.DebugString())
 			msgProto, ok := msg.ToProto()
 			if !ok {
-				msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
+				msg.log.Errorf("Could not convert message to WUMessage proto: %s", msg.DebugString())
 				break
 			}
 			msgAnon := AnonymizeInterface(session.Client.anonLookup, msgProto)
@@ -360,7 +360,7 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 			msg.log.Debugf("Recieved history message for gRPC client")
 			msgProto, ok := msg.ToProto()
 			if !ok {
-				msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
+				msg.log.Errorf("Could not convert message to WUMessage proto: %s", msg.DebugString())
 				break
 			}
 			msgAnon := AnonymizeInterface(session.Client.anonLookup, msgProto)

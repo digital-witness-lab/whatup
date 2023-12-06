@@ -160,9 +160,9 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 
 	ctx, cancelCtx := context.WithCancel(ctx)
 
-	historyMessageQueue := NewMessageQueue(ctx, time.Minute, 16384, 0)
+	historyMessageQueue := NewMessageQueue(ctx, time.Minute, 16384, 0, log.Sub("hmq"))
 	historyMessageQueue.Start()
-	messageQueue := NewMessageQueue(ctx, time.Minute, 1024, time.Hour)
+	messageQueue := NewMessageQueue(ctx, time.Minute, 1024, time.Hour, log.Sub("mq"))
 	messageQueue.Start()
 
 	aclStore := NewACLStore(db, username, log.Sub("ACL"))
@@ -435,13 +435,12 @@ func (wac *WhatsAppClient) getMessages(evt interface{}) {
 			return
 		}
 		// </HACK>
-		wac.Log.Debugf("Got new message for client")
 		msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
 		if err != nil {
 			wac.Log.Errorf("Error converting message from whatsmeow: %+v", err)
 			return
 		}
-		wac.Log.Debugf("Sending message to MessageQueue")
+		wac.Log.Debugf("Sending message to MessageQueue: %s", msg.DebugString())
 		wac.messageQueue.SendMessage(msg)
 	}
 }
