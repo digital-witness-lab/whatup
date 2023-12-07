@@ -92,6 +92,7 @@ services:
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
       - WHATUPY_CONTROL_GROUPS=c+c-prod@g.us anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net # c+c-prod + micha
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
     secrets:
       - ssl-cert
       - postgres-messages-passwd
@@ -99,7 +100,8 @@ services:
       - .env
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
-    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert databasebot --database-url \"postgresql://messages:$$( cat $${POSTGRES_MESSAGES_PASSWORD_FILE})@db/messages\" /usr/src/whatupy-data/sessions/"
+      - ./data/media/:/usr/src/whatupy-data/media/
+    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert databasebot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ /usr/src/whatupy-data/sessions/"
 
   bot-database-load-archive:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
@@ -107,16 +109,16 @@ services:
     links:
       - db
     environment:
-      - WHATUPY_CERT=/run/secrets/ssl-cert
       - POSTGRES_DATABASE=messages
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
     secrets:
       - postgres-messages-passwd
     profiles:
       - donotstart
     volumes:
       - ./data/message-archive/:/usr/src/whatupy-data/archive/:ro
-    #command: sh -c "whatupy --debug databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_MESSAGES_PASSWORD_FILE})@db/messages\" '/usr/src/whatupy-data/archive/120363023974439113@g.us/*_*.json'"
-    command: sh -c "ls /usr/src/whatupy-data/archive/ | xargs -P 6 -I{} whatupy databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_MESSAGES_PASSWORD_FILE})@db/messages\" '/usr/src/whatupy-data/archive/{}/*_*.json'"
+      - ./data/media/:/usr/src/whatupy-data/media/
+    command: sh -c "ls /usr/src/whatupy-data/archive/ | xargs -P 6 -I{} whatupy databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ '/usr/src/whatupy-data/archive/{}/*_*.json'"
 
   bot-onboard-bulk:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
