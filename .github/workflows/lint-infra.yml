@@ -3,10 +3,14 @@ name: Lint infrastructure
 on:
   push:
     branches: main
-    paths: infrastructure/**
+    paths:
+      - infrastructure/**
+      - .github/workflows/lint-infra.yml
 
   pull_request:
-    paths: infrastructure/**
+    paths:
+      - infrastructure/**
+      - .github/workflows/lint-infra.yml
 
 jobs:
   lint:
