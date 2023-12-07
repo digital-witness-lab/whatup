@@ -2,12 +2,14 @@ import logging
 import typing as T
 from collections import defaultdict
 from datetime import datetime, timedelta
-from functools import partial
+from functools import partial, reduce
 
 import dataset
 from dataset.util import DatasetException
 from google.protobuf.timestamp_pb2 import Timestamp
 from sqlalchemy.sql import func
+from cloudpathlib import AnyPath
+import grpc
 
 from .. import utils
 from ..protos import whatupcore_pb2 as wuc
@@ -129,11 +131,12 @@ def query_group_country_codes(db):
 
 
 class DatabaseBot(BaseBot):
-    __version__ = "1.2.0"
+    __version__ = "2.0.0"
 
     def __init__(
         self,
         database_url: str,
+        media_base_path: AnyPath,
         group_info_refresh_time: timedelta = timedelta(hours=6),
         *args,
         **kwargs,
@@ -141,6 +144,7 @@ class DatabaseBot(BaseBot):
         kwargs["mark_messages_read"] = True
         kwargs["read_historical_messages"] = True
         super().__init__(*args, **kwargs)
+        self.media_base_path: AnyPath = media_base_path
         self.group_info_refresh_time = group_info_refresh_time
         self.db: dataset.Database = dataset.connect(database_url)
         self.init_database(self.db)
@@ -189,11 +193,15 @@ class DatabaseBot(BaseBot):
             primary_type=db.types.text,
             primary_increment=False,
         )
-        db.create_table(
+        media = db.create_table(
             "media",
             primary_id="filename",
             primary_type=db.types.text,
             primary_increment=False,
+        )
+        media.create_column(
+            "content_url",
+            type=db.types.string,
         )
         db.create_table(
             "messages_seen",
@@ -312,6 +320,14 @@ class DatabaseBot(BaseBot):
     ):
         message_flat = flatten_proto_message(message)
         media_filename = utils.media_message_filename(message)
+        if message_flat.get("thumbnail"):
+            thumbnail: bytes = message_flat.pop("thumbnail")
+            message_flat["thumbnail_url"] = self.write_media(
+                thumbnail,
+                message,
+                f"{message.info.id}.jpg",
+                ["thumbnail"],
+            )
         with self.db as db:
             if message.info.source.isGroup and not is_history:
                 self.logger.debug(
@@ -326,7 +342,9 @@ class DatabaseBot(BaseBot):
             if media_filename:
                 self.logger.info("Getting media: %s", message.info.id)
                 message_flat["mediaFilename"] = media_filename
-                existingMedia = db["media"].count(filename=media_filename)
+                existingMedia = db["media"].count(
+                    filename=media_filename, content_url={"not": None}
+                )
                 if not existingMedia:
                     mimetype = utils.media_message_mimetype(message)
                     file_extension = media_filename.rsplit(".", 1)[-1]
@@ -346,17 +364,49 @@ class DatabaseBot(BaseBot):
             db["messages"].upsert(message_flat, ["id"])
         self.logger.debug("Done updating message: %s", message.info.id)
 
+    def media_url(self, path_prefixes: T.List[str], filename: str) -> AnyPath:
+        path_elements = [
+            self.media_base_path,
+            *path_prefixes,
+            filename[0],
+            filename[1],
+            filename[2],
+            filename[3],
+            filename,
+        ]
+        return reduce(lambda a, b: a / b, path_elements)
+
+    def write_media(
+        self,
+        content: bytes,
+        message: wuc.WUMessage,
+        filename: str,
+        path_prefixes: T.Optional[T.List[str]],
+    ) -> str:
+        jid = utils.jid_to_str(message.info.source.chat) or "no_chat"
+        prefixes = [jid, *(path_prefixes or [])]
+        filepath = self.media_url(prefixes, filename)
+        filepath.parent.mkdir(exist_ok=True, parents=True)
+        with filepath.open("wb+") as fd:
+            fd.write(content)
+        return str(filepath)
+
     async def _handle_media_content(
         self, message: wuc.WUMessage, content: bytes, datum: dict
     ):
-        if not content:
-            self.logger.critical(
-                "Empty media body... skipping writing to database: %s", datum
+        media_target: T.Optional[str]
+        if content:
+            media_target = self.write_media(
+                content, message, datum["filename"], ["media"]
             )
-            return
-        datum["content"] = content
+        else:
+            self.logger.critical(
+                "Empty media body... Writing empty media URI: %s", datum
+            )
+            media_target = None
+        datum["content_url"] = media_target
         datum[RECORD_MTIME_FIELD] = datetime.now()
-        self.db["media"].insert(datum)
+        self.db["media"].upsert(datum, ["filename"])
 
     async def _update_group_or_community(
         self,
@@ -385,17 +435,21 @@ class DatabaseBot(BaseBot):
             now = archive_data.WUMessage.info.timestamp.ToDatetime()
             self.logger.debug("Storing archived message timestamp: %s", now)
         else:
-            group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
-            if (
-                utils.jid_to_str(group_info.parentJID) != None
-            ):  # this group is in a community
-                community_processing = True
-                community_info_iterator: T.AsyncIterator[
-                    wuc.GroupInfo
-                ] = self.core_client.GetCommunityInfo(group_info.parentJID)
-                community_info: T.List[wuc.GroupInfo] = await utils.aiter_to_list(
-                    community_info_iterator
-                )
+            try:
+                group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
+                if (
+                    utils.jid_to_str(group_info.parentJID) != None
+                ):  # this group is in a community
+                    community_processing = True
+                    community_info_iterator: T.AsyncIterator[
+                        wuc.GroupInfo
+                    ] = self.core_client.GetCommunityInfo(group_info.parentJID)
+                    community_info: T.List[wuc.GroupInfo] = await utils.aiter_to_list(
+                        community_info_iterator
+                    )
+            except grpc.aio._call.AioRpcError as e:
+                if "rate-overlimit" in (e.details() or ""):
+                    return
 
         if community_processing:
             self.logger.debug("Using community info to update groups for community")
@@ -525,6 +579,10 @@ class DatabaseBot(BaseBot):
             reaction_counts[message.content.text] += 1
             db["reactions"].upsert(message_flat, ["id"])
             db["messages"].upsert(
-                {"id": source_message_id, "reaction_counts": reaction_counts, RECORD_MTIME_FIELD: now},
+                {
+                    "id": source_message_id,
+                    "reaction_counts": reaction_counts,
+                    RECORD_MTIME_FIELD: now,
+                },
                 ["id"],
             )
