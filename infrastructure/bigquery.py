@@ -21,6 +21,7 @@ messages_dataset = bigquery.v2.Dataset(
     bigquery.v2.DatasetArgs(
         description="BigQuery dataset for the messages DB.",
         location=location,
+        friendly_name="messages",
     ),
 )
 
@@ -67,40 +68,53 @@ source_tables = [
     # "media",
 ]
 
+# Creates data transfer in Big Query (BQ) for
+# each table in `source_tables` that need
+# to be copied over to BQ. The data
+# transfers use scheduled queries.
+#
+# https://cloud.google.com/bigquery/docs/scheduling-queries
 
-def create_automated_bq_transfer_jobs():
-    """
-    Creates data transfer in Big Query (BQ) for
-    each table in `source_tables` that need
-    to be copied over to BQ. The data
-    transfers use scheduled queries.
-
-    https://cloud.google.com/bigquery/docs/scheduling-queries
-    """
-
-    for table in source_tables:
-        query = (
-            Output.concat("SELECT * FROM EXTERNAL_QUERY(")
-            .concat(bigquery_sql_connection.id)
-            .concat(", ")
-            .concat(f"SELECT * FROM {table};")
-            .concat(");")
+for table in source_tables:
+    query = (
+        Output.concat(
+            f"""
+MERGE INTO messages.{table} AS bq
+USING"""
         )
-        dts.v1.TransferConfig(
-            f"messages-{table}",
-            dts.v1.TransferConfigArgs(
-                destination_dataset_id=messages_dataset.id,
-                display_name=f"Copy messages.{table} data",
-                data_source_id="scheduled_query",
-                params={
-                    "query": query,
-                    "write_disposition": "WRITE_TRUNCATE",
-                    "partitioning_field": "",
-                },
-                schedule="every 24 hours",
-            ),
+        .concat("SELECT * FROM EXTERNAL_QUERY(")
+        # Quote the connection id.
+        .concat('"')
+        .concat(bigquery_sql_connection.id)
+        .concat('"')
+        .concat(",")
+        # Quote the external query also.
+        .concat(f'"SELECT * FROM {table};"')
+        # Close the EXTERNAL_QUERY function call.
+        .concat(") ")
+        .concat(
+            """AS pg
+ON
+    bq.id = pg.id AND bq.record_mtime = pg.record_mtime
+WHEN NOT MATCHED BY SOURCE
+THEN
+    delete
+WHEN NOT MATCHED BY TARGET
+THEN
+    INSERT row;"""
         )
-
-
-if is_prod_stack():
-    create_automated_bq_transfer_jobs()
+    )
+    dts.v1.TransferConfig(
+        f"messages-{table}",
+        dts.v1.TransferConfigArgs(
+            destination_dataset_id=messages_dataset.id,
+            display_name=f"Copy messages.{table} data",
+            data_source_id="scheduled_query",
+            params={
+                "query": query,
+                "write_disposition": "WRITE_TRUNCATE",
+                "partitioning_field": "",
+            },
+            schedule="every 24 hours" if is_prod_stack() else None,
+        ),
+    )
