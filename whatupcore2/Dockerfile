@@ -5,10 +5,6 @@ WORKDIR /build
 RUN apt update \
     && apt upgrade -y \
     && apt install -y \
-    libsqlite3-0 \
-    libsqlite3-dev \
-    libsqlcipher0 \
-    libsqlcipher-dev \
     libssl-dev \
     libpcre2-8-0
 

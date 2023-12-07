@@ -1,16 +1,14 @@
-from datetime import datetime
 import re
+from datetime import datetime
 
-import qrcode
 import dataset
+import qrcode
 
 from .. import NotRegisteredError, UsernameInUseError, utils
-from . import BaseBot
-from . import BotCommandArgs, MediaType
-from ..protos import whatupcore_pb2 as wuc
 from ..connection import create_whatupcore_clients
-from ..credentials_manager import CredentialsManager, Credential
-
+from ..credentials_manager import Credential, CredentialsManager
+from ..protos import whatupcore_pb2 as wuc
+from . import BaseBot, BotCommandArgs, MediaType
 
 VALID_ALIAS = re.compile(r"^[a-zA-Z0-9_-]+$")
 

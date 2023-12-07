@@ -1,15 +1,15 @@
-import os
-import logging
-from dataclasses import dataclass, field
 import base64
+import logging
+import os
 import typing as T
+from dataclasses import dataclass, field
 
-from cloudpathlib import AnyPath
 import tink
+from cloudpathlib import AnyPath
 from tink import aead
 from tink.integration import gcpkms
 
-from . import CredentialsManagerCloudPath, Credential
+from . import Credential, CredentialsManagerCloudPath
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,11 @@ class CredentialsManagerTink(CredentialsManagerCloudPath):
         kms_credentials_path: T.Optional[str] = None,
         **kwargs,
     ):
+        url_cp = url
+        if url_cp.startswith("kek+"):
+            url_cp = url_cp[len("kek+") :]
+        super().__init__(url_cp, *args, **kwargs)
+
         if kek_uri is None:
             kek_uri = os.environ.get("KEK_URI")
             if kek_uri is None:
@@ -62,13 +67,10 @@ class CredentialsManagerTink(CredentialsManagerCloudPath):
         try:
             self.client = gcpkms.GcpKmsClient(kek_uri, kms_credentials_path)
         except tink.TinkError as e:
-            logging.exception("Error creating GCP KMS client: %s", e)
+            self.logger.exception("Error creating GCP KMS client: %s", e)
             raise
 
-        logger.debug("Managing encrypted credentials for url: %s", url)
-        if url.startswith("kek+"):
-            url = url[len("kek+") :]
-        super().__init__(url, *args, **kwargs)
+        self.logger.debug("Managing encrypted credentials for url: %s", url)
 
     def read_credential(self, path: AnyPath) -> LazyDecryptedCredential:
         enc_credential: Credential = super().read_credential(path)
@@ -76,7 +78,7 @@ class CredentialsManagerTink(CredentialsManagerCloudPath):
             decrypt_func=self.decrypt_str,
             **enc_credential.asdict(),
         )
-        logger.debug(
+        self.logger.debug(
             "Read and made lazy decryptable credentials: %s",
             lazy_plaintext_credential.username,
         )

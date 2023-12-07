@@ -4,6 +4,7 @@ import csv
 import hashlib
 import io
 import json
+import logging
 import mimetypes
 import random
 import re
@@ -12,7 +13,6 @@ import typing as T
 import warnings
 from collections import namedtuple
 from functools import wraps
-import logging
 
 import qrcode
 from google.protobuf.json_format import MessageToDict, ParseDict
@@ -44,12 +44,14 @@ class WhatUpyJSONDecoder(json.JSONDecoder):
         if "type" in dct and dct["type"] == "bytes":
             return base64_to_bytes(dct)
         return dct
-    
+
+
 async def aiter_to_list(aiter: T.AsyncIterable) -> list:
     result = []
     async for item in aiter:
         result.append(item)
     return result
+
 
 def jid_noad(jid: wuc.JID) -> wuc.JID:
     return wuc.JID(user=jid.user, server=jid.server)
@@ -120,21 +122,25 @@ def protobuf_to_json(proto_obj) -> str:
     data = protobuf_to_dict(proto_obj)
     return json.dumps(data, cls=WhatUpyJSONEncoder)
 
+
 def protobuf_to_json_list(proto_objs) -> str:
     data = [protobuf_to_dict(proto_obj) for proto_obj in proto_objs]
     return json.dumps(data, cls=WhatUpyJSONEncoder)
+
 
 def jsons_to_protobuf(jsons: str, proto_type: Generic) -> Generic:
     data = json.loads(jsons, cls=WhatUpyJSONDecoder)
     return ParseDict(data, proto_type(), ignore_unknown_fields=True)
 
+
 def json_list_to_protobuf_list(jsons: str, proto_type: Generic) -> T.List[Generic]:
     data = json.loads(jsons, cls=WhatUpyJSONDecoder)
-    object_list : T.List[Generic] = []
+    object_list: T.List[Generic] = []
     for item in data:
         item_object = proto_type()
         object_list.append(ParseDict(item, item_object, ignore_unknown_fields=True))
     return object_list
+
 
 def protobuf_to_dict(proto_obj) -> dict[str, T.Any]:
     return MessageToDict(proto_obj, including_default_value_fields=False)
@@ -181,6 +187,11 @@ def random_words(n_words=3) -> T.List[str]:
             if len(words) == n_words:
                 break
     return words
+
+
+def short_hash(item: str, N=5) -> str:
+    h = hashlib.new("sha256", item.encode("utf8"))
+    return h.hexdigest()[:N]
 
 
 def random_hash(item: str, iterations=1_000) -> bytes:

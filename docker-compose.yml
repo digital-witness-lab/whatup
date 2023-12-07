@@ -29,7 +29,7 @@ services:
       - ssl-cert
       - ssl-key
       - postgres-whatupcore-passwd
-    command: /whatupcore2 rpc --log-level=DEBUG
+    command: rpc --log-level DEBUG
 
   db:
     image: postgres:15-alpine
@@ -53,15 +53,12 @@ services:
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
       - WHATUPY_CONTROL_GROUPS=c+c-prod@g.us anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net # c+c-prod + micha
-      - GOOGLE_APPLICATION_CREDENTIALS=/google-creds.json
-      - KEK_URI=gcp-kms://projects/whatup-deploy/locations/europe-west3/keyRings/micha-dev-feather/cryptoKeys/sessions/cryptoKeyVersions/1
     secrets:
       - ssl-cert
     volumes:
-      - /home/micha/.config/gcloud/application_default_credentials.json:/google-creds.json
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
       - ./data/message-archive/:/usr/src/whatupy-data/message-archive/
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ kek+/usr/src/whatupy-data/sessions/
+    command: whatupy --debug --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
 
   bot-debug:
     # run with,
@@ -144,16 +141,13 @@ services:
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
       - SESSION_NAME=$SESSION_NAME
-      - GOOGLE_APPLICATION_CREDENTIALS=/google-creds.json
-      - KEK_URI=gcp-kms://projects/whatup-deploy/locations/europe-west3/keyRings/micha-dev-feather/cryptoKeys/sessions/cryptoKeyVersions/1
     secrets:
       - ssl-cert
     profiles:
       - donotstart
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-      - /home/micha/.config/gcloud/application_default_credentials.json:/google-creds.json
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission DENIED --credentials-url "kek+/usr/src/whatupy-data/sessions/" ${SESSION_NAME}
+    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission DENIED --credentials-url "/usr/src/whatupy-data/sessions/" ${SESSION_NAME}
 
   bot-chatbot:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy

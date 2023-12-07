@@ -15,7 +15,3 @@ RUN pip install -e .
 
 # Ensure the script is executable.
 RUN chmod +x /usr/src/whatupy/*.sh
-
-# Use tini to manage zombie processes and signal forwarding.
-# https://github.com/krallin/tini
-ENTRYPOINT ["/usr/src/whatupy/run.sh"]

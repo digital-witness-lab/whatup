@@ -57,8 +57,8 @@ whatup_salt_secret_source = (
 whatupcore2_service = Service(
     service_name,
     ServiceArgs(
-        args=["rpc", "--log-level=INFO"],
-        concurrency=50,
+        args=["rpc", "--log-level=DEBUG"],
+        concurrency=500,
         container_port=3447,
         cpu="1",
         # Route only egress traffic bound for private IPs

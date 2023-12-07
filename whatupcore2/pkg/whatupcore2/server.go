@@ -63,13 +63,12 @@ func StartRPC(port uint32, dbUri string, logLevel string) error {
 	sessionManager.Start()
 	defer sessionManager.Close()
 	authCheck := createAuthCheck(sessionManager, JWT_SECRET)
-    keepAliveEnforcement := grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
-        MinTime:             5 * time.Second,
-        PermitWithoutStream: true,
-    })
+	keepAliveEnforcement := grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+		MinTime:             5 * time.Second,
+		PermitWithoutStream: true,
+	})
 	keepAlive := grpc.KeepaliveParams(keepalive.ServerParameters{
 		Time: 10 * time.Second,
-
 	})
 
 	var s *grpc.Server
@@ -84,14 +83,14 @@ func StartRPC(port uint32, dbUri string, logLevel string) error {
 			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
 			grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
 			grpc.Creds(creds),
-            keepAliveEnforcement,
+			keepAliveEnforcement,
 			keepAlive,
 		)
 	} else {
 		s = grpc.NewServer(
 			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
 			grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
-            keepAliveEnforcement,
+			keepAliveEnforcement,
 			keepAlive,
 		)
 	}
@@ -117,7 +116,21 @@ func StartRPC(port uint32, dbUri string, logLevel string) error {
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGTERM, syscall.SIGINT)
 	sig := <-sigchan
+
 	Log.Infof("Got signal... exiting gracefully: %v", sig)
-	s.Stop()
+	sessionManager.Stop()
+	ctx, doneShutdown := context.WithCancel(context.Background())
+	timer := time.After(10 * time.Second)
+	go func() {
+		s.GracefulStop()
+		doneShutdown()
+	}()
+
+	select {
+	case <-ctx.Done():
+	case <-timer:
+		Log.Infof("Forcefully shutting down")
+		s.Stop()
+	}
 	return nil
 }

@@ -232,27 +232,78 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
+	var lastMessageTimestamp time.Time
+	if messageOptions.LastMessageTimestamp != nil {
+		lastMessageTimestamp = messageOptions.LastMessageTimestamp.AsTime()
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	msgChan := session.Client.GetMessages(ctx)
 
-	for msg := range msgChan {
-		msg.log.Debugf("Recieved message for gRPC client")
-		if messageOptions.MarkMessagesRead {
-			msg.MarkRead()
-		}
-        msg.log.Infof("Sending message to client: %s: %s", msg.Info.Chat.String(), msg.Info.ID)
-		msgProto, ok := msg.ToProto()
-		anonMsgProto := AnonymizeInterface(session.Client.anonLookup, msgProto)
-		if !ok {
-			msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
-		} else if err := server.Send(anonMsgProto); err != nil {
-			s.log.Errorf("Could not send message to client: %v", err)
+	msgClient := session.Client.GetMessages()
+	defer msgClient.Close()
+	msgChan, err := msgClient.MessageChan()
+	if err != nil {
+		s.log.Errorf("Could not create message chan: %v", err)
+		return nil
+	}
+
+	var heartbeatTicker *time.Ticker
+	if messageOptions.HeartbeatTimeout > 0 {
+		heartbeatTicker = time.NewTicker(
+			time.Duration(messageOptions.HeartbeatTimeout) * time.Second,
+		)
+		defer heartbeatTicker.Stop()
+	} else {
+		heartbeatTicker = time.NewTicker(time.Second)
+		heartbeatTicker.Stop()
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			session.log.Debugf("Client connection closed")
 			return nil
+		case <-session.ctx.Done():
+			session.log.Debugf("Session closed... disconnecting")
+			return nil
+		case <-heartbeatTicker.C:
+			msg := &pb.MessageStream{
+				Timestamp:   timestamppb.New(time.Now()),
+				IsHeartbeat: true,
+			}
+			if err := server.Send(msg); err != nil {
+				s.log.Errorf("Could not send message to client: %v", err)
+				return nil
+			}
+		case msg := <-msgChan:
+			if !lastMessageTimestamp.IsZero() {
+				if !msg.Info.Timestamp.After(lastMessageTimestamp) {
+					msg.log.Debugf("Skipping message because it is before client's last message: %s < %s: %s", msg.Info.Timestamp, lastMessageTimestamp, msg.DebugString())
+					break
+				} else {
+					// once we are back in sync, reset the lastMessageTimestamp
+					// var so we don't need to do time comparisons for future
+					// messages
+					lastMessageTimestamp = time.Time{}
+				}
+			}
+			if messageOptions.MarkMessagesRead {
+				msg.MarkRead()
+			}
+			msg.log.Infof("Sending message to client: %s", msg.DebugString())
+			msgProto, ok := msg.ToProto()
+			if !ok {
+				msg.log.Errorf("Could not convert message to WUMessage proto: %s", msg.DebugString())
+				break
+			}
+			msgAnon := AnonymizeInterface(session.Client.anonLookup, msgProto)
+			if err := server.Send(&pb.MessageStream{Content: msgAnon}); err != nil {
+				s.log.Errorf("Could not send message to client: %v", err)
+				return nil
+			}
 		}
 	}
-	session.log.Debugf("Ending GetMessages")
-	return nil
 }
 
 func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOptions, server pb.WhatUpCore_GetPendingHistoryServer) error {
@@ -262,21 +313,62 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(historyOptions.HistoryReadTimeout))
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	msgChan := session.Client.GetHistoryMessages(ctx)
 
-	for msg := range msgChan {
-		msgProto, ok := msg.ToProto()
-		anonMsgProto := AnonymizeInterface(session.Client.anonLookup, msgProto)
-		if !ok {
-			msg.log.Errorf("Could not convert message to WUMessage proto: %v", msg)
-		} else if err := server.Send(anonMsgProto); err != nil {
+	msgClient := session.Client.GetHistoryMessages()
+	if msgClient == nil {
+		s.log.Errorf("Trying to read messages from an closed MessageQueue")
+		return nil
+	}
+	defer msgClient.Close()
+	msgChan, err := msgClient.MessageChan()
+	if err != nil {
+		s.log.Errorf("Could not create message chan: %v", err)
+		return nil
+	}
+
+	var heartbeatTicker *time.Ticker
+	if historyOptions.HeartbeatTimeout > 0 {
+		heartbeatTicker = time.NewTicker(
+			time.Duration(historyOptions.HeartbeatTimeout) * time.Second,
+		)
+		defer heartbeatTicker.Stop()
+	} else {
+		heartbeatTicker = time.NewTicker(time.Second)
+		heartbeatTicker.Stop()
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			session.log.Debugf("Client connection closed")
 			return nil
+		case <-heartbeatTicker.C:
+			msg := &pb.MessageStream{
+				Timestamp:   timestamppb.New(time.Now()),
+				IsHeartbeat: true,
+			}
+			if err := server.Send(msg); err != nil {
+				s.log.Errorf("Could not send message to client: %v", err)
+				return nil
+			}
+		case <-session.ctx.Done():
+			session.log.Debugf("Session closed... disconnecting")
+			return nil
+		case msg := <-msgChan:
+			msg.log.Debugf("Recieved history message for gRPC client")
+			msgProto, ok := msg.ToProto()
+			if !ok {
+				msg.log.Errorf("Could not convert message to WUMessage proto: %s", msg.DebugString())
+				break
+			}
+			msgAnon := AnonymizeInterface(session.Client.anonLookup, msgProto)
+			if err := server.Send(&pb.MessageStream{Content: msgAnon}); err != nil {
+				return nil
+			}
 		}
 	}
-	session.log.Debugf("Ending GetMessages")
-	return nil
 }
 
 func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptions *pb.DownloadMediaOptions) (*pb.MediaContent, error) {
@@ -298,7 +390,7 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 		return nil, status.Errorf(codes.InvalidArgument, "Message not downloadable")
 	}
 
-	body, err := session.Client.DownloadAnyRetry(ctx, mediaMessage, &info)
+	body, err := session.Client.DownloadAnyRetry(ctx, mediaMessage, info)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not download media: %v", err)
 	}

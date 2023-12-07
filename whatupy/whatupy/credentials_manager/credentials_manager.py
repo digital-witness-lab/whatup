@@ -1,7 +1,11 @@
+import logging
 import re
-from typing import List, Any
+from typing import Any, List
 
+from ..utils import short_hash
 from .credential import Credential
+
+logger = logging.getLogger(__name__)
 
 
 class IncompleteCredentialsException(ValueError):
@@ -17,7 +21,8 @@ class CredentialsManager:
         cls._registry.append(cls)
 
     def __init__(self, url: str, **kwargs):
-        pass
+        self.logger = logger.getChild(short_hash(f"{url}{id(self)}"))
+        self.logger.info("Managing credentials for path: %s", url)
 
     @classmethod
     def from_url(cls, url, **kwargs):
