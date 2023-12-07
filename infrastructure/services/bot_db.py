@@ -12,7 +12,7 @@ from dwl_secrets import db_url_secrets
 from jobs.db_migrations import migrations_job_complete
 from kms import sessions_encryption_key, sessions_encryption_key_uri
 from service import Service, ServiceArgs
-from storage import sessions_bucket
+from storage import sessions_bucket, media_bucket
 from artifact_registry import whatupy_image
 
 from .whatupcore2 import whatupcore2_service
@@ -34,6 +34,15 @@ sessions_bucket_perm = storage.BucketIAMMember(
         bucket=sessions_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
         role="roles/storage.objectViewer",
+    ),
+)
+
+media_bucket_perm = storage.BucketIAMMember(
+    "bot-db-media-perm",
+    storage.BucketIAMMemberArgs(
+        bucket=media_bucket.name,
+        member=Output.concat("serviceAccount:", service_account.email),
+        role="roles/storage.objectAdmin",
     ),
 )
 
@@ -98,6 +107,10 @@ bot_db = Service(
                 value=sessions_bucket.name,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="MEDIA_BUCKET",
+                value=media_bucket.name,
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPY_CONTROL_GROUPS",
                 value=whatupy_control_groups,
             ),
@@ -114,6 +127,10 @@ bot_db = Service(
         ],
     ),
     opts=ResourceOptions(
-        depends_on=[sessions_bucket_perm, encryption_key_perm]
+        depends_on=[
+            sessions_bucket_perm,
+            media_bucket_perm,
+            encryption_key_perm,
+        ]
     ),
 )

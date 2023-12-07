@@ -4,7 +4,7 @@ from pulumi import get_stack
 from pulumi_gcp import secretmanager
 
 from database import get_sql_instance_url
-from config import db_root_password, db_configs, whatup_salt
+from config import db_root_password, db_configs, whatup_salt, whatup_anon_key
 
 
 db_url_secrets: Dict[str, secretmanager.Secret] = {}
@@ -62,6 +62,25 @@ secretmanager.SecretVersion(
     secretmanager.SecretVersionArgs(
         secret=whatup_salt_secret.id,
         secret_data=whatup_salt,
+        enabled=True,
+    ),
+)
+
+whatup_anon_key_secret = secretmanager.Secret(
+    "whatup-anon-key",
+    secretmanager.SecretArgs(
+        secret_id=f"whatup-anon-key-{get_stack()}",
+        replication=secretmanager.SecretReplicationArgs(
+            auto=secretmanager.SecretReplicationAutoArgs(),
+        ),
+    ),
+)
+
+secretmanager.SecretVersion(
+    "whatup-anon-key",
+    secretmanager.SecretVersionArgs(
+        secret=whatup_anon_key_secret.id,
+        secret_data=whatup_anon_key,
         enabled=True,
     ),
 )
