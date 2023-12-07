@@ -1,12 +1,11 @@
-from dataclasses import dataclass, field
 import asyncio
 import logging
-from collections import abc, defaultdict
 import typing as T
+from collections import abc, defaultdict
+from dataclasses import dataclass, field
 
 from ..bots.basebot import BaseBot, InvalidCredentialsException
-from ..credentials_manager import CredentialsManager, Credential
-
+from ..credentials_manager import Credential, CredentialsManager
 
 logger = logging.getLogger(__name__)
 
@@ -105,10 +104,12 @@ class DeviceManager:
             self.logger.critical("Bot dead: %s", username)
             device = self.devices.pop(username)
             if device.unregistered:
+                self.logger.critical("Device unregistered. Not trying to reconnect.")
                 return
             device.bot.stop()
             self.reconnect_backoff[username] += 1
             for manager in self.credential_managers:
+                self.logger.critical("Marking user as dead in: %s", manager)
                 manager.mark_dead(username)
             await self.on_bot_dead(device)
         except KeyError:

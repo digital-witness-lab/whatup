@@ -161,11 +161,11 @@ func (msg *Message) IsReaction() bool {
 
 func (msg *Message) IsInvite() bool {
 	invite_link := false
-	if (msg.MessageEvent.Message.GetExtendedTextMessage() != nil) {
+	if msg.MessageEvent.Message.GetExtendedTextMessage() != nil {
 		invite_link = (msg.MessageEvent.Message.GetExtendedTextMessage().InviteLinkGroupTypeV2 != nil)
 	}
-	
-	return (invite_link || msg.MessageEvent.Message.GroupInviteMessage != nil) 
+
+	return (invite_link || msg.MessageEvent.Message.GetGroupInviteMessage() != nil)
 }
 
 func (msg *Message) IsDelete() bool {
@@ -291,4 +291,11 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 		OriginalMessage: msg.MessageEvent.Message,
 	}
 	return protoMsg, true
+}
+
+func (msg *Message) DebugString() string {
+	if msg == nil {
+		return "[nil msg]"
+	}
+	return fmt.Sprintf("[%s @ %s] %s => %s", msg.Info.ID, msg.Info.Timestamp, msg.Info.Sender.String(), msg.Info.Chat.String())
 }

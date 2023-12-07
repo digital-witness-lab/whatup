@@ -5,16 +5,17 @@ import logging
 import random
 import shlex
 import typing as T
-from contextlib import asynccontextmanager
 from collections import defaultdict, deque, namedtuple
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import grpc
+from google.protobuf.timestamp_pb2 import Timestamp
 
 from .. import utils
-from ..credentials_manager.credential import Credential
 from ..connection import create_whatupcore_clients
+from ..credentials_manager.credential import Credential
 from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
 from ..protos.whatupcore_pb2_grpc import WhatUpCoreStub
@@ -38,7 +39,7 @@ class InvalidCredentialsException(Exception):
     pass
 
 
-class EndOfMessagesException(Exception):
+class StreamMissedHeartbeat(TimeoutError):
     pass
 
 
@@ -79,6 +80,7 @@ class BaseBot:
         control_groups: T.List[wuc.JID] = [],
         archive_files: T.Optional[str] = None,
         connect: bool = True,
+        stream_heartbeat_timeout=10,
         logger=logger,
         **kwargs,
     ):
@@ -87,12 +89,14 @@ class BaseBot:
         self.cert = cert
         self.meta = dict()
         self.logger = logger.getChild(self.__class__.__name__)
+        self._stop_on_event: T.Optional[asyncio.Event] = None
 
         self.control_groups = control_groups
         self.mark_messages_read = mark_messages_read
         self.read_messages = read_messages
         self.read_historical_messages = read_historical_messages
         self.archive_files = archive_files
+        self.stream_heartbeat_timeout = stream_heartbeat_timeout
 
         self.download_queue = asyncio.Queue()
         if connect:
@@ -133,6 +137,7 @@ class BaseBot:
     async def start(self, **kwargs):
         self.logger.info("Starting bot for user")
         BOT_REGISTRY[self.__class__.__name__][id(self)] = self
+        self._stop_on_event = asyncio.Event()
         try:
             async with asyncio.TaskGroup() as tg:
                 self.logger.info("Starting bot")
@@ -143,20 +148,20 @@ class BaseBot:
                 if self.read_historical_messages:
                     tg.create_task(self.listen_historical_messages())
                 tg.create_task(self.post_start())
-        except grpc.aio._call.AioRpcError as e:
-            if e.details() == "Stream removed":
-                self.logger.critical("Stream connection disconnected. Reconnecting")
-            else:
-                self.logger.exception("GRPC error in bot main loop")
-        except EndOfMessagesException:
-            self.logger.critical(
-                "Reached the end of the messages. This shouldn't happen unless the user un-registered."
-            )
+                tg.create_task(self._throw_on_unlock(self._stop_on_event))
+        except grpc.aio._call.AioRpcError:
+            self.logger.exception("GRPC error in bot main loop: %s")
         except Exception:
             self.logger.exception("Exception in main run loop of bot")
         self.stop()
 
+    async def _throw_on_unlock(self, cond: asyncio.Event):
+        await cond.wait()
+        raise Exception("Stopping bot from condition")
+
     def stop(self):
+        if self._stop_on_event is not None:
+            self._stop_on_event.set()
         self.logger.critical("Bot Stopping")
         BOT_REGISTRY[self.__class__.__name__].pop(id(self), None)
 
@@ -165,48 +170,92 @@ class BaseBot:
 
     async def listen_historical_messages(self):
         self.logger.info("Reading historical messages")
-        messages: T.AsyncIterator[wuc.WUMessage] = self.core_client.GetPendingHistory(
-            wuc.PendingHistoryOptions(historyReadTimeout=60)
-        )
-        async for message in messages:
-            jid_from: wuc.JID = message.info.source.chat
-            self.logger.debug(
-                "Got historical message: %s: %s",
-                utils.jid_to_str(jid_from),
-                message.info.id,
+        messages: grpc.aio.UnaryStreamCall = self.core_client.GetPendingHistory(
+            wuc.PendingHistoryOptions(
+                heartbeatTimeout=self.stream_heartbeat_timeout,
             )
+        )
+        async with asyncio.TaskGroup() as tg:
             try:
-                await self._dispatch_message(
-                    message, skip_control=True, is_history=True
+                async for message in self._listen_message_stream(messages):
+                    jid_from: wuc.JID = message.info.source.chat
+                    self.logger.debug(
+                        "Got historical message: %s: %s",
+                        utils.jid_to_str(jid_from),
+                        message.info.id,
+                    )
+                    tg.create_task(
+                        self._dispatch_message(
+                            message, skip_control=True, is_history=True
+                        )
+                    )
+            except StreamMissedHeartbeat:
+                self.logger.info(
+                    "History handler missed a heartbeat... closing handler"
                 )
-            except Exception:
-                self.logger.exception(
-                    "Exception handling historical message... attempting to continue"
-                )
+                return
+            except grpc.aio._call.AioRpcError as e:
+                if e.code == grpc.StatusCode.UNAVAILABLE:
+                    self.logger.info("Closing history handler")
+                    return
+                raise e
 
     async def listen_messages(self):
         self.logger.info("Reading messages")
+        last_timestamp: T.Optional[Timestamp] = None
+        backoff = 0
         async with asyncio.TaskGroup() as tg:
             while True:
                 messages: grpc.aio.UnaryStreamCall = self.core_client.GetMessages(
-                    wuc.MessagesOptions(markMessagesRead=self.mark_messages_read)
+                    wuc.MessagesOptions(
+                        markMessagesRead=self.mark_messages_read,
+                        lastMessageTimestamp=last_timestamp,
+                        heartbeatTimeout=self.stream_heartbeat_timeout,
+                    ),
                 )
-                # HACK: the following is a hack to get around the max
-                # connection time from cloudrun. this should be resolved when
-                # #93 is completed
-                while True:
-                    try:
-                        message: wuc.WUMessage = await asyncio.wait_for(
-                            messages.read(),
-                            timeout=60 * 15 * (1 + random.uniform(-1, 1) * 0.01),
-                        )
+                try:
+                    message: wuc.WUMessage
+                    backoff = 0
+                    async for message in self._listen_message_stream(messages):
+                        last_timestamp = message.info.timestamp
                         tg.create_task(self._dispatch_message(message))
-                    except TimeoutError:
-                        self.logger.info(
-                            "Re-starting message loop because of a ~15min idle"
-                        )
-                        break
-                # /HACK
+                    self.logger.info("Message stream ended. Reconnecting")
+                except StreamMissedHeartbeat:
+                    backoff += 1
+                    if last_timestamp:
+                        t = last_timestamp.ToDatetime().isoformat()
+                    else:
+                        t = "no messages seen"
+                    sleep_time = min(2**backoff, 60)
+                    self.logger.info(
+                        "Re-triggering GetMessages after a missed heartbeat: %s: %ds: sleepin %f",
+                        t,
+                        self.stream_heartbeat_timeout,
+                        sleep_time,
+                    )
+                    await asyncio.sleep(sleep_time)
+
+    async def _listen_message_stream(
+        self, stream: grpc.aio.UnaryStreamCall
+    ) -> T.AsyncIterator[wuc.WUMessage]:
+        while True:
+            try:
+                message: wuc.MessageStream | grpc.aio.EOF = await asyncio.wait_for(
+                    stream.read(),
+                    timeout=self.stream_heartbeat_timeout * (1 + 0.05),
+                )
+                if isinstance(message, grpc.aio._typing.EOFType):
+                    return
+                elif not message.isHeartbeat:
+                    yield message.content
+                else:
+                    self.logger.debug("Got heartbeat")
+            except TimeoutError as e:
+                raise StreamMissedHeartbeat from e
+            except grpc.aio._call.AioRpcError as e:
+                if e.details() == "Stream removed":
+                    raise StreamMissedHeartbeat from e
+                raise e
 
     async def _dispatch_message(
         self,
@@ -225,42 +274,52 @@ class BaseBot:
             source_hash == sa and pb.expiration_time > now
             for sa, pb in COMMAND_PINNING.items()
         )
-        if is_control:
-            if skip_control:
-                self.logger.info(
-                    "Skipping control message: %s: %s",
-                    utils.jid_to_str(jid_from),
-                    message.info.id,
-                )
+        try:
+            if is_control:
+                message_age = now - message.info.timestamp.ToDatetime()
+                if skip_control:
+                    self.logger.info(
+                        "Skipping control message: %s: %s",
+                        utils.jid_to_str(jid_from),
+                        message.info.id,
+                    )
+                elif message_age > timedelta(seconds=60):
+                    self.logger.info(
+                        "Skipping control message because it's >1min old: %s: %s: %s",
+                        utils.jid_to_str(jid_from),
+                        message.info.id,
+                        message_age
+                    )
+                else:
+                    self.logger.info(
+                        "Got control message: %s: %s",
+                        utils.jid_to_str(jid_from),
+                        message.info.id,
+                    )
+                    await self._dispatch_control(message, source_hash)
             else:
                 self.logger.info(
-                    "Got control message: %s: %s",
+                    "Got normal message: %s: %s",
                     utils.jid_to_str(jid_from),
                     message.info.id,
                 )
-                try:
-                    await self._dispatch_control(message, source_hash)
-                except Exception:
-                    self.logger.exception(
-                        "Exception handling message... attempting to continue"
-                    )
-        else:
-            self.logger.info(
-                "Got normal message: %s: %s",
-                utils.jid_to_str(jid_from),
-                message.info.id,
-            )
-            try:
                 await self.on_message(
                     message,
                     is_history=is_history,
                     is_archive=is_archive,
                     archive_data=archive_data,
                 )
-            except Exception:
-                self.logger.exception(
-                    "Exception handling message... attempting to continue"
-                )
+        except grpc.aio._call.AioRpcError as e:
+            if e.code() == grpc.StatusCode.UNAUTHENTICATED:
+                self.logger.critical("Bot unauthenticated. Disconnecting")
+                raise e
+            self.logger.exception(
+                "Exception handling message... attempting to continue"
+            )
+        except Exception:
+            self.logger.exception(
+                "Exception handling message... attempting to continue"
+            )
 
     async def _dispatch_control(self, message, source_hash):
         if message.info.source.isFromMe:

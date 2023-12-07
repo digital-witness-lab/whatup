@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 IGNORED_FIELDS = set(("originalMessage", "mediaMessage"))
+RECORD_MTIME_FIELD = "record_mtime"
 
 
 def flatten_proto_message(
@@ -138,6 +139,7 @@ class DatabaseBot(BaseBot):
         **kwargs,
     ):
         kwargs["mark_messages_read"] = True
+        kwargs["read_historical_messages"] = True
         super().__init__(*args, **kwargs)
         self.group_info_refresh_time = group_info_refresh_time
         self.db: dataset.Database = dataset.connect(database_url)
@@ -275,6 +277,7 @@ class DatabaseBot(BaseBot):
         self,
         message: wuc.WUMessage,
         is_archive: bool,
+        is_history: bool,
         archive_data: ArchiveData,
         **kwargs,
     ):
@@ -298,15 +301,19 @@ class DatabaseBot(BaseBot):
                     {"id": source_message_id, "isDelete": True}, ["id"]
                 )
         else:
-            await self._update_message(message, is_archive, archive_data)
+            await self._update_message(message, is_archive, is_history, archive_data)
 
     async def _update_message(
-        self, message: wuc.WUMessage, is_archive: bool, archive_data: ArchiveData
+        self,
+        message: wuc.WUMessage,
+        is_archive: bool,
+        is_history: bool,
+        archive_data: ArchiveData,
     ):
         message_flat = flatten_proto_message(message)
         media_filename = utils.media_message_filename(message)
         with self.db as db:
-            if message.info.source.isGroup:
+            if message.info.source.isGroup and not is_history:
                 self.logger.debug(
                     "Updating group or community groups: %s", message.info.id
                 )
@@ -348,6 +355,7 @@ class DatabaseBot(BaseBot):
             )
             return
         datum["content"] = content
+        datum[RECORD_MTIME_FIELD] = datetime.now()
         self.db["media"].insert(datum)
 
     async def _update_group_or_community(
@@ -400,6 +408,7 @@ class DatabaseBot(BaseBot):
     async def insert_group_info(
         self, db: dataset.Database, group_info: wuc.GroupInfo, update_time: datetime
     ):
+        now = datetime.now()
         chat_jid = utils.jid_to_str(group_info.JID)
         logger = self.logger.getChild(chat_jid)
         group_info_flat = flatten_proto_message(
@@ -448,6 +457,8 @@ class DatabaseBot(BaseBot):
                 if group_first_seen := group_info_prev.get("first_seen"):
                     group_info_flat["first_seen"] = group_first_seen
 
+                group_info_flat[RECORD_MTIME_FIELD] = now
+                group_info_prev[RECORD_MTIME_FIELD] = now
                 db["group_info"].delete(id=prev_id)
                 db["group_info"].insert(group_info_prev)
                 db["group_info"].upsert(group_info_flat, ["id"])
@@ -457,11 +468,13 @@ class DatabaseBot(BaseBot):
                         "id": chat_jid,
                         "last_update": update_time,
                         "provenance": group_info_prev.get("provenance"),
+                        RECORD_MTIME_FIELD: now,
                     },
                     ["id"],
                 )
         elif not group_info_prev:
             group_info_flat["first_seen"] = update_time
+            group_info_flat[RECORD_MTIME_FIELD] = now
             db["group_info"].insert(group_info_flat)
 
         logger.info("Updating group: %s", chat_jid)
@@ -474,12 +487,14 @@ class DatabaseBot(BaseBot):
                 participant["first_seen"] = update_time
             participant["last_seen"] = update_time
             participant["chat_jid"] = chat_jid
+            participant[RECORD_MTIME_FIELD] = now
 
         logger.debug("Updating participants for group/community: %s", chat_jid)
         db["group_participants"].upsert_many(group_participants, ["JID", "chat_jid"])
 
     async def _update_edit(self, message: wuc.WUMessage):
         message_flat = flatten_proto_message(message)
+        message_flat[RECORD_MTIME_FIELD] = datetime.now()
         source_message_id = message.content.inReferenceToId
         message_flat["id"] = source_message_id
         with self.db as db:
@@ -490,11 +505,14 @@ class DatabaseBot(BaseBot):
                 id_ = source_message["id"] = f"{source_message_id}-{N:03d}"
                 message_flat["previous_version_id"] = id_
                 message_flat["previous_version_text"] = source_message["text"]
+                source_message[RECORD_MTIME_FIELD] = datetime.now()
                 db["messages"].insert(source_message)
             db["messages"].upsert(message_flat, ["id"])
 
     async def _update_reaction(self, message: wuc.WUMessage):
+        now = datetime.now()
         message_flat = flatten_proto_message(message)
+        message_flat[RECORD_MTIME_FIELD] = now
         source_message_id = message.content.inReferenceToId
         with self.db as db:
             source_message = db["messages"].find_one(id=source_message_id)
@@ -507,6 +525,6 @@ class DatabaseBot(BaseBot):
             reaction_counts[message.content.text] += 1
             db["reactions"].upsert(message_flat, ["id"])
             db["messages"].upsert(
-                {"id": source_message_id, "reaction_counts": reaction_counts},
+                {"id": source_message_id, "reaction_counts": reaction_counts, RECORD_MTIME_FIELD: now},
                 ["id"],
             )

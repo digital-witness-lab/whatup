@@ -15,6 +15,7 @@ case $app_command in
     archivebot)
         exec whatupy --host "${WHATUPCORE2_HOST}" \
             --port 443 \
+            --debug \
             archivebot \
             --archive-dir "gs://${MESSAGE_ARCHIVE_BUCKET}/" \
             "kek+gs://${SESSIONS_BUCKET}/"
@@ -31,6 +32,7 @@ case $app_command in
     registerbot)
         exec whatupy --host "${WHATUPCORE2_HOST}" \
             --port 443 \
+            --debug \
             registerbot \
             --database-url "${DATABASE_URL}" \
             --sessions-url "kek+gs://${SESSIONS_BUCKET}/${SESSIONS_USER_SUBDIR}/" \

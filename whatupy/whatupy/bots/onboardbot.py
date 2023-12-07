@@ -1,9 +1,9 @@
 from datetime import datetime
 
 from .. import NotRegisteredError, utils
-from . import BaseBot
+from ..credentials_manager import Credential, CredentialsManager
 from ..protos import whatupcore_pb2 as wuc
-from ..credentials_manager import CredentialsManager, Credential
+from . import BaseBot
 
 
 class OnboardBot(BaseBot):

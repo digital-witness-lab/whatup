@@ -1,21 +1,20 @@
 import asyncio
-from pathlib import Path
-from collections import defaultdict
-from functools import partial
-import typing as T
-import logging
 import hashlib
 import json
+import logging
+import typing as T
+from collections import defaultdict
+from functools import partial
+from pathlib import Path
 
 import dataset
 
-from . import BaseBot, MediaType
 from .. import utils
-from ..protos import whatupcore_pb2 as wuc
-from ..device_manager import DeviceManager
 from ..credentials_manager import CredentialsManagerCloudPath
+from ..device_manager import DeviceManager
+from ..protos import whatupcore_pb2 as wuc
+from . import BaseBot, MediaType
 from .static import static_files
-
 
 logger = logging.getLogger(__name__)
 

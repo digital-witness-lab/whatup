@@ -27,8 +27,8 @@ service WhatUpCore {
     rpc GetGroupInfoInvite(InviteCode) returns (GroupInfo) {}
     rpc JoinGroup(InviteCode) returns (GroupInfo) {}
 
-    rpc GetMessages(MessagesOptions) returns (stream WUMessage) {}
-    rpc GetPendingHistory(PendingHistoryOptions) returns (stream WUMessage) {}
+    rpc GetMessages(MessagesOptions) returns (stream MessageStream) {}
+    rpc GetPendingHistory(PendingHistoryOptions) returns (stream MessageStream) {}
     // DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
     rpc DownloadMedia(DownloadMediaOptions) returns (MediaContent) {}
 
@@ -36,6 +36,13 @@ service WhatUpCore {
     rpc SetDisappearingMessageTime(DisappearingMessageOptions) returns (DisappearingMessageResponse) {}
 
     rpc Unregister(UnregisterOptions) returns (ConnectionStatus) {}
+}
+
+message MessageStream {
+    google.protobuf.Timestamp timestamp = 1;
+    bool isHeartbeat = 2;
+
+    WUMessage content = 20;
 }
 
 message UnregisterOptions {
@@ -122,7 +129,9 @@ message DownloadMediaOptions {
 }
 
 message PendingHistoryOptions {
-    uint32 historyReadTimeout = 1;
+    reserved "historyReadTimeout";
+    reserved 1;
+    uint32 heartbeatTimeout = 40;
 }
 
 message SendMessageReceipt {
@@ -200,6 +209,11 @@ message ConnectionStatusOptions {
 message MessagesOptions {
     // Whether to mark messages as read when they are recieved
     bool markMessagesRead = 1; 
+
+    // last message seen by client in order to only recieve newer messages
+    google.protobuf.Timestamp lastMessageTimestamp = 20;
+
+    uint32 heartbeatTimeout = 40;
 }
 
 message SessionToken {

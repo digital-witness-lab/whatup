@@ -1,19 +1,15 @@
-import logging
 import asyncio
-import json
 import glob
+import json
 import typing as T
 
 from cloudpathlib import AnyPath
 
 from .credentials_manager import (
-    CredentialsManager,
     Credential,
+    CredentialsManager,
     IncompleteCredentialsException,
 )
-
-
-logger = logging.getLogger(__name__)
 
 
 class CredentialsManagerCloudPath(CredentialsManager):
@@ -23,9 +19,9 @@ class CredentialsManagerCloudPath(CredentialsManager):
         r"^\./",  # relative file spec
     ]
 
-    def __init__(self, path: str, timeout: int = 60):
-        self.path = AnyPath(path)
-        logger.info("Managing credentials for path: %s", self.path)
+    def __init__(self, url: str, timeout: int = 60):
+        super().__init__(url)
+        self.path = AnyPath(url)
         self.active_usernames: T.Dict[str, AnyPath] = {}
         self.timeout = timeout
         self.blocker = asyncio.Event()
@@ -45,7 +41,7 @@ class CredentialsManagerCloudPath(CredentialsManager):
         return should_loop, credentials
 
     def read_credential(self, path: AnyPath) -> Credential:
-        logger.debug("Reading credentials: %s", str(path))
+        self.logger.debug("Reading credentials: %s", str(path))
         credential = json.load(path.open())
         try:
             return Credential(**credential)
@@ -57,7 +53,7 @@ class CredentialsManagerCloudPath(CredentialsManager):
     def write_credential(self, credential: Credential):
         self.path.mkdir(parents=True, exist_ok=True)
         path = self.path / f"{credential.username}.json"
-        logger.info("Writing credentials: %s", str(path))
+        self.logger.info("Writing credentials: %s", str(path))
         with path.open("w+") as fd:
             json.dump(credential.asdict(), fd)
 
@@ -66,19 +62,20 @@ class CredentialsManagerCloudPath(CredentialsManager):
             credential = self.read_credential(credential_file)
             username = credential.username
             if username not in self.active_usernames:
-                logger.info(
-                    "Found new credential to connect to: %s: %s",
+                self.logger.info(
+                    "Found new credential to connect to: %s: %s: %s",
+                    list(self.active_usernames.keys()),
                     username,
                     credential_file,
                 )
                 self.active_usernames[username] = credential_file
                 await device_manager.on_credentials(self, credential)
         except ValueError:
-            logger.exception(f"Could not parse credential: {credential_file}")
+            self.logger.exception(f"Could not parse credential: {credential_file}")
             return
 
     async def listen(self, device_manager):
-        logger.info("CredentialsManagerFile listening to path: %s", self.path)
+        self.logger.info("CredentialsManagerFile listening to path: %s", self.path)
         should_loop = True
         while should_loop or (await self.blocker.wait()):
             self.blocker.clear()
@@ -88,16 +85,16 @@ class CredentialsManagerCloudPath(CredentialsManager):
             await asyncio.sleep(self.timeout)
 
     def mark_dead(self, username):
-        logger.info("Marking user dead: %s", username)
+        self.logger.info("Marking user dead: %s", username)
         self.active_usernames.pop(username, None)
         self.blocker.set()
 
     def unregister(self, username):
         credential_file = self.active_usernames.pop(username)
-        logger.info("Removing session file: %s", credential_file)
+        self.logger.info("Removing session file: %s", credential_file)
         try:
             credential_file.unlink(missing_ok=True)
         except OSError as e:
-            logger.critical(
+            self.logger.critical(
                 "Could not remove credentials file: %s: %s", credential_file, e
             )
