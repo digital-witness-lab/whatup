@@ -15,5 +15,5 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Lint
-        run: make lint
+        run: make lint-ci
         working-directory: infrastructure
