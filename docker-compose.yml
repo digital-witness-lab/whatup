@@ -116,7 +116,7 @@ services:
     volumes:
       - ./data/message-archive/:/usr/src/whatupy-data/archive/:ro
     #command: sh -c "whatupy --debug databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_MESSAGES_PASSWORD_FILE})@db/messages\" '/usr/src/whatupy-data/archive/120363023974439113@g.us/*_*.json'"
-    command: sh -c "ls /usr/src/whatupy-data/archive/ | xargs -n 1 -P 6 -I{} whatupy databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_MESSAGES_PASSWORD_FILE})@db/messages\" '/usr/src/whatupy-data/archive/{}/*_*.json'"
+    command: sh -c "ls /usr/src/whatupy-data/archive/ | xargs -P 6 -I{} whatupy databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_MESSAGES_PASSWORD_FILE})@db/messages\" '/usr/src/whatupy-data/archive/{}/*_*.json'"
 
   bot-onboard-bulk:
     image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
