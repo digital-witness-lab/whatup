@@ -1,9 +1,9 @@
 package whatupcore2
 
 const (
-	WhatUpCoreVersion = "0.1.0"
+	WhatUpCoreVersion = "1.0.0"
 )
 
 var (
-	WhatUpCoreVersionInts = [3]uint32{0, 1, 0}
+	WhatUpCoreVersionInts = [3]uint32{1, 0, 0}
 )

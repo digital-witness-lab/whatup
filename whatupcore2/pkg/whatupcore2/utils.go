@@ -1,6 +1,8 @@
 package whatupcore2
 
 import (
+	"fmt"
+	"os"
 	"reflect"
 
 	"github.com/nyaruka/phonenumbers"
@@ -160,6 +162,14 @@ func findFieldNameFunc(input interface{}, fieldFunc func(string) bool) []reflect
 
 func getEnvAsBoolean(value string) bool {
 	return value == "true"
+}
+
+func mustGetEnv(key string) string {
+	value, found := os.LookupEnv(key)
+	if !found {
+		panic(fmt.Sprintf("Could not find required envvar: %s", key))
+	}
+	return value
 }
 
 func min[T constraints.Ordered](a, b T) T {

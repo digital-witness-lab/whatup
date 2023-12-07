@@ -33,7 +33,7 @@ message_archive_bucket_perm = storage.BucketIAMMember(
 )
 
 media_bucket_perm = storage.BucketIAMMember(
-    "bot-db-media-perm",
+    "db-ld-media-perm",
     storage.BucketIAMMemberArgs(
         bucket=media_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
