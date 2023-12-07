@@ -45,7 +45,7 @@ COPY --from=builder /lib64/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2
 # Copy the tools we need in this final image.
 COPY --from=builder /bin/bash /bin/bash
 COPY --from=builder /usr/bin/env /usr/bin/env
-COPY --from=builder /bin/mkdir /bin/mkdir
+COPY --from=builder /bin/cat /bin/cat
 
 # Finally, copy the app binary and related scripts.
 COPY --from=builder /build/whatupcore2 /whatupcore2
