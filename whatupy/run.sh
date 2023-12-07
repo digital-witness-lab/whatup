@@ -26,6 +26,7 @@ case $app_command in
             --port 443 \
             databasebot \
             --database-url "${DATABASE_URL}" \
+            --media-base "gs://${MEDIA_BUCKET}/" \
             "kek+gs://${SESSIONS_BUCKET}/" 
     ;;
 
@@ -53,7 +54,14 @@ case $app_command in
     ;;
 
     load-archive)
-        ( gsutil ls "gs://${MESSAGE_ARCHIVE_BUCKET}/" | xargs -n 1 -P 6 -I{} whatupy databasebot-load-archive --database-url ${DATABASE_URL} '{}/*_*.json' )
+        ( gsutil ls "gs://${MESSAGE_ARCHIVE_BUCKET}/" | \
+            xargs -n 1 -P 6 -I{} \
+                whatupy \
+                    databasebot-load-archive \
+                    --database-url ${DATABASE_URL} \
+                    --media-base "gs://${MEDIA_BUCKET}/" \
+                    '{}/*_*.json' 
+        )
         exit $?
     ;;
 

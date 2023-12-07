@@ -29,3 +29,14 @@ message_archive_bucket = storage.Bucket(
     ),
     opts=ResourceOptions(protect=is_prod_stack()),
 )
+
+media_bucket = storage.Bucket(
+    "dwl-media",
+    storage.BucketArgs(
+        location=location,
+        versioning=storage.BucketVersioningArgs(enabled=False),
+        public_access_prevention="enforced",
+        force_destroy=False if is_prod_stack() else True,
+    ),
+    opts=ResourceOptions(protect=is_prod_stack()),
+)
