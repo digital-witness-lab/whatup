@@ -8,7 +8,11 @@ from pulumi_gcp.cloudrunv2 import (
 
 from service import Service, ServiceArgs
 from network import vpc, private_services_network_with_db
-from dwl_secrets import db_url_secrets, whatup_salt_secret
+from dwl_secrets import (
+    db_url_secrets,
+    whatup_salt_secret,
+    whatup_anon_key_secret,
+)
 from config import is_prod_stack
 from artifact_registry import whatupcore2_image
 
@@ -49,6 +53,24 @@ whatup_salt_secret_source = (
     cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
         secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
             secret=whatup_salt_secret.name,
+            version="latest",
+        )
+    )
+)
+
+anon_key_secret_manager_perm = secretmanager.SecretIamMember(
+    "whatupcore-anon-key-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=whatup_anon_key_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+
+whatup_anon_key_secret_source = (
+    cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
+        secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
+            secret=whatup_anon_key_secret.name,
             version="latest",
         )
     )
@@ -97,6 +119,10 @@ whatupcore2_service = Service(
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="ENC_KEY_SALT",
                 value_source=whatup_salt_secret_source,
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="ANON_KEY",
+                value_source=whatup_anon_key_secret_source,
             ),
         ],
     ),

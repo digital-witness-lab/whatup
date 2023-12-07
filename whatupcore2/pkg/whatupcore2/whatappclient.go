@@ -25,7 +25,6 @@ import (
 )
 
 const (
-	DB_ROOT         = "db"
 	CONNECT_TIMEOUT = 5 * time.Second
 	HISTORY_TIMEOUT = 10 * time.Minute // time to wait for a request for history messages before getting rid of the history event handler
 )

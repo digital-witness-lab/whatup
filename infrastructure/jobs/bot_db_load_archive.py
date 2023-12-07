@@ -12,7 +12,7 @@ from dwl_secrets import db_url_secrets
 from job import JobArgs, Job
 from jobs.db_migrations import migrations_job_complete
 from network import vpc, private_services_network_with_db
-from storage import message_archive_bucket
+from storage import message_archive_bucket, media_bucket
 from artifact_registry import whatupy_image
 
 service_name = "bot-db-load-archive"
@@ -29,6 +29,15 @@ message_archive_bucket_perm = storage.BucketIAMMember(
         bucket=message_archive_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
         role="roles/storage.objectViewer",
+    ),
+)
+
+media_bucket_perm = storage.BucketIAMMember(
+    "db-ld-media-perm",
+    storage.BucketIAMMemberArgs(
+        bucket=media_bucket.name,
+        member=Output.concat("serviceAccount:", service_account.email),
+        role="roles/storage.objectAdmin",
     ),
 )
 
@@ -78,9 +87,9 @@ if create_load_archive_job:
                     name="MESSAGE_ARCHIVE_BUCKET",
                     value=message_archive_bucket.name,
                 ),
-                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                    name="MESSAGE_ARCHIVE_BUCKET_MNT_DIR",
-                    value="message-archive/",
+                cloudrunv2.ServiceTemplateContainerEnvArgs(
+                    name="MEDIA_BUCKET",
+                    value=media_bucket.name,
                 ),
                 # Create an implicit dependency on the migrations
                 # job completing successfully.
@@ -94,6 +103,7 @@ if create_load_archive_job:
         opts=ResourceOptions(
             depends_on=[
                 message_archive_bucket_perm,
+                media_bucket_perm,
                 secret_manager_perm,
             ]
         ),

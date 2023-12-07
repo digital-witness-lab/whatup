@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	_ANON_KEY        = []byte("71b8e9c8f7ca3b00936f62db2e2593fd6abd74dd743453e188b7aa7075b8f991")
+	_ANON_KEY        = []byte(mustGetEnv("ANON_KEY"))
 	ANON_VERSION     = "v001"
 	ANONYMIZE_FIELDS = [...]string{"FullName", "FirstName", "PushName"}
 )

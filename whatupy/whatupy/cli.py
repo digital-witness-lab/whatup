@@ -8,8 +8,15 @@ from pathlib import Path
 import click
 from cloudpathlib import AnyPath
 
-from .bots import (ArchiveBot, ChatBot, DatabaseBot, DebugBot, OnboardBot,
-                   RegisterBot, UserServicesBot)
+from .bots import (
+    ArchiveBot,
+    ChatBot,
+    DatabaseBot,
+    DebugBot,
+    OnboardBot,
+    RegisterBot,
+    UserServicesBot,
+)
 from .credentials_manager import CredentialsManager
 from .device_manager import run_multi_bots
 from .protos import whatupcore_pb2 as wuc
@@ -212,10 +219,7 @@ async def archivebot(ctx, credentials, archive_dir: AnyPath):
 @async_cli
 @click.option("--database-url", type=str)
 @click.option(
-    "--archive-files",
-    type=str,
-    default=None,
-    help="File glob for archived messages to load. Will load the messages then quit",
+    "--media-base", type=click.Path(path_type=AnyPath), default=Path("./dbmedia/")
 )
 @click.argument("credentials", nargs=-1)
 @click.pass_context
@@ -223,21 +227,24 @@ async def databasebot(
     ctx,
     credentials,
     database_url,
-    archive_files,
+    media_base,
 ):
     # TODO: docstring
 
-    params = {"database_url": database_url, **ctx.obj["connection_params"]}
-    if archive_files:
-        db = DatabaseBot(connect=False, **params)
-        await db.process_archive(archive_files)
-        return
+    params = {
+        "database_url": database_url,
+        "media_base_path": media_base,
+        **ctx.obj["connection_params"],
+    }
     await run_multi_bots(DatabaseBot, credentials, params)
 
 
 @cli.command("databasebot-load-archive")
 @async_cli
 @click.option("--database-url", type=str)
+@click.option(
+    "--media-base", type=click.Path(path_type=AnyPath), default=Path("./dbmedia/")
+)
 @click.argument(
     "archive-files",
     type=str,
@@ -248,11 +255,16 @@ async def databasebot_load_archive(
     ctx,
     database_url,
     archive_files,
+    media_base,
 ):
     """
     desc="File glob for archived messages to load. Will load the messages then quit",
     """
-    params = {"database_url": database_url, **ctx.obj["connection_params"]}
+    params = {
+        "database_url": database_url,
+        "media_base_path": media_base,
+        **ctx.obj["connection_params"],
+    }
     db = DatabaseBot(connect=False, **params)
 
     filenames = []
