@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Self, Dict
+from typing import Self, Dict
 import pulumi
 
 
@@ -7,7 +7,7 @@ import pulumi
 class DatabaseConfig:
     name: str
     name_short: str
-    password: str
+    password: pulumi.Output[str]
 
     @classmethod
     def from_config(cls, config: pulumi.Config, obj: Dict) -> Self:

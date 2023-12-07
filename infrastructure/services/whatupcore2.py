@@ -1,7 +1,5 @@
-from os import path
-
 from pulumi import get_stack, ResourceOptions, Output
-from pulumi_gcp import serviceaccount, cloudrunv2, storage, secretmanager
+from pulumi_gcp import serviceaccount, cloudrunv2, secretmanager
 from pulumi_gcp.cloudrunv2 import (
     ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
 )  # noqa: E501

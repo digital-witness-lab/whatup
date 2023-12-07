@@ -1,7 +1,7 @@
 from pulumi import get_stack, ResourceOptions, Output
-from pulumi_gcp import cloudrunv2, serviceaccount, secretmanager, storage
+from pulumi_gcp import cloudrunv2, serviceaccount, secretmanager
 from pulumi_gcp.cloudrunv2 import (
-    ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
+    JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
 )  # noqa: E501
 
 from job import JobArgs, Job
@@ -27,12 +27,10 @@ salt_secret_manager_perm = secretmanager.SecretIamMember(
     ),
 )
 
-whatup_salt_secret_source = (
-    cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
-        secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
-            secret=whatup_salt_secret.name,
-            version="latest",
-        )
+whatup_salt_secret_source = cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+    secret_key_ref=JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+        secret=whatup_salt_secret.name,
+        version="latest",
     )
 )
 
@@ -45,8 +43,8 @@ db_secret_manager_perm = secretmanager.SecretIamMember(
     ),
 )
 
-db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
-    secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
+db_url_secret_source = cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+    secret_key_ref=JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
         secret=db_url_secrets["whatupcore"].name,
         version="latest",
     )
@@ -63,17 +61,17 @@ whatupcore2_rmuser_job = Job(
         # We want this service to only be reachable from within
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
-        subnet=cloudrunv2.ServiceTemplateVpcAccessNetworkInterfaceArgs(
+        subnet=cloudrunv2.JobTemplateTemplateVpcAccessNetworkInterfaceArgs(
             network=vpc.id, subnetwork=private_services_network_with_db.id
         ),
         memory="1Gi",
         service_account=service_account,
         envs=[
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
+            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                 name="DATABASE_URL",
                 value_source=db_url_secret_source,
             ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
+            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                 name="ENC_KEY_SALT",
                 value_source=whatup_salt_secret_source,
             ),

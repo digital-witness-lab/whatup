@@ -1,7 +1,5 @@
-from typing import Optional
-
 import pulumi_docker as docker
-from pulumi import get_stack, ResourceOptions, Output
+from pulumi import get_stack, Output
 from pulumi_gcp import artifactregistry
 
 from config import location, project
