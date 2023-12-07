@@ -5,6 +5,11 @@ app_command=$1
 
 echo "Starting whatupcore2..."
 
+if [ -e /run/secrets/whatupcore-anon-key ]; then
+    echo "Setting ANON_KEY from docker secret"
+    export ANON_KEY=$( cat /run/secrets/whatupcore-anon-key )
+fi
+
 # Start the application
 case $app_command in
     rpc)

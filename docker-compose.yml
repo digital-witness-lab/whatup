@@ -9,6 +9,8 @@ secrets:
     file: ./data/static/dev/postgres-messages-passwd.secret
   postgres-whatupcore-passwd:
     file: ./data/static/dev/postgres-whatupcore-passwd.secret
+  whatupcore-anon-key:
+    file: ./data/static/dev/whatupcore-anon-key.secret
 
 services:
   whatup:
@@ -29,6 +31,7 @@ services:
       - ssl-cert
       - ssl-key
       - postgres-whatupcore-passwd
+      - whatupcore-anon-key
     command: rpc --log-level DEBUG
 
   db:
