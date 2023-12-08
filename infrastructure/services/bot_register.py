@@ -37,7 +37,7 @@ sessions_bucket_perm = storage.BucketIAMMember(
 secret_manager_perm = secretmanager.SecretIamMember(
     "bot-reg-secret-perm",
     secretmanager.SecretIamMemberArgs(
-        secret_id=db_url_secrets["user"].id,
+        secret_id=db_url_secrets["users"].id,
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
@@ -54,7 +54,7 @@ encryption_key_perm = kms.CryptoKeyIAMMember(
 
 db_usr_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
-        secret=db_url_secrets["user"].name,
+        secret=db_url_secrets["users"].name,
         version="latest",
     )
 )
