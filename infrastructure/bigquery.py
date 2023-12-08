@@ -1,4 +1,4 @@
-from pulumi import Output
+from pulumi import Output, get_stack, ResourceOptions
 
 from pulumi_gcp import projects
 
@@ -19,6 +19,9 @@ from database import primary_cloud_sql_instance
 messages_dataset = bigquery.v2.Dataset(
     "messages",
     bigquery.v2.DatasetArgs(
+        dataset_reference=bigquery.v2.DatasetReferenceArgs(
+            dataset_id=f"messages_{get_stack()}",
+        ),
         description="BigQuery dataset for the messages DB.",
         location=location,
         friendly_name="messages",
@@ -55,6 +58,9 @@ projects.IAMMember(
     ),
     project=project,
     role="roles/cloudsql.client",
+    opts=ResourceOptions(
+        depends_on=[bigquery_sql_connection],
+    ),
 )
 
 source_tables = [
@@ -102,15 +108,15 @@ THEN
     INSERT row;"""
         )
     )
+
     dts.v1.TransferConfig(
-        f"messages-{table}",
+        f"msg-{table}-{get_stack()}-trans",
         dts.v1.TransferConfigArgs(
             destination_dataset_id=messages_dataset.id,
             display_name=f"Copy messages.{table} data",
             data_source_id="scheduled_query",
             params={
                 "query": query,
-                "write_disposition": "WRITE_TRUNCATE",
                 "partitioning_field": "",
             },
             schedule="every 24 hours" if is_prod_stack() else None,
