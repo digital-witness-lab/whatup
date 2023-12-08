@@ -35,7 +35,7 @@ bigquery_sql_connection = bigqueryconnection.v1beta1.Connection(
         friendly_name="messages",
         description="Connection resource for running federated queries in BigQuery.",  # noqa: E501
         cloud_sql=CloudSqlPropertiesArgs(
-            instance_id=primary_cloud_sql_instance.id,
+            instance_id=primary_cloud_sql_instance.connection_name,
             database="messages",
             type=CloudSqlPropertiesType.POSTGRES,
         ),
@@ -80,33 +80,25 @@ source_tables = [
 # https://cloud.google.com/bigquery/docs/scheduling-queries
 
 for table in source_tables:
-    query = (
-        Output.concat(
-            f"""
-MERGE INTO messages.{table} AS bq
-USING"""
-        )
-        .concat("SELECT * FROM EXTERNAL_QUERY(")
-        # Quote the connection id.
-        .concat('"')
-        .concat(bigquery_sql_connection.id)
-        .concat('"')
-        .concat(",")
-        # Quote the external query also.
-        .concat(f'"SELECT * FROM {table};"')
-        # Close the EXTERNAL_QUERY function call.
-        .concat(") ")
-        .concat(
-            """AS pg
-ON
-    bq.id = pg.id AND bq.record_mtime = pg.record_mtime
-WHEN NOT MATCHED BY SOURCE
-THEN
-    delete
-WHEN NOT MATCHED BY TARGET
-THEN
-    INSERT row;"""
-        )
+    query = Output.all(table=table, conn_id=bigquery_sql_connection.id).apply(
+        lambda args: f"""
+    MERGE INTO
+        messages.{table} AS bq
+    USING
+        SELECT *
+        FROM
+            EXTERNAL_QUERY(
+                "{args['conn_id']}",
+                "SELECT * FROM {args['table']};"
+            ) AS pg
+    ON
+        bq.id = pg.id AND bq.record_mtime = pg.record_mtime
+    WHEN NOT MATCHED BY SOURCE
+    THEN
+        delete
+    WHEN NOT MATCHED BY TARGET
+    THEN
+        INSERT row;"""
     )
 
     dts.v1.TransferConfig(
