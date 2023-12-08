@@ -1,0 +1,23 @@
+name: Lint infrastructure
+
+on:
+  push:
+    branches: main
+    paths:
+      - infrastructure/**
+      - .github/workflows/lint-infra.yml
+
+  pull_request:
+    paths:
+      - infrastructure/**
+      - .github/workflows/lint-infra.yml
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint
+        run: make lint-ci
+        working-directory: infrastructure

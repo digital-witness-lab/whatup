@@ -2,7 +2,7 @@ import hashlib
 from typing import List, Optional
 from attr import dataclass
 
-from pulumi import ComponentResource, get_stack, ResourceOptions, Output
+from pulumi import ComponentResource, ResourceOptions, Output
 
 import pulumi_docker as docker
 from pulumi_gcp import cloudrunv2, serviceaccount

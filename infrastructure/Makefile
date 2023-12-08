@@ -4,3 +4,7 @@ auth:
 	gcloud auth login
 	gcloud auth application-default login
 	gcloud auth configure-docker europe-west3-docker.pkg.dev
+
+lint-ci:
+	pip install -r requirements.txt
+	flake8 .

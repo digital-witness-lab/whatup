@@ -1,5 +1,3 @@
-from os import path
-
 from pulumi import get_stack, Output, ResourceOptions
 
 from pulumi_gcp import serviceaccount, cloudrunv2, secretmanager
