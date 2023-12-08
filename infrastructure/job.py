@@ -1,11 +1,11 @@
 from typing import List, Optional
 from attr import dataclass
 
-from pulumi import ComponentResource, Output, ResourceOptions
+from pulumi import ComponentResource, ResourceOptions
 import pulumi_docker as docker
-from pulumi_gcp import artifactregistry, cloudrunv2, serviceaccount
+from pulumi_gcp import cloudrunv2, serviceaccount
 
-from config import location, project
+from config import location
 from network_firewall import firewall_policy
 
 

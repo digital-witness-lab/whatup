@@ -1,5 +1,3 @@
-from os import path
-
 from pulumi import get_stack, ResourceOptions, Output
 from pulumi_gcp import cloudrunv2, kms, serviceaccount, storage
 

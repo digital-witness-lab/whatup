@@ -1,7 +1,5 @@
-from os import path
-
 from pulumi import get_stack, ResourceOptions, Output
-from pulumi_gcp import cloudrunv2, kms, secretmanager, serviceaccount, storage
+from pulumi_gcp import cloudrunv2, secretmanager, serviceaccount, storage
 from pulumi_gcp.cloudrunv2 import (
     JobTemplateTemplateContainerEnvValueSourceArgs,
     JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
@@ -87,7 +85,7 @@ if create_load_archive_job:
                     name="MESSAGE_ARCHIVE_BUCKET",
                     value=message_archive_bucket.name,
                 ),
-                cloudrunv2.ServiceTemplateContainerEnvArgs(
+                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                     name="MEDIA_BUCKET",
                     value=media_bucket.name,
                 ),
