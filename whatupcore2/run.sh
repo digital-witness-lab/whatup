@@ -24,7 +24,3 @@ case $app_command in
         exec /whatupcore2 remove-user ${WHATUPCORE2_REMOVE_USER}
     ;;
 esac
-
-
-# Exit immediately when one of the background processes terminate.
-wait -n
