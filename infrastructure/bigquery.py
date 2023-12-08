@@ -4,10 +4,10 @@ from pulumi_gcp import projects
 
 from pulumi_google_native import (
     bigquery,
-    bigqueryconnection,
     bigquerydatatransfer as dts,
 )
 from pulumi_google_native.bigqueryconnection.v1beta1 import (
+    Connection,
     ConnectionArgs,
     CloudSqlPropertiesArgs,
     CloudSqlPropertiesType,
@@ -28,11 +28,11 @@ messages_dataset = bigquery.v2.Dataset(
     ),
 )
 
-bigquery_sql_connection = bigqueryconnection.v1beta1.Connection(
+bigquery_sql_connection = Connection(
     "bg-to-sql",
     args=ConnectionArgs(
         location=location,
-        friendly_name="messages",
+        friendly_name=f"{get_stack()}_messages",
         description="Connection resource for running federated queries in BigQuery.",  # noqa: E501
         cloud_sql=CloudSqlPropertiesArgs(
             instance_id=primary_cloud_sql_instance.connection_name,
