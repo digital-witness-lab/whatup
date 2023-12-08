@@ -8,9 +8,9 @@ import typing as T
 from collections import defaultdict, deque, namedtuple
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import grpc
+from cloudpathlib import AnyPath
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from .. import utils
@@ -288,7 +288,7 @@ class BaseBot:
                         "Skipping control message because it's >1min old: %s: %s: %s",
                         utils.jid_to_str(jid_from),
                         message.info.id,
-                        message_age
+                        message_age,
                     )
                 else:
                     self.logger.info(
@@ -463,7 +463,7 @@ class BaseBot:
         self, filename, group_infos: T.Dict[str, wuc.GroupInfo]
     ):
         self.logger.info("Loading archive file: %s", filename)
-        filename_path = Path(filename)
+        filename_path = AnyPath(filename)
         with filename_path.open() as fd:
             message: wuc.WUMessage = utils.jsons_to_protobuf(fd.read(), wuc.WUMessage)
         chat_id = utils.jid_to_str(message.info.source.chat)
