@@ -63,9 +63,7 @@ source_tables = [
     "group_participants",
     "messages_seen",
     "messages",
-    # TODO: Exclude binary objects when dealing
-    # with the media table.
-    # "media",
+    "media",
 ]
 
 # Creates data transfer in Big Query (BQ) for
