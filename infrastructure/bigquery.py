@@ -24,7 +24,7 @@ messages_dataset = bigquery.v2.Dataset(
         ),
         description="BigQuery dataset for the messages DB.",
         location=location,
-        friendly_name="messages",
+        friendly_name=f"messages_{get_stack()}",
     ),
 )
 
@@ -32,7 +32,8 @@ bigquery_sql_connection = Connection(
     "bg-to-sql",
     args=ConnectionArgs(
         location=location,
-        friendly_name=f"{get_stack()}_messages",
+        connection_id=f"messages_{get_stack()}",
+        friendly_name=f"messages_{get_stack()}",
         description="Connection resource for running federated queries in BigQuery.",  # noqa: E501
         cloud_sql=CloudSqlPropertiesArgs(
             instance_id=primary_cloud_sql_instance.connection_name,
