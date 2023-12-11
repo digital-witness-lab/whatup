@@ -1,0 +1,27 @@
+config:
+  gcp:project: whatup-prod
+  gcp:region: us-central1
+  gcp:zone: us-central1-a
+  whatup:createOnboardBulkJob: "true"
+  whatup:databases:
+    - name: messages
+      nameShort: msg
+      passwordKey: msgPassword
+    - name: whatupcore
+      nameShort: wuc
+      passwordKey: wucPassword
+    - name: users
+      nameShort: usr
+      passwordKey: usrPassword
+  whatup:dbRootPassword:
+    secure: AAABAFv5380VKtGKsITAlanHzAjVOci131oKQuXaBeMKjjMjcus/2GOnETe9CqKmgKepFb8jIZ6IXkPuAxzHsDugI2epgcevxpU/7/WcHOdf6zO9PxMR+iV8N43uKnmLc4FY0VhG4V7J6RVGejPwJN5Um1Aq0y4LsndbOsUmxPAhbRHzScK7Zc9TcTYHF+uMdDunFa/q6L0FOligDP4Ckw==
+  whatup:msgPassword:
+    secure: AAABAPft8aaBuey6IpzgenxXImjFxNmYYOckUp+a9XrXmlLU13C4H6ajxAdKJ7JMFg1UOYvLWWESI7iWpGBc6pCRb/Cg6/aGbqyNi5iY+aqYlPaiyYEvolFyuMP77H1a4/83ict2ooffR95bDlaHdpo98pjweIUb7sbwu1E0ojk5JOvGycahMxszFY/3zbvgipiXsvkKjoXl4fKXJageUw==
+  whatup:usrPassword:
+    secure: AAABAEAmTtZjTL1be4uv48gNkr05KhIaCy+60iiwKazYu0iQlz1ZO5jLVVhDumQdfJdD3LwjENDhQqsLALeAN9eg7aGAqXsTWHhSamaeO0gWfrODBkUDAnh+CpZh5DJ1twPYltbJ/735lL/EXF4fFUeNVcUM9bKWReANpo/nC3SyG3hd5/lw8yIK7ZqljunpIzNriBFqilGqmd3Q6zC5/Q==
+  whatup:whatupAnonKey:
+    secure: AAABAKj9qj4TvvSCPvuJqDb4cIfZsVvrEzr4SoOIGPcpsNPAF+q6GUxhpWAy5WAlEQKdc7ZV3Nq49q7eOs3Fc+kHlcntWMWoVCxippyIqJrm+xAO0tRHoE+k+4Gb9/ws
+  whatup:whatupSalt:
+    secure: AAABAIvDi1nskbCLLSHpB8mwBbx53znHjUTLwPq2AfB1RKz3i602Znzxl/VNGmmrFU5Tx7P7FH9If9ykF+SF4QD9ed23EItQGLVqArCXK6tynDwnOUwi6IbU89fWscfWoceGAJMMsc+GlJJT5sVPogMkcextSmJ17s+6t1vvBXjxfYV/SDSg6QZPazAv2x6/ZPXDdFLL7jLDjYZ8GCHIOQ==
+  whatup:wucPassword:
+    secure: AAABALU0dLM7ZTaA3CyuRgWt0MiDPRhLcQI55QDU/TqT4iNSXFCfluMAPM3o7OW5hZt9WY/5Ffqt0Gajhs+S+/Muy6XIpVQ0AHVJjQ+//YuSx7G4IJhSHLhx/2LRzIiCyTmVrs4GvK3QomONoq8IsryAwPkbPtsrk+SmlnryPOjJDKxv6lwMiRJ+DUzosbw9Tupl1yBxMvZ9aLjkpb9M8g==

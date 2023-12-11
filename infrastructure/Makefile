@@ -1,9 +1,18 @@
-.PHONY: auth
+.PHONY: auth auth-test auth-prod lint-ci
+
+auth-test:
+	pulumi stack select test
+	make auth
+
+auth-prod:
+	pulumi stack select prod
+	make auth
 
 auth:
 	gcloud auth login
 	gcloud auth application-default login
-	gcloud auth configure-docker europe-west3-docker.pkg.dev
+	gcloud config set project $$( pulumi config get gcp:project )
+	gcloud auth configure-docker $$( pulumi config get gcp:region )-docker.pkg.dev
 
 lint-ci:
 	pip install -r requirements.txt

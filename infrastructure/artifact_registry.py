@@ -23,7 +23,7 @@ repository_url = Output.concat(
 
 def create_image(image_name, app_path) -> docker.Image:
     return docker.Image(
-        image_name + "-img",
+        f"{image_name}-{get_stack()}-img",
         image_name=Output.concat(repository_url, "/", image_name),
         build=docker.DockerBuildArgs(
             context=app_path,
