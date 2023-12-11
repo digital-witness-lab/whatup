@@ -58,12 +58,14 @@ bigquery_sql_connection = Connection(
 default_bq_service_account_email = projects.get_project_output(
     filter=f"id:{project}"
 ).apply(
-    lambda p: f"serviceAccount:service-{p.projects[0].number}@gcp-sa-bigqueryconnection.iam.gserviceaccount.com"
+    lambda p: f"service-{p.projects[0].number}@gcp-sa-bigqueryconnection.iam.gserviceaccount.com"
 )
 
 bq_cloudsql_perm = projects.IAMMember(
     "bq-cloudsql-perm",
-    member=default_bq_service_account_email,
+    member=Output.concat("serviceAccount:").concat(
+        default_bq_service_account_email
+    ),
     project=project,
     role="roles/cloudsql.client",
     opts=ResourceOptions(
@@ -71,11 +73,19 @@ bq_cloudsql_perm = projects.IAMMember(
     ),
 )
 
-bq_account_iam = serviceaccount.IAMBinding(
-    "bq-account-iam",
-    service_account_id=default_bq_service_account_email,
-    role="roles/iam.serviceAccountUser",
-    members=["user:micha@digitalwitnesslab.org"],
+# Grant the bigquery.admin role to the default service account.
+# It's what is recommended by Google.
+# https://cloud.google.com/bigquery/docs/enable-transfer-service#grant_bigqueryadmin_access
+bq_admin_perm = projects.IAMMember(
+    "bq-admin-perm",
+    member=Output.concat("serviceAccount:").concat(
+        default_bq_service_account_email
+    ),
+    project=project,
+    role="roles/bigquery.admin",
+    opts=ResourceOptions(
+        depends_on=[bigquery_sql_connection],
+    ),
 )
 
 source_tables = [
@@ -133,7 +143,7 @@ for table in source_tables:
             depends_on=[
                 bigquery_sql_connection,
                 bq_cloudsql_perm,
-                bq_account_iam,
+                bq_admin_perm,
             ]
         ),
     )
