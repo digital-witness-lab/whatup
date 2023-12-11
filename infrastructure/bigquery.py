@@ -1,6 +1,6 @@
 from pulumi import Output, get_stack, ResourceOptions
 
-from pulumi_gcp import projects, serviceaccount
+from pulumi_gcp import projects
 
 from pulumi_google_native import (
     bigquery,
@@ -73,16 +73,34 @@ bq_cloudsql_perm = projects.IAMMember(
     ),
 )
 
-# Grant the bigquery.admin role to the default service account.
-# It's what is recommended by Google.
+# Create a custom role instead of using the broad-scoped
+# default role `bigquery.admin`. See that role for
+# relevant permissions to add to this role.
+transfers_role = projects.IAMCustomRole(
+    "bq-transfers-role",
+    projects.IAMCustomRoleArgs(
+        role_id=f"bq-transfers-role-{get_stack()}",
+        permissions=[
+            "bigquery.transfers.update",
+            "bigquery.transfers.get",
+            "bigquery.datasets.get",
+            "bigquery.datasets.update",
+            "bigquery.jobs.create",
+        ],
+        title="BigQuery Transfers Role",
+        stage="GA",
+    ),
+)
+
+# Grant the custom role to the default service account.
 # https://cloud.google.com/bigquery/docs/enable-transfer-service#grant_bigqueryadmin_access
-bq_admin_perm = projects.IAMMember(
+bq_transfers_perm = projects.IAMMember(
     "bq-admin-perm",
     member=Output.concat("serviceAccount:").concat(
         default_bq_service_account_email
     ),
     project=project,
-    role="roles/bigquery.admin",
+    role=Output.concat("roles/").concat(transfers_role.role_id),
     opts=ResourceOptions(
         depends_on=[bigquery_sql_connection],
     ),
@@ -143,7 +161,7 @@ for table in source_tables:
             depends_on=[
                 bigquery_sql_connection,
                 bq_cloudsql_perm,
-                bq_admin_perm,
+                bq_transfers_perm,
             ]
         ),
     )
