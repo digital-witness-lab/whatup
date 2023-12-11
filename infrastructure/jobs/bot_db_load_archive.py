@@ -59,7 +59,7 @@ db_migrations_job = Job(
     service_name,
     JobArgs(
         args=["/usr/src/whatupy/run.sh", "load-archive"],
-        cpu="1",
+        cpu="0.75",
         task_count=10,
         # Route all egress traffic via the VPC network.
         egress="ALL_TRAFFIC",
@@ -67,7 +67,7 @@ db_migrations_job = Job(
         # We want this service to only be reachable from within
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
-        memory="1Gi",
+        memory="2Gi",
         service_account=service_account,
         # Specifying the subnet causes CloudRun to use
         # Direct VPC egress for outbound traffic based
