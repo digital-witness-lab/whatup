@@ -1,6 +1,6 @@
 from pulumi import Output, get_stack, ResourceOptions
 
-from pulumi_gcp import projects
+from pulumi_gcp import projects, serviceaccount
 
 from pulumi_google_native import (
     bigquery,
@@ -11,9 +11,10 @@ from pulumi_google_native.bigqueryconnection.v1beta1 import (
     ConnectionArgs,
     CloudSqlPropertiesArgs,
     CloudSqlPropertiesType,
+    CloudSqlCredentialArgs,
 )
 
-from config import location, project, is_prod_stack
+from config import location, project, is_prod_stack, db_configs
 from database import primary_cloud_sql_instance
 
 dataset_id = f"messages_{get_stack()}"
@@ -30,6 +31,9 @@ messages_dataset = bigquery.v2.Dataset(
     ),
 )
 
+connection_credential = CloudSqlCredentialArgs(
+    username="messages", password=db_configs["messages"].password
+)
 bigquery_sql_connection = Connection(
     "bg-to-sql",
     args=ConnectionArgs(
@@ -41,6 +45,7 @@ bigquery_sql_connection = Connection(
             instance_id=primary_cloud_sql_instance.connection_name,
             database="messages",
             type=CloudSqlPropertiesType.POSTGRES,
+            credential=connection_credential,
         ),
     ),
 )
@@ -50,15 +55,15 @@ bigquery_sql_connection = Connection(
 # the project.
 #
 # https://cloud.google.com/bigquery/docs/connect-to-sql#access-sql
-service_account_name = projects.get_project_output(
+defaul_bq_service_account_email = projects.get_project_output(
     filter=f"id:{project}"
 ).apply(
     lambda p: f"serviceAccount:service-{p.projects[0].number}@gcp-sa-bigqueryconnection.iam.gserviceaccount.com"
 )
 
-service_account = projects.IAMMember(
+bq_cloudsql_perm = projects.IAMMember(
     "bq-cloudsql-perm",
-    member=service_account_name,
+    member=defaul_bq_service_account_email,
     project=project,
     role="roles/cloudsql.client",
     opts=ResourceOptions(
@@ -115,9 +120,11 @@ for table in source_tables:
                 # "partitioning_field": "",
             },
             schedule="every 24 hours" if is_prod_stack() else None,
-            service_account_name=service_account_name,
         ),
         opts=ResourceOptions(
-            depends_on=[bigquery_sql_connection, service_account]
+            depends_on=[
+                bigquery_sql_connection,
+                bq_cloudsql_perm,
+            ]
         ),
     )
