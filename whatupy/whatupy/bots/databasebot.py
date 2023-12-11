@@ -357,8 +357,10 @@ class DatabaseBot(BaseBot):
                     }
                     callback = partial(self._handle_media_content, datum=datum)
                     if is_archive:
-                        if archive_data.MediaContent:
-                            await callback(message, archive_data.MediaContent)
+                        mp = archive_data.MediaPath
+                        if mp.exits():
+                            with mp.open("rb") as fd:
+                                await callback(message, fd.read())
                     else:
                         await self.download_message_media_eventually(message, callback)
             db["messages"].upsert(message_flat, ["id"])
@@ -399,6 +401,7 @@ class DatabaseBot(BaseBot):
             media_target = self.write_media(
                 content, message, datum["filename"], ["media"]
             )
+            del content
         else:
             self.logger.critical(
                 "Empty media body... Writing empty media URI: %s", datum

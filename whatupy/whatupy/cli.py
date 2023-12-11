@@ -272,7 +272,6 @@ async def databasebot_load_archive(
     filenames.sort()
     await db.process_archive(filenames)
     logger.info("Done processing archive files")
-    sys.exit(0)
 
 
 @cli.command()
@@ -353,3 +352,7 @@ def gs_ls(paths):
 
 def main():
     cli(auto_envvar_prefix="WHATUPY")
+
+
+if __name__ == "__main__":
+    main()

@@ -26,6 +26,7 @@ function filter-by-job() {
         local mod=$( positive_mod $hash_dec $n_jobs )
         [[ $mod == $idx ]] && echo $LINE;
     done
+    exit 0
 }
 export -f filter-by-job
 
@@ -75,7 +76,7 @@ case $app_command in
         idx=${CLOUD_RUN_TASK_INDEX:=0}
         echo "Loading archive: Job $idx out of $n_jobs"
 
-        ( whatupy gs-ls "gs://${MESSAGE_ARCHIVE_BUCKET}/" | \
+        whatupy gs-ls "gs://${MESSAGE_ARCHIVE_BUCKET}/" | \
             filter-by-job $idx $n_jobs | \
             tee /dev/stderr | \
             xargs -P 2 -I{} \
@@ -84,8 +85,9 @@ case $app_command in
                     --database-url ${DATABASE_URL} \
                     --media-base "gs://${MEDIA_BUCKET}/" \
                     '{}/*_*.json' 
-        )
-        exit $?
+        retval=$?
+        echo "Exiting run.sh with code: $retval"
+        exit $retval
     ;;
 
     *)
