@@ -1,8 +1,7 @@
 import asyncio
-import glob
-import json
 import logging
 import typing as T
+import sys
 from pathlib import Path
 
 import click
@@ -272,6 +271,8 @@ async def databasebot_load_archive(
         filenames.extend(expand_glob(AnyPath(archive_blob)))
     filenames.sort()
     await db.process_archive(filenames)
+    logger.info("Done processing archive files")
+    sys.exit(0)
 
 
 @cli.command()

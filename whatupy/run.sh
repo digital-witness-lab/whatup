@@ -77,6 +77,7 @@ case $app_command in
 
         ( whatupy gs-ls "gs://${MESSAGE_ARCHIVE_BUCKET}/" | \
             filter-by-job $idx $n_jobs | \
+            tee /dev/stderr | \
             xargs -P 2 -I{} \
                 whatupy $DEBUG \
                     databasebot-load-archive \
