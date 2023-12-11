@@ -204,3 +204,14 @@ services:
       - ./data/sessions/registered-users/:/usr/src/whatupy-data/sessions/
       - ./data/message-archive-user/:/usr/src/whatupy-data/message-archive/
     command: whatupy --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
+
+  hash_generator:
+    build: ./hash-generator/
+    environment:
+      - ssl-cert
+    profiles:
+      - donotstart
+    volumes:
+      #- ./data/message-archive/:/usr/src/whatupy-data/archive/:ro
+      - ./data/media/:/usr/src/whatupy-data/media/
+      - ./data/message-archive/:/usr/src/whatupy-data/message-archive/:ro
