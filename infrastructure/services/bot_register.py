@@ -59,6 +59,8 @@ db_usr_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     )
 )
 
+BOT_NAME = {"test": "flo", "prod": "daisy"}[get_stack()]
+
 bot_register = Service(
     service_name,
     ServiceArgs(
@@ -108,7 +110,7 @@ bot_register = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="ONBOARD_BOT",
-                value="flo",
+                value=BOT_NAME,
             ),
             # Create an implicit dependency on the migrations
             # job completing successfully.

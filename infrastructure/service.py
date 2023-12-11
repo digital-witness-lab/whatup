@@ -186,7 +186,7 @@ class Service(ComponentResource):
                 resources=resources,
                 startup_probe=cloudrunv2.ServiceTemplateContainerStartupProbeArgs(  # noqa: E501
                     failure_threshold=1,
-                    initial_delay_seconds=240,
+                    initial_delay_seconds=60,
                     timeout_seconds=20,
                     tcp_socket=cloudrunv2.ServiceTemplateContainerStartupProbeTcpSocketArgs(),  # noqa: E501
                 )

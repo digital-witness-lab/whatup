@@ -126,7 +126,7 @@ class RegisterBot(BaseBot):
 
         meta = {
             "registerbot__timestamp": datetime.now().isoformat(),
-            "registerbot__triggered_by": handler_jid,
+            "registerbot__triggered_by": utils.jid_to_str(handler_jid),
             "registerbot__default_permission": wuc.GroupPermission.Name(
                 default_group_permission
             ),
