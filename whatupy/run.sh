@@ -8,6 +8,24 @@ if [ -z "${app_command:-}" ]; then
     exit 1
 fi
 
+function positive_mod() {
+  local dividend=$1
+  local divisor=$2
+  printf "%d" $(( (($dividend % $divisor) + $divisor) % $divisor ))
+}
+
+function filter-by-job() {
+     local idx=$1
+     local n_jobs=$2
+     while read LINE; do
+        local hash_str=$( echo $LINE | sha1sum - | cut -f1 -d' ' );
+        local hash_dec=$((0x$hash_str));
+        local mod=$( positive_mod $hash_dec $n_jobs )
+        [[ $mod == $idx ]] && echo $LINE;
+    done
+}
+export -f filter-by-job
+
 echo "Running app command: $app_command"
 
 case $app_command in
@@ -54,13 +72,19 @@ case $app_command in
     ;;
 
     load-archive)
+        n_jobs=${CLOUD_RUN_TASK_COUNT:=1}
+        idx=${CLOUD_RUN_TASK_INDEX:=0}
+        echo "Loading archive: Job $idx out of $n_jobs"
+
         ( gsutil ls "gs://${MESSAGE_ARCHIVE_BUCKET}/" | \
-            xargs -n 1 -P 6 -I{} \
+            filter-by-job $idx $n_jobs | \
+            tee /dev/stderr | \
+            xargs -P 0 -I{} \
                 whatupy \
                     databasebot-load-archive \
                     --database-url ${DATABASE_URL} \
                     --media-base "gs://${MEDIA_BUCKET}/" \
-                    '{}/*_*.json' 
+                    '{}*_*.json' 
         )
         exit $?
     ;;

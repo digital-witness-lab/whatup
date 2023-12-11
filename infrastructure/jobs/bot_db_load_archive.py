@@ -60,6 +60,7 @@ db_migrations_job = Job(
     JobArgs(
         args=["/usr/src/whatupy/run.sh", "load-archive"],
         cpu="1",
+        task_count=10,
         # Route all egress traffic via the VPC network.
         egress="ALL_TRAFFIC",
         image=whatupy_image,
