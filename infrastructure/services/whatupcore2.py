@@ -74,10 +74,11 @@ whatup_anon_key_secret_source = (
     )
 )
 
+log_level = "INFO" if is_prod_stack() else "DEBUG"
 whatupcore2_service = Service(
     service_name,
     ServiceArgs(
-        args=["rpc", "--log-level=DEBUG"],
+        args=["rpc", f"--log-level={log_level}"],
         concurrency=500,
         container_port=3447,
         cpu="1",

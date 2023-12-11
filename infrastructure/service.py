@@ -7,7 +7,7 @@ from pulumi import ComponentResource, ResourceOptions, Output
 import pulumi_docker as docker
 from pulumi_gcp import cloudrunv2, serviceaccount
 
-from config import location
+from config import location, is_prod_stack
 from network_firewall import firewall_policy
 
 
@@ -172,6 +172,13 @@ class Service(ComponentResource):
                 cpu=props.cpu,
             ),
         )
+        envs = [
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="IS_PROD",
+                value="True" if is_prod_stack() else "False",
+            ),
+            *(props.envs or []),
+        ]
         containers.append(
             cloudrunv2.ServiceTemplateContainerArgs(
                 args=props.args,
@@ -196,7 +203,7 @@ class Service(ComponentResource):
                 ]
                 if props.container_port is not None
                 else None,
-                envs=props.envs,
+                envs=envs,
             ),
         )
         return containers
