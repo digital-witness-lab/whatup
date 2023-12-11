@@ -24,7 +24,7 @@ from ..protos.whatupcore_pb2_grpc import WhatUpCoreStub
 logger = logging.getLogger(__name__)
 PinningEntry = namedtuple("PinningEntry", "bot_id expiration_time".split(" "))
 ArchiveData = namedtuple(
-    "ArchiveData", "WUMessage GroupInfo CommunityInfo MediaContent".split(" ")
+    "ArchiveData", "WUMessage GroupInfo CommunityInfo MediaPath".split(" ")
 )
 
 COMMAND_PINNING_TTL = timedelta(seconds=60 * 60)
@@ -472,7 +472,7 @@ class BaseBot:
             "WUMessage": message,
             "GroupInfo": None,
             "CommunityInfo": None,
-            "MediaContent": None,
+            "MediaPath": None,
         }
         if chat_id:
             if group_info_filename := message.provenance.get(
@@ -510,11 +510,9 @@ class BaseBot:
 
         if media_filename := message.provenance.get("archivebot__mediaPath"):
             media_path = filename_path.parent / media_filename
-            try:
-                with media_path.open("rb") as fd:
-                    media_content = fd.read()
-                metadata["MediaContent"] = media_content
-            except FileNotFoundError:
+            if media_path.exists():
+                metadata["MediaPath"] = media_path
+            else:
                 self.logger.critical("Could not find media in path: %s", media_path)
         archive_data = ArchiveData(**metadata)
         await self._dispatch_message(
