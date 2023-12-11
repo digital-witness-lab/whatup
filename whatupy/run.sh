@@ -8,6 +8,9 @@ if [ -z "${app_command:-}" ]; then
     exit 1
 fi
 
+DEBUG=$( [[ "$IS_PROD" == "False" ]] && echo "--debug" || echo "" )
+echo "Running app command: $app_command $DEBUG"
+
 function positive_mod() {
   local dividend=$1
   local divisor=$2
@@ -26,34 +29,28 @@ function filter-by-job() {
 }
 export -f filter-by-job
 
-echo "Running app command: $app_command"
-
-DEBUG=[[ $IS_PROD == "False" ]] && "$DEBUG"
-
 case $app_command in
 
     archivebot)
-        exec whatupy --host "${WHATUPCORE2_HOST}" \
+        exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
             --port 443 \
-            $DEBUG \
             archivebot \
             --archive-dir "gs://${MESSAGE_ARCHIVE_BUCKET}/" \
-            "kek+gs://${SESSIONS_BUCKET}/"
+            "kek+gs://${SESSIONS_BUCKET}/users/"
     ;;
 
     databasebot)
-        exec whatupy --host "${WHATUPCORE2_HOST}" \
+        exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
             --port 443 \
             databasebot \
             --database-url "${DATABASE_URL}" \
             --media-base "gs://${MEDIA_BUCKET}/" \
-            "kek+gs://${SESSIONS_BUCKET}/" 
+            "kek+gs://${SESSIONS_BUCKET}/users/" 
     ;;
 
     registerbot)
-        exec whatupy --host "${WHATUPCORE2_HOST}" \
+        exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
             --port 443 \
-            $DEBUG \
             registerbot \
             --database-url "${DATABASE_URL}" \
             --sessions-url "kek+gs://${SESSIONS_BUCKET}/${SESSIONS_USER_SUBDIR}/" \
@@ -65,9 +62,8 @@ case $app_command in
             echo "WHATUPY_ONBOARD_BOT_NAME env var is required."
             exit 1
         fi
-        exec whatupy --host "${WHATUPCORE2_HOST}" \
+        exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
             --port 443 \
-            $DEBUG \
             onboard \
             --default-group-permission READWRITE  \
             --credentials-url "kek+gs://${SESSIONS_BUCKET}/" \
@@ -79,16 +75,14 @@ case $app_command in
         idx=${CLOUD_RUN_TASK_INDEX:=0}
         echo "Loading archive: Job $idx out of $n_jobs"
 
-        ( gsutil ls "gs://${MESSAGE_ARCHIVE_BUCKET}/" | \
+        ( whatupy gs-ls "gs://${MESSAGE_ARCHIVE_BUCKET}/" | \
             filter-by-job $idx $n_jobs | \
-            tee /dev/stderr | \
-            xargs -P 0 -I{} \
-                whatupy \
-                    $DEBUG \
+            xargs -P 2 -I{} \
+                whatupy $DEBUG \
                     databasebot-load-archive \
                     --database-url ${DATABASE_URL} \
                     --media-base "gs://${MEDIA_BUCKET}/" \
-                    '{}*_*.json' 
+                    '{}/*_*.json' 
         )
         exit $?
     ;;

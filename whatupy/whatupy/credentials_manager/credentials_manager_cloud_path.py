@@ -42,13 +42,18 @@ class CredentialsManagerCloudPath(CredentialsManager):
 
     def read_credential(self, path: AnyPath) -> Credential:
         self.logger.debug("Reading credentials: %s", str(path))
-        credential = json.load(path.open())
+        try:
+            credential = json.load(path.open())
+        except json.decoder.JSONDecodeError as e:
+            raise IncompleteCredentialsException(
+                f"Could not parse credentials: {path}"
+            ) from e
         try:
             return Credential(**credential)
-        except TypeError:
+        except TypeError as e:
             raise IncompleteCredentialsException(
                 f"Incomplete credentials: {credential.keys()}"
-            )
+            ) from e
 
     def write_credential(self, credential: Credential):
         self.path.mkdir(parents=True, exist_ok=True)
