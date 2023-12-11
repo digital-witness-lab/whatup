@@ -5,7 +5,7 @@ from pulumi import ComponentResource, ResourceOptions
 import pulumi_docker as docker
 from pulumi_gcp import cloudrunv2, serviceaccount
 
-from config import location
+from config import location, is_prod_stack
 from network_firewall import firewall_policy
 
 
@@ -60,6 +60,13 @@ class Job(ComponentResource):
             ),
         )
 
+        envs = [
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="IS_PROD",
+                value="True" if is_prod_stack() else "False",
+            ),
+            *(props.envs or []),
+        ]
         template = cloudrunv2.JobTemplateTemplateArgs(
             service_account=props.service_account.email,
             max_retries=1,
@@ -68,7 +75,7 @@ class Job(ComponentResource):
                     args=props.args,
                     image=props.image.repo_digest,
                     resources=resources,
-                    envs=props.envs,
+                    envs=envs,
                 ),
             ],
             timeout=props.timeout,

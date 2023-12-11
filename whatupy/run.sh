@@ -28,12 +28,14 @@ export -f filter-by-job
 
 echo "Running app command: $app_command"
 
+DEBUG=[[ $IS_PROD == "False" ]] && "$DEBUG"
+
 case $app_command in
 
     archivebot)
         exec whatupy --host "${WHATUPCORE2_HOST}" \
             --port 443 \
-            --debug \
+            $DEBUG \
             archivebot \
             --archive-dir "gs://${MESSAGE_ARCHIVE_BUCKET}/" \
             "kek+gs://${SESSIONS_BUCKET}/"
@@ -51,7 +53,7 @@ case $app_command in
     registerbot)
         exec whatupy --host "${WHATUPCORE2_HOST}" \
             --port 443 \
-            --debug \
+            $DEBUG \
             registerbot \
             --database-url "${DATABASE_URL}" \
             --sessions-url "kek+gs://${SESSIONS_BUCKET}/${SESSIONS_USER_SUBDIR}/" \
@@ -65,6 +67,7 @@ case $app_command in
         fi
         exec whatupy --host "${WHATUPCORE2_HOST}" \
             --port 443 \
+            $DEBUG \
             onboard \
             --default-group-permission READWRITE  \
             --credentials-url "kek+gs://${SESSIONS_BUCKET}/" \
@@ -81,6 +84,7 @@ case $app_command in
             tee /dev/stderr | \
             xargs -P 0 -I{} \
                 whatupy \
+                    $DEBUG \
                     databasebot-load-archive \
                     --database-url ${DATABASE_URL} \
                     --media-base "gs://${MEDIA_BUCKET}/" \
