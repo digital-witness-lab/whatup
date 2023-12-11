@@ -1,5 +1,5 @@
 from typing import List, Optional
-from attr import dataclass
+from attr import dataclass, field
 
 from pulumi import ComponentResource, ResourceOptions
 import pulumi_docker as docker
@@ -36,7 +36,10 @@ class JobArgs:
     # ending with 's'. Example: "3.5s".
     timeout: str
 
-    envs: Optional[List[cloudrunv2.JobTemplateTemplateContainerEnvArgs]]
+    task_count: Optional[int] = field(default=None)
+    envs: Optional[
+        List[cloudrunv2.JobTemplateTemplateContainerEnvArgs]
+    ] = field(default=None)
 
 
 class Job(ComponentResource):
@@ -82,7 +85,10 @@ class Job(ComponentResource):
                 # https://cloud.google.com/run/docs/configuring/vpc-direct-vpc
                 launch_stage="BETA",
                 location=location,
-                template=cloudrunv2.JobTemplateArgs(template=template),
+                template=cloudrunv2.JobTemplateArgs(
+                    template=template,
+                    task_count=props.task_count,
+                ),
             ),
             opts=ResourceOptions.merge(
                 child_opts, ResourceOptions(depends_on=firewall_policy)
