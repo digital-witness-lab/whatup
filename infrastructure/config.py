@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Self, Dict
+from typing import Dict, Self
+
 import pulumi
 
 

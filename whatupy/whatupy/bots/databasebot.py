@@ -5,11 +5,11 @@ from datetime import datetime, timedelta
 from functools import partial, reduce
 
 import dataset
+import grpc
+from cloudpathlib import AnyPath
 from dataset.util import DatasetException
 from google.protobuf.timestamp_pb2 import Timestamp
 from sqlalchemy.sql import func
-from cloudpathlib import AnyPath
-import grpc
 
 from .. import utils
 from ..protos import whatupcore_pb2 as wuc

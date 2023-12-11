@@ -1,20 +1,19 @@
-from pulumi import get_stack, ResourceOptions, Output
+from pulumi import Output, ResourceOptions, get_stack
 from pulumi_gcp import cloudrunv2, kms, secretmanager, serviceaccount, storage
-
 from pulumi_gcp.cloudrunv2 import (
     ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
 )  # noqa: E501
 
-from network import vpc, private_services_network_with_db
+from artifact_registry import whatupy_image
 from dwl_secrets import db_url_secrets
 from jobs.db_migrations import migrations_job_complete
 from kms import sessions_encryption_key, sessions_encryption_key_uri
+from network import private_services_network_with_db, vpc
 from service import Service, ServiceArgs
 from storage import sessions_bucket
-from artifact_registry import whatupy_image
 
-from .whatupcore2 import whatupcore2_service
 from .bot_archive import whatupy_control_groups
+from .whatupcore2 import whatupcore2_service
 
 service_name = "bot-register"
 

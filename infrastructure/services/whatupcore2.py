@@ -1,18 +1,18 @@
-from pulumi import get_stack, ResourceOptions, Output
-from pulumi_gcp import serviceaccount, cloudrunv2, secretmanager
+from pulumi import Output, ResourceOptions, get_stack
+from pulumi_gcp import cloudrunv2, secretmanager, serviceaccount
 from pulumi_gcp.cloudrunv2 import (
     ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
 )  # noqa: E501
 
-from service import Service, ServiceArgs
-from network import vpc, private_services_network_with_db
+from artifact_registry import whatupcore2_image
+from config import is_prod_stack
 from dwl_secrets import (
     db_url_secrets,
-    whatup_salt_secret,
     whatup_anon_key_secret,
+    whatup_salt_secret,
 )
-from config import is_prod_stack
-from artifact_registry import whatupcore2_image
+from network import private_services_network_with_db, vpc
+from service import Service, ServiceArgs
 
 service_name = "whatupcore2"
 

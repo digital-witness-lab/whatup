@@ -1,13 +1,12 @@
-from pulumi import get_stack, ResourceOptions, Output
+from pulumi import Output, ResourceOptions, get_stack
 from pulumi_gcp import cloudrunv2, kms, serviceaccount, storage
 
-from job import JobArgs, Job
-from kms import sessions_encryption_key, sessions_encryption_key_uri
-from network import vpc, private_services_network
-from storage import sessions_bucket
 from artifact_registry import whatupy_image
-
+from job import Job, JobArgs
+from kms import sessions_encryption_key, sessions_encryption_key_uri
+from network import private_services_network, vpc
 from services.whatupcore2 import whatupcore2_service
+from storage import sessions_bucket
 
 service_name = "bot-onboard"
 

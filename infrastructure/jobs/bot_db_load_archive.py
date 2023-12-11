@@ -1,16 +1,16 @@
-from pulumi import get_stack, ResourceOptions, Output
+from pulumi import Output, ResourceOptions, get_stack
 from pulumi_gcp import cloudrunv2, secretmanager, serviceaccount, storage
-from pulumi_gcp.cloudrunv2 import (
+from pulumi_gcp.cloudrunv2 import (  # noqa: E501
     JobTemplateTemplateContainerEnvValueSourceArgs,
     JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
-)  # noqa: E501
+)
 
-from dwl_secrets import db_url_secrets
-from job import JobArgs, Job
-from jobs.db_migrations import migrations_job_complete
-from network import vpc, private_services_network_with_db
-from storage import message_archive_bucket, media_bucket
 from artifact_registry import whatupy_image
+from dwl_secrets import db_url_secrets
+from job import Job, JobArgs
+from jobs.db_migrations import migrations_job_complete
+from network import private_services_network_with_db, vpc
+from storage import media_bucket, message_archive_bucket
 
 service_name = "bot-db-load-archive"
 

@@ -1,7 +1,7 @@
 import asyncio
 import base64
-import glob
 import csv
+import glob
 import hashlib
 import io
 import json
@@ -17,7 +17,7 @@ from functools import wraps
 from pathlib import Path
 
 import qrcode
-from cloudpathlib import AnyPath, GSPath, CloudPath
+from cloudpathlib import AnyPath, CloudPath, GSPath
 from google.protobuf.json_format import MessageToDict, ParseDict
 
 from .protos import whatupcore_pb2 as wuc

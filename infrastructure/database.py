@@ -1,19 +1,10 @@
 from typing import List
-from pulumi import Output, ResourceOptions
 
+from pulumi import Output, ResourceOptions
 from pulumi_gcp import sql
 
-from config import (
-    db_configs,
-    db_root_password,
-    location,
-    is_prod_stack,
-)
-from network import (
-    private_vpc_connection,
-    private_ip_address_range,
-    vpc,
-)
+from config import db_configs, db_root_password, is_prod_stack, location
+from network import private_ip_address_range, private_vpc_connection, vpc
 
 retention_settings = (
     sql.DatabaseInstanceSettingsBackupConfigurationBackupRetentionSettingsArgs(
