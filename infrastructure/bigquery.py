@@ -17,7 +17,7 @@ from pulumi_google_native.bigqueryconnection.v1beta1 import (
 from config import location, project, is_prod_stack, db_configs
 from database import primary_cloud_sql_instance
 
-dataset_id = f"messages_{get_stack()}"
+dataset_id = f"messages_{get_stack().replace('-', '_')}"
 
 messages_dataset = bigquery.v2.Dataset(
     "messages",
@@ -63,9 +63,7 @@ default_bq_service_account_email = projects.get_project_output(
 
 bq_cloudsql_perm = projects.IAMMember(
     "bq-cloudsql-perm",
-    member=Output.concat("serviceAccount:").concat(
-        default_bq_service_account_email
-    ),
+    member=Output.concat("serviceAccount:", default_bq_service_account_email),
     project=project,
     role="roles/cloudsql.client",
     opts=ResourceOptions(
@@ -79,7 +77,9 @@ bq_cloudsql_perm = projects.IAMMember(
 transfers_role = projects.IAMCustomRole(
     "bq-transfers-role",
     projects.IAMCustomRoleArgs(
-        role_id=f"bqTransfersRole{get_stack().casefold()}",
+        # GCP wants this to be a camel-cased role id.
+        # The regex for this disallows the use of dashes(-).
+        role_id=f"bqTransfersRole{get_stack().casefold().replace('-', '_')}",
         permissions=[
             "bigquery.transfers.update",
             "bigquery.transfers.get",
@@ -95,10 +95,8 @@ transfers_role = projects.IAMCustomRole(
 # Grant the custom role to the default service account.
 # https://cloud.google.com/bigquery/docs/enable-transfer-service#grant_bigqueryadmin_access
 bq_transfers_perm = projects.IAMMember(
-    "bq-admin-perm",
-    member=Output.concat("serviceAccount:").concat(
-        default_bq_service_account_email
-    ),
+    "bq-transfers-perm",
+    member=Output.concat("serviceAccount:", default_bq_service_account_email),
     project=project,
     role=Output.concat("roles/").concat(transfers_role.role_id),
     opts=ResourceOptions(
