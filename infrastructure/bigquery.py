@@ -1,6 +1,6 @@
 from pulumi import Output, get_stack, ResourceOptions
 
-from pulumi_gcp import projects, serviceaccount
+from pulumi_gcp import projects
 
 from pulumi_google_native import (
     bigquery,
