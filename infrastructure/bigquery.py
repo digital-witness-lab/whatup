@@ -79,7 +79,7 @@ bq_cloudsql_perm = projects.IAMMember(
 transfers_role = projects.IAMCustomRole(
     "bq-transfers-role",
     projects.IAMCustomRoleArgs(
-        role_id=f"bq-transfers-role-{get_stack()}",
+        role_id=f"bqTransfersRole{get_stack().casefold()}",
         permissions=[
             "bigquery.transfers.update",
             "bigquery.transfers.get",
