@@ -1,6 +1,6 @@
 from pulumi import Output, get_stack, ResourceOptions
 
-from pulumi_gcp import projects
+from pulumi_gcp import projects, serviceaccount
 
 from pulumi_google_native import (
     bigquery,
@@ -55,7 +55,7 @@ bigquery_sql_connection = Connection(
 # the project.
 #
 # https://cloud.google.com/bigquery/docs/connect-to-sql#access-sql
-defaul_bq_service_account_email = projects.get_project_output(
+default_bq_service_account_email = projects.get_project_output(
     filter=f"id:{project}"
 ).apply(
     lambda p: f"serviceAccount:service-{p.projects[0].number}@gcp-sa-bigqueryconnection.iam.gserviceaccount.com"
@@ -63,12 +63,19 @@ defaul_bq_service_account_email = projects.get_project_output(
 
 bq_cloudsql_perm = projects.IAMMember(
     "bq-cloudsql-perm",
-    member=defaul_bq_service_account_email,
+    member=default_bq_service_account_email,
     project=project,
     role="roles/cloudsql.client",
     opts=ResourceOptions(
         depends_on=[bigquery_sql_connection],
     ),
+)
+
+bq_account_iam = serviceaccount.IAMBinding(
+    "bq-account-iam",
+    service_account_id=default_bq_service_account_email,
+    role="roles/iam.serviceAccountUser",
+    members=["user:micha@digitalwitnesslab.org"],
 )
 
 source_tables = [
@@ -120,11 +127,13 @@ for table in source_tables:
                 # "partitioning_field": "",
             },
             schedule="every 24 hours" if is_prod_stack() else None,
+            service_account_name=default_bq_service_account_email,
         ),
         opts=ResourceOptions(
             depends_on=[
                 bigquery_sql_connection,
                 bq_cloudsql_perm,
+                bq_account_iam,
             ]
         ),
     )
