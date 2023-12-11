@@ -1,9 +1,20 @@
-from pulumi import Output
-from pulumi_gcp import kms
+from pulumi import Output, ResourceOptions
+from pulumi_gcp import kms, projects
 
 from config import location
 
-key_ring = kms.KeyRing("sessions", location=location)
+
+cloudkms_service = projects.Service(
+    "cloudkms.googleapis.com",
+    disable_dependent_services=True,
+    service="cloudkms.googleapis.com",
+)
+
+key_ring = kms.KeyRing(
+    "sessions",
+    location=location,
+    opts=ResourceOptions(depends_on=[cloudkms_service]),
+)
 
 sessions_encryption_key = kms.CryptoKey(
     "sessions",

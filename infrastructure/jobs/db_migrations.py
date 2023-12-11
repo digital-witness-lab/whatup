@@ -9,7 +9,7 @@ from pulumi_gcp.cloudrunv2 import (
 from job import JobArgs, Job
 from network import vpc, private_services_network_with_db
 from dwl_secrets import db_root_pass_secret
-from database import primary_cloud_sql_instance
+from database import primary_cloud_sql_instance, db_configs
 from artifact_registry import migrations_image
 
 from .execute_job import run_job_sync
@@ -71,8 +71,8 @@ db_migrations_job = Job(
                 value=primary_cloud_sql_instance.private_ip_address,
             ),
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                name="DATABASE",
-                value="messages",
+                name="DATABASES",
+                value=",".join(db_configs.keys()),
             ),
         ],
         timeout="60s",

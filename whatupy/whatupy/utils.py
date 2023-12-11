@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import glob
 import csv
 import hashlib
 import io
@@ -13,8 +14,10 @@ import typing as T
 import warnings
 from collections import namedtuple
 from functools import wraps
+from pathlib import Path
 
 import qrcode
+from cloudpathlib import AnyPath, GSPath, CloudPath
 from google.protobuf.json_format import MessageToDict, ParseDict
 
 from .protos import whatupcore_pb2 as wuc
@@ -26,6 +29,21 @@ RANDOM_SALT = random.randbytes(32)
 
 CommandQuery = namedtuple("CommandQuery", "namespace command params".split(" "))
 Generic = T.TypeVar("Generic")
+
+
+def expand_glob(path: CloudPath | Path) -> T.List[CloudPath | Path]:
+    if isinstance(path, GSPath):
+        for i, p in enumerate(path.parts):
+            if "*" in p:
+                break
+        else:
+            return [path]
+        base_parts = "gs://" + "/".join(path.parts[1:i])
+        glob_parts = "/".join(path.parts[i:])
+        base = AnyPath(base_parts)
+        return list(base.glob(glob_parts))
+    else:
+        return [AnyPath(p) for p in glob.glob(str(path))]
 
 
 class WhatUpyJSONEncoder(json.JSONEncoder):

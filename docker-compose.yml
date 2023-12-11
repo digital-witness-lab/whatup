@@ -14,7 +14,6 @@ secrets:
 
 services:
   whatup:
-    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupcore2
     platform: linux/x86_64
     build: ./whatupcore2/
     env_file:
@@ -49,7 +48,6 @@ services:
       - 5432:5432
 
   bot-archive:
-    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - whatup
@@ -68,7 +66,6 @@ services:
     #   $ docker compose run --build --service-ports bot-debug  /usr/src/whatupy-data/sessions/<target-session>.json
     # and then connect with,
     #   $ rlwrap nc localhost 6666
-    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - whatup
@@ -87,7 +84,6 @@ services:
       - donotstart
 
   bot-database:
-    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - whatup
@@ -107,7 +103,6 @@ services:
     command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert databasebot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ /usr/src/whatupy-data/sessions/"
 
   bot-database-load-archive:
-    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - db
@@ -124,7 +119,6 @@ services:
     command: sh -c "ls /usr/src/whatupy-data/archive/ | xargs -P 6 -I{} whatupy databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ '/usr/src/whatupy-data/archive/{}/*_*.json'"
 
   bot-onboard-bulk:
-    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - whatup
@@ -139,7 +133,6 @@ services:
     command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard-bulk --credentials-url /usr/src/whatupy-data/sessions/
 
   bot-onboard:
-    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - whatup
@@ -155,7 +148,6 @@ services:
     command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission DENIED --credentials-url "/usr/src/whatupy-data/sessions/" ${SESSION_NAME}
 
   bot-chatbot:
-    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - whatup
@@ -168,7 +160,6 @@ services:
     command: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot /usr/src/whatupy-data/sessions/
 
   bot-register:
-    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - whatup
@@ -185,7 +176,6 @@ services:
     command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert registerbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --sessions-url  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/erica.json"
 
   bot-userservices:
-    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - whatup
@@ -202,7 +192,6 @@ services:
     command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert userservicesbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --sessions-url  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/erica.json"
 
   bot-user-archive:
-    image: asia-south1-docker.pkg.dev/whatup-395208/whatup/whatupy
     build: ./whatupy/
     links:
       - whatup

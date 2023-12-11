@@ -5,7 +5,6 @@ from pulumi_gcp.cloudrunv2 import (
     JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
 )  # noqa: E501
 
-from config import create_load_archive_job
 from dwl_secrets import db_url_secrets
 from job import JobArgs, Job
 from jobs.db_migrations import migrations_job_complete
@@ -56,53 +55,53 @@ db_url_secret_source = JobTemplateTemplateContainerEnvValueSourceArgs(
     )
 )
 
-if create_load_archive_job:
-    db_migrations_job = Job(
-        service_name,
-        JobArgs(
-            args=["/usr/src/whatupy/run.sh", "load-archive"],
-            cpu="1",
-            # Route all egress traffic via the VPC network.
-            egress="ALL_TRAFFIC",
-            image=whatupy_image,
-            # We want this service to only be reachable from within
-            # our VPC network.
-            ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
-            memory="1Gi",
-            service_account=service_account,
-            # Specifying the subnet causes CloudRun to use
-            # Direct VPC egress for outbound traffic based
-            # on the value of the `egress` property above.
-            subnet=cloudrunv2.JobTemplateTemplateVpcAccessNetworkInterfaceArgs(
-                network=vpc.id, subnetwork=private_services_network_with_db.id
+db_migrations_job = Job(
+    service_name,
+    JobArgs(
+        args=["/usr/src/whatupy/run.sh", "load-archive"],
+        cpu="1",
+        task_count=10,
+        # Route all egress traffic via the VPC network.
+        egress="ALL_TRAFFIC",
+        image=whatupy_image,
+        # We want this service to only be reachable from within
+        # our VPC network.
+        ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
+        memory="2Gi",
+        service_account=service_account,
+        # Specifying the subnet causes CloudRun to use
+        # Direct VPC egress for outbound traffic based
+        # on the value of the `egress` property above.
+        subnet=cloudrunv2.JobTemplateTemplateVpcAccessNetworkInterfaceArgs(
+            network=vpc.id, subnetwork=private_services_network_with_db.id
+        ),
+        envs=[
+            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                name="DATABASE_URL",
+                value_source=db_url_secret_source,
             ),
-            envs=[
-                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                    name="DATABASE_URL",
-                    value_source=db_url_secret_source,
-                ),
-                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                    name="MESSAGE_ARCHIVE_BUCKET",
-                    value=message_archive_bucket.name,
-                ),
-                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                    name="MEDIA_BUCKET",
-                    value=media_bucket.name,
-                ),
-                # Create an implicit dependency on the migrations
-                # job completing successfully.
-                cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                    name="MIGRATIONS_JOB_COMPLETE",
-                    value=migrations_job_complete.apply(lambda b: f"{b}"),
-                ),
-            ],
-            timeout="3600s",
-        ),
-        opts=ResourceOptions(
-            depends_on=[
-                message_archive_bucket_perm,
-                media_bucket_perm,
-                secret_manager_perm,
-            ]
-        ),
-    )
+            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                name="MESSAGE_ARCHIVE_BUCKET",
+                value=message_archive_bucket.name,
+            ),
+            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                name="MEDIA_BUCKET",
+                value=media_bucket.name,
+            ),
+            # Create an implicit dependency on the migrations
+            # job completing successfully.
+            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                name="MIGRATIONS_JOB_COMPLETE",
+                value=migrations_job_complete.apply(lambda b: f"{b}"),
+            ),
+        ],
+        timeout="3600s",
+    ),
+    opts=ResourceOptions(
+        depends_on=[
+            message_archive_bucket_perm,
+            media_bucket_perm,
+            secret_manager_perm,
+        ]
+    ),
+)

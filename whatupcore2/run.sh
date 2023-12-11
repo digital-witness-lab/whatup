@@ -2,8 +2,7 @@
 set -eo pipefail
 
 app_command=$1
-
-echo "Starting whatupcore2..."
+echo "Starting whatupcore2 with command $app_command"
 
 if [ -e /run/secrets/whatupcore-anon-key ]; then
     echo "Setting ANON_KEY from docker secret"

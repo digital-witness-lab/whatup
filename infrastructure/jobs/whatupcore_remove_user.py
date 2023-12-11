@@ -8,7 +8,11 @@ from job import JobArgs, Job
 from network import vpc, private_services_network_with_db
 from artifact_registry import whatupcore2_image
 
-from dwl_secrets import db_url_secrets, whatup_salt_secret
+from dwl_secrets import (
+    db_url_secrets,
+    whatup_salt_secret,
+    whatup_anon_key_secret,
+)
 
 service_name = "whatupcore-remove-user"
 
@@ -50,6 +54,22 @@ db_url_secret_source = cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs
     )
 )
 
+anon_key_secret_manager_perm = secretmanager.SecretIamMember(
+    "wuc-rmu-anon-key-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=whatup_anon_key_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+
+whatup_anon_key_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
+    secret_key_ref=JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+        secret=whatup_anon_key_secret.name,
+        version="latest",
+    )
+)
+
 whatupcore2_rmuser_job = Job(
     service_name,
     JobArgs(
@@ -74,6 +94,10 @@ whatupcore2_rmuser_job = Job(
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                 name="ENC_KEY_SALT",
                 value_source=whatup_salt_secret_source,
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="ANON_KEY",
+                value_source=whatup_anon_key_secret_source,
             ),
         ],
         timeout="3600s",
