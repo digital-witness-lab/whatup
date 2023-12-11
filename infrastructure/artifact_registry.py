@@ -1,5 +1,5 @@
 import pulumi_docker as docker
-from pulumi import get_stack, Output
+from pulumi import Output, get_stack
 from pulumi_gcp import artifactregistry
 
 from config import location, project

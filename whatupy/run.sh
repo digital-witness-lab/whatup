@@ -12,15 +12,15 @@ DEBUG=$( [[ "$IS_PROD" == "False" ]] && echo "--debug" || echo "" )
 echo "Running app command: $app_command $DEBUG"
 
 function positive_mod() {
-  local dividend=$1
-  local divisor=$2
-  printf "%d" $(( (($dividend % $divisor) + $divisor) % $divisor ))
+    local dividend=$1
+    local divisor=$2
+    printf "%d" $(( (($dividend % $divisor) + $divisor) % $divisor ))
 }
 
 function filter-by-job() {
-     local idx=$1
-     local n_jobs=$2
-     while read LINE; do
+    local idx=$1
+    local n_jobs=$2
+    while read LINE; do
         local hash_str=$( echo $LINE | sha1sum - | cut -f1 -d' ' );
         local hash_dec=$((0x$hash_str));
         local mod=$( positive_mod $hash_dec $n_jobs )

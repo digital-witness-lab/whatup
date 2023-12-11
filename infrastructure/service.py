@@ -1,13 +1,12 @@
 import hashlib
 from typing import List, Optional
-from attr import dataclass
-
-from pulumi import ComponentResource, ResourceOptions, Output
 
 import pulumi_docker as docker
+from attr import dataclass
+from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_gcp import cloudrunv2, serviceaccount
 
-from config import location, is_prod_stack
+from config import is_prod_stack, location
 from network_firewall import firewall_policy
 
 

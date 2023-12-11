@@ -1,10 +1,10 @@
 from pulumi_gcp import compute
 
 from network import (
-    private_services_network,
-    private_services_network_with_db,
     private_services_connect_ip_prefix,
     private_services_connect_ip_range,
+    private_services_network,
+    private_services_network_with_db,
     vpc,
 )
 

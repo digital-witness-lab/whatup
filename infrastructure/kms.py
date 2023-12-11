@@ -3,7 +3,6 @@ from pulumi_gcp import kms, projects
 
 from config import location
 
-
 cloudkms_service = projects.Service(
     "cloudkms.googleapis.com",
     disable_dependent_services=True,
