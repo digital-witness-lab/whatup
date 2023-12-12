@@ -15,6 +15,7 @@ from jobs import (
     bot_onboard_bulk,
     db_migrations,
     whatupcore_remove_user,
+    bq_init_schema,
 )
 
 from bigquery import bigquery_sql_connection
