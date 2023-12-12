@@ -14,17 +14,31 @@ from pulumi_google_native.bigqueryconnection.v1beta1 import (
     CloudSqlCredentialArgs,
 )
 
-from config import location, project, is_prod_stack, db_configs
+from config import (
+    location,
+    project,
+    is_prod_stack,
+    db_configs,
+)
 from database import primary_cloud_sql_instance
 from gcloud import get_project_number
 
-dataset_id = f"messages_{get_stack().replace('-', '_')}"
+bq_dataset_id = f"messages_{get_stack().replace('-', '_')}"
+messages_tables = [
+    "reactions",
+    "group_info",
+    "group_participants",
+    "messages_seen",
+    "messages",
+    "media",
+]
+
 
 messages_dataset = bigquery.v2.Dataset(
     "messages",
     bigquery.v2.DatasetArgs(
         dataset_reference=bigquery.v2.DatasetReferenceArgs(
-            dataset_id=dataset_id,
+            dataset_id=bq_dataset_id,
         ),
         description="BigQuery dataset for the messages DB.",
         location=location,
@@ -128,15 +142,6 @@ bq_transfers_perm = projects.IAMMember(
     ),
 )
 
-source_tables = [
-    "reactions",
-    "group_info",
-    "group_participants",
-    "messages_seen",
-    "messages",
-    "media",
-]
-
 # Creates data transfer in Big Query (BQ) for
 # each table in `source_tables` that need
 # to be copied over to BQ. The data
@@ -144,17 +149,17 @@ source_tables = [
 #
 # https://cloud.google.com/bigquery/docs/scheduling-queries
 
-for table in source_tables:
+for table in messages_tables:
     messages_dataset_table = bigquery.v2.Table(
         f"{table}-{get_stack()}_tbl".replace("_", "-"),
-        dataset_id=dataset_id,
+        dataset_id=bq_dataset_id,
         project=project,
         table_reference=bigquery.v2.TableReferenceArgs(
-            dataset_id=dataset_id, project=project, table_id=table
+            dataset_id=bq_dataset_id, project=project, table_id=table
         ),
     )
     query = Output.all(
-        dataset_id=dataset_id,
+        dataset_id=bq_dataset_id,
         table_name=table,
         conn_name=bigquery_sql_connection.name,
     ).apply(
@@ -181,7 +186,7 @@ for table in source_tables:
     dts.v1.TransferConfig(
         f"msg-{table}-{get_stack()}-trans",
         dts.v1.TransferConfigArgs(
-            destination_dataset_id=dataset_id,
+            destination_dataset_id=bq_dataset_id,
             display_name=f"Copy messages.{table} data",
             data_source_id="scheduled_query",
             params={
