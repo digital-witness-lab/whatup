@@ -1,6 +1,6 @@
 from pulumi import Output, get_stack, ResourceOptions
 
-from pulumi_gcp import projects
+from pulumi_gcp import projects, serviceaccount
 
 from pulumi_google_native import (
     bigquery,
@@ -16,6 +16,7 @@ from pulumi_google_native.bigqueryconnection.v1beta1 import (
 
 from config import location, project, is_prod_stack, db_configs
 from database import primary_cloud_sql_instance
+from gcloud import get_project_number
 
 dataset_id = f"messages_{get_stack().replace('-', '_')}"
 
@@ -55,15 +56,17 @@ bigquery_sql_connection = Connection(
 # the project.
 #
 # https://cloud.google.com/bigquery/docs/connect-to-sql#access-sql
-default_bq_service_account_email = projects.get_project_output(
-    filter=f"id:{project}"
+default_bq_connection_service_account_email = get_project_number(
+    project
 ).apply(
-    lambda p: f"service-{p.projects[0].number}@gcp-sa-bigqueryconnection.iam.gserviceaccount.com"
+    lambda proj_number: f"service-{proj_number}@gcp-sa-bigqueryconnection.iam.gserviceaccount.com"
 )
 
 bq_cloudsql_perm = projects.IAMMember(
     "bq-cloudsql-perm",
-    member=Output.concat("serviceAccount:", default_bq_service_account_email),
+    member=Output.concat(
+        "serviceAccount:", default_bq_connection_service_account_email
+    ),
     project=project,
     role="roles/cloudsql.client",
     opts=ResourceOptions(
@@ -86,19 +89,39 @@ transfers_role = projects.IAMCustomRole(
             "bigquery.datasets.get",
             "bigquery.datasets.update",
             "bigquery.jobs.create",
+            "bigquery.connections.get",
+            "bigquery.tables.create",
+            "bigquery.tables.createIndex",
+            "bigquery.tables.delete",
+            "bigquery.tables.deleteIndex",
+            "bigquery.tables.get",
+            "bigquery.tables.getData",
+            "bigquery.tables.list",
+            "bigquery.tables.update",
+            "bigquery.tables.updateData",
         ],
         title="BigQuery Transfers Role",
         stage="GA",
     ),
 )
 
-# Grant the custom role to the default service account.
+data_transfers_service_account = serviceaccount.Account(
+    "bq-datatransfers-sa",
+    serviceaccount.AccountArgs(
+        account_id=f"bq-datatransfers-sa-{get_stack()}",
+        description="Service account used by Big Query Data Transfers",
+    ),
+)
+
+# Grant the custom role to the custom service account.
 # https://cloud.google.com/bigquery/docs/enable-transfer-service#grant_bigqueryadmin_access
 bq_transfers_perm = projects.IAMMember(
     "bq-transfers-perm",
-    member=Output.concat("serviceAccount:", default_bq_service_account_email),
+    member=Output.concat(
+        "serviceAccount:", data_transfers_service_account.email
+    ),
     project=project,
-    role=Output.concat("roles/").concat(transfers_role.role_id),
+    role=Output.concat("roles/").concat(transfers_role.name),
     opts=ResourceOptions(
         depends_on=[bigquery_sql_connection],
     ),
@@ -121,17 +144,19 @@ source_tables = [
 # https://cloud.google.com/bigquery/docs/scheduling-queries
 
 for table in source_tables:
-    query = Output.all(table=table, conn_id=bigquery_sql_connection.id).apply(
+    query = Output.all(
+        dataset_id=dataset_id, table=table, conn_id=bigquery_sql_connection.id
+    ).apply(
         lambda args: f"""
     MERGE INTO
-        messages.{args['table']} AS bq
+        {args['dataset_id']}.{args['table']} AS bq
     USING
-        SELECT *
+        (SELECT *
         FROM
             EXTERNAL_QUERY(
                 "{args['conn_id']}",
                 "SELECT * FROM {args['table']};"
-            ) AS pg
+            ) pg)
     ON
         bq.id = pg.id AND bq.record_mtime = pg.record_mtime
     WHEN NOT MATCHED BY SOURCE
@@ -150,10 +175,9 @@ for table in source_tables:
             data_source_id="scheduled_query",
             params={
                 "query": query,
-                # "partitioning_field": "",
             },
             schedule="every 24 hours" if is_prod_stack() else None,
-            service_account_name=default_bq_service_account_email,
+            service_account_name=data_transfers_service_account.email,
         ),
         opts=ResourceOptions(
             depends_on=[
