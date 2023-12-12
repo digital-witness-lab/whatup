@@ -90,6 +90,7 @@ transfers_role = projects.IAMCustomRole(
             "bigquery.datasets.update",
             "bigquery.jobs.create",
             "bigquery.connections.get",
+            "bigquery.connections.use",
             "bigquery.tables.create",
             "bigquery.tables.createIndex",
             "bigquery.tables.delete",
@@ -144,18 +145,28 @@ source_tables = [
 # https://cloud.google.com/bigquery/docs/scheduling-queries
 
 for table in source_tables:
+    messages_dataset_table = bigquery.v2.Table(
+        f"{table}-{get_stack()}_tbl".replace("_", "-"),
+        dataset_id=dataset_id,
+        project=project,
+        table_reference=bigquery.v2.TableReferenceArgs(
+            dataset_id=dataset_id, project=project, table_id=table
+        ),
+    )
     query = Output.all(
-        dataset_id=dataset_id, table=table, conn_id=bigquery_sql_connection.id
+        dataset_id=dataset_id,
+        table_name=table,
+        conn_name=bigquery_sql_connection.name,
     ).apply(
         lambda args: f"""
     MERGE INTO
-        {args['dataset_id']}.{args['table']} AS bq
+        {args["dataset_id"]}.{args["table_name"]} AS bq
     USING
         (SELECT *
         FROM
             EXTERNAL_QUERY(
-                "{args['conn_id']}",
-                "SELECT * FROM {args['table']};"
+                "{args['conn_name']}",
+                "SELECT * FROM {args['table_name']};"
             ) pg)
     ON
         bq.id = pg.id AND bq.record_mtime = pg.record_mtime
@@ -184,6 +195,7 @@ for table in source_tables:
                 bigquery_sql_connection,
                 bq_cloudsql_perm,
                 bq_transfers_perm,
+                messages_dataset_table,
             ]
         ),
     )
