@@ -15,14 +15,13 @@ from database import primary_cloud_sql_instance
 from gcloud import get_project_number
 
 bq_dataset_id = f"messages_{get_stack().replace('-', '_')}"
-messages_tables = [
-    "reactions",
-    "group_info",
-    "group_participants",
-    "messages_seen",
-    "messages",
-    "media",
-]
+messages_tables = {
+    "reactions": {"pk": "id"},
+    "group_info": {"pk": "id"},
+    "group_participants": {"pk": "id"},
+    "messages": {"pk": "id"},
+    "media": {"pk": "filename"},
+}
 
 
 messages_dataset = bigquery.v2.Dataset(
@@ -140,7 +139,7 @@ bq_transfers_perm = projects.IAMMember(
 #
 # https://cloud.google.com/bigquery/docs/scheduling-queries
 
-for table in messages_tables:
+for table, table_meta in messages_tables.items():
     messages_dataset_table = bigquery.v2.Table(
         f"{table}-{get_stack()}_tbl".replace("_", "-"),
         dataset_id=bq_dataset_id,
@@ -148,10 +147,12 @@ for table in messages_tables:
         table_reference=bigquery.v2.TableReferenceArgs(
             dataset_id=bq_dataset_id, project=project, table_id=table
         ),
+        opts=ResourceOptions(depends_on=[messages_dataset]),
     )
     query = Output.all(
         dataset_id=bq_dataset_id,
         table_name=table,
+        table_pk=table_meta.get("pk", "id"),
         conn_name=bigquery_sql_connection.name,
     ).apply(
         lambda args: f"""
@@ -166,7 +167,7 @@ for table in messages_tables:
             )
         ) AS pg
     ON
-        bq.id = pg.id AND bq.record_mtime = pg.record_mtime
+        bq.{args["table_pk"]} = pg.{args["table_pk"]} AND bq.record_mtime = pg.record_mtime
     WHEN NOT MATCHED BY SOURCE
     THEN
         DELETE

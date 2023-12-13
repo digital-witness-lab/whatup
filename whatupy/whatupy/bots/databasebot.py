@@ -350,7 +350,6 @@ class DatabaseBot(BaseBot):
                     file_extension = media_filename.rsplit(".", 1)[-1]
                     datum = {
                         "filename": media_filename,
-                        "content": None,
                         "mimetype": mimetype,
                         "fileExtension": file_extension,
                         "timestamp": message.info.timestamp.ToDatetime(),

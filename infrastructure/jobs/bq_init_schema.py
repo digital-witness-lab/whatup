@@ -60,7 +60,7 @@ bq_init_schema_job = Job(
             ),
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                 name="TABLES",
-                value=",".join(messages_tables),
+                value=",".join(messages_tables.keys()),
             ),
             # Create an implicit dependency on the migrations
             # job completing successfully.
