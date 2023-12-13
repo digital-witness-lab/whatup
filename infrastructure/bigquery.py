@@ -167,12 +167,13 @@ for table in messages_tables:
     MERGE INTO
         {args["dataset_id"]}.{args["table_name"]} AS bq
     USING
-        (SELECT *
-        FROM
-            EXTERNAL_QUERY(
+        (
+            SELECT *
+            FROM EXTERNAL_QUERY(
                 "{args['conn_name']}",
                 "SELECT * FROM {args['table_name']};"
-            ) pg)
+            )
+        ) AS pg
     ON
         bq.id = pg.id AND bq.record_mtime = pg.record_mtime
     WHEN NOT MATCHED BY SOURCE
