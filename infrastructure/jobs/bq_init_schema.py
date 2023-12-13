@@ -1,21 +1,18 @@
-from pulumi import get_stack, Output, export
+from pulumi import Output, get_stack
+from pulumi_gcp import cloudrunv2, projects, serviceaccount
 
-from pulumi_gcp import serviceaccount, cloudrunv2, projects
-
-from job import JobArgs, Job
-from network import vpc, private_services_network_with_db
 from artifact_registry import bq_init_schema_image
 from bigquery import (
+    bigquery_sql_connection,
     bq_dataset_id,
     messages_tables,
-    bigquery_sql_connection,
     transfers_role,
 )
 from config import project
+from job import Job, JobArgs
+from network import private_services_network_with_db, vpc
 
-from .execute_job import run_job_sync
 from .db_migrations import migrations_job_complete
-
 
 job_name = "bq-init-schema"
 

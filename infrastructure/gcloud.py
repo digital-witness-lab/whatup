@@ -1,9 +1,8 @@
-from functools import cache
 import json
+from functools import cache
 
 import google.auth.transport.requests
 import requests
-
 from pulumi import Output
 from pulumi_gcp import projects
 
