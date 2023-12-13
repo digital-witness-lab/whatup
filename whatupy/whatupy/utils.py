@@ -12,6 +12,7 @@ import re
 import string
 import typing as T
 import warnings
+from datetime import timedelta
 from collections import namedtuple
 from functools import wraps
 from pathlib import Path
@@ -29,6 +30,22 @@ RANDOM_SALT = random.randbytes(32)
 
 CommandQuery = namedtuple("CommandQuery", "namespace command params".split(" "))
 Generic = T.TypeVar("Generic")
+
+
+def gspath_to_self_signed_url(path: GSPath, ttl: T.Optional[timedelta]) -> str:
+    try:
+        client = path.client.client
+        bucket = client.bucket(path.bucket)
+        blob = bucket.get_blob(path.blob)
+        if blob is not None:
+            return blob.generate_signed_url(
+                expiration=ttl,
+                method="GET",
+                version="v4",
+            )
+    except AttributeError:
+        pass
+    return path.as_uri()
 
 
 def expand_glob(path: CloudPath | Path) -> T.List[CloudPath | Path]:

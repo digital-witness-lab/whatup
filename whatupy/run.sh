@@ -55,8 +55,18 @@ case $app_command in
             --port 443 \
             registerbot \
             --database-url "${DATABASE_URL}" \
-            --sessions-url "kek+gs://${SESSIONS_BUCKET}/${SESSIONS_USER_SUBDIR}/" \
-            "kek+gs://${SESSIONS_BUCKET}/${ONBOARD_BOT}.json"
+            --sessions-url "kek+gs://${SESSIONS_BUCKET}/users/" \
+            "kek+gs://${SESSIONS_BUCKET}/${PRIMARY_BOT_NAME}.json"
+    ;;
+
+    userservices)
+        exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
+            --port 443 \
+            userservices \
+            --database-url "${DATABASE_URL}" \
+            --sessions-url "kek+gs://${SESSIONS_BUCKET}/users/" \
+            --public-path "gs://${TEMP_BUCKET/" \
+            "kek+gs://${SESSIONS_BUCKET}/${PRIMARY_BOT_NAME}.json"
     ;;
 
     onboard)
