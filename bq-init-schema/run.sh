@@ -13,6 +13,7 @@ check_vars()
 
 check_vars TABLES BQ_DATASET_ID BQ_PSQL_CONNECTION
 
+echo "Setting schema for tables: $TABLES"
 for TABLE in ${TABLES//,/ }; do
     if bq query --use_legacy_sql=false "SELECT * FROM EXTERNAL_QUERY('${BQ_PSQL_CONNECTION}', 'SELECT * FROM ${TABLE} LIMIT 1;');" > /dev/null; then
         echo "Setting table schema from $TABLE"
