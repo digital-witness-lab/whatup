@@ -13,7 +13,7 @@ config:
     - name: whatupcore
       nameShort: wuc
       passwordKey: wucPassword
-    - name: user
+    - name: users
       nameShort: usr
       passwordKey: usrPassword
   whatup:dbRootPassword:
