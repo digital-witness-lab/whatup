@@ -2,7 +2,7 @@
 
 ```bash
 $ gcloud auth application-default login
-$ pulumu up --stack test
+$ pulumi up --stack test
 $ gcloud auth configure-docker europe-west3-docker.pkg.dev
 ```
 
@@ -10,9 +10,9 @@ $ gcloud auth configure-docker europe-west3-docker.pkg.dev
 
 ### Prerequisites
 
--   [Install](https://cloud.google.com/sdk/docs/install) the latest `gcloud` CLI and login to the `whatup-deploy` GCP project with `gcloud auth login`.
--   [Install](https://www.pulumi.com/docs/install/) the latest `pulumi` CLI and login to your Pulumi account with `pulumi login`.
--   [Configure Docker](https://cloud.google.com/artifact-registry/docs/docker/authentication) to use your GCP credentials.
+- [Install](https://cloud.google.com/sdk/docs/install) the latest `gcloud` CLI and login to the `whatup-deploy` GCP project with `gcloud auth login`.
+- [Install](https://www.pulumi.com/docs/install/) the latest `pulumi` CLI and login to your Pulumi account with `pulumi login`.
+- [Configure Docker](https://cloud.google.com/artifact-registry/docs/docker/authentication) to use your GCP credentials.
 
 ### Pulumi crash-course
 
@@ -40,6 +40,37 @@ Set lists and objects in stack config:
 pulumi config set --path 'key[0]' value
 pulumi config set --path 'key[1]' value
 ```
+
+### Creating a new Pulumi stack
+
+If you want to deploy the infrastructure using a new stack
+configuration, then you must set the required stack
+configuration first. At a very minimum you'll need
+to set the required config based on the Pulumi
+providers used by this app.
+
+At the time of writing, [`pulumi-gcp`](https://www.pulumi.com/registry/packages/gcp/installation-configuration/#configuration-options) and [`pulumi-google-native`](https://www.pulumi.com/registry/packages/google-native/installation-configuration/#configuration-options)
+providers require certain configuration keys to be set for your
+stack.
+
+They are:
+
+```
+gcp:project
+gcp:region
+gcp:zone
+google-native:project
+google-native:region
+google-native:zone
+```
+
+You should set the appropriate value for each of those using `pulumi config set <key> <value>`.
+Note that we deploy all infrastructure resources to a single Google project, so be sure to
+set the same value for `gcp:project` and `google-native:project`. The same goes for the other
+keys as well.
+
+**In addition to these required provider configuration properties**, there are other
+required configuration properties. See `config.py`.
 
 ## Private Networking
 
@@ -119,5 +150,4 @@ Error trying to delete bucket dwl-core2-6eaba0c containing objects without `forc
 
 # Future Notes
 
--   if bigquery sync is slow, we can use DMS on the SQL side
--   move repository for whatupy into a global thing all jobs/services use if it becomes an issue having so many repositories
+- if bigquery sync is slow, we can use DMS on the SQL side

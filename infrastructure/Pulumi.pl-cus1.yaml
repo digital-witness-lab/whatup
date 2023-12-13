@@ -2,6 +2,9 @@ config:
   gcp:project: whatup-deploy
   gcp:region: us-central1
   gcp:zone: us-central1-a
+  google-native:project: whatup-deploy
+  google-native:region: us-central1
+  google-native:zone: us-central1-a
   whatup:createOnboardBulkJob: "true"
   whatup:databases:
     - name: messages
@@ -19,6 +22,8 @@ config:
     secure: AAABAFCeqZXdCh5cgR360Wu0Mu6LePPwNRVPQbJ6Va6Er0WnHwRUbBjoUhnGaw==
   whatup:usrPassword:
     secure: AAABAAqukuGD3tj4wfxRZCnJqnRntSY5fKY/BVAtYFrCNrv5LeZqnHCqOnfJ0w==
+  whatup:whatupAnonKey:
+    secure: AAABAGOUXusJkHS8ZJjnUp4SCFdxluHfYfr0qy9jyEVN/fNzyX5c3Q==
   whatup:whatupSalt:
     secure: AAABANEnVAcqZODtqlEihfy/zclp7RHfFafdsHa0gxSNH6mvQX9iq2IXAB/wlISqAYo=
   whatup:wucPassword:
