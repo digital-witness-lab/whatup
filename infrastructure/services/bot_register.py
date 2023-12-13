@@ -1,20 +1,19 @@
-from pulumi import get_stack, ResourceOptions, Output
+from pulumi import Output, ResourceOptions, get_stack
 from pulumi_gcp import cloudrunv2, kms, secretmanager, serviceaccount, storage
-
 from pulumi_gcp.cloudrunv2 import (
     ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
 )  # noqa: E501
 
-from network import vpc, private_services_network_with_db
+from artifact_registry import whatupy_image
 from dwl_secrets import db_url_secrets
 from jobs.db_migrations import migrations_job_complete
 from kms import sessions_encryption_key, sessions_encryption_key_uri
+from network import private_services_network_with_db, vpc
 from service import Service, ServiceArgs
 from storage import sessions_bucket
-from artifact_registry import whatupy_image
 
-from .whatupcore2 import whatupcore2_service
 from .bot_archive import whatupy_control_groups
+from .whatupcore2 import whatupcore2_service
 
 service_name = "bot-register"
 
@@ -37,7 +36,7 @@ sessions_bucket_perm = storage.BucketIAMMember(
 secret_manager_perm = secretmanager.SecretIamMember(
     "bot-reg-secret-perm",
     secretmanager.SecretIamMemberArgs(
-        secret_id=db_url_secrets["user"].id,
+        secret_id=db_url_secrets["users"].id,
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
@@ -54,10 +53,12 @@ encryption_key_perm = kms.CryptoKeyIAMMember(
 
 db_usr_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
-        secret=db_url_secrets["user"].name,
+        secret=db_url_secrets["users"].name,
         version="latest",
     )
 )
+
+BOT_NAME = {"test": "flo", "prod": "daisy"}[get_stack()]
 
 bot_register = Service(
     service_name,
@@ -108,7 +109,7 @@ bot_register = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="ONBOARD_BOT",
-                value="flo",
+                value=BOT_NAME,
             ),
             # Create an implicit dependency on the migrations
             # job completing successfully.

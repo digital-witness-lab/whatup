@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Self, Dict
+from typing import Dict, Self
+
 import pulumi
 
 
@@ -28,8 +29,6 @@ db_configs: Dict[str, DatabaseConfig] = {
 db_root_password = config.require_secret("dbRootPassword")
 whatup_salt = config.require_secret("whatupSalt")
 whatup_anon_key = config.require_secret("whatupAnonKey")
-create_load_archive_job = config.get_bool("createLoadArchiveJob")
-create_onboard_bulk_job = config.get_bool("createOnboardBulkJob")
 
 
 # Import the provider's configuration settings.

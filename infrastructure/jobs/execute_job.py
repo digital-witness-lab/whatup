@@ -1,9 +1,8 @@
 import pulumi
+from google.api_core import exceptions
+from google.cloud import run_v2
 
 from config import location, project
-
-from google.cloud import run_v2
-from google.api_core import exceptions
 
 
 def run_job_sync(job_name: str, polling_timeout: int):

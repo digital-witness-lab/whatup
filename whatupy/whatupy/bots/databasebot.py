@@ -5,11 +5,11 @@ from datetime import datetime, timedelta
 from functools import partial, reduce
 
 import dataset
+import grpc
+from cloudpathlib import AnyPath
 from dataset.util import DatasetException
 from google.protobuf.timestamp_pb2 import Timestamp
 from sqlalchemy.sql import func
-from cloudpathlib import AnyPath
-import grpc
 
 from .. import utils
 from ..protos import whatupcore_pb2 as wuc
@@ -357,8 +357,10 @@ class DatabaseBot(BaseBot):
                     }
                     callback = partial(self._handle_media_content, datum=datum)
                     if is_archive:
-                        if archive_data.MediaContent:
-                            await callback(message, archive_data.MediaContent)
+                        mp = archive_data.MediaPath
+                        if mp.exits():
+                            with mp.open("rb") as fd:
+                                await callback(message, fd.read())
                     else:
                         await self.download_message_media_eventually(message, callback)
             db["messages"].upsert(message_flat, ["id"])
@@ -399,6 +401,7 @@ class DatabaseBot(BaseBot):
             media_target = self.write_media(
                 content, message, datum["filename"], ["media"]
             )
+            del content
         else:
             self.logger.critical(
                 "Empty media body... Writing empty media URI: %s", datum
