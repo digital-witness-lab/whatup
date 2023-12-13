@@ -3,9 +3,8 @@ from typing import Dict
 from pulumi import get_stack
 from pulumi_gcp import secretmanager
 
+from config import db_configs, db_root_password, whatup_anon_key, whatup_salt
 from database import get_sql_instance_url
-from config import db_root_password, db_configs, whatup_salt, whatup_anon_key
-
 
 db_url_secrets: Dict[str, secretmanager.Secret] = {}
 for db in db_configs.values():

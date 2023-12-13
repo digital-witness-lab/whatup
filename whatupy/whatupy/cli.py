@@ -1,7 +1,6 @@
 import asyncio
-import glob
-import json
 import logging
+import sys
 import typing as T
 from pathlib import Path
 
@@ -20,7 +19,7 @@ from .bots import (
 from .credentials_manager import CredentialsManager
 from .device_manager import run_multi_bots
 from .protos import whatupcore_pb2 as wuc
-from .utils import async_cli, str_to_jid
+from .utils import async_cli, expand_glob, str_to_jid
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
@@ -269,13 +268,10 @@ async def databasebot_load_archive(
 
     filenames = []
     for archive_blob in archive_files:
-        filenames.extend(
-            Path(p)
-            for p in glob.glob(archive_blob, recursive=True)
-            if p.endswith(".json")
-        )
+        filenames.extend(expand_glob(AnyPath(archive_blob)))
     filenames.sort()
     await db.process_archive(filenames)
+    logger.info("Done processing archive files")
 
 
 @cli.command()
@@ -345,5 +341,18 @@ async def registerbot(
         tg.create_task(run_multi_bots(RegisterBot, [credential], params))
 
 
+@cli.command()
+@click.argument("paths", type=str, nargs=-1)
+def gs_ls(paths):
+    for path in paths:
+        path = AnyPath(path)
+        for item in path.glob("*"):
+            click.echo(str(item).strip("/"))
+
+
 def main():
     cli(auto_envvar_prefix="WHATUPY")
+
+
+if __name__ == "__main__":
+    main()

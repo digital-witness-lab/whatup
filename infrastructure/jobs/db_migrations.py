@@ -1,16 +1,15 @@
-from pulumi import get_stack, Output, ResourceOptions
-
-from pulumi_gcp import serviceaccount, cloudrunv2, secretmanager
-from pulumi_gcp.cloudrunv2 import (
+from pulumi import Output, ResourceOptions, get_stack
+from pulumi_gcp import cloudrunv2, secretmanager, serviceaccount
+from pulumi_gcp.cloudrunv2 import (  # noqa: E501
     JobTemplateTemplateContainerEnvValueSourceArgs,
     JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
-)  # noqa: E501
+)
 
-from job import JobArgs, Job
-from network import vpc, private_services_network_with_db
-from dwl_secrets import db_root_pass_secret
-from database import primary_cloud_sql_instance
 from artifact_registry import migrations_image
+from database import db_configs, primary_cloud_sql_instance
+from dwl_secrets import db_root_pass_secret
+from job import Job, JobArgs
+from network import private_services_network_with_db, vpc
 
 from .execute_job import run_job_sync
 
@@ -71,8 +70,8 @@ db_migrations_job = Job(
                 value=primary_cloud_sql_instance.private_ip_address,
             ),
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                name="DATABASE",
-                value="messages",
+                name="DATABASES",
+                value=",".join(db_configs.keys()),
             ),
         ],
         timeout="60s",

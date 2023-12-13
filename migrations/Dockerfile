@@ -4,12 +4,9 @@ FROM migrate/migrate
 # https://github.com/golang-migrate/migrate#database-urls
 RUN apk add --no-cache python3 tini bash
 
-WORKDIR /migrations
-
-COPY *.sql .
-
 WORKDIR /
 
+COPY ./migrations/ /migrations/
 COPY *.sh .
 
 RUN chmod +x ./run_migrations.sh

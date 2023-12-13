@@ -1,11 +1,11 @@
-from pulumi import get_stack, ResourceOptions, Output
+from pulumi import Output, ResourceOptions, get_stack
 from pulumi_gcp import cloudrunv2, kms, serviceaccount, storage
 
-from kms import sessions_encryption_key, sessions_encryption_key_uri
-from network import vpc, private_services_network
-from service import Service, ServiceArgs
-from storage import sessions_bucket, message_archive_bucket
 from artifact_registry import whatupy_image
+from kms import sessions_encryption_key, sessions_encryption_key_uri
+from network import private_services_network, vpc
+from service import Service, ServiceArgs
+from storage import message_archive_bucket, sessions_bucket
 
 from .whatupcore2 import whatupcore2_service
 
