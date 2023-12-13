@@ -10,32 +10,47 @@ from jobs.db_migrations import migrations_job_complete
 from kms import sessions_encryption_key, sessions_encryption_key_uri
 from network import private_services_network_with_db, vpc
 from service import Service, ServiceArgs
-from storage import sessions_bucket
+from storage import sessions_bucket, temp_bucket
 from config import primary_bot_name
 
 from .bot_archive import whatupy_control_groups
 from .whatupcore2 import whatupcore2_service
 
-service_name = "bot-register"
+service_name = "bot-user-services"
 
 service_account = serviceaccount.Account(
-    "bot-register",
+    "bot-user-services",
     account_id=f"whatup-bot-reg-{get_stack()}",
     description=f"Service account for {service_name}",
 )
 
-# registerbot needs to be able to write new session files
+# userservices bot needs to be able to write new session files in the users subdir
 sessions_bucket_perm = storage.BucketIAMMember(
-    "bot-reg-sess-perm",
+    "bot-us-sess-perm",
     storage.BucketIAMMemberArgs(
         bucket=sessions_bucket.name,
+        member=Output.concat("serviceAccount:", service_account.email),
+        role="roles/storage.objectAdmin",
+        condition=storage.BucketIAMMemberConditionArgs(
+            title="UsersSubdir",
+            description="Grants permission to modify objects within the user subdir",
+            expression=f"resource.name.startsWith('projects/_/buckets/{sessions_bucket.name}/objects/users')",
+        ),
+    ),
+)
+
+# userservices bot needs to be able to write new session files
+temp_bucket_perm = storage.BucketIAMMember(
+    "bot-us-temp-perm",
+    storage.BucketIAMMemberArgs(
+        bucket=temp_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
         role="roles/storage.objectAdmin",
     ),
 )
 
 secret_manager_perm = secretmanager.SecretIamMember(
-    "bot-reg-secret-perm",
+    "bot-us-secret-perm",
     secretmanager.SecretIamMemberArgs(
         secret_id=db_url_secrets["users"].id,
         role="roles/secretmanager.secretAccessor",
@@ -44,7 +59,7 @@ secret_manager_perm = secretmanager.SecretIamMember(
 )
 
 encryption_key_perm = kms.CryptoKeyIAMMember(
-    "bot-reg-enc-key-perm",
+    "bot-us-enc-key-perm",
     kms.CryptoKeyIAMMemberArgs(
         crypto_key_id=sessions_encryption_key.id,
         member=Output.concat("serviceAccount:", service_account.email),
@@ -59,10 +74,10 @@ db_usr_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     )
 )
 
-bot_register = Service(
+bot_user_services = Service(
     service_name,
     ServiceArgs(
-        args=["/usr/src/whatupy/run.sh", "registerbot"],
+        args=["/usr/src/whatupy/run.sh", "userservices"],
         concurrency=50,
         container_port=None,
         cpu="1",
@@ -105,6 +120,10 @@ bot_register = Service(
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="PRIMARY_BOT_NAME",
                 value=primary_bot_name,
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="TEMP_BUCKET",
+                value=temp_bucket.name,
             ),
             # Create an implicit dependency on the migrations
             # job completing successfully.

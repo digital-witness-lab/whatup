@@ -282,11 +282,17 @@ async def databasebot_load_archive(
     type=str,
     help="Credentials manager URL to store sessions for newly registered users",
 )
+@click.option(
+    "--public-path",
+    type=click.Path(path_type=AnyPath),
+    help="URL to store temporary HTML files for public use",
+)
 @click.argument("credential", nargs=1)
 @click.pass_context
 async def userservicesbot(
     ctx,
     credential,
+    public_path,
     database_url,
     sessions_url,
 ):
@@ -300,6 +306,7 @@ async def userservicesbot(
     params = {
         "database_url": database_url,
         "credentials_manager": credentials_manager,
+        "public_path": public_path,
         **ctx.obj["connection_params"],
     }
     async with asyncio.TaskGroup() as tg:

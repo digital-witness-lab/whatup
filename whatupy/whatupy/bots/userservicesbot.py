@@ -1,13 +1,16 @@
 import asyncio
 import hashlib
+import uuid
 import json
 import logging
 import typing as T
+from datetime import timedelta
 from collections import defaultdict
 from functools import partial
 from pathlib import Path
 
 import dataset
+from cloudpathlib import AnyPath
 
 from .. import utils
 from ..credentials_manager import CredentialsManagerCloudPath
@@ -91,10 +94,18 @@ class _UserBot(BaseBot):
 
 
 class UserServicesBot(BaseBot):
-    def __init__(self, sessions_dir: Path, database_url: str, *args, **kwargs):
+    def __init__(
+        self,
+        sessions_dir: Path,
+        database_url: str,
+        public_path: AnyPath,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
 
         self.sessions_dir = sessions_dir
+        self.public_path = public_path
         self.db: dataset.Database = dataset.connect(database_url)
         self.users: T.Dict[str, _UserBot] = {}
 
@@ -221,17 +232,25 @@ class UserServicesBot(BaseBot):
             .format_map(params)
             .encode("utf8")
         )
+        content_url = self.bytes_to_url(content, suffix=".html", ttl=timedelta(days=1))
         async with self.with_disappearing_messages(
             user.jid, wuc.DisappearingMessageOptions.TIMER_24HOUR
         ):
-            await self.send_media_message(
+            await self.send_text_message(
                 user.jid,
-                MediaType.MediaDocument,
-                content=content,
-                caption="Click the above attachment and open in Chrome to select the groups you would like to share",
-                mimetype="text/html",
-                filename="onboard-group-selection.html",
+                f"Click on the following link to select which groups you would like to share with us: {content_url}",
             )
+
+    def bytes_to_url(
+        self,
+        content: bytes,
+        suffix: T.Optional[str] = None,
+        ttl: T.Optional[timedelta] = None,
+    ) -> str:
+        filename = f"{uuid.uuid4()}{suffix or ''}"
+        filepath: AnyPath = self.public_path / filename
+        filepath.write_bytes(filepath)
+        return utils.gspath_to_self_signed_url(filepath, ttl=ttl)
 
     async def _trigger_history(self, user: _UserBot, jid: wuc.JID):
         self.logger.critical("_trigger_history called but not yet implemented")
