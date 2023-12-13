@@ -1,25 +1,16 @@
-from pulumi import Output, get_stack, ResourceOptions
-
+from pulumi import Output, ResourceOptions, get_stack
 from pulumi_gcp import projects, serviceaccount
-
-from pulumi_google_native import (
-    bigquery,
-    bigquerydatatransfer as dts,
-)
+from pulumi_google_native import bigquery
+from pulumi_google_native import bigquerydatatransfer as dts
 from pulumi_google_native.bigqueryconnection.v1beta1 import (
-    Connection,
-    ConnectionArgs,
+    CloudSqlCredentialArgs,
     CloudSqlPropertiesArgs,
     CloudSqlPropertiesType,
-    CloudSqlCredentialArgs,
+    Connection,
+    ConnectionArgs,
 )
 
-from config import (
-    location,
-    project,
-    is_prod_stack,
-    db_configs,
-)
+from config import db_configs, is_prod_stack, location, project
 from database import primary_cloud_sql_instance
 from gcloud import get_project_number
 
