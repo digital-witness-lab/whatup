@@ -1,5 +1,6 @@
 from PIL import Image
 import imagehash
+import json
 from cloudpathlib import CloudPath, AnyPath
 from google.cloud import storage
 import click
@@ -21,6 +22,10 @@ def hash_images(file_or_dir):
         file = AnyPath(file)
         if not file.name.startswith('.'):
             hash = imagehash.phash(Image.open(file.open("rb")))
-            hashes.append(str(hash))
+            hashes.append(hash.hash)
+            hash_file : AnyPath = f"{file.name}.json"
+            entry = {"id": file.name, "embedding": hash.hash}
+            with hash_file.open("w") as fd:
+                fd.write(entry)
 
     print(hashes)
