@@ -357,7 +357,7 @@ class DatabaseBot(BaseBot):
                     callback = partial(self._handle_media_content, datum=datum)
                     if is_archive:
                         mp = archive_data.MediaPath
-                        if mp.exits():
+                        if mp.exists():
                             with mp.open("rb") as fd:
                                 await callback(message, fd.read())
                     else:
@@ -479,23 +479,24 @@ class DatabaseBot(BaseBot):
             **self.meta,
         }
         group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
+        has_prev_group_info = bool(group_info_prev)
+
+        group_info_flat["id"] = chat_jid
+        group_info_flat["last_update"] = update_time
+
         if group_info_prev.get("provenance") is None:
             group_info_prev.update(provenance=db_provenance)
         else:
             group_info_prev["provenance"].update(db_provenance)
-
-        keys = set(group_info_prev.keys()).intersection(group_info_flat.keys())
-        keys.discard("provenance")
-
-        group_info_flat["id"] = chat_jid
-        group_info_flat["last_update"] = update_time
 
         if group_info_flat.get("provenance") is None:
             group_info_flat.update(provenance=db_provenance)
         else:
             group_info_flat["provenance"].update(db_provenance)
 
-        if group_info_prev:
+        if has_prev_group_info:
+            keys = set(group_info_flat.keys())
+            [keys.discard(f) for f in ("provenance", "last_update", "record_mtime")]
             if changed_keys := [
                 k for k in keys if group_info_flat.get(k) != group_info_prev.get(k)
             ]:
@@ -503,6 +504,9 @@ class DatabaseBot(BaseBot):
                     "Found previous out-of-date entry, updating: %s: %s",
                     chat_jid,
                     changed_keys,
+                )
+                group_info_flat["provenance"]["databasebot__changed_fields"] = ",".join(
+                    changed_keys
                 )
                 group_info_prev["n_versions"] = group_info_prev.get("n_versions") or 0
                 prev_id = group_info_prev["id"]
@@ -519,6 +523,7 @@ class DatabaseBot(BaseBot):
                 db["group_info"].insert(group_info_prev)
                 db["group_info"].upsert(group_info_flat, ["id"])
             else:
+                logger.debug("Updating group info last updated field")
                 db["group_info"].update(
                     {
                         "id": chat_jid,
@@ -528,7 +533,8 @@ class DatabaseBot(BaseBot):
                     },
                     ["id"],
                 )
-        elif not group_info_prev:
+        else:
+            logger.debug("Inserting new group info row")
             group_info_flat["first_seen"] = update_time
             group_info_flat[RECORD_MTIME_FIELD] = now
             db["group_info"].insert(group_info_flat)
