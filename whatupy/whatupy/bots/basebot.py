@@ -216,25 +216,21 @@ class BaseBot:
                 )
                 try:
                     message: wuc.WUMessage
-                    backoff = 0
                     async for message in self._listen_message_stream(messages):
+                        backoff = 0
                         last_timestamp = message.info.timestamp
                         tg.create_task(self._dispatch_message(message))
                     self.logger.info("Message stream ended. Reconnecting")
                 except StreamMissedHeartbeat:
-                    backoff += 1
-                    if last_timestamp:
-                        t = last_timestamp.ToDatetime().isoformat()
-                    else:
-                        t = "no messages seen"
-                    sleep_time = min(2**backoff, 60)
-                    self.logger.info(
-                        "Re-triggering GetMessages after a missed heartbeat: %s: %ds: sleepin %f",
-                        t,
-                        self.stream_heartbeat_timeout,
-                        sleep_time,
-                    )
-                    await asyncio.sleep(sleep_time)
+                    self.logger.info("Missed heartbeat")
+                backoff += 1
+                sleep_time = min(2**backoff, 60)
+                self.logger.info(
+                    "Re-triggering GetMessages after backoff: %ds: sleepin %f",
+                    self.stream_heartbeat_timeout,
+                    sleep_time,
+                )
+                await asyncio.sleep(sleep_time)
 
     async def _listen_message_stream(
         self, stream: grpc.aio.UnaryStreamCall

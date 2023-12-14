@@ -86,7 +86,12 @@ class ArchiveBot(BaseBot):
             conversation_dir / "community-info" / f"community-info_{timestamp}.json"
         )
 
-        if message.info.source.isGroup:
+        should_check_messages = (
+            message.info.source.isGroup
+            and not meta_group_path.exists()
+            and not meta_community_path.exists()
+        )
+        if should_check_messages:
             group: wuc.JID = message.info.source.chat
             try:
                 group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(group)

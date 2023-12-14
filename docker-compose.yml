@@ -146,7 +146,7 @@ services:
       - donotstart
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission DENIED --credentials-url "/usr/src/whatupy-data/sessions/" ${SESSION_NAME}
+    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission READWRITE --credentials-url "/usr/src/whatupy-data/sessions/" ${SESSION_NAME}
 
   bot-chatbot:
     build: ./whatupy/
