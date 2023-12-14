@@ -216,8 +216,6 @@ func (mq *MessageQueue) PruneMessages() {
 			e.Value = nil
 			mq.messages.Remove(e)
 			n++
-		} else {
-			break
 		}
 	}
 	mq.log.Debugf("Prune messages: %d / %d messages removed", n, N)
@@ -246,27 +244,7 @@ func (mq *MessageQueue) SendMessage(msg *Message) {
 	}
 
 	mq.lock.Lock()
-	var prev *list.Element
-	msgTimestamp := msg.Info.Timestamp
-	e := mq.messages.Back()
-	if e == nil {
-		mq.log.Debugf("Message queue empty. Adding message to front: %s", msg.DebugString())
-		mq.messages.PushFront(msg)
-	} else {
-		for ; e != nil; e = prev {
-			if msgTimestamp.After(e.Value.(*Message).Info.Timestamp) {
-				mq.log.Debugf("Adding message after: %d: %s (goes after) %s", mq.messages.Len(), msg.DebugString(), e.Value.(*Message).DebugString())
-				mq.messages.InsertAfter(msg, e)
-				break
-			}
-			prev = e.Prev()
-			if prev == nil {
-				mq.log.Debugf("Adding message to front: %d: %s", mq.messages.Len(), msg.DebugString())
-				mq.messages.PushFront(msg)
-				break
-			}
-		}
-	}
+    mq.messages.PushBack(msg)
 	mq.lock.Unlock()
 
 	for _, client := range mq.clients {

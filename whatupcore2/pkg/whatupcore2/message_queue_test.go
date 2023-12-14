@@ -1,5 +1,12 @@
 package whatupcore2
 
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// NOTE: queue ordering was taken out Dec 14, 2023, but the tests were not
+// updated. This is because messages from history can come in with strange
+// ordering. Instead of looking at message timestamp, we should do something
+// based on an increasing integer or something. Until then, inserts are O(N)
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 import (
 	"context"
 	"sync"
