@@ -185,7 +185,7 @@ for table, table_meta in messages_tables.items():
             params={
                 "query": query,
             },
-            schedule="every 24 hours" if is_prod_stack() else None,
+            schedule="every 6 hours" if is_prod_stack() else None,
             service_account_name=data_transfers_service_account.email,
         ),
         opts=ResourceOptions(
