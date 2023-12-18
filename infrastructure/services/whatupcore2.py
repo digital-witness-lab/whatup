@@ -125,7 +125,7 @@ whatupcore2_service = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="RAND_STRING",  # change rand string to force deploy
-                value="349203wrueio238234sdf",
+                value="34943534473298",
             ),
         ],
     ),
