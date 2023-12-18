@@ -123,6 +123,10 @@ whatupcore2_service = Service(
                 name="ANON_KEY",
                 value_source=whatup_anon_key_secret_source,
             ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="RAND_STRING",  # change rand string to force deploy
+                value="349203wrueio238234sdf",
+            ),
         ],
     ),
     opts=ResourceOptions(
