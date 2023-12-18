@@ -425,11 +425,11 @@ class DatabaseBot(BaseBot):
         if not is_archive and last_update + self.group_info_refresh_time > now:
             return
 
-        community_processing = False
+        community_info: T.List[wuc.GroupInfo] | None = None
+        group_info: wuc.GroupInfo | None = None
         if is_archive:
             if archive_data.CommunityInfo is not None:
                 community_info = archive_data.CommunityInfo
-                community_processing = True
             elif archive_data.GroupInfo is not None:
                 group_info = archive_data.GroupInfo
             else:
@@ -438,26 +438,23 @@ class DatabaseBot(BaseBot):
             self.logger.debug("Storing archived message timestamp: %s", now)
         else:
             try:
-                group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
-                if (
-                    utils.jid_to_str(group_info.parentJID) != None
-                ):  # this group is in a community
-                    community_processing = True
+                group_info = await self.core_client.GetGroupInfo(chat)
+                if group_info is None:
+                    return
+                if utils.jid_to_str(group_info.parentJID) is not None:
                     community_info_iterator: T.AsyncIterator[
                         wuc.GroupInfo
                     ] = self.core_client.GetCommunityInfo(group_info.parentJID)
-                    community_info: T.List[wuc.GroupInfo] = await utils.aiter_to_list(
-                        community_info_iterator
-                    )
+                    community_info = await utils.aiter_to_list(community_info_iterator)
             except grpc.aio._call.AioRpcError as e:
                 if "rate-overlimit" in (e.details() or ""):
                     return
 
-        if community_processing:
+        if community_info is not None:
             self.logger.debug("Using community info to update groups for community")
             for group_from_community in community_info:
                 await self.insert_group_info(db, group_from_community, now)
-        else:
+        elif group_info is not None:
             self.logger.debug("Using group info to update group: %s", chat_jid)
             await self.insert_group_info(db, group_info, now)
 
@@ -466,7 +463,7 @@ class DatabaseBot(BaseBot):
     ):
         now = datetime.now()
         chat_jid = utils.jid_to_str(group_info.JID)
-        logger = self.logger.getChild(chat_jid)
+        logger = self.logger.getChild(chat_jid or "")
         group_info_flat = flatten_proto_message(
             group_info,
             preface_keys=True,
