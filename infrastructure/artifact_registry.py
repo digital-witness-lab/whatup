@@ -1,3 +1,4 @@
+from pulumi import export
 import pulumi_docker as docker
 from pulumi import Output, get_stack
 from pulumi_gcp import artifactregistry
@@ -22,7 +23,7 @@ repository_url = Output.concat(
 
 
 def create_image(image_name, app_path) -> docker.Image:
-    return docker.Image(
+    image = docker.Image(
         f"{image_name}-{get_stack()}-img",
         image_name=Output.concat(repository_url, "/", image_name),
         build=docker.DockerBuildArgs(
@@ -38,6 +39,8 @@ def create_image(image_name, app_path) -> docker.Image:
         ),
         # opts=child_opts, // IS THIS NEEDED??
     )
+    export(image_name, image.repo_digest)
+    return image
 
 
 whatupy_image: docker.Image = create_image("whatupy", "../whatupy/")

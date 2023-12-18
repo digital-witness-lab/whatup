@@ -116,8 +116,8 @@ services:
     volumes:
       - ./data/message-archive/:/usr/src/whatupy-data/archive/:ro
       - ./data/media/:/usr/src/whatupy-data/media/
-    command: sh -c "ls /usr/src/whatupy-data/archive/ | xargs -P 6 -I{} whatupy databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ '/usr/src/whatupy-data/archive/{}/*_*.json'"
-    #command: sh -c "whatupy --debug databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ '/usr/src/whatupy-data/archive/919805410057-1420515391@g.us/*_*.json'"
+    #command: sh -c "ls /usr/src/whatupy-data/archive/ | xargs -P 6 -I{} whatupy databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ '/usr/src/whatupy-data/archive/{}/*_*.json'"
+    command: sh -c "whatupy --debug databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ '/usr/src/whatupy-data/archive/919805410057-1420515391@g.us/*_*.json'"
 
   bot-onboard-bulk:
     build: ./whatupy/
