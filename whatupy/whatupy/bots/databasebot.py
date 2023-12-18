@@ -357,7 +357,7 @@ class DatabaseBot(BaseBot):
                     callback = partial(self._handle_media_content, datum=datum)
                     if is_archive:
                         mp = archive_data.MediaPath
-                        if mp.exists():
+                        if mp is not None and mp.exists():
                             with mp.open("rb") as fd:
                                 await callback(message, fd.read())
                     else:
