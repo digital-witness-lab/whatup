@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import sys
 import typing as T
 from pathlib import Path
 

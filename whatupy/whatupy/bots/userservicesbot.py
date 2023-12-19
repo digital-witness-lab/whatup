@@ -7,16 +7,15 @@ import typing as T
 from datetime import timedelta
 from collections import defaultdict
 from functools import partial
-from pathlib import Path
 
 import dataset
-from cloudpathlib import AnyPath
+from cloudpathlib import CloudPath
 
 from .. import utils
-from ..credentials_manager import CredentialsManagerCloudPath
+from ..credentials_manager import CredentialsManager
 from ..device_manager import DeviceManager
 from ..protos import whatupcore_pb2 as wuc
-from . import BaseBot, MediaType
+from . import BaseBot
 from .static import static_files
 
 logger = logging.getLogger(__name__)
@@ -96,24 +95,23 @@ class _UserBot(BaseBot):
 class UserServicesBot(BaseBot):
     def __init__(
         self,
-        sessions_dir: Path,
+        credentials_manager: CredentialsManager,
         database_url: str,
-        public_path: AnyPath,
+        public_path: CloudPath,
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
 
-        self.sessions_dir = sessions_dir
         self.public_path = public_path
         self.db: dataset.Database = dataset.connect(database_url)
         self.users: T.Dict[str, _UserBot] = {}
 
         bot_factory = partial(_UserBot, services_bot=self, logger=self.logger, **kwargs)
-        credential_manager = CredentialsManagerCloudPath([sessions_dir])
+        self.credentials_manager = credentials_manager
         self.device_manager = DeviceManager(
             bot_factory=bot_factory,
-            credential_managers=[credential_manager],
+            credential_managers=[credentials_manager],
         )
 
     async def post_start(self):
@@ -129,7 +127,7 @@ class UserServicesBot(BaseBot):
             return
         # TODO: make these expire and have a way to re-fetch when needed
         user = self.users.get(sender)
-        if user is None:
+        if user is None or user.username is None:
             return
         ulog = self.logger.getChild(user.username)
 
@@ -248,8 +246,15 @@ class UserServicesBot(BaseBot):
         ttl: T.Optional[timedelta] = None,
     ) -> str:
         filename = f"{uuid.uuid4()}{suffix or ''}"
-        filepath: AnyPath = self.public_path / filename
-        filepath.write_bytes(filepath)
+        filepath: CloudPath = (
+            self.public_path
+            / filename[0]
+            / filename[1]
+            / filename[2]
+            / filename[3]
+            / filename[3:]
+        )
+        filepath.write_bytes(content)
         return utils.gspath_to_self_signed_url(filepath, ttl=ttl)
 
     async def _trigger_history(self, user: _UserBot, jid: wuc.JID):
