@@ -30,6 +30,8 @@ db_root_password = config.require_secret("dbRootPassword")
 whatup_salt = config.require_secret("whatupSalt")
 whatup_anon_key = config.require_secret("whatupAnonKey")
 
+primary_bot_name = str(config.require("primary_bot_name"))
+temp_bucket_ttl_days = config.require_int("temp_bucket_ttl_days")
 
 # Import the provider's configuration settings.
 gcp_config = pulumi.Config("gcp")
