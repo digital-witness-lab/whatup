@@ -34,7 +34,7 @@ def create_image(image_name, app_path) -> docker.Image:
                 # that causes the provider to reuse an image
                 # digest that was built for a different
                 # location.
-                "LOCATION": location
+                "ENVIRONMENT": get_stack()
             },
         ),
         # opts=child_opts, // IS THIS NEEDED??

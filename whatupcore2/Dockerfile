@@ -53,4 +53,7 @@ COPY --from=builder /build/run.sh /run.sh
 
 EXPOSE 3447
 
+ARG ENVIRONMENT="dev"
+ENV ENVIRONMENT=$ENVIRONMENT
+
 ENTRYPOINT ["/run.sh"]

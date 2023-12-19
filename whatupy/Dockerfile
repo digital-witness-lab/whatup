@@ -15,3 +15,6 @@ RUN pip install -e .
 
 # Ensure the script is executable.
 RUN chmod +x /usr/src/whatupy/*.sh
+
+ARG ENVIRONMENT="dev"
+ENV ENVIRONMENT=$ENVIRONMENT
