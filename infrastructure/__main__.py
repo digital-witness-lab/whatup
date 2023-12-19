@@ -11,6 +11,12 @@ from jobs import (
     db_migrations,
     whatupcore_remove_user,
 )
-from services import bot_archive, bot_db, bot_register, whatupcore2
+from services import (
+    bot_archive,
+    bot_db,
+    bot_register,
+    bot_user_services,
+    whatupcore2,
+)
 
 pulumi.export("bigquery_connection_id", bigquery_sql_connection.connection_id)
