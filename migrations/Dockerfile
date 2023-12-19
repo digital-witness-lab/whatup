@@ -11,4 +11,7 @@ COPY *.sh .
 
 RUN chmod +x ./run_migrations.sh
 
+ARG ENVIRONMENT="dev"
+ENV ENVIRONMENT=$ENVIRONMENT
+
 ENTRYPOINT ["/sbin/tini", "--"]
