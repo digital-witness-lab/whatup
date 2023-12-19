@@ -5,102 +5,160 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Form Page</title>
 <style>
-    body {
+ body {
         font-family: Arial, sans-serif;
-        background-color: #000;
+        line-height: 140%;
+        background-color: #244062;
         color: white;
-        padding: 20px;
+        width:375px;
+        height:700px;
+        margin:0 auto;
+        border:1px solid #fff;
+        display: flex;
+        align-items: flex-end;
+        font-size: 1rem;
+        
+
     }
-    .header {
+.header {
         text-align: center;
         color: #4CAF50;
+        padding-top:18px;
     }
-    .content-box {
-        background-color: #333;
-        border-left: 5px solid #4CAF50;
-        padding: 10px;
-        margin: 20px 0;
+.content-box {
+        padding: 20px;
+        stroke-width: 1px;
+        stroke: #DCF7C5;
+        width:330px;
+        height:490px;
+        overflow:scroll;
+        
     }
-    .btn-container {
+
+.callout {
+        color: #DCF7C5;
+        font-feature-settings: 'clig' off, 'liga' off;
+        font-family: Franklin Gothic Book;
+        font-size: 1rem;
+        font-style: normal;
+        font-weight: 400;
+        line-height: 1.125rem;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid #DCF7C5;
+        display:block;
+        border-radius: 20px;
+        padding:10px;
+    }    
+.btn-container {
         display: flex;
         justify-content: space-between;
-        margin-top: 30px;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.00) 0%, rgba(0, 0, 0, 0.20) 75.52%);
+        /*margin-top: 30px;*/
+  
     }
-    .button {
+.button {
         padding: 10px 20px;
-        border: none;
+        border: 2px solid #fff;
         border-radius: 20px;
         font-size: 16px;
         cursor: pointer;
+        width:120px;
+        margin:0 15px 15px 10px;
     }
-    .cancel-btn {
+.cancel-btn {
         background-color: #555;
         color: white;
+        align-items: flex-end;
     }
-    .next-btn {
+.next-btn {
         background-color: #4CAF50;
         color: white;
     }
-    .hidden {
+.hidden {
         display: none;
     }
 
-    .group-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #222;
-    margin-bottom: 10px;
-    padding: 10px;
-    border-radius: 10px;
-    cursor: pointer;
-    border: 2px solid transparent;
+.group_count{
+    font-size:.75em;
+    color:#ccc;
 }
 
-.group-item input[type="checkbox"] {
-    margin-right: 10px;
+
+/* The container */
+.group_container {
+  display: block;
+  position: relative;
+  padding-left: 35px;
+  padding-top:10px;
+  padding-bottom:10px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  border-bottom:1px solid #ccc;
+  background: rgba(0, 0, 0, 0.25);
 }
 
-/* Checked state styling for custom checkbox appearance */
-.group-item input[type="checkbox"]:checked + span {
-    text-decoration: line-through;
-    color: #aaa; /* Greyed out text to indicate selection */
-}
-
-.group-item span {
-    display: block;
-}
-
-.group-item:hover,
-.group-item input[type="checkbox"]:checked {
-    border-color: #4CAF50; /* Highlight color when hovered/selected */
-}
-
-/* Hide the default checkbox */
-.group-item input[type="checkbox"] {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
+/* Hide the browser's default checkbox */
+.group_container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
 }
 
 /* Create a custom checkbox */
-.group-item input[type="checkbox"] + span:before {
-    content: '';
-    display: inline-block;
-    vertical-align: middle;
-    width: 20px;
-    height: 20px;
-    margin-right: 10px;
-    border: 2px solid #4CAF50;
-    border-radius: 3px;
-    background-color: transparent;
-    cursor: pointer;
+.checkmark {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  height: 20px;
+  width: 20px;
+  background-color: #eee;
 }
 
-/* Style for checked state */
-.group-item input[type="checkbox"]:checked + span:before {
-    background-color: #4CAF50; /* Filled with highlight color when checked */
+/* On mouse-over, add a grey background color */
+.group_container:hover input ~ .checkmark {
+  background-color: #ccc;
 }
+
+/* When the checkbox is checked, add a blue background */
+.group_container input:checked ~ .checkmark {
+  background-color:  #4CAF50;
+}
+
+/* Create the checkmark/indicator (hidden when not checked) */
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+/* Show the checkmark when checked */
+.group_container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+/* Style the checkmark/indicator */
+.group_container .checkmark:after {
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  -webkit-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  transform: rotate(45deg);
+}
+
+h2, h3{
+    font-weight:400;
+}
+
 
 </style>
 
@@ -133,24 +191,24 @@ window.onload = function() {
 <div id="section1" class="section">
     
     <div class="header">
-        <h1>WhatsApp Watch</h1>
+       <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
     </div>
 
     <div class="content-box">
         <h2>Welcome to WhatsApp Watch!</h2>
         <p>WhatsApp Watch is a tool that helps researchers study what’s popular on WhatsApp.</p>
-    </div>
     
-    <div class="content-box">
+    
+    <div class="callout">
         <h3>You are invited to contribute!</h3>
         <p>On the following screens, you can to select groups to share for this research.</p>
-    </div>
+    </div>    
     
-    <div class="content-box">
+   
         <h3>Privacy information</h3>
         <p>No groups will be shared until you have completed the registration process.</p>
         <p>No personal information including names or phone numbers for you or your contacts will ever be collected.</p>
-    </div>
+    </div>    
     <div class="btn-container">
         <button class="button cancel-btn" onclick="cancelForm()">CANCEL</button>
         <button class="button next-btn" onclick="goToSection('section2')">NEXT</button>
@@ -158,16 +216,16 @@ window.onload = function() {
 </div>
 
 <div id="section2" class="section hidden">
-        <div class="header">
-            <h1>WhatsApp Watch</h1>
-        </div>
+    <div class="header">
+        <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
+     </div>
     
         <div class="content-box">
             <h2>Instructions for sharing community groups.</h2>
             <p>When you share a group, you are providing access to the group’s history plus new messages that come in.</p>
-        </div>
+        
     
-        <div class="content-box">
+        <div class="callout">
             <h3>Community groups are groups that:</h3>
             <ul>
                 <li>have at least six members.</li>
@@ -177,7 +235,7 @@ window.onload = function() {
             </ul>
         </div>
     
-        <div class="content-box">
+
             <p>No group messages will be collected until you have had a chance to confirm your group choices.</p>
             <p>You can stop sharing groups at any time.</p>
         </div>
@@ -190,27 +248,28 @@ window.onload = function() {
 
 <div id="section3" class="section hidden">
     <div class="header">
-        <h1>WhatsApp Watch</h1>
-    </div>
+        <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
+     </div>
 
     <div class="content-box">
         <h2>Select groups to share.</h2>
         <p>You will be able to confirm your choices on the next screen.</p>
-    </div>
 
-    <div class="content-box">
-        <!-- Example of a single group item, repeat this structure for each group -->
-        <label for="group1" class="group-item">
+
+   
+        <label class="group_container">One long long long long long long long long long long
+            <br><span class="group_count">2 people</span>
+            <input type="checkbox" checked="checked" id="group1" name="group1">
+            <span class="checkmark"></span>
+        </label>
+        <label class="group_container">Another group
+            <br><span class="group_count">2 people</span>
             <input type="checkbox" id="group1" name="group1">
-            <span>Par le hublot duo - 22 sept</span>
-            <span>45 participants</span>
+            <span class="checkmark"></span>
         </label>
 
-        <label for="group2" class="group-item">
-            <input type="checkbox" id="group2" name="group2" checked>
-            <span>All Hands Retreat</span>
-            <span>22 participants</span>
-        </label>
+      
+
 
         <!-- Placeholder for additional groups -->
         <!-- ... (repeat for each additional group) ... -->
@@ -225,9 +284,8 @@ window.onload = function() {
 
 <div id="section4" class="section hidden">
     <div class="header">
-        <h1>WhatsApp Watch</h1>
-    </div>
-
+        <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
+     </div>
     <div class="content-box">
         <h2>Confirm your groups.</h2>
         <p>You selected three groups:</p>
@@ -246,9 +304,8 @@ window.onload = function() {
 
 <div id="section5" class="section hidden">
     <div class="header">
-        <h1>WhatsApp Watch</h1>
-    </div>
-
+        <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
+     </div>
     <div class="content-box">
         <h2>Complete registration on WhatsApp</h2>
         <p>When you click “next” below, you will be redirected to WhatsApp.</p>
