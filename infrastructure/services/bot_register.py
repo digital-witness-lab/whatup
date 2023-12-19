@@ -31,6 +31,25 @@ sessions_bucket_perm = storage.BucketIAMMember(
         bucket=sessions_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
         role="roles/storage.objectAdmin",
+        # Condition removed because it wasn't allowing listdir to happen:
+        # google.api_core.exceptions.Forbidden: 403 GET
+        # https://storage.googleapis.com/storage/v1/b/dwl-sess-706f295/o?maxResults=1&projection=noAcl&prefix=users%2F&prettyPrint=false:
+        # whatup-bot-userserv-test@whatup-deploy.iam.gserviceaccount.com does
+        # not have storage.objects.list access to the Google Cloud Storage
+        # bucket. Permission 'storage.objects.list' denied on resource (or it
+        # may not exist).
+        # condition=storage.BucketIAMMemberConditionArgs(
+        #     title="UsersSubdir",
+        #     description="Grants permission to modify objects within the user subdir",
+        #     expression=sessions_bucket.name.apply(
+        #         lambda name: (
+        #             "resource.type == 'storage.googleapis.com/Object' && ("
+        #             f"resource.name.startsWith('projects/_/buckets/{name}/objects/users') || "
+        #             f"resource.name == 'projects/_/buckets/{name}/objects/{primary_bot_name}.json'"
+        #             ")"
+        #         )
+        #     ),
+        # ),
     ),
 )
 

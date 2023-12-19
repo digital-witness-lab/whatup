@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RANDOM="348u9283yf9823rh8239"
+RAND="348u9283yf9asdfsdf39"
 app_command=$1
 
 if [ -z "${app_command:-}" ]; then
@@ -62,10 +62,10 @@ case $app_command in
     userservices)
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
             --port 443 \
-            userservices \
+            userservicesbot \
             --database-url "${DATABASE_URL}" \
             --sessions-url "kek+gs://${SESSIONS_BUCKET}/users/" \
-            --public-path "gs://${TEMP_BUCKET/" \
+            --public-path "gs://${TEMP_BUCKET}/" \
             "kek+gs://${SESSIONS_BUCKET}/${PRIMARY_BOT_NAME}.json"
     ;;
 
