@@ -219,6 +219,7 @@ type WhatUpCoreClient interface {
 	JoinGroup(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error)
 	GetMessages(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetMessagesClient, error)
 	GetPendingHistory(ctx context.Context, in *PendingHistoryOptions, opts ...grpc.CallOption) (WhatUpCore_GetPendingHistoryClient, error)
+	RequestChatHistory(ctx context.Context, in *HistoryRequestOptions, opts ...grpc.CallOption) (*GroupInfo, error)
 	// DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
 	DownloadMedia(ctx context.Context, in *DownloadMediaOptions, opts ...grpc.CallOption) (*MediaContent, error)
 	SendMessage(ctx context.Context, in *SendMessageOptions, opts ...grpc.CallOption) (*SendMessageReceipt, error)
@@ -448,6 +449,15 @@ func (x *whatUpCoreGetPendingHistoryClient) Recv() (*MessageStream, error) {
 	return m, nil
 }
 
+func (c *whatUpCoreClient) RequestChatHistory(ctx context.Context, in *HistoryRequestOptions, opts ...grpc.CallOption) (*GroupInfo, error) {
+	out := new(GroupInfo)
+	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/RequestChatHistory", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *whatUpCoreClient) DownloadMedia(ctx context.Context, in *DownloadMediaOptions, opts ...grpc.CallOption) (*MediaContent, error) {
 	out := new(MediaContent)
 	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/DownloadMedia", in, out, opts...)
@@ -499,6 +509,7 @@ type WhatUpCoreServer interface {
 	JoinGroup(context.Context, *InviteCode) (*GroupInfo, error)
 	GetMessages(*MessagesOptions, WhatUpCore_GetMessagesServer) error
 	GetPendingHistory(*PendingHistoryOptions, WhatUpCore_GetPendingHistoryServer) error
+	RequestChatHistory(context.Context, *HistoryRequestOptions) (*GroupInfo, error)
 	// DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
 	DownloadMedia(context.Context, *DownloadMediaOptions) (*MediaContent, error)
 	SendMessage(context.Context, *SendMessageOptions) (*SendMessageReceipt, error)
@@ -543,6 +554,9 @@ func (UnimplementedWhatUpCoreServer) GetMessages(*MessagesOptions, WhatUpCore_Ge
 }
 func (UnimplementedWhatUpCoreServer) GetPendingHistory(*PendingHistoryOptions, WhatUpCore_GetPendingHistoryServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetPendingHistory not implemented")
+}
+func (UnimplementedWhatUpCoreServer) RequestChatHistory(context.Context, *HistoryRequestOptions) (*GroupInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestChatHistory not implemented")
 }
 func (UnimplementedWhatUpCoreServer) DownloadMedia(context.Context, *DownloadMediaOptions) (*MediaContent, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DownloadMedia not implemented")
@@ -782,6 +796,24 @@ func (x *whatUpCoreGetPendingHistoryServer) Send(m *MessageStream) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _WhatUpCore_RequestChatHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HistoryRequestOptions)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WhatUpCoreServer).RequestChatHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.WhatUpCore/RequestChatHistory",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WhatUpCoreServer).RequestChatHistory(ctx, req.(*HistoryRequestOptions))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WhatUpCore_DownloadMedia_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DownloadMediaOptions)
 	if err := dec(in); err != nil {
@@ -884,6 +916,10 @@ var WhatUpCore_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "JoinGroup",
 			Handler:    _WhatUpCore_JoinGroup_Handler,
+		},
+		{
+			MethodName: "RequestChatHistory",
+			Handler:    _WhatUpCore_RequestChatHistory_Handler,
 		},
 		{
 			MethodName: "DownloadMedia",

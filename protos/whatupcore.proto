@@ -135,6 +135,8 @@ message HistoryRequestOptions {
     string id = 2;
     bool isFromMe = 3;
     google.protobuf.Timestamp timestamp = 4;
+
+    int64 num_messages = 20;
 }
 
 message PendingHistoryOptions {
