@@ -1,0 +1,15 @@
+{
+    "contentsDeltaUri": "gs://BUCKET_NAME/path",
+    "config": {
+      "dimensions": 64,
+      "approximateNeighborsCount": 150,
+      "distanceMeasureType": "L1_DISTANCE",
+      "shardSize": "SHARD_SIZE_SMALL",
+      "algorithm_config": {
+        "treeAhConfig": {
+          "leafNodeEmbeddingCount": 1000,
+          "fractionLeafNodesToSearch": 10
+        }
+      }
+    }
+  }
