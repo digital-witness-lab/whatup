@@ -55,7 +55,6 @@ func (s *WhatUpCoreAuthServer) Register(registerOptions *pb.RegisterOptions, qrS
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// ADD DEFAULT ACL STUFF HERE
 	session, regState, err := s.sessionManager.AddRegistration(ctx, credentials.Username, credentials.Passphrase, registerOptions)
 	if err != nil {
 		return err

@@ -14,6 +14,11 @@ import (
 
 var nowFunc func() time.Time = time.Now
 
+type QueueMessage struct {
+    addedAt time.Time
+    message *Message
+}
+
 type MessageClient struct {
 	position *list.Element
 	queue    *MessageQueue
@@ -39,13 +44,13 @@ func NewMessageClient(queue *MessageQueue) *MessageClient {
 	}
 }
 
-func (mc *MessageClient) MessageChan() (chan *Message, error) {
+func (mc *MessageClient) MessageChan() (chan *QueueMessage, error) {
 	if mc.newMessageAlert != nil {
 		return nil, errors.New("Can only have one message chan per client")
 	}
 	mc.log.Debugf("creating channel")
 	mc.newMessageAlert = make(chan bool, 128)
-	msgChan := make(chan *Message)
+	msgChan := make(chan *QueueMessage)
 	go func() {
 		defer func() { mc.newMessageAlert = nil }()
 		mc.newMessageAlert <- true
@@ -70,7 +75,7 @@ func (mc *MessageClient) MessageChan() (chan *Message, error) {
 	return msgChan, nil
 }
 
-func (mc *MessageClient) depleteQueueToChan(msgChan chan *Message) bool {
+func (mc *MessageClient) depleteQueueToChan(msgChan chan *QueueMessage) bool {
 	for {
 		msg, ok := mc.ReadMessage()
 		if !ok {
@@ -80,12 +85,12 @@ func (mc *MessageClient) depleteQueueToChan(msgChan chan *Message) bool {
 			mc.log.Debugf("depletion found nil message")
 			return ok
 		}
-		mc.log.Debugf("depleting queue saw message: %s", msg.DebugString())
+        mc.log.Debugf("depleting queue saw message: %s: %s", msg.addedAt, msg.message.DebugString())
 		msgChan <- msg
 	}
 }
 
-func (mc *MessageClient) ReadMessage() (*Message, bool) {
+func (mc *MessageClient) ReadMessage() (*QueueMessage, bool) {
 	if !mc.valid {
 		return nil, false
 	}
@@ -102,11 +107,11 @@ func (mc *MessageClient) ReadMessage() (*Message, bool) {
 			mc.log.Debugf("could not advance position")
 		}
 	}
-	var msg *Message
+	var msg *QueueMessage
 	if cursor != nil {
-		msg = cursor.Value.(*Message)
+		msg = cursor.Value.(*QueueMessage)
 	}
-	mc.log.Debugf("reading from queue: (msg == nil) = %t: (position == nil) = %t: len(q) = %d: %s", msg == nil, mc.position == nil, mc.queue.messages.Len(), msg.DebugString())
+	mc.log.Debugf("reading from queue: (msg == nil) = %t: (position == nil) = %t: len(q) = %d", msg == nil, mc.position == nil, mc.queue.messages.Len())
 	return msg, true
 }
 
@@ -212,11 +217,13 @@ func (mq *MessageQueue) PruneMessages() {
 			e.Value = nil
 			mq.messages.Remove(e)
 			n++
-		} else if mq.maxMessageAge > 0 && now.Sub(e.Value.(*Message).Info.Timestamp) > mq.maxMessageAge {
+		} else if mq.maxMessageAge > 0 && now.Sub(e.Value.(*QueueMessage).addedAt) > mq.maxMessageAge {
 			e.Value = nil
 			mq.messages.Remove(e)
 			n++
-		}
+		} else {
+            break
+        }
 	}
 	mq.log.Debugf("Prune messages: %d / %d messages removed", n, N)
 }
@@ -238,13 +245,33 @@ func (mq *MessageQueue) PruneClients() {
 	mq.log.Debugf("After prune, remaining clients: %d", len(mq.clients))
 }
 
-func (mq *MessageQueue) SendMessage(msg *Message) {
+func (mq *MessageQueue) SendMessageTimestamp(msg *Message, now time.Time) {
 	if !mq.valid {
 		return
 	}
 
 	mq.lock.Lock()
-    mq.messages.PushBack(msg)
+    newElement := &QueueMessage{addedAt: now, message: msg}
+    e := mq.messages.Back()
+	if e == nil {
+		mq.log.Debugf("Message queue empty. Adding message to front: %s", now)
+		mq.messages.PushFront(newElement)
+	} else {
+        var prev *list.Element
+	    for ; e != nil; e = prev {
+	    	if newElement.addedAt.After(e.Value.(*QueueMessage).addedAt) {
+	    		mq.log.Debugf("Adding message after: %d: %s (goes after) %s", mq.messages.Len(), now, e.Value.(*QueueMessage).addedAt)
+	    		mq.messages.InsertAfter(newElement, e)
+	    		break
+	    	}
+	    	prev = e.Prev()
+	    	if prev == nil {
+	    		mq.log.Debugf("Adding message to front: %d: %s", mq.messages.Len(), now)
+	    		mq.messages.PushFront(newElement)
+	    		break
+	    	}
+	    }
+    }
 	mq.lock.Unlock()
 
 	for _, client := range mq.clients {
@@ -254,6 +281,10 @@ func (mq *MessageQueue) SendMessage(msg *Message) {
 		}
 	}
 	mq.PruneMessages()
+}
+
+func (mq *MessageQueue) SendMessage(msg *Message) {
+    mq.SendMessageTimestamp(msg, nowFunc())
 }
 
 func (mq *MessageQueue) getFront() *list.Element {
@@ -275,4 +306,11 @@ func (mq *MessageQueue) Close() {
 	}
 	mq.messages.Init()
 	mq.valid = false
+}
+
+func (mq *MessageQueue) Clear() {
+    mq.log.Debugf("Clearing queue")
+	mq.lock.Lock()
+	defer mq.lock.Unlock()
+    mq.messages.Init()
 }
