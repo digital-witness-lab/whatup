@@ -159,7 +159,7 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 
 	ctx, cancelCtx := context.WithCancel(ctx)
 
-	historyMessageQueue := NewMessageQueue(ctx, time.Minute, 16384, 0, log.Sub("hmq"))
+	historyMessageQueue := NewMessageQueue(ctx, time.Minute, 16384, 10 * time.Minute, log.Sub("hmq"))
 	historyMessageQueue.Start()
 	messageQueue := NewMessageQueue(ctx, time.Minute, 1024, time.Hour, log.Sub("mq"))
 	messageQueue.Start()
@@ -189,16 +189,6 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 		client.Log.Warnf("HACK adding archive handler to request history on archive-state change")
 		client.archiveHandler = wmClient.AddEventHandler(client.UNSAFEArchiveHack_OnArchiveGetHistory)
 	}
-
-	go func() {
-		select {
-        case <-ctx.Done():
-            return
-		case <-time.After(10 * time.Minute):
-		    client.Log.Infof("Clearing history queue")
-		    historyMessageQueue.Clear()
-		}
-	}()
 
 	log.Debugf("WhatsAppClient created and lock releasing")
 	return client, nil
