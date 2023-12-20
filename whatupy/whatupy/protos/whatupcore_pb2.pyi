@@ -318,7 +318,7 @@ class DownloadMediaOptions(google.protobuf.message.Message):
 global___DownloadMediaOptions = DownloadMediaOptions
 
 @typing_extensions.final
-class HistoryRequestLastMessage(google.protobuf.message.Message):
+class HistoryRequestOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     CHAT_FIELD_NUMBER: builtins.int
     ID_FIELD_NUMBER: builtins.int
@@ -343,23 +343,18 @@ class HistoryRequestLastMessage(google.protobuf.message.Message):
 
     def ClearField(self, field_name: typing_extensions.Literal['chat', b'chat', 'id', b'id', 'isFromMe', b'isFromMe', 'timestamp', b'timestamp']) -> None:
         ...
-global___HistoryRequestLastMessage = HistoryRequestLastMessage
+global___HistoryRequestOptions = HistoryRequestOptions
 
 @typing_extensions.final
 class PendingHistoryOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     HEARTBEATTIMEOUT_FIELD_NUMBER: builtins.int
-    LASTMESSAGE_FIELD_NUMBER: builtins.int
     heartbeatTimeout: builtins.int
 
-    @property
-    def lastMessage(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___HistoryRequestLastMessage]:
+    def __init__(self, *, heartbeatTimeout: builtins.int=...) -> None:
         ...
 
-    def __init__(self, *, heartbeatTimeout: builtins.int=..., lastMessage: collections.abc.Iterable[global___HistoryRequestLastMessage] | None=...) -> None:
-        ...
-
-    def ClearField(self, field_name: typing_extensions.Literal['heartbeatTimeout', b'heartbeatTimeout', 'lastMessage', b'lastMessage']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['heartbeatTimeout', b'heartbeatTimeout']) -> None:
         ...
 global___PendingHistoryOptions = PendingHistoryOptions
 

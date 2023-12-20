@@ -181,7 +181,7 @@ class BaseBot:
             return self._dispatch_message(message, skip_control=True, is_history=True)
 
         await self._listen_messages(
-            stream_factory, callback, self.logger.getChild("listenMessages")
+            stream_factory, callback, self.logger.getChild("messages")
         )
 
     async def listen_messages(self):
@@ -198,7 +198,7 @@ class BaseBot:
             return self._dispatch_message(message)
 
         await self._listen_messages(
-            stream_factory, callback, self.logger.getChild("listenMessages")
+            stream_factory, callback, self.logger.getChild("history")
         )
 
     async def _listen_messages(

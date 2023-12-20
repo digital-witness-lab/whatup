@@ -660,3 +660,37 @@ func (s *WhatUpCoreServer) Unregister(ctx context.Context, options *pb.Unregiste
 		JIDAnon:     JIDAnnonProto,
 	}, nil
 }
+
+func (s *WhatUpCoreServer) RequestChatHistory(ctx context.Context, historyRequestOptions *pb.HistoryRequestOptions) (*pb.GroupInfo, error) {
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	if strings.HasPrefix(historyRequestOptions.Chat.User, "anon.") {
+		deanonChat, isDeAnon := session.Client.anonLookup.deAnonymizeJIDProto(historyRequestOptions.Chat)
+		if !isDeAnon {
+			return nil, status.Errorf(codes.Internal, "Could not deanonimize chat JID: %s", historyRequestOptions.Chat.User)
+		}
+		historyRequestOptions.Chat = deanonChat
+	}
+    JID := ProtoToJID(historyRequestOptions.Chat)
+
+    lastMessage := types.MessageInfo{
+        ID: historyRequestOptions.Id,
+        Timestamp: historyRequestOptions.Timestamp.AsTime(),
+        MessageSource: types.MessageSource{
+            Chat: JID,
+            IsFromMe: bool(historyRequestOptions.IsFromMe),
+        },
+    }
+    session.Client.RequestHistoryMsgInfoRetry(&lastMessage)
+
+
+	groupInfo, err := session.Client.GetGroupInfo(JID)
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, "%v", err)
+	}
+	groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+	return AnonymizeInterface(session.Client.anonLookup, groupInfoProto), nil
+}
