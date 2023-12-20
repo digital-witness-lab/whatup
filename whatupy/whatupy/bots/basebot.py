@@ -170,69 +170,68 @@ class BaseBot:
         pass
 
     async def listen_historical_messages(self):
-        self.logger.info("Reading historical messages")
-        messages: grpc.aio.UnaryStreamCall = self.core_client.GetPendingHistory(
-            wuc.PendingHistoryOptions(
-                heartbeatTimeout=self.stream_heartbeat_timeout,
-            )
-        )
-        async with asyncio.TaskGroup() as tg:
-            try:
-                async for message in self._listen_message_stream(messages):
-                    jid_from: wuc.JID = message.info.source.chat
-                    self.logger.debug(
-                        "Got historical message: %s: %s",
-                        utils.jid_to_str(jid_from),
-                        message.info.id,
-                    )
-                    tg.create_task(
-                        self._dispatch_message(
-                            message, skip_control=True, is_history=True
-                        )
-                    )
-            except StreamMissedHeartbeat:
-                self.logger.info(
-                    "History handler missed a heartbeat... closing handler"
+        def stream_factory(last_timestamp):
+            return self.core_client.GetPendingHistory(
+                wuc.PendingHistoryOptions(
+                    heartbeatTimeout=self.stream_heartbeat_timeout,
                 )
-                return
-            except grpc.aio._call.AioRpcError as e:
-                if e.code == grpc.StatusCode.UNAVAILABLE:
-                    self.logger.info("Closing history handler")
-                    return
-                raise e
+            )
+
+        def callback(message):
+            return self._dispatch_message(message, skip_control=True, is_history=True)
+
+        await self._listen_messages(
+            stream_factory, callback, self.logger.getChild("listenMessages")
+        )
 
     async def listen_messages(self):
-        self.logger.info("Reading messages")
+        def stream_factory(last_timestamp):
+            return self.core_client.GetMessages(
+                wuc.MessagesOptions(
+                    markMessagesRead=self.mark_messages_read,
+                    lastMessageTimestamp=last_timestamp,
+                    heartbeatTimeout=self.stream_heartbeat_timeout,
+                ),
+            )
+
+        def callback(message):
+            return self._dispatch_message(message)
+
+        await self._listen_messages(
+            stream_factory, callback, self.logger.getChild("listenMessages")
+        )
+
+    async def _listen_messages(
+        self,
+        stream_factory: T.Callable[[Timestamp | None], grpc.aio.UnaryStreamCall],
+        callback: T.Callable[[wuc.WUMessage], T.Any],
+        log: logging.Logger,
+    ):
+        log.info("Reading messages")
         last_timestamp: T.Optional[Timestamp] = None
         backoff = 0
         async with asyncio.TaskGroup() as tg:
             while True:
-                messages: grpc.aio.UnaryStreamCall = self.core_client.GetMessages(
-                    wuc.MessagesOptions(
-                        markMessagesRead=self.mark_messages_read,
-                        lastMessageTimestamp=last_timestamp,
-                        heartbeatTimeout=self.stream_heartbeat_timeout,
-                    ),
-                )
+                messages: grpc.aio.UnaryStreamCall = stream_factory(last_timestamp)
                 try:
                     message: wuc.WUMessage
-                    async for message in self._listen_message_stream(messages):
+                    async for message in self._read_stream_heartbeat(messages):
                         backoff = 0
                         last_timestamp = message.info.timestamp
-                        tg.create_task(self._dispatch_message(message))
-                    self.logger.info("Message stream ended. Reconnecting")
+                        tg.create_task(callback(message))
+                    log.info("Message stream ended. Reconnecting")
                 except StreamMissedHeartbeat:
-                    self.logger.info("Missed heartbeat")
+                    log.info("Missed heartbeat")
                 backoff += 1
                 sleep_time = min(2**backoff, 60)
-                self.logger.info(
-                    "Re-triggering GetMessages after backoff: %ds: sleepin %f",
+                log.info(
+                    "Re-triggering after backoff: %ds: sleeping %f",
                     self.stream_heartbeat_timeout,
                     sleep_time,
                 )
                 await asyncio.sleep(sleep_time)
 
-    async def _listen_message_stream(
+    async def _read_stream_heartbeat(
         self, stream: grpc.aio.UnaryStreamCall
     ) -> T.AsyncIterator[wuc.WUMessage]:
         while True:

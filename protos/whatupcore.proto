@@ -29,6 +29,7 @@ service WhatUpCore {
 
     rpc GetMessages(MessagesOptions) returns (stream MessageStream) {}
     rpc GetPendingHistory(PendingHistoryOptions) returns (stream MessageStream) {}
+    rpc RequestChatHistory(HistoryRequestOptions) returns (GroupInfo) {}
     // DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
     rpc DownloadMedia(DownloadMediaOptions) returns (MediaContent) {}
 
@@ -129,7 +130,7 @@ message DownloadMediaOptions {
     MessageInfo info = 2;
 }
 
-message HistoryRequestLastMessage {
+message HistoryRequestOptions {
     JID chat = 1;
     string id = 2;
     bool isFromMe = 3;
@@ -140,8 +141,6 @@ message PendingHistoryOptions {
     reserved "historyReadTimeout";
     reserved 1;
     uint32 heartbeatTimeout = 40;
-
-    repeated HistoryRequestLastMessage lastMessage = 60;
 }
 
 message SendMessageReceipt {
