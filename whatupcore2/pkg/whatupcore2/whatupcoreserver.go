@@ -276,7 +276,8 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 				s.log.Errorf("Could not send message to client: %v", err)
 				return nil
 			}
-		case msg := <-msgChan:
+		case qElem := <-msgChan:
+            msg := qElem.message
 			if !lastMessageTimestamp.IsZero() {
 				if !msg.Info.Timestamp.After(lastMessageTimestamp) {
 					msg.log.Debugf("Skipping message because it is before client's last message: %s < %s: %s", msg.Info.Timestamp, lastMessageTimestamp, msg.DebugString())
@@ -356,7 +357,8 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 		case <-session.ctx.Done():
 			session.log.Debugf("Session closed... disconnecting")
 			return nil
-		case msg := <-msgChan:
+		case qElem := <-msgChan:
+            msg := qElem.message
 			msg.log.Debugf("Recieved history message for gRPC client")
 			msgProto, ok := msg.ToProto()
 			if !ok {
@@ -578,7 +580,7 @@ func (s *WhatUpCoreServer) GetACLAll(getACLAllOptions *pb.GetACLAllOptions, serv
 			return nil
 		}
 	}
-	session.log.Debugf("Ending GetMessages")
+	session.log.Debugf("Ending GetACLAll")
 	return nil
 }
 

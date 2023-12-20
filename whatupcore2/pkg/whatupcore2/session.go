@@ -91,7 +91,7 @@ func (session *Session) ToProto() *pb.SessionToken {
 }
 
 func (session *Session) Login(username string, passphrase string, dbUri string) error {
-	client, err := NewWhatsAppClient(session.ctx, username, passphrase, dbUri, session.log.Sub("WAC"))
+	client, err := NewWhatsAppClient(session.ctx, username, passphrase, dbUri, false, session.log.Sub("WAC"))
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (session *Session) Login(username string, passphrase string, dbUri string) 
 }
 
 func (session *Session) LoginOrRegister(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions, dbUri string) (*RegistrationState, error) {
-	client, err := NewWhatsAppClient(session.ctx, username, passphrase, dbUri, session.log.Sub("WAC"))
+	client, err := NewWhatsAppClient(session.ctx, username, passphrase, dbUri, registerOptions.GetHistory, session.log.Sub("WAC"))
 	if err != nil {
 		return nil, err
 	}

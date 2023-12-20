@@ -100,6 +100,7 @@ type WhatsAppClient struct {
 	historyMessageQueue *MessageQueue
 	messageQueue        *MessageQueue
 
+    hasReadHistory      bool
 	shouldRequestHistory map[string]bool
 	dbConn               *sql.DB
 
@@ -113,14 +114,13 @@ type WhatsAppClient struct {
 	anonLookup *AnonLookup
 }
 
-func NewWhatsAppClient(ctx context.Context, username string, passphrase string, dbUri string, log waLog.Logger) (*WhatsAppClient, error) {
+func NewWhatsAppClient(ctx context.Context, username string, passphrase string, dbUri string, getHistory bool, log waLog.Logger) (*WhatsAppClient, error) {
 	lock := clientCreationLock.Lock(username)
 	defer lock.Unlock()
 
-	//store.SetOSInfo("Mac OS", [3]uint32{10, 15, 7})
 	appName := strings.TrimSpace(fmt.Sprintf("WA by DWL %s", appNameSuffix))
 	store.SetOSInfo(appName, WhatUpCoreVersionInts)
-	store.DeviceProps.RequireFullSync = proto.Bool(true)
+	store.DeviceProps.RequireFullSync = proto.Bool(getHistory)
 	dbLog := log.Sub("DB")
 
 	deviceContainer, db, err := getDeviceContainer(dbUri, dbLog)
@@ -192,11 +192,11 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 
 	go func() {
 		select {
+        case <-ctx.Done():
+            return
 		case <-time.After(10 * time.Minute):
-			client.Log.Infof("Closing history handler and historyMessageQueue")
-			wmClient.RemoveEventHandler(client.historyHandler)
-			client.historyHandler = 0
-			historyMessageQueue.Close()
+		    client.Log.Infof("Clearing history queue")
+		    historyMessageQueue.Clear()
 		}
 	}()
 
@@ -409,6 +409,7 @@ func (wac *WhatsAppClient) GetMessages() *MessageClient {
 }
 
 func (wac *WhatsAppClient) GetHistoryMessages() *MessageClient {
+    wac.hasReadHistory = true
 	return wac.historyMessageQueue.NewClient()
 }
 
