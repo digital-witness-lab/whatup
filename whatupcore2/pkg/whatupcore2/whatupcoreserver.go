@@ -237,8 +237,8 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		lastMessageTimestamp = messageOptions.LastMessageTimestamp.AsTime()
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+    ctxC := NewContextWithCancel(ctx)
+	defer ctxC.Cancel()
 
 	msgClient := session.Client.GetMessages()
 	defer msgClient.Close()
@@ -264,7 +264,7 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		case <-ctx.Done():
 			session.log.Debugf("Client connection closed")
 			return nil
-		case <-session.ctx.Done():
+		case <-session.ctxC.Done():
 			session.log.Debugf("Session closed... disconnecting")
 			return nil
 		case <-heartbeatTicker.C:
@@ -314,8 +314,8 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+    ctxC := NewContextWithCancel(ctx)
+	defer ctxC.Cancel()
 
 	msgClient := session.Client.GetHistoryMessages()
 	if msgClient == nil {
@@ -354,7 +354,7 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 				s.log.Errorf("Could not send message to client: %v", err)
 				return nil
 			}
-		case <-session.ctx.Done():
+		case <-session.ctxC.Done():
 			session.log.Debugf("Session closed... disconnecting")
 			return nil
 		case qElem := <-msgChan:
@@ -426,8 +426,8 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+    ctxC := NewContextWithCancel(ctx)
+	defer ctxC.Cancel()
 
 	JID := ProtoToJID(pJID)
 	subgroups, err := session.Client.GetSubGroups(JID)

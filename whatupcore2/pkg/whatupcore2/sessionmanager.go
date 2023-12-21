@@ -29,7 +29,7 @@ type SessionManager struct {
 
 	log waLog.Logger
 
-	cancelFunc context.CancelFunc
+    ctxC ContextWithCancel
 }
 
 func NewSessionManager(secretKey []byte, dbUri string, log waLog.Logger) *SessionManager {
@@ -43,8 +43,8 @@ func NewSessionManager(secretKey []byte, dbUri string, log waLog.Logger) *Sessio
 }
 
 func (sm *SessionManager) Start() {
-	ctx, cancel := context.WithCancel(context.Background())
-	sm.cancelFunc = cancel
+    ctxC := NewContextWithCancel(context.Background())
+	sm.ctxC = ctxC
 
 	go func(ctx context.Context) {
 		ticker := time.NewTicker(SessionExpirationTick)
@@ -52,16 +52,16 @@ func (sm *SessionManager) Start() {
 			select {
 			case <-ticker.C:
 				sm.pruneSessions()
-			case <-ctx.Done():
+			case <-ctxC.Done():
 				return
 			}
 		}
-	}(ctx)
+	}(ctxC)
 }
 
 func (sm *SessionManager) Stop() {
-	if sm.cancelFunc != nil {
-		sm.cancelFunc()
+	if !sm.ctxC.IsZero() {
+		sm.ctxC.Cancel()
 	}
 }
 
@@ -202,7 +202,7 @@ func (sm *SessionManager) GetSessionLogin(username, passphrase string) (*Session
 
 func (sm *SessionManager) Close() {
 	sm.log.Infof("Closing session manager")
-	sm.cancelFunc()
+	sm.ctxC.Cancel()
 	for _, session := range sm.sessionIdToSession {
 		sm.removeSession(session)
 	}
