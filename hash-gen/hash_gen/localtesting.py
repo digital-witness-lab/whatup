@@ -29,11 +29,12 @@ def hash_images(file_or_dir): # can make bucket an argument later
     storage_client = Client()
     bucket = storage_client.bucket("dwl-vertex")
 
-    if file_or_dir.is_dir(): # or can use rglob? test later
-        files.extend(file_or_dir.glob("*"))
+    if file_or_dir.is_dir(): 
+        files.extend(file_or_dir.rglob("*"))
+        files = [path for path in files if path.is_file()]
     else:
         files.append(file_or_dir)
-    i = 1
+    i = 0
     for file in files:
         file = AnyPath(file)
         if not file.name.startswith('.'):
@@ -46,7 +47,8 @@ def hash_images(file_or_dir): # can make bucket an argument later
                 fd.write(json.dumps(entry))
         i+= 1
         if i == 100: return
-    # print(hashes)
+    print(len(hashes))
+    print(i)
 
 if __name__ == '__main__':
     hash_images()
