@@ -17,7 +17,7 @@ type upgradeFunc func(*sql.Tx, *EncContainer) error
 //
 // This may be of use if you want to manage the database fully manually, but in most cases you
 // should just call EncContainer.Upgrade to let the library handle everything.
-var Upgrades = [...]upgradeFunc{upgradeV1, upgradeV2, upgradeV3, upgradeV4, upgradeV5}
+var Upgrades = [...]upgradeFunc{upgradeV1, upgradeV2, upgradeV3, upgradeV4, upgradeV5, upgradeV6}
 
 func (c *EncContainer) getVersion() (int, error) {
 	_, err := c.db.Exec("CREATE TABLE IF NOT EXISTS whatsmeow_enc_version (version INTEGER)")
@@ -289,5 +289,17 @@ func upgradeV5(tx *sql.Tx, container *EncContainer) error {
 		}
 	}
 	_, err := tx.Exec("UPDATE whatsmeow_enc_device SET jid=REPLACE(jid, '.0', '')")
+	return err
+}
+
+func upgradeV6(tx *sql.Tx, container *EncContainer) error {
+	_, err := tx.Exec(`CREATE TABLE whatsmeow_enc_newest_message (
+		our_jid   TEXT,
+		chat_jid  TEXT,
+		message_id  STRING NOT NULL,
+		timestamp BIGINT NOT NULL,
+        is_from_me BOOLEAN NOT NULL,
+		PRIMARY KEY (our_jid, chat_jid)
+	)`)
 	return err
 }
