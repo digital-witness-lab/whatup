@@ -781,16 +781,15 @@ func (s *EncSQLStore) GetPrivacyToken(user types.JID) (*store.PrivacyToken, erro
 	}
 }
 
-
 const (
-    putNewestMessage = `
+	putNewestMessage = `
         INSERT INTO whatsmeow_enc_newest_message as m (our_jid, chat_jid, message_id, timestamp, is_from_me)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (our_jid, chat_jid) DO UPDATE
         SET (message_id, timestamp, is_from_me) = ($3, $4, $5)
         WHERE m.timestamp < EXCLUDED.timestamp
     `
-    getNewestMessage = `SELECT chat_jid, message_id, timestamp, is_from_me FROM whatsmeow_enc_newest_message WHERE our_jid=$1 AND chat_jid=$2`
+	getNewestMessage = `SELECT chat_jid, message_id, timestamp, is_from_me FROM whatsmeow_enc_newest_message WHERE our_jid=$1 AND chat_jid=$2`
 )
 
 func (s *EncSQLStore) PutMessageInfo(msgInfo *types.MessageInfo) error {
@@ -799,10 +798,10 @@ func (s *EncSQLStore) PutMessageInfo(msgInfo *types.MessageInfo) error {
 }
 
 func (s *EncSQLStore) GetNewestMessageInfo(chat types.JID) (*types.MessageInfo, error) {
-    var msgInfo *types.MessageInfo
-    err := decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getNewestMessage, s.JID, chat), &msgInfo.Chat, &msgInfo.ID, &msgInfo.Timestamp, &msgInfo.IsFromMe)
+	var msgInfo *types.MessageInfo
+	err := decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getNewestMessage, s.JID, chat), &msgInfo.Chat, &msgInfo.ID, &msgInfo.Timestamp, &msgInfo.IsFromMe)
 	if errors.Is(err, sql.ErrNoRows) {
-        return nil, nil
+		return nil, nil
 	}
 	return msgInfo, err
 }

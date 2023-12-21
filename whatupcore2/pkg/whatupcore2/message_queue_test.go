@@ -22,14 +22,13 @@ func MessageFromTime(t time.Time) *Message {
 }
 
 var (
-    //mqtLogger = waLog.Stdout("mqt", "DEBUG", true)
-    mqtLogger = waLog.Noop
+	//mqtLogger = waLog.Stdout("mqt", "DEBUG", true)
+	mqtLogger = waLog.Noop
 )
 
 func MessageNow() *Message {
 	return MessageFromTime(time.Now())
 }
-
 
 func CheckMsgReadInOrder(t *testing.T, client *MessageClient, low, high int) {
 	for i := low; i < high; i++ {
@@ -108,7 +107,7 @@ func TestMessageQueueMaxAge(t *testing.T) {
 	defer func() { nowFunc = time.Now }()
 
 	for i := 1; i < 100; i++ {
-	    mq.SendMessageTimestamp(MessageNow(),now.Add(-time.Duration(i) * time.Second))
+		mq.SendMessageTimestamp(MessageNow(), now.Add(-time.Duration(i)*time.Second))
 		if mq.messages.Len() != min(i, 50) {
 			t.Fatalf("Queue should be capped at 50 from the time restriction: %d messages", mq.messages.Len())
 		}
@@ -186,7 +185,7 @@ func TestMessageBackgroundPrune(t *testing.T) {
 	defer func() { nowFunc = time.Now }()
 
 	for i := 0; i < 10; i++ {
-	    mq.SendMessageTimestamp(MessageNow(), now)
+		mq.SendMessageTimestamp(MessageNow(), now)
 	}
 
 	if mq.messages.Len() != 10 {
@@ -249,7 +248,7 @@ func TestMessageMsgChan(t *testing.T) {
 	client := mq.NewClient()
 
 	for i := 1; i < 100; i++ {
-	    mq.SendMessageTimestamp(MessageNow(), time.Unix(int64(i), 0))
+		mq.SendMessageTimestamp(MessageNow(), time.Unix(int64(i), 0))
 		if mq.messages.Len() != min(i, 50) {
 			t.Fatalf("Queue should be capped at 50 from the time restriction: %d messages", mq.messages.Len())
 		}

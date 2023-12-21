@@ -18,7 +18,7 @@ type Session struct {
 	token          *jwt.Token
 	tokenString    string
 
-	ctxC       ContextWithCancel
+	ctxC ContextWithCancel
 
 	createdAt  time.Time
 	renewedAt  time.Time
@@ -36,7 +36,7 @@ func NewSessionDisconnected(username, passphrase string, secretKey []byte, log w
 		panic(err)
 	}
 
-    ctxC := NewContextWithCancel(context.Background())
+	ctxC := NewContextWithCancel(context.Background())
 
 	session := &Session{
 		Username:       username,
