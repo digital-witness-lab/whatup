@@ -625,9 +625,12 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 			if retry.MessageID == msgInfo.ID {
 				retryData, err := whatsmeow.DecryptMediaRetryNotification(retry, mediaKey)
 				if err != nil || retryData.GetResult() != waProto.MediaRetryNotification_SUCCESS {
+                    wac.Log.Errorf("Could not download media through a retry notification: %v", err)
 					retryError = err
 					retryWait.Done()
 				}
+                // TODO: FIX: the following line may be the reason we are
+                // getting 403's on historical media downloads
 				directPathValues[0].SetString(*retryData.DirectPath)
 				body, retryError = wac.Client.DownloadAny(msg)
 				retryWait.Done()
