@@ -1,5 +1,5 @@
 {
-    "contentsDeltaUri": "gs://BUCKET_NAME/path",
+    "contentsDeltaUri": "gs://dwl-vertex",
     "config": {
       "dimensions": 64,
       "approximateNeighborsCount": 150,
@@ -8,7 +8,7 @@
       "algorithm_config": {
         "treeAhConfig": {
           "leafNodeEmbeddingCount": 1000,
-          "fractionLeafNodesToSearch": 10
+          "fractionLeafNodesToSearch": 0.3
         }
       }
     }
