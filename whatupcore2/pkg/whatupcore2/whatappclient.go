@@ -94,13 +94,12 @@ func hashStringHex(unhashed string) string {
 type WhatsAppClient struct {
 	*whatsmeow.Client
 
-	ctx                 context.Context
-	cancelCtx           context.CancelFunc
+	ctxC                 ContextWithCancel
 	username            string
 	historyMessageQueue *MessageQueue
 	messageQueue        *MessageQueue
 
-    historyRequestContexts map[string]*ContextWithCancel
+    historyRequestContexts map[string]ContextWithCancel
 	shouldRequestHistory map[string]bool
 	dbConn               *sql.DB
 
@@ -157,7 +156,7 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	wmClient.AutoTrustIdentity = true // don't do this for non-bot accounts
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 
-	ctx, cancelCtx := context.WithCancel(ctx)
+    ctxC := NewContextWithCancel(ctx)
 
 	historyMessageQueue := NewMessageQueue(ctx, time.Minute, 16384, 10 * time.Minute, log.Sub("hmq"))
 	historyMessageQueue.Start()
@@ -168,14 +167,13 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	client := &WhatsAppClient{
 		Client: wmClient,
 
-		ctx:                  ctx,
-		cancelCtx:            cancelCtx,
+		ctxC:                  ctxC,
 		aclStore:             aclStore,
 		dbConn:               db,
 		username:             username,
 		historyMessageQueue:  historyMessageQueue,
 		messageQueue:         messageQueue,
-        historyRequestContexts: make(map[string]*ContextWithCancel),
+        historyRequestContexts: make(map[string]ContextWithCancel),
 		shouldRequestHistory: make(map[string]bool),
 	}
 	go func() {
@@ -196,17 +194,17 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 }
 
 func (wac *WhatsAppClient) Done() <-chan struct{} {
-	return wac.ctx.Done()
+	return wac.ctxC.Done()
 }
 
 func (wac *WhatsAppClient) Close() {
 	wac.Log.Infof("Closing WhatsApp Client")
 	wac.Disconnect()
-	wac.cancelCtx()
+	wac.ctxC.Cancel()
 }
 
 func (wac *WhatsAppClient) IsClosed() bool {
-	return wac.ctx.Err() != nil
+	return wac.ctxC.Err() != nil
 }
 
 func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
@@ -330,7 +328,7 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 			}
 		case <-ctx.Done():
 			return false
-		case <-wac.ctx.Done():
+		case <-wac.ctxC.Done():
 			return false
 		}
 	}
@@ -457,7 +455,7 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 		    if *message.Data.SyncType == waProto.HistorySync_ON_DEMAND {
                 if ctxWithCancel, found := wac.historyRequestContexts[chatJID.String()]; found {
                     // stop retrying to get the history for this group
-                    ctxWithCancel.cancel()
+                    ctxWithCancel.Cancel()
                 }
             }
 
@@ -510,12 +508,12 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 func (wac *WhatsAppClient) RequestHistoryMsgInfoRetry(msgInfo *types.MessageInfo) {
     attempts := 0
     key := msgInfo.Chat.String()
-    ctxWithCancel, found := wac.historyRequestContexts[key]
+    ctxC, found := wac.historyRequestContexts[key]
     if found {
-        ctxWithCancel.cancel()
+        ctxC.Cancel()
     } 
-    ctxWithCancel = NewContextWithCancel(wac.ctx)
-    wac.historyRequestContexts[key] = ctxWithCancel
+    ctxC = NewContextWithCancel(wac.ctxC)
+    wac.historyRequestContexts[key] = ctxC
     go func() {
         for {
             wac.requestHistoryMsgInfo(msgInfo)
@@ -527,11 +525,11 @@ func (wac *WhatsAppClient) RequestHistoryMsgInfoRetry(msgInfo *types.MessageInfo
                 attempts += 1
                 if attempts > 11 {
                     wac.Log.Warnf("Could not get group history after max number of attempts. Not retrying again: %s: %d", key, attempts)
-                    ctxWithCancel.cancel()
+                    ctxC.Cancel()
                     return
                 }
                 break
-            case <-ctxWithCancel.ctx.Done():
+            case <-ctxC.Done():
                 wac.Log.Infof("Got historical messages for group. Stopping retry loop: %s: %d", key, attempts)
                 return
             }
@@ -547,7 +545,7 @@ func (wac *WhatsAppClient) requestHistoryMsgInfo(msgInfo *types.MessageInfo) {
 	msg := wac.Client.BuildHistorySyncRequest(msgInfo, 50)
 	// Context here should be bound to the whatsappclient's connection
 	extras := whatsmeow.SendRequestExtra{Peer: true}
-    ctx, _ := context.WithTimeout(wac.ctx, time.Minute)
+    ctx, _ := context.WithTimeout(wac.ctxC, time.Minute)
 	wac.Client.SendMessage(ctx, wac.Client.Store.ID.ToNonAD(), msg, extras)
 }
 

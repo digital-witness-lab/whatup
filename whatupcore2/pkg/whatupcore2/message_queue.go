@@ -25,21 +25,19 @@ type MessageClient struct {
 	valid    bool
 
 	newMessageAlert chan bool
-	ctx             context.Context
-	ctxCancel       context.CancelFunc
+	ctxC             ContextWithCancel
 	log             waLog.Logger
 }
 
 func NewMessageClient(queue *MessageQueue) *MessageClient {
-	ctx, ctxCancel := context.WithCancel(queue.ctx)
+	ctxC := NewContextWithCancel(queue.ctxC)
 	log := queue.log.Sub(fmt.Sprintf("c-%0.3d", rand.Intn(999)))
 	return &MessageClient{
 		position: queue.getFront(),
 		queue:    queue,
 		valid:    true,
 
-		ctx:       ctx,
-		ctxCancel: ctxCancel,
+		ctxC: ctxC,
 		log:       log,
 	}
 }
@@ -57,7 +55,7 @@ func (mc *MessageClient) MessageChan() (chan *QueueMessage, error) {
 		for {
 			mc.log.Debugf("waiting for new message or done")
 			select {
-			case <-mc.ctx.Done():
+			case <-mc.ctxC.Done():
 				mc.log.Debugf("done by context")
 				mc.Close()
 				return
@@ -117,7 +115,7 @@ func (mc *MessageClient) ReadMessage() (*QueueMessage, bool) {
 
 func (mc *MessageClient) Close() {
 	mc.log.Debugf("Client closing")
-	mc.ctxCancel()
+	mc.ctxC.Cancel()
 	mc.valid = false
 	mc.position = nil
 	mc.queue = nil
@@ -138,15 +136,14 @@ type MessageQueue struct {
 
 	pruneTime time.Duration
 
-	ctx       context.Context
-	ctxCancel context.CancelFunc
+	ctxC       ContextWithCancel
 
 	log waLog.Logger
 }
 
 func NewMessageQueue(ctx context.Context, pruneTime time.Duration, maxNumElements int, maxMessageAge time.Duration, log waLog.Logger) *MessageQueue {
 	clients := make([]*MessageClient, 0)
-	ctx, ctxCancel := context.WithCancel(ctx)
+    ctxC := NewContextWithCancel(ctx)
 	return &MessageQueue{
 		maxNumElements: maxNumElements,
 		maxMessageAge:  maxMessageAge,
@@ -156,8 +153,7 @@ func NewMessageQueue(ctx context.Context, pruneTime time.Duration, maxNumElement
 
 		pruneTime: pruneTime,
 
-		ctx:       ctx,
-		ctxCancel: ctxCancel,
+		ctxC:       ctxC,
 		log:       log,
 	}
 }
@@ -179,7 +175,7 @@ func (mq *MessageQueue) Start() {
 		case <-ticker.C:
 			mq.log.Debugf("Pruning")
 			mq.PruneAll()
-		case <-mq.ctx.Done():
+		case <-mq.ctxC.Done():
 			mq.log.Debugf("Closing")
 			mq.Close()
 			return
@@ -189,7 +185,7 @@ func (mq *MessageQueue) Start() {
 
 func (mq *MessageQueue) Stop() {
 	mq.log.Debugf("Stop")
-	mq.ctxCancel()
+	mq.ctxC.Cancel()
 	mq.valid = false
 	mq.messages.Init()
 }
@@ -300,7 +296,7 @@ func (mq *MessageQueue) Close() {
 	mq.log.Warnf("Closing message queue")
 	mq.lock.Lock()
 	defer mq.lock.Unlock()
-	mq.ctxCancel()
+	mq.ctxC.Cancel()
 	for _, client := range mq.clients {
 		client.Close()
 	}
