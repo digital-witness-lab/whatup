@@ -104,6 +104,7 @@ type WhatsAppClient struct {
 	dbConn               *sql.DB
 
 	aclStore *ACLStore
+    encSQLStore *encsqlstore.EncSQLStore
 
 	connectionHandler uint32
 	historyHandler    uint32
@@ -149,6 +150,10 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	if deviceStore == nil {
 		deviceStore = container.NewDevice()
 	}
+    var encSQLStore *encsqlstore.EncSQLStore
+    if deviceStore.ID != nil {
+        encsqlstore.NewEncSQLStore(container, *deviceStore.ID)
+    }
 
 	wmClient := whatsmeow.NewClient(deviceStore, log.Sub("WMC"))
 	wmClient.EnableAutoReconnect = true
@@ -169,6 +174,7 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 
 		ctxC:                  ctxC,
 		aclStore:             aclStore,
+        encSQLStore:          encSQLStore,
 		dbConn:               db,
 		username:             username,
 		historyMessageQueue:  historyMessageQueue,
@@ -429,6 +435,7 @@ func (wac *WhatsAppClient) getMessages(evt interface{}) {
 			return
 		}
 		wac.Log.Debugf("Sending message to MessageQueue: %s", msg.DebugString())
+        wac.logMessageInfo(&msg.Info)
 		wac.messageQueue.SendMessage(msg)
 	}
 }
@@ -495,6 +502,7 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 					continue
 				}
 				wac.Log.Debugf("Sending message to HistoryMessageQueue")
+                wac.logMessageInfo(&msg.Info)
 				wac.historyMessageQueue.SendMessage(msg)
 			}
 			if *message.Data.SyncType == waProto.HistorySync_ON_DEMAND && oldestMsgInfo != nil {
@@ -637,4 +645,13 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 		wac.Log.Errorf("Error in retry handler: %v", retryError)
 	}
 	return body, retryError
+}
+
+func (wac *WhatsAppClient) logMessageInfo(msgInfo *types.MessageInfo) {
+    if wac.encSQLStore != nil {
+        err := wac.encSQLStore.PutMessageInfo(msgInfo)
+        if err != nil {
+            wac.Log.Errorf("Could not insert message info: %+v", err)
+        }
+    }
 }
