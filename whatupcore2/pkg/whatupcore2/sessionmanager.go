@@ -29,7 +29,7 @@ type SessionManager struct {
 
 	log waLog.Logger
 
-    ctxC ContextWithCancel
+	ctxC ContextWithCancel
 }
 
 func NewSessionManager(secretKey []byte, dbUri string, log waLog.Logger) *SessionManager {
@@ -43,7 +43,7 @@ func NewSessionManager(secretKey []byte, dbUri string, log waLog.Logger) *Sessio
 }
 
 func (sm *SessionManager) Start() {
-    ctxC := NewContextWithCancel(context.Background())
+	ctxC := NewContextWithCancel(context.Background())
 	sm.ctxC = ctxC
 
 	go func(ctx context.Context) {

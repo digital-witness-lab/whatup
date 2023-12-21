@@ -237,7 +237,7 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		lastMessageTimestamp = messageOptions.LastMessageTimestamp.AsTime()
 	}
 
-    ctxC := NewContextWithCancel(ctx)
+	ctxC := NewContextWithCancel(ctx)
 	defer ctxC.Cancel()
 
 	msgClient := session.Client.GetMessages()
@@ -277,7 +277,7 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 				return nil
 			}
 		case qElem := <-msgChan:
-            msg := qElem.message
+			msg := qElem.message
 			if !lastMessageTimestamp.IsZero() {
 				if !msg.Info.Timestamp.After(lastMessageTimestamp) {
 					msg.log.Debugf("Skipping message because it is before client's last message: %s < %s: %s", msg.Info.Timestamp, lastMessageTimestamp, msg.DebugString())
@@ -314,7 +314,7 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-    ctxC := NewContextWithCancel(ctx)
+	ctxC := NewContextWithCancel(ctx)
 	defer ctxC.Cancel()
 
 	msgClient := session.Client.GetHistoryMessages()
@@ -358,7 +358,7 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 			session.log.Debugf("Session closed... disconnecting")
 			return nil
 		case qElem := <-msgChan:
-            msg := qElem.message
+			msg := qElem.message
 			msg.log.Debugf("Recieved history message for gRPC client")
 			msgProto, ok := msg.ToProto()
 			if !ok {
@@ -426,7 +426,7 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-    ctxC := NewContextWithCancel(ctx)
+	ctxC := NewContextWithCancel(ctx)
 	defer ctxC.Cancel()
 
 	JID := ProtoToJID(pJID)
@@ -674,18 +674,17 @@ func (s *WhatUpCoreServer) RequestChatHistory(ctx context.Context, historyReques
 		}
 		historyRequestOptions.Chat = deanonChat
 	}
-    JID := ProtoToJID(historyRequestOptions.Chat)
+	JID := ProtoToJID(historyRequestOptions.Chat)
 
-    lastMessage := types.MessageInfo{
-        ID: historyRequestOptions.Id,
-        Timestamp: historyRequestOptions.Timestamp.AsTime(),
-        MessageSource: types.MessageSource{
-            Chat: JID,
-            IsFromMe: bool(historyRequestOptions.IsFromMe),
-        },
-    }
-    session.Client.RequestHistoryMsgInfoRetry(&lastMessage)
-
+	lastMessage := types.MessageInfo{
+		ID:        historyRequestOptions.Id,
+		Timestamp: historyRequestOptions.Timestamp.AsTime(),
+		MessageSource: types.MessageSource{
+			Chat:     JID,
+			IsFromMe: bool(historyRequestOptions.IsFromMe),
+		},
+	}
+	session.Client.RequestHistoryMsgInfoRetry(&lastMessage)
 
 	groupInfo, err := session.Client.GetGroupInfo(JID)
 	if err != nil {
