@@ -380,7 +380,11 @@ class BaseBot:
             try:
                 content = await self.download_message_media(message)
             except Exception:
-                callback(message, b"")
+                self.logger.exception(
+                    "Exception downloading media content. Running callback with empty byte array: %s",
+                    message.info.id,
+                )
+                await callback(message, b"")
             try:
                 await callback(message, content)
             except Exception:
@@ -388,7 +392,7 @@ class BaseBot:
                     "Exception calling download_media_message_eventually callback: %s",
                     message.info.id,
                 )
-            sleep_time = random.randint(1, 10)
+            sleep_time = random.randint(1, 5)
             await asyncio.sleep(sleep_time)
 
     async def download_message_media_eventually(

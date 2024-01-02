@@ -105,6 +105,7 @@ type WhatsAppClient struct {
 
 	aclStore    *ACLStore
 	encSQLStore *encsqlstore.EncSQLStore
+    encContainer *encsqlstore.EncContainer
 
 	connectionHandler uint32
 	historyHandler    uint32
@@ -150,15 +151,10 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	if deviceStore == nil {
 		deviceStore = container.NewDevice()
 	}
-	var encSQLStore *encsqlstore.EncSQLStore
-	if deviceStore.ID != nil {
-		encsqlstore.NewEncSQLStore(container, *deviceStore.ID)
-	}
 
 	wmClient := whatsmeow.NewClient(deviceStore, log.Sub("WMC"))
 	wmClient.EnableAutoReconnect = true
 	wmClient.EmitAppStateEventsOnFullSync = true
-	wmClient.AutoTrustIdentity = true // don't do this for non-bot accounts
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 
 	ctxC := NewContextWithCancel(ctx)
@@ -174,7 +170,7 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 
 		ctxC:                   ctxC,
 		aclStore:               aclStore,
-		encSQLStore:            encSQLStore,
+		encContainer:container,
 		dbConn:                 db,
 		username:               username,
 		historyMessageQueue:    historyMessageQueue,
@@ -216,15 +212,17 @@ func (wac *WhatsAppClient) IsClosed() bool {
 func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
 	switch evt.(type) {
 	case *events.Connected:
-		wac.Log.Infof("Setting presence and active delivery")
+		wac.Log.Infof("User connected. Setting state.")
 		err := wac.SendPresence(types.PresenceAvailable)
 		if err != nil {
 			wac.Log.Errorf("Could not send presence: %+v", err)
 		}
 		wac.SetForceActiveDeliveryReceipts(false)
+        wac.encSQLStore = encsqlstore.NewEncSQLStore(wac.encContainer, *wac.Client.Store.ID)
 	case *events.LoggedOut:
 		wac.Log.Warnf("User has logged out on their device")
 		wac.Unregister()
+        wac.encSQLStore = nil
 		wac.Close()
 	}
 }
@@ -374,7 +372,7 @@ func (wac *WhatsAppClient) UNSAFEArchiveHack_ShouldProcess(msg *events.Message) 
 		wac.Log.Warnf("HACK: allowing message through, archive status: %t", groupSettings.Archived)
 		if wac.shouldRequestHistory[chat_jid.String()] {
 			wac.Log.Warnf("HACK: requesting message history for group: %s", chat_jid.String())
-			wac.RequestHistoryMsgInfoRetry(&msg.Info)
+			wac.requestHistoryMsgInfoRetry(&msg.Info)
 			delete(wac.shouldRequestHistory, chat_jid.String())
 		}
 		return true
@@ -415,6 +413,7 @@ func (wac *WhatsAppClient) getMessages(evt interface{}) {
 			return
 		}
 
+		wac.logNewestMessageInfo(&wmMsg.Info)
 		aclEntry, err := wac.aclStore.GetByJID(&wmMsg.Info.Chat)
 		if err != nil {
 			wac.Log.Errorf("Could not read ACL for JID: %s: %+v", wmMsg.Info.Chat.String(), err)
@@ -435,7 +434,6 @@ func (wac *WhatsAppClient) getMessages(evt interface{}) {
 			return
 		}
 		wac.Log.Debugf("Sending message to MessageQueue: %s", msg.DebugString())
-		wac.logMessageInfo(&msg.Info)
 		wac.messageQueue.SendMessage(msg)
 	}
 }
@@ -477,12 +475,14 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 				wac.Log.Errorf("Could not read ACL for JID: %s: %+v", chatJID.String(), err)
 				continue
 			}
-			if !aclEntry.CanRead() {
-				wac.Log.Debugf("Skipping message because we don't have read permissions in group")
-				continue
+
+            canReadMessages := aclEntry.CanRead()
+			if !canReadMessages {
+				wac.Log.Debugf("Skipping history message because we don't have read permissions in group")
 			}
 
 			var oldestMsgInfo *types.MessageInfo
+			var newestMsgInfo *types.MessageInfo
 			for _, rawMsg := range conv.GetMessages() {
 				wmMsg, err := wac.ParseWebMessage(chatJID, rawMsg.GetMessage())
 				if err != nil {
@@ -495,16 +495,22 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 				if oldestMsgInfo == nil || wmMsg.Info.Timestamp.Before(oldestMsgInfo.Timestamp) {
 					oldestMsgInfo = &wmMsg.Info
 				}
-
-				msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
-				if err != nil {
-					wac.Log.Errorf("Failed to convert history message: %v", err)
-					continue
+				if newestMsgInfo == nil || wmMsg.Info.Timestamp.After(newestMsgInfo.Timestamp) {
+					newestMsgInfo = &wmMsg.Info
 				}
-				wac.Log.Debugf("Sending message to HistoryMessageQueue")
-				wac.logMessageInfo(&msg.Info)
-				wac.historyMessageQueue.SendMessage(msg)
+                if canReadMessages {
+				    msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
+				    if err != nil {
+				    	wac.Log.Errorf("Failed to convert history message: %v", err)
+				    	continue
+				    }
+				    wac.Log.Debugf("Sending message to HistoryMessageQueue")
+				    wac.historyMessageQueue.SendMessage(msg)
+                }
 			}
+            if newestMsgInfo != nil {
+			    wac.logNewestMessageInfo(newestMsgInfo)
+            }
 			if *message.Data.SyncType == waProto.HistorySync_ON_DEMAND && oldestMsgInfo != nil {
 				wac.Log.Infof("Continuing on demand history request")
 				go wac.requestHistoryMsgInfo(oldestMsgInfo)
@@ -513,7 +519,22 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 	}
 }
 
-func (wac *WhatsAppClient) RequestHistoryMsgInfoRetry(msgInfo *types.MessageInfo) {
+func (wac *WhatsAppClient) RequestHistory(chat types.JID) error {
+	if wac.encSQLStore == nil {
+		wac.Log.Errorf("Tried to request history with a nil encSQLStore")
+        return errors.New("EncSQLStore is nil, cannot find msg info")
+    }
+    msgInfo, err := wac.encSQLStore.GetNewestMessageInfo(chat)
+    if err != nil {
+        wac.Log.Errorf("Could not get newest chat message: %s: %+v", chat.String(), err)
+        return err
+    }
+    wac.Log.Debugf("Found oldest message info: %s: %s: %s", chat.String(), msgInfo.ID, msgInfo.Timestamp.String())
+    wac.requestHistoryMsgInfoRetry(msgInfo)
+    return nil
+}
+
+func (wac *WhatsAppClient) requestHistoryMsgInfoRetry(msgInfo *types.MessageInfo) {
 	attempts := 0
 	key := msgInfo.Chat.String()
 	ctxC, found := wac.historyRequestContexts[key]
@@ -650,9 +671,13 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 	return body, retryError
 }
 
-func (wac *WhatsAppClient) logMessageInfo(msgInfo *types.MessageInfo) {
+func (wac *WhatsAppClient) logNewestMessageInfo(msgInfo *types.MessageInfo) {
+    if msgInfo == nil {
+        return
+    }
 	if wac.encSQLStore != nil {
-		err := wac.encSQLStore.PutMessageInfo(msgInfo)
+        wac.Log.Debugf("Logging message info: %s: %s: %s", msgInfo.Timestamp.String(), msgInfo.Chat.String(), msgInfo.ID)
+		err := wac.encSQLStore.PutNewestMessageInfo(msgInfo)
 		if err != nil {
 			wac.Log.Errorf("Could not insert message info: %+v", err)
 		}

@@ -296,10 +296,12 @@ func upgradeV6(tx *sql.Tx, container *EncContainer) error {
 	_, err := tx.Exec(`CREATE TABLE whatsmeow_enc_newest_message (
 		our_jid   TEXT,
 		chat_jid  TEXT,
-		message_id  STRING NOT NULL,
+		message_id  TEXT NOT NULL,
 		timestamp BIGINT NOT NULL,
         is_from_me BOOLEAN NOT NULL,
-		PRIMARY KEY (our_jid, chat_jid)
+
+		PRIMARY KEY (our_jid, chat_jid),
+		FOREIGN KEY (our_jid) REFERENCES whatsmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
 	)`)
 	return err
 }
