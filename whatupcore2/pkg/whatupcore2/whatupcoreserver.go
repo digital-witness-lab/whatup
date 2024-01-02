@@ -527,6 +527,9 @@ func (s *WhatUpCoreServer) SetACL(ctx context.Context, groupACL *pb.GroupACL) (*
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not set ACL value: %+v", err)
 	}
+    if strings.HasPrefix(groupACL.Permission.String(), "READ") {
+        session.Client.RequestHistory(jid)
+    }
 
 	prevGroupACLProto, err := prevGroupACL.Proto()
 	if err != nil {
@@ -676,15 +679,21 @@ func (s *WhatUpCoreServer) RequestChatHistory(ctx context.Context, historyReques
 	}
 	JID := ProtoToJID(historyRequestOptions.Chat)
 
-	lastMessage := types.MessageInfo{
-		ID:        historyRequestOptions.Id,
-		Timestamp: historyRequestOptions.Timestamp.AsTime(),
-		MessageSource: types.MessageSource{
-			Chat:     JID,
-			IsFromMe: bool(historyRequestOptions.IsFromMe),
-		},
-	}
-	session.Client.RequestHistoryMsgInfoRetry(&lastMessage)
+    if historyRequestOptions.GetId() == "" || historyRequestOptions.GetTimestamp() == nil {
+        session.Client.Log.Debugf("Requesting history messages from store")
+        session.Client.RequestHistory(JID)
+    } else {
+        session.Client.Log.Debugf("Requesting history messages starting from requested msgID")
+	    lastMessage := types.MessageInfo{
+	    	ID:        historyRequestOptions.Id,
+	    	Timestamp: historyRequestOptions.Timestamp.AsTime(),
+	    	MessageSource: types.MessageSource{
+	    		Chat:     JID,
+	    		IsFromMe: bool(historyRequestOptions.IsFromMe),
+	    	},
+	    }
+	    session.Client.requestHistoryMsgInfoRetry(&lastMessage)
+    }
 
 	groupInfo, err := session.Client.GetGroupInfo(JID)
 	if err != nil {
