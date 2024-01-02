@@ -31,6 +31,7 @@ const (
 
 var (
 	ErrInvalidMediaMessage = errors.New("Invalid MediaMessage")
+    ErrDownloadRetryCanceled = errors.New("Download Retry canceled")
 	clientCreationLock     = NewMutexMap()
 	appNameSuffix          = os.Getenv("APP_NAME_SUFFIX")
 )
@@ -219,6 +220,7 @@ func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
 		}
 		wac.SetForceActiveDeliveryReceipts(false)
         wac.encSQLStore = encsqlstore.NewEncSQLStore(wac.encContainer, *wac.Client.Store.ID)
+        wac.anonLookup.makeReady()
 	case *events.LoggedOut:
 		wac.Log.Warnf("User has logged out on their device")
 		wac.Unregister()
@@ -601,10 +603,10 @@ func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Dur
 }
 
 func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
-	wac.Log.Debugf("Downloading message: %v", msg)
-	data, err := wac.Client.DownloadAny(msg)
+    wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
 
-	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) {
+	data, err := wac.Client.DownloadAny(msg)
+	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith403) {
 		return wac.RetryDownload(ctx, msg, msgInfo)
 	} else if err != nil {
 		wac.Log.Errorf("Error trying to download message: %v", err)
@@ -637,34 +639,34 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 
 	var body []byte
 	var retryError error
-	var retryWait sync.WaitGroup
 
-	retryWait.Add(1)
+    ctxRetry := NewContextWithCancel(ctx)
 	evtHandler := wac.Client.AddEventHandler(func(evt interface{}) {
 		switch retry := evt.(type) {
 		case *events.MediaRetry:
+            wac.Log.Infof("Got Media Retry for message download")
 			if retry.MessageID == msgInfo.ID {
 				retryData, err := whatsmeow.DecryptMediaRetryNotification(retry, mediaKey)
 				if err != nil || retryData.GetResult() != waProto.MediaRetryNotification_SUCCESS {
                     wac.Log.Errorf("Could not download media through a retry notification: %v", err)
 					retryError = err
-					retryWait.Done()
+                    ctxRetry.Cancel()
 				}
                 // TODO: FIX: the following line may be the reason we are
                 // getting 403's on historical media downloads
 				directPathValues[0].SetString(*retryData.DirectPath)
 				body, retryError = wac.Client.DownloadAny(msg)
-				retryWait.Done()
+                ctxRetry.Cancel()
 			}
 		}
 	})
+	defer wac.Client.RemoveEventHandler(evtHandler)
 
-	go func() {
-		<-ctx.Done()
-		wac.Client.RemoveEventHandler(evtHandler)
-	}()
-
-	retryWait.Wait()
+    wac.Log.Debugf("Waiting for retry download to complete")
+	<-ctxRetry.Done()
+    if ctx.Err() != nil && retryError == nil {
+        retryError = ErrDownloadRetryCanceled
+    }
 	if retryError != nil {
 		wac.Log.Errorf("Error in retry handler: %v", retryError)
 	}

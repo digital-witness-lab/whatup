@@ -32,7 +32,7 @@ COMMAND_PINNING: T.Dict[bytes, PinningEntry] = {}
 BOT_REGISTRY = defaultdict(dict)
 CONTROL_CACHE = deque(maxlen=1028)
 
-DownloadMediaCallback = T.Type[T.Callable[[wuc.WUMessage, bytes], T.Awaitable[None]]]
+DownloadMediaCallback = T.Callable[[wuc.WUMessage, bytes], T.Awaitable[None]]
 MediaType = enum.Enum("MediaType", wuc.SendMessageMedia.MediaType.items())
 
 
@@ -370,7 +370,7 @@ class BaseBot:
 
     async def _download_messages_background(self):
         while True:
-            message, callback = await self.download_queue.get()
+            message, callback, tries = await self.download_queue.get()
             self.logger.info(
                 "Download queue processing message: %s: messages left: %d",
                 message.info.id,
@@ -381,10 +381,13 @@ class BaseBot:
                 content = await self.download_message_media(message)
             except Exception:
                 self.logger.exception(
-                    "Exception downloading media content. Running callback with empty byte array: %s",
+                    "Could not download media content. Retries = %d: %s",
+                    tries,
                     message.info.id,
                 )
-                await callback(message, b"")
+                asyncio.create_task(
+                    self.download_message_media_eventually(message, callback, tries + 1)
+                )
             try:
                 await callback(message, content)
             except Exception:
@@ -396,9 +399,27 @@ class BaseBot:
             await asyncio.sleep(sleep_time)
 
     async def download_message_media_eventually(
-        self, message: wuc.WUMessage, callback: DownloadMediaCallback
+        self,
+        message: wuc.WUMessage,
+        callback: DownloadMediaCallback,
+        retries: int = 0,
     ):
-        await self.download_queue.put((message, callback))
+        if retries > 5:
+            self.logger.info(
+                "Out of retries... running callback with empty bytes: %s",
+                message.info.id,
+            )
+            return await callback(message, b"")
+        elif retries > 0:
+            t = min(2**retries, 60 * 60)
+            self.logger.info(
+                "Retrying media download: %s: %d tries / 5: t = %f",
+                message.info.id,
+                retries,
+                t,
+            )
+            await asyncio.sleep(t)
+        await self.download_queue.put((message, callback, retries))
 
     async def send_text_message(
         self, recipient: wuc.JID, text: str, composing_time: int = 2
