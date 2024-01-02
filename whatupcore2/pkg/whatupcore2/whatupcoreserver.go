@@ -386,13 +386,19 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 	if _, err := CanReadJID(session, &info.Chat); err != nil {
 		return nil, err
 	}
+    session.Client.anonLookup.deAnonymizeJID(&info.Chat)
+    session.Client.anonLookup.deAnonymizeJID(&info.Sender)
 
 	mediaMessage := downloadMediaOptions.GetMediaMessage()
 	if mediaMessage == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Message not downloadable")
 	}
 
-	body, err := session.Client.DownloadAnyRetry(ctx, mediaMessage, info)
+	body, err := session.Client.DownloadAnyRetry(
+        ctx,
+        mediaMessage,
+        info,
+    )
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not download media: %v", err)
 	}
