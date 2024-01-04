@@ -136,12 +136,6 @@ select {
     visibility: hidden;
 }
 
-.group-count{
-    font-size:.75em;
-    color:#ccc;
-}
-
-
 /* The container */
 .group-container {
   display: block;
@@ -168,8 +162,19 @@ select {
   width: 0;
 }
 
+.group-topic {
+  font-weight: lighter;
+  font-size: 0.8rem;
+}
+
 .group-topic:not(:empty)::before {
-    content: "- "
+    content: ' ';
+    display: block;
+}
+
+.group-count{
+    font-size:.75em;
+    color:#ccc;
 }
 
 
@@ -417,90 +422,9 @@ h2, h3{
     setLanguageBrowser();
 
 
-    const userServicesBot = "#{bot_number}";
+    const userServicesBot = "+33671714377";
     const gid_nbytes = 4; //#{gid_nbytes};  // number of bytes from the hashed group JID that were used in the gid
-    const data = [
-        {name: "test test 1",
-         n_participants: 5,
-         topic: "",
-         gid: "t1",
-         can_read: "true"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-        {name: "test test 2",
-         topic: "topic topic topic",
-         n_participants: 2,
-         gid: "t2",
-         can_read: "false"},
-    ]; //#{data_jsons};
+    const data = [{"name": "renaissance bewailing oarsman", "topic": "", "n_participants": 22, "gid": "dillard_combing_exponent_hacker_mermaid", "can_read": false}, {"name": "formaldehyde romances transmissions", "topic": "chevrolet harlow antenna deftest etymologist hairline overproduction overtax", "n_participants": 12, "gid": "superman_bursts_forehand_jitterbugged_voltmeter", "can_read": false}, {"name": "zorro surfeiting transforming", "topic": "amaru buildup deepen disturbingly driveway lattice parody reinitialize", "n_participants": 27, "gid": "dummy_northeasters_nullifies_propagandists_reconvened", "can_read": false}, {"name": "isabelle rejoined timeline", "topic": "", "n_participants": 95, "gid": "aberrant_flatcars_oxidizing_retiring_supranational", "can_read": true}, {"name": "jeeves electroencephalographs society", "topic": "aguilar burton cogitating excrescences overstocking tautness tenderize waltzing", "n_participants": 32, "gid": "bukhara_goodman_brooder_hydrocarbon_sight", "can_read": false}, {"name": "founds manliness spotlight", "topic": "", "n_participants": 99, "gid": "hopscotching_monoliths_organ_renascence_whichever", "can_read": true}, {"name": "absentees bludgeon oxygen", "topic": "", "n_participants": 25, "gid": "cthulhu_micky_crap_sulkies_trombones", "can_read": false}, {"name": "cote limousine material", "topic": "nannie set dizzily frustrate gaucho hobgoblins our woodcutter", "n_participants": 76, "gid": "batman_masonite_agar_missteps_squirmed", "can_read": false}, {"name": "eucharists ballroom leaseholders", "topic": "", "n_participants": 93, "gid": "procyon_alum_dormer_industrializes_loathes", "can_read": true}, {"name": "araby amounted disbarment", "topic": "nirenberg seleucid asphyxiates evocation mastodon revenged rotogravure strainer", "n_participants": 83, "gid": "emanated_extreme_hourglass_husky_unstressed", "can_read": false}, {"name": "aspired hindrances snazzy", "topic": "", "n_participants": 99, "gid": "amends_exorcising_huntsman_petulant_suspicions", "can_read": false}, {"name": "chaucer nightstick stunned", "topic": "", "n_participants": 69, "gid": "jake_dizzy_tithed_unkindlier_watchtower", "can_read": false}, {"name": "inflicted peer rollicks", "topic": "", "n_participants": 74, "gid": "caliban_everready_kalashnikov_queer_ware", "can_read": false}, {"name": "daylight hayloft sterilizer", "topic": "culinary decompressing dweeb hoarded ligatured sensuous skied transferable", "n_participants": 27, "gid": "cherry_venus_countermanded_influencing_sawmills", "can_read": false}, {"name": "southern surcharges taring", "topic": "aegean fridays godthaab mentholatum purim hillbilly identification telepathy", "n_participants": 34, "gid": "smokey_disgraces_dowdily_floss_sumo", "can_read": false}, {"name": "enema harsher speakeasy", "topic": "gobi conspicuous currycombing head photojournalist southbound unplugs wafts", "n_participants": 90, "gid": "fulcra_greyest_jiujitsu_room_shafted", "can_read": false}, {"name": "catechise freezer lilt", "topic": "fran xiongnu adjudicate electrify helms muezzin objectiveness recognizer", "n_participants": 37, "gid": "hamilton_iphigenia_bled_nabbing_syrupy", "can_read": false}, {"name": "contingency exchange faithfuls", "topic": "", "n_participants": 97, "gid": "bestirring_coddle_maim_morose_scales", "can_read": false}, {"name": "jed ruined veneered", "topic": "choctaw limbaugh vargas blacktop etymologist lubricant playable recalcitrance", "n_participants": 45, "gid": "alignment_breakers_latitude_somberly_teammates", "can_read": false}, {"name": "powdered smelter subpoenas", "topic": "", "n_participants": 73, "gid": "dreamland_fireside_futz_peewee_trouped", "can_read": false}, {"name": "hardy tallchief upbeats", "topic": "taoist frontages fustian insatiably misspells mummifies optioning seating", "n_participants": 19, "gid": "confucian_interpol_bozos_emir_exercising", "can_read": false}, {"name": "kodachrome luther bluster", "topic": "", "n_participants": 28, "gid": "northeast_vance_amniocenteses_prate_swaggerer", "can_read": false}, {"name": "frown loamier redistricts", "topic": "eurasian maggie beguiled kneeled netbook onrushing rushing wrongness", "n_participants": 33, "gid": "sukkoths_gain_posterior_stormily_sucker", "can_read": false}, {"name": "cliburn homophobic tarts", "topic": "trey crinoline digressive monsoons nosegay prostate ratings rosiness", "n_participants": 32, "gid": "anselmo_holland_dreamier_repayments_specialty", "can_read": false}, {"name": "hansom raider terminator", "topic": "armani goudas epoch hemlocks instructs jot matriarchies veiling", "n_participants": 93, "gid": "belarus_jerry_causal_gaudy_puddle", "can_read": true}, {"name": "cullen bacterias self", "topic": "windows berets dichotomies helicopters onionskin procuring shearers sported", "n_participants": 75, "gid": "crossed_entanglement_exclamations_locavore_outlived", "can_read": false}, {"name": "coupe parachute ringleader", "topic": "", "n_participants": 18, "gid": "chid_creamer_elite_gaucho_transpires", "can_read": false}, {"name": "fustiest mournfulness phonetics", "topic": "betty compromising grey masculinity musicologist notary replenishing whir", "n_participants": 45, "gid": "medici_detoxified_dolorous_mediums_ruler", "can_read": false}, {"name": "naomi oxygenated warmers", "topic": "anabel abbot blazing indications intimation oho sickbeds tribulation", "n_participants": 34, "gid": "encapsulation_flounder_shortchanged_steeping_verge", "can_read": false}, {"name": "dullness obligated pursued", "topic": "", "n_participants": 35, "gid": "jaycee_decaffeinate_hearkens_markings_wrathful", "can_read": false}, {"name": "shevardnadze noose signpost", "topic": "christ jockey sikh expels exporter inexpensively sourpusses youthful", "n_participants": 33, "gid": "gawain_flannelling_guardrail_infinity_mentor", "can_read": false}, {"name": "body polestars spurring", "topic": "actualization axle bleaching bribery clarification nonuser reopened spikier", "n_participants": 40, "gid": "livonia_accomplished_mutilation_squeals_ululated", "can_read": false}, {"name": "bertha delphic fawns", "topic": "delmonico kr archaeology bricked deflector dwelling gipsy raps", "n_participants": 8, "gid": "arline_cognomen_greengrocers_pastier_stovepipe", "can_read": true}, {"name": "anacreon pressed probation", "topic": "", "n_participants": 91, "gid": "charlotte_scandinavian_catbird_checkroom_nuisances", "can_read": false}, {"name": "pekinese occasion shenanigan", "topic": "", "n_participants": 89, "gid": "realtor_gin_tanner_wight_woolies", "can_read": false}, {"name": "consequences constructions gravitation", "topic": "", "n_participants": 76, "gid": "serb_weddell_justifications_mentors_mouthpiece", "can_read": false}, {"name": "flypaper organics tikes", "topic": "", "n_participants": 72, "gid": "ebro_coyest_druggist_misdirected_whirligig", "can_read": false}, {"name": "balanchine ryukyu analyses", "topic": "", "n_participants": 82, "gid": "earth_degenerative_irritate_passer_piously", "can_read": false}, {"name": "collectively cybernetic gather", "topic": "", "n_participants": 12, "gid": "hallucinates_rascals_rebroadcast_reconciles_sago", "can_read": false}, {"name": "liberalism scotched wriggle", "topic": "gropius mizar fluently incisor markers relevancy sequestered splurge", "n_participants": 27, "gid": "iapetus_scotsman_advocated_betiding_scollop", "can_read": false}]; //#{data_jsons};
     const sections = [...document.getElementsByClassName("section")];
 
     function goNext() {
