@@ -10,16 +10,13 @@
         line-height: 140%;
         background-color: #244062;
         color: white;
-        width:375px;
-        height:700px;
-        margin:0 auto;
-        border:1px solid #fff;
         display: flex;
-        align-items: flex-end;
+        align-items: flex-start;
         font-size: 1rem;
-        
-
     }
+ .section {
+     margin: 0 auto;
+ }
 .header {
         text-align: center;
         color: #4CAF50;
@@ -29,10 +26,10 @@
         padding: 20px;
         stroke-width: 1px;
         stroke: #DCF7C5;
-        width:330px;
-        height:490px;
         overflow:scroll;
-        
+        width: 80vw;
+        max-width: 500px;
+        margin-bottom: 10vh;
     }
 
 .callout {
@@ -44,17 +41,21 @@
         font-weight: 400;
         line-height: 1.125rem;
         background: rgba(0, 0, 0, 0.25);
-        border: 1px solid #DCF7C5;
         display:block;
+        border: 1px solid #DCF7C5;
         border-radius: 20px;
         padding:10px;
     }    
 .btn-container {
         display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
         justify-content: space-between;
-        background: linear-gradient(180deg, rgba(0, 0, 0, 0.00) 0%, rgba(0, 0, 0, 0.20) 75.52%);
-        /*margin-top: 30px;*/
-  
+        background-color: #244062;
+        padding-top: 1em;
+        border-top: 1px dashed #DCF7C5;
     }
 .button {
         padding: 10px 20px;
