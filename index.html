@@ -66,27 +66,41 @@
         width:120px;
         margin:0 15px 15px 10px;
     }
-.cancel-btn {
-        background-color: #555;
+
+.cancel-button {
+        background-color: red;
         color: white;
         align-items: flex-end;
     }
-.next-btn {
-        background-color: #4CAF50;
+
+.prev-button {
+        background-color: tomato;
         color: white;
     }
+
+.next-button {
+        background-color: #17a2b8;
+        color: white;
+    }
+
+.submit-button {
+        background-color: #007bff;
+        color: white;
+        align-items: flex-end;
+    }
+
 .hidden {
         display: none;
     }
 
-.group_count{
+.group-count{
     font-size:.75em;
     color:#ccc;
 }
 
 
 /* The container */
-.group_container {
+.group-container {
   display: block;
   position: relative;
   padding-left: 35px;
@@ -103,13 +117,18 @@
 }
 
 /* Hide the browser's default checkbox */
-.group_container input {
+.group-container input {
   position: absolute;
   opacity: 0;
   cursor: pointer;
   height: 0;
   width: 0;
 }
+
+.group-topic:not(:empty)::before {
+    content: "- "
+}
+
 
 /* Create a custom checkbox */
 .checkmark {
@@ -122,12 +141,12 @@
 }
 
 /* On mouse-over, add a grey background color */
-.group_container:hover input ~ .checkmark {
+.group-container:hover input ~ .checkmark {
   background-color: #ccc;
 }
 
 /* When the checkbox is checked, add a blue background */
-.group_container input:checked ~ .checkmark {
+.group-container input:checked ~ .checkmark {
   background-color:  #4CAF50;
 }
 
@@ -139,12 +158,12 @@
 }
 
 /* Show the checkmark when checked */
-.group_container input:checked ~ .checkmark:after {
+.group-container input:checked ~ .checkmark:after {
   display: block;
 }
 
 /* Style the checkmark/indicator */
-.group_container .checkmark:after {
+.group-container .checkmark:after {
   left: 5px;
   top: 2px;
   width: 5px;
@@ -163,29 +182,6 @@ h2, h3{
 
 </style>
 
-<script>
-function goToSection(sectionToShow) {
-    // Hide all sections
-    var sections = document.querySelectorAll('.section');
-    sections.forEach(function(section) {
-        section.classList.add('hidden');
-    });
-
-    // Show the requested section
-    document.getElementById(sectionToShow).classList.remove('hidden');
-}
-
-function cancelForm() {
-    // For the sake of this example, we'll just reload the page.
-    // In a real form, you might navigate the user to a different page or show a confirmation dialog.
-    window.location.reload();
-}
-
-// Run on initial load
-window.onload = function() {
-    goToSection('section1'); // Show the first section by default
-};
-</script>
 </head>
 <body>
 
@@ -211,8 +207,8 @@ window.onload = function() {
         <p>No personal information including names or phone numbers for you or your contacts will ever be collected.</p>
     </div>    
     <div class="btn-container">
-        <button class="button cancel-btn" onclick="cancelForm()">CANCEL</button>
-        <button class="button next-btn" onclick="goToSection('section2')">NEXT</button>
+        <button class="button cancel-button" onclick="cancelHandler()">CANCEL</button>
+        <button class="button next-button" onclick="goNext()">NEXT</button>
     </div>
 </div>
 
@@ -242,8 +238,8 @@ window.onload = function() {
         </div>
     
     <div class="btn-container">
-        <button class="button cancel-btn" onclick="goToSection('section1')">BACK</button>
-        <button class="button next-btn" onclick="goToSection('section3')">NEXT</button>
+        <button class="button prev-button" onclick="goPrev()">BACK</button>
+        <button class="button next-button" onclick="goNext()">NEXT</button>
     </div>
 </div>
 
@@ -255,30 +251,14 @@ window.onload = function() {
     <div class="content-box">
         <h2>Select groups to share.</h2>
         <p>You will be able to confirm your choices on the next screen.</p>
-
-
    
-        <label class="group_container">One long long long long long long long long long long
-            <br><span class="group_count">2 people</span>
-            <input type="checkbox" checked="checked" id="group1" name="group1">
-            <span class="checkmark"></span>
-        </label>
-        <label class="group_container">Another group
-            <br><span class="group_count">2 people</span>
-            <input type="checkbox" id="group1" name="group1">
-            <span class="checkmark"></span>
-        </label>
-
-      
-
-
-        <!-- Placeholder for additional groups -->
-        <!-- ... (repeat for each additional group) ... -->
+        <div id="group-list">
+        </div>
     </div>
 
     <div class="btn-container">
-        <button class="button cancel-btn" onclick="goToSection('section2')">CANCEL</button>
-        <button class="button next-btn" onclick="goToSection('section4')">NEXT</button>
+        <button class="button prev-button" onclick="goPrev()">BACK</button>
+        <button class="button next-button" onclick="goNext()">NEXT</button>
     </div>
 </div>
 
@@ -289,17 +269,23 @@ window.onload = function() {
      </div>
     <div class="content-box">
         <h2>Confirm your groups.</h2>
-        <p>You selected three groups:</p>
-        <ul>
-            <li>Group 1</li>
-            <li>Group 2</li>
-            <li>Group 3</li>
-        </ul>
+
+        <div id="groups-adding">
+            <p>Groups you are granting access to:</p>
+            <ul id="groups-adding-list">
+            </ul>
+        </div>
+
+        <div id="groups-removing">
+            <p>Groups you are revoking access to:</p>
+            <ul id="groups-removing-list">
+            </ul>
+        </div>
     </div>
 
     <div class="btn-container">
-        <button class="button cancel-btn" onclick="goToSection('section3')">BACK</button>
-        <button class="button next-btn" onclick="goToSection('section5')">NEXT</button>
+        <button class="button prev-button" onclick="goPrev()">BACK</button>
+        <button class="button next-button" onclick="goNext()">NEXT</button>
     </div>
 </div>
 
@@ -318,10 +304,143 @@ window.onload = function() {
     </div>
 
     <div class="btn-container">
-        <button class="button cancel-btn" onclick="goToSection('section4')">BACK</button>
-        <button class="button next-btn">NEXT</button>
+        <button class="button prev-button" onclick="goPrev()">BACK</button>
+        <button class="button submit-button" onclick="submitHandler()">SUBMIT</button>
     </div>
 </div>
+
+
+<script>
+    const userServicesBot = "#{bot_number}";
+    const gid_nbytes = 4; //#{gid_nbytes};  // number of bytes from the hashed group JID that were used in the gid
+    const data = [
+        {name: "test test 1",
+         n_participants: 5,
+         gid: "t1",
+         can_read: "true"},
+        {name: "test test 2",
+         topic: "topic topic topic",
+         n_participants: 2,
+         gid: "t2",
+         can_read: "false"},
+    ]; //#{data_jsons};
+    const sections = [...document.getElementsByClassName("section")];
+
+    function goNext() {
+        const current = document.getElementsByClassName("section visible")[0];
+        if (current !== undefined) {
+            const idx = sections.indexOf(current);
+            newIdx = Math.min(idx + 1, sections.length - 1);
+            goToSection(sections[newIdx].id);
+        }
+    }
+
+    function goPrev() {
+        const current = document.getElementsByClassName("section visible")[0];
+        if (current !== undefined) {
+            const idx = sections.indexOf(current);
+            newIdx = Math.max(idx - 1, 0);
+            goToSection(sections[newIdx].id);
+        }
+    }
+
+    function goToSection(sectionToShow) {
+        // Hide all sections
+        var sections = document.querySelectorAll('.section');
+        sections.forEach(function(section) {
+            section.classList.add('hidden');
+            section.classList.remove('visible');
+        });
+    
+        // Show the requested section
+        const toShow = document.getElementById(sectionToShow);
+        toShow.classList.remove('hidden');
+        toShow.classList.add('visible');
+    }
+    
+    function cancelForm() {
+        // For the sake of this example, we'll just reload the page.
+        // In a real form, you might navigate the user to a different page or show a confirmation dialog.
+        window.location.reload();
+    }
+    
+    // Run on initial load
+    window.onload = function() {
+        goToSection('section1'); // Show the first section by default
+    };
+
+    const groupList = document.getElementById('group-list');
+    // Render the JSON data as a list
+    function displayList(filter) {
+        groupList.innerHTML = '';
+        data.sort((a, b) => a.n_participants < b.n_participants);
+        data.forEach(item => {
+            if (filter && !(item.name.toLocaleLowerCase().includes(filter) || item.topic.toLocaleLowerCase().includes(filter))) {
+                return;
+            }
+            const listItem = document.createElement('li');
+            const checked = item.can_read == "true" ? 'checked' : ''
+            listItem.innerHTML = `
+        <label class="group-container">
+          ${item.name} <span class="group-topic">${item.topic}</span>
+          <br><span class="group-count">${item['n_participants']} people</span>
+          <input type="checkbox" class="group-checkbox" data-name="${item.name}" data-gid="${item.gid}" data-initial="${item.can_read}" ${checked}>
+            <span class="checkmark"></span>
+        </label>
+            `;
+            groupList.appendChild(listItem);
+        });
+    }
+    displayList()
+
+    const checkboxes = [...document.querySelectorAll('.group-checkbox')];
+    function getChanges() {
+        const changes= [];
+        checkboxes.forEach(checkbox => {
+            const checked_initial = checkbox.getAttribute('data-initial') == "true";
+            if (checked_initial ^ checkbox.checked) {
+                changes.push(checkbox)
+            }
+        });
+        return changes;
+    }
+
+    function renderConfirmation() {
+        const addingDiv = document.getElementById('groups-adding');
+        const removingDiv = document.getElementById('groups-removing');
+        const addingList = document.getElementById('groups-adding-list');
+        const removingList = document.getElementById('groups-removing-list');
+
+        const changes = getChanges();
+        addingList.innerHTML = '';
+        removingList.innerHTML = '';
+
+        addingDiv.classList.add('hidden');
+        removingDiv.classList.add('hidden');
+        changes.map((checkbox) => {
+            const li = document.createElement('li');
+            li.innerHTML = `${checkbox.getAttribute('data-name')}`;
+            if (checkbox.checked) {
+                addingList.appendChild(li);
+                addingDiv.classList.remove('hidden');
+            } else {
+                removingList.appendChild(li);
+                removingDiv.classList.remove('hidden');
+            }
+        })
+    }
+    checkboxes.map((checkbox) => checkbox.addEventListener("change", renderConfirmation));
+
+    // Handle form submission
+    function submitHandler() {
+        const serializedResp = getChanges().map((checkbox) => `${checkbox.getAttribute('data-gid')}|${Number(checkbox.checked)}`).join(":")
+        window.location = `https://api.whatsapp.com/send?phone=${userServicesBot}&text=setacl-${gid_nbytes}@${serializedResp}`
+    }
+
+    function cancelHandler() {
+        window.location = `https://api.whatsapp.com/send?phone=${userServicesBot}&text=`
+    }
+</script>
 
 
 </body>
