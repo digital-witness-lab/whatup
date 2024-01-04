@@ -4,6 +4,7 @@ import json
 import logging
 import typing as T
 import uuid
+from datetime import timedelta
 from collections import defaultdict
 from datetime import timedelta
 from functools import partial
@@ -16,7 +17,7 @@ from ..credentials_manager import CredentialsManager
 from ..device_manager import DeviceManager
 from ..protos import whatupcore_pb2 as wuc
 from . import BaseBot
-from .static import static_files
+from .static import format_template
 
 logger = logging.getLogger(__name__)
 
@@ -223,20 +224,14 @@ class UserServicesBot(BaseBot):
             "gid_nbytes": n_bytes,
             "data_jsons": json.dumps(groups_data),
         }
-        content = (
-            static_files["group_selection"]
-            .open()
-            .read()
-            .format_map(params)
-            .encode("utf8")
-        )
-        content_url = self.bytes_to_url(content, suffix=".html", ttl=timedelta(days=1))
+        acl_html = format_template("group_selection", **params).encode("utf8")
+        acl_url = self.bytes_to_url(acl_html, suffix=".html", ttl=timedelta(days=1))
         async with self.with_disappearing_messages(
             user.jid, wuc.DisappearingMessageOptions.TIMER_24HOUR
         ):
             await self.send_text_message(
                 user.jid,
-                f"Click on the following link to select which groups you would like to share with us: {content_url}",
+                f"Click on the following link to select which groups you would like to share with us: {acl_url}",
             )
 
     def bytes_to_url(
@@ -294,10 +289,10 @@ class UserServicesBot(BaseBot):
         return await self.unregister_workflow_finalize(user)
 
     async def unregister_workflow_finalize(self, user: _UserBot):
-        final_message = static_files["unregister_final_message"].open().read()
-        await self.send_text_message(
-            user.jid,
-            final_message.format(anon_user=user.jid_anon.user),
+        message = format_template(
+            "unregister_final_message", anon_user=user.jid_anon.user
         )
-        await self.device_manager.unregister(user.username)
+        await self.send_text_message(user.jid, message)
+        if user.username:
+            await self.device_manager.unregister(user.username)
         self.db["registered_users"].delete(username=user.username)
