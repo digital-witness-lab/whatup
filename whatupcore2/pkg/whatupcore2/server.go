@@ -119,15 +119,16 @@ func StartRPC(port uint32, dbUri string, logLevel string) error {
 
 	Log.Infof("Got signal... exiting gracefully: %v", sig)
 	sessionManager.Stop()
-	ctx, doneShutdown := context.WithCancel(context.Background())
+
+	ctxC := NewContextWithCancel(context.Background())
 	timer := time.After(10 * time.Second)
 	go func() {
 		s.GracefulStop()
-		doneShutdown()
+		ctxC.Cancel()
 	}()
 
 	select {
-	case <-ctx.Done():
+	case <-ctxC.Done():
 	case <-timer:
 		Log.Infof("Forcefully shutting down")
 		s.Stop()

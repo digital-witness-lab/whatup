@@ -120,19 +120,21 @@ class RegisterOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     CREDENTIALS_FIELD_NUMBER: builtins.int
     DEFAULTGROUPPERMISSION_FIELD_NUMBER: builtins.int
+    GETHISTORY_FIELD_NUMBER: builtins.int
 
     @property
     def credentials(self) -> global___WUCredentials:
         ...
     defaultGroupPermission: global___GroupPermission.ValueType
+    getHistory: builtins.bool
 
-    def __init__(self, *, credentials: global___WUCredentials | None=..., defaultGroupPermission: global___GroupPermission.ValueType=...) -> None:
+    def __init__(self, *, credentials: global___WUCredentials | None=..., defaultGroupPermission: global___GroupPermission.ValueType=..., getHistory: builtins.bool=...) -> None:
         ...
 
     def HasField(self, field_name: typing_extensions.Literal['credentials', b'credentials']) -> builtins.bool:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['credentials', b'credentials', 'defaultGroupPermission', b'defaultGroupPermission']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['credentials', b'credentials', 'defaultGroupPermission', b'defaultGroupPermission', 'getHistory', b'getHistory']) -> None:
         ...
 global___RegisterOptions = RegisterOptions
 
@@ -314,6 +316,34 @@ class DownloadMediaOptions(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal['info', b'info', 'mediaMessage', b'mediaMessage']) -> None:
         ...
 global___DownloadMediaOptions = DownloadMediaOptions
+
+@typing_extensions.final
+class HistoryRequestOptions(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    CHAT_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
+    ISFROMME_FIELD_NUMBER: builtins.int
+    TIMESTAMP_FIELD_NUMBER: builtins.int
+
+    @property
+    def chat(self) -> global___JID:
+        ...
+    id: builtins.str
+    isFromMe: builtins.bool
+
+    @property
+    def timestamp(self) -> google.protobuf.timestamp_pb2.Timestamp:
+        ...
+
+    def __init__(self, *, chat: global___JID | None=..., id: builtins.str=..., isFromMe: builtins.bool=..., timestamp: google.protobuf.timestamp_pb2.Timestamp | None=...) -> None:
+        ...
+
+    def HasField(self, field_name: typing_extensions.Literal['chat', b'chat', 'timestamp', b'timestamp']) -> builtins.bool:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['chat', b'chat', 'id', b'id', 'isFromMe', b'isFromMe', 'timestamp', b'timestamp']) -> None:
+        ...
+global___HistoryRequestOptions = HistoryRequestOptions
 
 @typing_extensions.final
 class PendingHistoryOptions(google.protobuf.message.Message):

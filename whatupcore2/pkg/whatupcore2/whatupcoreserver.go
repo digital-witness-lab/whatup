@@ -237,8 +237,8 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		lastMessageTimestamp = messageOptions.LastMessageTimestamp.AsTime()
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	ctxC := NewContextWithCancel(ctx)
+	defer ctxC.Cancel()
 
 	msgClient := session.Client.GetMessages()
 	defer msgClient.Close()
@@ -264,7 +264,7 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		case <-ctx.Done():
 			session.log.Debugf("Client connection closed")
 			return nil
-		case <-session.ctx.Done():
+		case <-session.ctxC.Done():
 			session.log.Debugf("Session closed... disconnecting")
 			return nil
 		case <-heartbeatTicker.C:
@@ -276,7 +276,8 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 				s.log.Errorf("Could not send message to client: %v", err)
 				return nil
 			}
-		case msg := <-msgChan:
+		case qElem := <-msgChan:
+			msg := qElem.message
 			if !lastMessageTimestamp.IsZero() {
 				if !msg.Info.Timestamp.After(lastMessageTimestamp) {
 					msg.log.Debugf("Skipping message because it is before client's last message: %s < %s: %s", msg.Info.Timestamp, lastMessageTimestamp, msg.DebugString())
@@ -313,8 +314,8 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	ctxC := NewContextWithCancel(ctx)
+	defer ctxC.Cancel()
 
 	msgClient := session.Client.GetHistoryMessages()
 	if msgClient == nil {
@@ -353,10 +354,11 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 				s.log.Errorf("Could not send message to client: %v", err)
 				return nil
 			}
-		case <-session.ctx.Done():
+		case <-session.ctxC.Done():
 			session.log.Debugf("Session closed... disconnecting")
 			return nil
-		case msg := <-msgChan:
+		case qElem := <-msgChan:
+			msg := qElem.message
 			msg.log.Debugf("Recieved history message for gRPC client")
 			msgProto, ok := msg.ToProto()
 			if !ok {
@@ -384,13 +386,19 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 	if _, err := CanReadJID(session, &info.Chat); err != nil {
 		return nil, err
 	}
+	session.Client.anonLookup.deAnonymizeJID(&info.Chat)
+	session.Client.anonLookup.deAnonymizeJID(&info.Sender)
 
 	mediaMessage := downloadMediaOptions.GetMediaMessage()
 	if mediaMessage == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Message not downloadable")
 	}
 
-	body, err := session.Client.DownloadAnyRetry(ctx, mediaMessage, info)
+	body, err := session.Client.DownloadAnyRetry(
+		ctx,
+		mediaMessage,
+		info,
+	)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not download media: %v", err)
 	}
@@ -424,8 +432,8 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	ctxC := NewContextWithCancel(ctx)
+	defer ctxC.Cancel()
 
 	JID := ProtoToJID(pJID)
 	subgroups, err := session.Client.GetSubGroups(JID)
@@ -525,6 +533,9 @@ func (s *WhatUpCoreServer) SetACL(ctx context.Context, groupACL *pb.GroupACL) (*
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not set ACL value: %+v", err)
 	}
+	if strings.HasPrefix(groupACL.Permission.String(), "READ") {
+		session.Client.RequestHistory(jid)
+	}
 
 	prevGroupACLProto, err := prevGroupACL.Proto()
 	if err != nil {
@@ -578,7 +589,7 @@ func (s *WhatUpCoreServer) GetACLAll(getACLAllOptions *pb.GetACLAllOptions, serv
 			return nil
 		}
 	}
-	session.log.Debugf("Ending GetMessages")
+	session.log.Debugf("Ending GetACLAll")
 	return nil
 }
 
@@ -657,4 +668,43 @@ func (s *WhatUpCoreServer) Unregister(ctx context.Context, options *pb.Unregiste
 		JID:         JIDProto,
 		JIDAnon:     JIDAnnonProto,
 	}, nil
+}
+
+func (s *WhatUpCoreServer) RequestChatHistory(ctx context.Context, historyRequestOptions *pb.HistoryRequestOptions) (*pb.GroupInfo, error) {
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	if strings.HasPrefix(historyRequestOptions.Chat.User, "anon.") {
+		deanonChat, isDeAnon := session.Client.anonLookup.deAnonymizeJIDProto(historyRequestOptions.Chat)
+		if !isDeAnon {
+			return nil, status.Errorf(codes.Internal, "Could not deanonimize chat JID: %s", historyRequestOptions.Chat.User)
+		}
+		historyRequestOptions.Chat = deanonChat
+	}
+	JID := ProtoToJID(historyRequestOptions.Chat)
+
+	if historyRequestOptions.GetId() == "" || historyRequestOptions.GetTimestamp() == nil {
+		session.Client.Log.Debugf("Requesting history messages from store")
+		session.Client.RequestHistory(JID)
+	} else {
+		session.Client.Log.Debugf("Requesting history messages starting from requested msgID")
+		lastMessage := types.MessageInfo{
+			ID:        historyRequestOptions.Id,
+			Timestamp: historyRequestOptions.Timestamp.AsTime(),
+			MessageSource: types.MessageSource{
+				Chat:     JID,
+				IsFromMe: bool(historyRequestOptions.IsFromMe),
+			},
+		}
+		session.Client.requestHistoryMsgInfoRetry(&lastMessage)
+	}
+
+	groupInfo, err := session.Client.GetGroupInfo(JID)
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, "%v", err)
+	}
+	groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+	return AnonymizeInterface(session.Client.anonLookup, groupInfoProto), nil
 }

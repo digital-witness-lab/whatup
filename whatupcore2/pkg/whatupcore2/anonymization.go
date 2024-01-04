@@ -93,6 +93,18 @@ func (al *AnonLookup) anonymizeJIDProto(JID *pb.JID) *pb.JID {
 	return JID
 }
 
+func (al *AnonLookup) deAnonymizeJID(JID *types.JID) (*types.JID, bool) {
+	if strings.HasPrefix(JID.User, "anon.") {
+		user, found := al.lookup.Load(JID.User)
+		if found {
+			JID.User = user.(string)
+			return JID, true
+		}
+		return JID, false
+	}
+	return JID, true
+}
+
 func (al *AnonLookup) deAnonymizeJIDProto(JID *pb.JID) (*pb.JID, bool) {
 	if strings.HasPrefix(JID.User, "anon.") {
 		user, found := al.lookup.Load(JID.User)
@@ -144,7 +156,8 @@ func AnonymizeInterface[T any](al *AnonLookup, object T) T {
 func DeAnonymizeInterface[T any](al *AnonLookup, object T) T {
 	findRunAction(object, func(value reflect.Value) []reflect.Value {
 		if value.CanInterface() {
-			if JID, ok := value.Interface().(*pb.JID); ok {
+			valueInt := value.Interface()
+			if JID, ok := valueInt.(*pb.JID); ok {
 				al.deAnonymizeJIDProto(JID)
 			}
 		}

@@ -1,13 +1,15 @@
 import logging
 import typing as T
+from datetime import datetime
 from functools import partial
 
 import aioconsole
 from aioconsole.console import AsynchronousConsole
+from google.protobuf.timestamp_pb2 import Timestamp
 
-from .. import utils
-from ..protos import whatsappweb_pb2 as waw
-from ..protos import whatupcore_pb2 as wuc
+from .. import utils  # noqa
+from ..protos import whatsappweb_pb2 as waw  # noqa
+from ..protos import whatupcore_pb2 as wuc  # noqa
 from . import BaseBot
 
 logger = logging.getLogger(__name__)
@@ -18,6 +20,12 @@ async def aiter_to_list(aiter: T.AsyncIterable) -> list:
     async for item in aiter:
         result.append(item)
     return result
+
+
+def iso_to_timestampbb(iso):
+    t = Timestamp()
+    t.FromDatetime(datetime.fromisoformat(iso))
+    return t
 
 
 class DebugBot(BaseBot):

@@ -1,12 +1,5 @@
 package whatupcore2
 
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// NOTE: queue ordering was taken out Dec 14, 2023, but the tests were not
-// updated. This is because messages from history can come in with strange
-// ordering. Instead of looking at message timestamp, we should do something
-// based on an increasing integer or something. Until then, inserts are O(N)
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 import (
 	"context"
 	"sync"
@@ -28,9 +21,10 @@ func MessageFromTime(t time.Time) *Message {
 	}
 }
 
-func MessageFromUnix(timestamp int64) *Message {
-	return MessageFromTime(time.Unix(timestamp, 0))
-}
+var (
+	//mqtLogger = waLog.Stdout("mqt", "DEBUG", true)
+	mqtLogger = waLog.Noop
+)
 
 func MessageNow() *Message {
 	return MessageFromTime(time.Now())
@@ -42,22 +36,22 @@ func CheckMsgReadInOrder(t *testing.T, client *MessageClient, low, high int) {
 		if msg == nil {
 			t.Fatalf("Should be able to read message")
 		}
-		if msg.Info.Timestamp.Unix() != int64(i) {
-			t.Fatalf("Message order invalid: %d: %d", msg.Info.Timestamp.Unix(), i)
+		if msg.addedAt.Unix() != int64(i) {
+			t.Fatalf("Message order invalid: %d: %d", msg.addedAt.Unix(), i)
 		}
 	}
 }
 
 func TestMessageQueueOrder(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 0, 0, waLog.Noop)
+	mq := NewMessageQueue(ctx, 0, 0, 0, mqtLogger)
 
 	for i := 50; i < 0; i-- {
-		mq.SendMessage(MessageFromUnix(int64(i)))
+		mq.SendMessageTimestamp(MessageNow(), time.Unix(int64(i), 0))
 	}
 	prev := int64(0)
 	for e := mq.messages.Front(); e != nil; e = e.Next() {
-		n := e.Value.(*Message).Info.Timestamp.Unix()
+		n := e.Value.(*QueueMessage).addedAt.Unix()
 		if n > prev {
 			t.Fatalf("Invalid message ordering: %d > %d", n, prev)
 		}
@@ -67,7 +61,7 @@ func TestMessageQueueOrder(t *testing.T) {
 
 func TestMessageQueueMaxLen(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 10, 0, waLog.Noop)
+	mq := NewMessageQueue(ctx, 0, 10, 0, mqtLogger)
 
 	for i := 1; i < 100; i++ {
 		mq.SendMessage(MessageNow())
@@ -79,7 +73,7 @@ func TestMessageQueueMaxLen(t *testing.T) {
 
 func TestMessageClientReadPrunedMessage(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 0, 1*time.Second, waLog.Noop)
+	mq := NewMessageQueue(ctx, 0, 0, 1*time.Second, mqtLogger)
 
 	// fix the queue's time
 	now := time.Now()
@@ -87,7 +81,7 @@ func TestMessageClientReadPrunedMessage(t *testing.T) {
 	nowFunc = func() time.Time { return now.Add(offset) }
 	defer func() { nowFunc = time.Now }()
 
-	mq.SendMessage(MessageFromTime(now))
+	mq.SendMessageTimestamp(MessageNow(), now)
 	client := mq.NewClient()
 	offset = time.Hour
 
@@ -95,17 +89,17 @@ func TestMessageClientReadPrunedMessage(t *testing.T) {
 	if mq.messages.Len() != 0 {
 		t.Fatalf("Queue should be empty")
 	}
-	mq.SendMessage(MessageFromTime(now.Add(offset)))
+	mq.SendMessageTimestamp(MessageNow(), now.Add(offset))
 
 	msg, _ := client.ReadMessage()
-	if !msg.Info.Timestamp.Equal(now.Add(offset)) {
+	if !msg.addedAt.Equal(now.Add(offset)) {
 		t.Fatalf("Should be able to read most current, non-pruned message")
 	}
 }
 
 func TestMessageQueueMaxAge(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 0, 50*time.Second, waLog.Noop)
+	mq := NewMessageQueue(ctx, 0, 0, 50*time.Second, mqtLogger)
 
 	// fix the queue's time
 	now := time.Now()
@@ -113,7 +107,7 @@ func TestMessageQueueMaxAge(t *testing.T) {
 	defer func() { nowFunc = time.Now }()
 
 	for i := 1; i < 100; i++ {
-		mq.SendMessage(MessageFromTime(now.Add(-time.Duration(i) * time.Second)))
+		mq.SendMessageTimestamp(MessageNow(), now.Add(-time.Duration(i)*time.Second))
 		if mq.messages.Len() != min(i, 50) {
 			t.Fatalf("Queue should be capped at 50 from the time restriction: %d messages", mq.messages.Len())
 		}
@@ -122,12 +116,12 @@ func TestMessageQueueMaxAge(t *testing.T) {
 
 func TestMessageMultiClient(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 50, 0, waLog.Noop)
+	mq := NewMessageQueue(ctx, 0, 50, 0, mqtLogger)
 	client := mq.NewClient()
 	clientSlow := mq.NewClient()
 
 	for i := 1; i < 100; i++ {
-		mq.SendMessage(MessageFromUnix(int64(i)))
+		mq.SendMessageTimestamp(MessageNow(), time.Unix(int64(i), 0))
 		if mq.messages.Len() != min(i, 50) {
 			t.Fatalf("Queue should be capped at 50 from the time restriction: %d messages", mq.messages.Len())
 		}
@@ -148,11 +142,11 @@ func TestMessageMultiClient(t *testing.T) {
 
 func TestMessageSingleClient(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 50, 0, waLog.Noop)
+	mq := NewMessageQueue(ctx, 0, 50, 0, mqtLogger)
 	client := mq.NewClient()
 
 	for i := 1; i < 100; i++ {
-		mq.SendMessage(MessageFromUnix(int64(i)))
+		mq.SendMessageTimestamp(MessageNow(), time.Unix(int64(i), 0))
 		if mq.messages.Len() != min(i, 50) {
 			t.Fatalf("Queue should be capped at 50 from the time restriction: %d messages", mq.messages.Len())
 		}
@@ -163,24 +157,24 @@ func TestMessageSingleClient(t *testing.T) {
 		if msg == nil {
 			t.Fatalf("Should be able to read message")
 		}
-		if msg.Info.Timestamp.Unix() != int64(i) {
-			t.Fatalf("Message order invalid: %d: %d", msg.Info.Timestamp.Unix(), i)
+		if msg.addedAt.Unix() != int64(i) {
+			t.Fatalf("Message order invalid: %d: %d", msg.addedAt.Unix(), i)
 		}
 	}
 
-	mq.SendMessage(MessageFromUnix(100))
+	mq.SendMessageTimestamp(MessageNow(), time.Unix(int64(100), 0))
 	msg, _ := client.ReadMessage()
 	if msg == nil {
 		t.Fatalf("Failed to read additional message")
 	}
-	if msg.Info.Timestamp.Unix() != 100 {
-		t.Fatalf("Message order invalid: %d: %d", msg.Info.Timestamp.Unix(), 100)
+	if msg.addedAt.Unix() != 100 {
+		t.Fatalf("Message order invalid: %d: %d", msg.addedAt.Unix(), 100)
 	}
 }
 
 func TestMessageBackgroundPrune(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 200*time.Millisecond, 0, 60*time.Second, waLog.Noop)
+	mq := NewMessageQueue(ctx, 200*time.Millisecond, 0, 60*time.Second, mqtLogger)
 	mq.Start()
 	defer mq.Stop()
 
@@ -191,7 +185,7 @@ func TestMessageBackgroundPrune(t *testing.T) {
 	defer func() { nowFunc = time.Now }()
 
 	for i := 0; i < 10; i++ {
-		mq.SendMessage(MessageFromTime(now))
+		mq.SendMessageTimestamp(MessageNow(), now)
 	}
 
 	if mq.messages.Len() != 10 {
@@ -208,7 +202,7 @@ func TestMessageBackgroundPrune(t *testing.T) {
 
 func TestMessagePruneClients(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 50, 0, waLog.Noop)
+	mq := NewMessageQueue(ctx, 0, 50, 0, mqtLogger)
 
 	clients := []*MessageClient{
 		mq.NewClient(),
@@ -224,7 +218,7 @@ func TestMessagePruneClients(t *testing.T) {
 	if clients[0].IsOpen() {
 		t.Fatalf("Client should be closed")
 	}
-	mq.SendMessage(MessageFromUnix(int64(1)))
+	mq.SendMessageTimestamp(MessageNow(), time.Unix(int64(1), 0))
 
 	if msg, ok := clients[0].ReadMessage(); ok {
 		t.Fatalf("Trying to read from a closed client shouldn't be ok: %v: %t", msg, ok)
@@ -234,7 +228,7 @@ func TestMessagePruneClients(t *testing.T) {
 	if len(mq.clients) != 2 {
 		t.Fatalf("Not the right number of clients: %d", len(mq.clients))
 	}
-	mq.SendMessage(MessageFromUnix(int64(2)))
+	mq.SendMessageTimestamp(MessageNow(), time.Unix(int64(2), 0))
 
 	for _, client := range clients[1:] {
 		CheckMsgReadInOrder(t, client, 1, 3)
@@ -250,11 +244,11 @@ func TestMessagePruneClients(t *testing.T) {
 
 func TestMessageMsgChan(t *testing.T) {
 	ctx := context.Background()
-	mq := NewMessageQueue(ctx, 0, 50, 0, waLog.Noop)
+	mq := NewMessageQueue(ctx, 0, 50, 0, mqtLogger)
 	client := mq.NewClient()
 
 	for i := 1; i < 100; i++ {
-		mq.SendMessage(MessageFromUnix(int64(i)))
+		mq.SendMessageTimestamp(MessageNow(), time.Unix(int64(i), 0))
 		if mq.messages.Len() != min(i, 50) {
 			t.Fatalf("Queue should be capped at 50 from the time restriction: %d messages", mq.messages.Len())
 		}
@@ -275,8 +269,8 @@ func TestMessageMsgChan(t *testing.T) {
 		if msg == nil {
 			t.Fatalf("Should be able to read message")
 		}
-		if msg.Info.Timestamp.Unix() != int64(i) {
-			t.Fatalf("Message order invalid: %d: %d", msg.Info.Timestamp.Unix(), i)
+		if msg.addedAt.Unix() != int64(i) {
+			t.Fatalf("Message order invalid: %d: %d", msg.addedAt.Unix(), i)
 		}
 	}
 
@@ -287,12 +281,12 @@ func TestMessageMsgChan(t *testing.T) {
 		if msg == nil {
 			t.Fatalf("Should be able to read message")
 		}
-		if msg.Info.Timestamp.Unix() != int64(100) {
-			t.Fatalf("Message order invalid: %d: %d", msg.Info.Timestamp.Unix(), 100)
+		if msg.addedAt.Unix() != int64(100) {
+			t.Fatalf("Message order invalid: %d: %d", msg.addedAt.Unix(), 100)
 		}
 		wg.Done()
 	}()
 
-	mq.SendMessage(MessageFromUnix(100))
+	mq.SendMessageTimestamp(MessageNow(), time.Unix(int64(100), 0))
 	wg.Wait()
 }

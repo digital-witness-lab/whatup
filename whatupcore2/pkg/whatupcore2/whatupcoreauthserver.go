@@ -52,10 +52,9 @@ func (s *WhatUpCoreAuthServer) Register(registerOptions *pb.RegisterOptions, qrS
 		return status.Error(codes.InvalidArgument, "Passphrase too short. Must be >= 8 characters")
 	}
 	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	ctxC := NewContextWithCancel(ctx)
+	defer ctxC.Cancel()
 
-	// ADD DEFAULT ACL STUFF HERE
 	session, regState, err := s.sessionManager.AddRegistration(ctx, credentials.Username, credentials.Passphrase, registerOptions)
 	if err != nil {
 		return err

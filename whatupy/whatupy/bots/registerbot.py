@@ -2,7 +2,6 @@ import re
 from datetime import datetime
 
 import dataset
-import qrcode
 
 from .. import NotRegisteredError, UsernameInUseError, utils
 from ..connection import create_whatupcore_clients
@@ -102,7 +101,10 @@ class RegisterBot(BaseBot):
         core_client, authenticator = create_whatupcore_clients(**self.connection_params)
         try:
             async for qrcode in authenticator.register(
-                username, passphrase, default_group_permission
+                username,
+                passphrase,
+                default_group_permission,
+                get_history=is_bot,
             ):
                 content = utils.qrcode_gen_bytes(qrcode, kind="png")
                 await self.send_media_message(

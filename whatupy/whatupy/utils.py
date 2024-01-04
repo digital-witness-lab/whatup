@@ -12,17 +12,16 @@ import re
 import string
 import typing as T
 import warnings
-from datetime import timedelta
 from collections import namedtuple
+from datetime import timedelta
 from functools import wraps
 from pathlib import Path
 
+import google.auth
 import qrcode
 from cloudpathlib import AnyPath, CloudPath, GSPath
-from google.protobuf.json_format import MessageToDict, ParseDict
-
-import google.auth
 from google.auth.transport.requests import Request
+from google.protobuf.json_format import MessageToDict, ParseDict
 
 from .protos import whatupcore_pb2 as wuc
 
