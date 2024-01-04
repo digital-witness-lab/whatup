@@ -498,7 +498,7 @@ h2, h3{
                 return;
             }
             const listItem = document.createElement('li');
-            const checked = item.can_read == "true" ? 'checked' : ''
+            const checked = item.can_read ? 'checked' : ''
             listItem.innerHTML = `
         <label class="group-container">
           ${item.name} <span class="group-topic">${item.topic || ''}</span>
