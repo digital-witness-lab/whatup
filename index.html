@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -192,19 +192,20 @@ h2, h3{
     </div>
 
     <div class="content-box">
-        <h2>Welcome to WhatsApp Watch!</h2>
-        <p>WhatsApp Watch is a tool that helps researchers study what’s popular on WhatsApp.</p>
+        <h2 lang="en">Welcome to WhatsApp Watch!</h2>
+        <h2 lang="hi"> व्हाट्सएप वॉच में आपका स्वागत है! </h2>
+        <p lang="en">WhatsApp Watch is a tool that helps researchers study what’s popular on WhatsApp.</p>
     
     
     <div class="callout">
-        <h3>You are invited to contribute!</h3>
-        <p>On the following screens, you can to select groups to share for this research.</p>
+        <h3 lang="en">You are invited to contribute!</h3>
+        <p lang="en">On the following screens, you can to select groups to share for this research.</p>
     </div>    
     
    
-        <h3>Privacy information</h3>
-        <p>No groups will be shared until you have completed the registration process.</p>
-        <p>No personal information including names or phone numbers for you or your contacts will ever be collected.</p>
+        <h3 lang="en">Privacy information</h3>
+        <p lang="en">No groups will be shared until you have completed the registration process.</p>
+        <p lang="en">No personal information including names or phone numbers for you or your contacts will ever be collected.</p>
     </div>    
     <div class="btn-container">
         <button class="button cancel-button" onclick="cancelHandler()">CANCEL</button>
@@ -218,23 +219,23 @@ h2, h3{
      </div>
     
         <div class="content-box">
-            <h2>Instructions for sharing community groups.</h2>
-            <p>When you share a group, you are providing access to the group’s history plus new messages that come in.</p>
+            <h2 lang="en">Instructions for sharing community groups.</h2>
+            <p lang="en">When you share a group, you are providing access to the group’s history plus new messages that come in.</p>
         
     
         <div class="callout">
-            <h3>Community groups are groups that:</h3>
+            <h3 lang="en">Community groups are groups that:</h3>
             <ul>
-                <li>have at least six members.</li>
-                <li>contain broadcasts more than chats.</li>
-                <li>are not chats with between family and close friends.</li>
-                <li>include local news, opportunities, campaigns, and political party groups.</li>
+                <li lang="en">have at least six members.</li>
+                <li lang="en">contain broadcasts more than chats.</li>
+                <li lang="en">are not chats with between family and close friends.</li>
+                <li lang="en">include local news, opportunities, campaigns, and political party groups.</li>
             </ul>
         </div>
     
 
-            <p>No group messages will be collected until you have had a chance to confirm your group choices.</p>
-            <p>You can stop sharing groups at any time.</p>
+            <p lang="en">No group messages will be collected until you have had a chance to confirm your group choices.</p>
+            <p lang="en">You can stop sharing groups at any time.</p>
         </div>
     
     <div class="btn-container">
@@ -249,8 +250,8 @@ h2, h3{
      </div>
 
     <div class="content-box">
-        <h2>Select groups to share.</h2>
-        <p>You will be able to confirm your choices on the next screen.</p>
+        <h2 lang="en">Select groups to share.</h2>
+        <p lang="en">You will be able to confirm your choices on the next screen.</p>
    
         <div id="group-list">
         </div>
@@ -268,16 +269,16 @@ h2, h3{
         <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
      </div>
     <div class="content-box">
-        <h2>Confirm your groups.</h2>
+        <h2 lang="en">Confirm your groups.</h2>
 
         <div id="groups-adding">
-            <p>Groups you are granting access to:</p>
+            <p lang="en">Groups you are granting access to:</p>
             <ul id="groups-adding-list">
             </ul>
         </div>
 
         <div id="groups-removing">
-            <p>Groups you are revoking access to:</p>
+            <p lang="en">Groups you are revoking access to:</p>
             <ul id="groups-removing-list">
             </ul>
         </div>
@@ -294,13 +295,13 @@ h2, h3{
         <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
      </div>
     <div class="content-box">
-        <h2>Complete registration on WhatsApp</h2>
-        <p>When you click “next” below, you will be redirected to WhatsApp.</p>
-        <p>A special code will appear in your WhatsApp chat window similar to this:</p>
+        <h2 lang="en">Complete registration on WhatsApp</h2>
+        <p lang="en">When you click “next” below, you will be redirected to WhatsApp.</p>
+        <p lang="en">A special code will appear in your WhatsApp chat window similar to this:</p>
         <!-- Image placeholder for the code snippet -->
         <img src="path-to-your-code-snippet-image.png" alt="Code Snippet Image" style="max-width:100%;">
-        <p>When you send this code, your registration will be complete!</p>
-        <p>Your information and group selection will be anonymized and kept confidential.</p>
+        <p lang="en">When you send this code, your registration will be complete!</p>
+        <p lang="en">Your information and group selection will be anonymized and kept confidential.</p>
     </div>
 
     <div class="btn-container">
@@ -311,6 +312,12 @@ h2, h3{
 
 
 <script>
+    function setLangage(lang) {
+        document.querySelectorAll('[lang]').forEach((el) => el.classList.add('hidden'));
+        document.querySelectorAll(`[lang='${lang}']`).forEach((el) => el.classList.remove('hidden'));
+    }
+    setLangage('en');
+
     const userServicesBot = "#{bot_number}";
     const gid_nbytes = 4; //#{gid_nbytes};  // number of bytes from the hashed group JID that were used in the gid
     const data = [
