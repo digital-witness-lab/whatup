@@ -30,9 +30,10 @@ const (
 )
 
 var (
-	ErrInvalidMediaMessage = errors.New("Invalid MediaMessage")
-	clientCreationLock     = NewMutexMap()
-	appNameSuffix          = os.Getenv("APP_NAME_SUFFIX")
+	ErrInvalidMediaMessage   = errors.New("Invalid MediaMessage")
+	ErrDownloadRetryCanceled = errors.New("Download Retry canceled")
+	clientCreationLock       = NewMutexMap()
+	appNameSuffix            = os.Getenv("APP_NAME_SUFFIX")
 )
 var _DeviceContainer *encsqlstore.EncContainer
 var _DB *sql.DB
@@ -94,16 +95,18 @@ func hashStringHex(unhashed string) string {
 type WhatsAppClient struct {
 	*whatsmeow.Client
 
-	ctx                 context.Context
-	cancelCtx           context.CancelFunc
+	ctxC                ContextWithCancel
 	username            string
 	historyMessageQueue *MessageQueue
 	messageQueue        *MessageQueue
 
-	shouldRequestHistory map[string]bool
-	dbConn               *sql.DB
+	historyRequestContexts map[string]ContextWithCancel
+	shouldRequestHistory   map[string]bool
+	dbConn                 *sql.DB
 
-	aclStore *ACLStore
+	aclStore     *ACLStore
+	encSQLStore  *encsqlstore.EncSQLStore
+	encContainer *encsqlstore.EncContainer
 
 	connectionHandler uint32
 	historyHandler    uint32
@@ -113,14 +116,13 @@ type WhatsAppClient struct {
 	anonLookup *AnonLookup
 }
 
-func NewWhatsAppClient(ctx context.Context, username string, passphrase string, dbUri string, log waLog.Logger) (*WhatsAppClient, error) {
+func NewWhatsAppClient(ctx context.Context, username string, passphrase string, dbUri string, getHistory bool, log waLog.Logger) (*WhatsAppClient, error) {
 	lock := clientCreationLock.Lock(username)
 	defer lock.Unlock()
 
-	//store.SetOSInfo("Mac OS", [3]uint32{10, 15, 7})
 	appName := strings.TrimSpace(fmt.Sprintf("WA by DWL %s", appNameSuffix))
 	store.SetOSInfo(appName, WhatUpCoreVersionInts)
-	store.DeviceProps.RequireFullSync = proto.Bool(true)
+	store.DeviceProps.RequireFullSync = proto.Bool(getHistory)
 	dbLog := log.Sub("DB")
 
 	deviceContainer, db, err := getDeviceContainer(dbUri, dbLog)
@@ -154,12 +156,11 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	wmClient := whatsmeow.NewClient(deviceStore, log.Sub("WMC"))
 	wmClient.EnableAutoReconnect = true
 	wmClient.EmitAppStateEventsOnFullSync = true
-	wmClient.AutoTrustIdentity = true // don't do this for non-bot accounts
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 
-	ctx, cancelCtx := context.WithCancel(ctx)
+	ctxC := NewContextWithCancel(ctx)
 
-	historyMessageQueue := NewMessageQueue(ctx, time.Minute, 16384, 0, log.Sub("hmq"))
+	historyMessageQueue := NewMessageQueue(ctx, time.Minute, 16384, 10*time.Minute, log.Sub("hmq"))
 	historyMessageQueue.Start()
 	messageQueue := NewMessageQueue(ctx, time.Minute, 1024, time.Hour, log.Sub("mq"))
 	messageQueue.Start()
@@ -168,14 +169,15 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	client := &WhatsAppClient{
 		Client: wmClient,
 
-		ctx:                  ctx,
-		cancelCtx:            cancelCtx,
-		aclStore:             aclStore,
-		dbConn:               db,
-		username:             username,
-		historyMessageQueue:  historyMessageQueue,
-		messageQueue:         messageQueue,
-		shouldRequestHistory: make(map[string]bool),
+		ctxC:                   ctxC,
+		aclStore:               aclStore,
+		encContainer:           container,
+		dbConn:                 db,
+		username:               username,
+		historyMessageQueue:    historyMessageQueue,
+		messageQueue:           messageQueue,
+		historyRequestContexts: make(map[string]ContextWithCancel),
+		shouldRequestHistory:   make(map[string]bool),
 	}
 	go func() {
 		<-ctx.Done()
@@ -190,46 +192,39 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 		client.archiveHandler = wmClient.AddEventHandler(client.UNSAFEArchiveHack_OnArchiveGetHistory)
 	}
 
-	go func() {
-		select {
-		case <-time.After(10 * time.Minute):
-			client.Log.Infof("Closing history handler and historyMessageQueue")
-			wmClient.RemoveEventHandler(client.historyHandler)
-			client.historyHandler = 0
-			historyMessageQueue.Close()
-		}
-	}()
-
 	log.Debugf("WhatsAppClient created and lock releasing")
 	return client, nil
 }
 
 func (wac *WhatsAppClient) Done() <-chan struct{} {
-	return wac.ctx.Done()
+	return wac.ctxC.Done()
 }
 
 func (wac *WhatsAppClient) Close() {
 	wac.Log.Infof("Closing WhatsApp Client")
 	wac.Disconnect()
-	wac.cancelCtx()
+	wac.ctxC.Cancel()
 }
 
 func (wac *WhatsAppClient) IsClosed() bool {
-	return wac.ctx.Err() != nil
+	return wac.ctxC.Err() != nil
 }
 
 func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
 	switch evt.(type) {
 	case *events.Connected:
-		wac.Log.Infof("Setting presence and active delivery")
+		wac.Log.Infof("User connected. Setting state.")
 		err := wac.SendPresence(types.PresenceAvailable)
 		if err != nil {
 			wac.Log.Errorf("Could not send presence: %+v", err)
 		}
 		wac.SetForceActiveDeliveryReceipts(false)
+		wac.encSQLStore = encsqlstore.NewEncSQLStore(wac.encContainer, *wac.Client.Store.ID)
+		wac.anonLookup.makeReady()
 	case *events.LoggedOut:
 		wac.Log.Warnf("User has logged out on their device")
 		wac.Unregister()
+		wac.encSQLStore = nil
 		wac.Close()
 	}
 }
@@ -339,7 +334,7 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 			}
 		case <-ctx.Done():
 			return false
-		case <-wac.ctx.Done():
+		case <-wac.ctxC.Done():
 			return false
 		}
 	}
@@ -379,7 +374,7 @@ func (wac *WhatsAppClient) UNSAFEArchiveHack_ShouldProcess(msg *events.Message) 
 		wac.Log.Warnf("HACK: allowing message through, archive status: %t", groupSettings.Archived)
 		if wac.shouldRequestHistory[chat_jid.String()] {
 			wac.Log.Warnf("HACK: requesting message history for group: %s", chat_jid.String())
-			wac.RequestHistoryMsgInfo(&msg.Info)
+			wac.requestHistoryMsgInfoRetry(&msg.Info)
 			delete(wac.shouldRequestHistory, chat_jid.String())
 		}
 		return true
@@ -420,6 +415,7 @@ func (wac *WhatsAppClient) getMessages(evt interface{}) {
 			return
 		}
 
+		wac.logNewestMessageInfo(&wmMsg.Info)
 		aclEntry, err := wac.aclStore.GetByJID(&wmMsg.Info.Chat)
 		if err != nil {
 			wac.Log.Errorf("Could not read ACL for JID: %s: %+v", wmMsg.Info.Chat.String(), err)
@@ -463,6 +459,12 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 				wac.Log.Errorf("Could not get conversation JID: %v", err)
 				continue
 			}
+			if *message.Data.SyncType == waProto.HistorySync_ON_DEMAND {
+				if ctxWithCancel, found := wac.historyRequestContexts[chatJID.String()]; found {
+					// stop retrying to get the history for this group
+					ctxWithCancel.Cancel()
+				}
+			}
 
 			// <HACK>
 			if !wac.UNSAFEArchiveHack_ShouldProcessConversation(&chatJID, conv) {
@@ -475,12 +477,14 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 				wac.Log.Errorf("Could not read ACL for JID: %s: %+v", chatJID.String(), err)
 				continue
 			}
-			if !aclEntry.CanRead() {
-				wac.Log.Debugf("Skipping message because we don't have read permissions in group")
-				continue
+
+			canReadMessages := aclEntry.CanRead()
+			if !canReadMessages {
+				wac.Log.Debugf("Skipping history message because we don't have read permissions in group")
 			}
 
 			var oldestMsgInfo *types.MessageInfo
+			var newestMsgInfo *types.MessageInfo
 			for _, rawMsg := range conv.GetMessages() {
 				wmMsg, err := wac.ParseWebMessage(chatJID, rawMsg.GetMessage())
 				if err != nil {
@@ -493,28 +497,87 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 				if oldestMsgInfo == nil || wmMsg.Info.Timestamp.Before(oldestMsgInfo.Timestamp) {
 					oldestMsgInfo = &wmMsg.Info
 				}
-
-				msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
-				if err != nil {
-					wac.Log.Errorf("Failed to convert history message: %v", err)
-					continue
+				if newestMsgInfo == nil || wmMsg.Info.Timestamp.After(newestMsgInfo.Timestamp) {
+					newestMsgInfo = &wmMsg.Info
 				}
-				wac.Log.Debugf("Sending message to HistoryMessageQueue")
-				wac.historyMessageQueue.SendMessage(msg)
+				if canReadMessages {
+					msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
+					if err != nil {
+						wac.Log.Errorf("Failed to convert history message: %v", err)
+						continue
+					}
+					wac.Log.Debugf("Sending message to HistoryMessageQueue")
+					wac.historyMessageQueue.SendMessage(msg)
+				}
 			}
-			if *message.Data.SyncType == waProto.HistorySync_ON_DEMAND {
-				go wac.RequestHistoryMsgInfo(oldestMsgInfo)
+			if newestMsgInfo != nil {
+				wac.logNewestMessageInfo(newestMsgInfo)
+			}
+			if *message.Data.SyncType == waProto.HistorySync_ON_DEMAND && oldestMsgInfo != nil {
+				wac.Log.Infof("Continuing on demand history request")
+				go wac.requestHistoryMsgInfo(oldestMsgInfo)
 			}
 		}
 	}
 }
 
-func (wac *WhatsAppClient) RequestHistoryMsgInfo(msgInfo *types.MessageInfo) {
+func (wac *WhatsAppClient) RequestHistory(chat types.JID) error {
+	if wac.encSQLStore == nil {
+		wac.Log.Errorf("Tried to request history with a nil encSQLStore")
+		return errors.New("EncSQLStore is nil, cannot find msg info")
+	}
+	msgInfo, err := wac.encSQLStore.GetNewestMessageInfo(chat)
+	if err != nil {
+		wac.Log.Errorf("Could not get newest chat message: %s: %+v", chat.String(), err)
+		return err
+	}
+	wac.Log.Debugf("Found oldest message info: %s: %s: %s", chat.String(), msgInfo.ID, msgInfo.Timestamp.String())
+	wac.requestHistoryMsgInfoRetry(msgInfo)
+	return nil
+}
+
+func (wac *WhatsAppClient) requestHistoryMsgInfoRetry(msgInfo *types.MessageInfo) {
+	attempts := 0
+	key := msgInfo.Chat.String()
+	ctxC, found := wac.historyRequestContexts[key]
+	if found {
+		ctxC.Cancel()
+	}
+	ctxC = NewContextWithCancel(wac.ctxC)
+	wac.historyRequestContexts[key] = ctxC
+	go func() {
+		for {
+			wac.requestHistoryMsgInfo(msgInfo)
+			dt := ((1 << attempts) + 5) * time.Minute
+			wac.Log.Infof("Waiting for history request. Will try again in: %s", dt)
+			timer := time.NewTimer((1 << attempts) * time.Minute)
+			select {
+			case <-timer.C:
+				attempts += 1
+				if attempts > 11 {
+					wac.Log.Warnf("Could not get group history after max number of attempts. Not retrying again: %s: %d", key, attempts)
+					ctxC.Cancel()
+					return
+				}
+				break
+			case <-ctxC.Done():
+				wac.Log.Infof("Got historical messages for group. Stopping retry loop: %s: %d", key, attempts)
+				return
+			}
+		}
+	}()
+}
+
+func (wac *WhatsAppClient) requestHistoryMsgInfo(msgInfo *types.MessageInfo) {
+	if msgInfo == nil {
+		return
+	}
 	wac.Log.Infof("Requesting history for group: %s", msgInfo.Chat.String())
 	msg := wac.Client.BuildHistorySyncRequest(msgInfo, 50)
 	// Context here should be bound to the whatsappclient's connection
 	extras := whatsmeow.SendRequestExtra{Peer: true}
-	wac.Client.SendMessage(context.TODO(), *wac.Client.Store.ID, msg, extras)
+	ctx, _ := context.WithTimeout(wac.ctxC, time.Minute)
+	wac.Client.SendMessage(ctx, wac.Client.Store.ID.ToNonAD(), msg, extras)
 }
 
 func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Duration) {
@@ -540,10 +603,10 @@ func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Dur
 }
 
 func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
-	wac.Log.Debugf("Downloading message: %v", msg)
-	data, err := wac.Client.DownloadAny(msg)
+	wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
 
-	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) {
+	data, err := wac.Client.DownloadAny(msg)
+	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith403) {
 		return wac.RetryDownload(ctx, msg, msgInfo)
 	} else if err != nil {
 		wac.Log.Errorf("Error trying to download message: %v", err)
@@ -576,33 +639,49 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 
 	var body []byte
 	var retryError error
-	var retryWait sync.WaitGroup
 
-	retryWait.Add(1)
+	ctxRetry := NewContextWithCancel(ctx)
 	evtHandler := wac.Client.AddEventHandler(func(evt interface{}) {
 		switch retry := evt.(type) {
 		case *events.MediaRetry:
+			wac.Log.Infof("Got Media Retry for message download")
 			if retry.MessageID == msgInfo.ID {
 				retryData, err := whatsmeow.DecryptMediaRetryNotification(retry, mediaKey)
 				if err != nil || retryData.GetResult() != waProto.MediaRetryNotification_SUCCESS {
+					wac.Log.Errorf("Could not download media through a retry notification: %v", err)
 					retryError = err
-					retryWait.Done()
+					ctxRetry.Cancel()
 				}
+				// TODO: FIX: the following line may be the reason we are
+				// getting 403's on historical media downloads
 				directPathValues[0].SetString(*retryData.DirectPath)
 				body, retryError = wac.Client.DownloadAny(msg)
-				retryWait.Done()
+				ctxRetry.Cancel()
 			}
 		}
 	})
+	defer wac.Client.RemoveEventHandler(evtHandler)
 
-	go func() {
-		<-ctx.Done()
-		wac.Client.RemoveEventHandler(evtHandler)
-	}()
-
-	retryWait.Wait()
+	wac.Log.Debugf("Waiting for retry download to complete")
+	<-ctxRetry.Done()
+	if ctx.Err() != nil && retryError == nil {
+		retryError = ErrDownloadRetryCanceled
+	}
 	if retryError != nil {
 		wac.Log.Errorf("Error in retry handler: %v", retryError)
 	}
 	return body, retryError
+}
+
+func (wac *WhatsAppClient) logNewestMessageInfo(msgInfo *types.MessageInfo) {
+	if msgInfo == nil {
+		return
+	}
+	if wac.encSQLStore != nil {
+		wac.Log.Debugf("Logging message info: %s: %s: %s", msgInfo.Timestamp.String(), msgInfo.Chat.String(), msgInfo.ID)
+		err := wac.encSQLStore.PutNewestMessageInfo(msgInfo)
+		if err != nil {
+			wac.Log.Errorf("Could not insert message info: %+v", err)
+		}
+	}
 }

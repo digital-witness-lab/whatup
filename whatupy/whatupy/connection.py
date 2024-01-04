@@ -78,6 +78,7 @@ class WhatUpAuthentication:
         username: str,
         passphrase: str,
         default_group_permission: wuc.GroupPermission.ValueType = wuc.GroupPermission.DENIED,
+        get_history: bool = False,
     ) -> T.AsyncIterator[str]:
         if not self.auth_client:
             raise Exception("Must set an auth client")
@@ -87,6 +88,7 @@ class WhatUpAuthentication:
         register_options = wuc.RegisterOptions(
             credentials=credentials,
             defaultGroupPermission=default_group_permission,
+            getHistory=get_history,
         )
         registerStream = self.auth_client.Register(register_options)
         try:
