@@ -1,10 +1,17 @@
 <!DOCTYPE html>
-<html>
+<html lang="hi">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Form Page</title>
+<title>WhatsApp Watch User Settings</title>
 <style>
+    html:lang(en) [lang]:not(*:lang(en)) {
+            display: none;
+     }
+    html:lang(hi) [lang]:not(*:lang(hi)) {
+            display: none;
+     }
+
  body {
         font-family: Arial, sans-serif;
         line-height: 140%;
@@ -73,12 +80,12 @@
         align-items: flex-end;
     }
 
-.prev-button {
+#button-prev {
         background-color: tomato;
         color: white;
     }
 
-.next-button {
+#button-next {
         background-color: #17a2b8;
         color: white;
     }
@@ -207,10 +214,6 @@ h2, h3{
         <p lang="en">No groups will be shared until you have completed the registration process.</p>
         <p lang="en">No personal information including names or phone numbers for you or your contacts will ever be collected.</p>
     </div>    
-    <div class="btn-container">
-        <button class="button cancel-button" onclick="cancelHandler()">CANCEL</button>
-        <button class="button next-button" onclick="goNext()">NEXT</button>
-    </div>
 </div>
 
 <div id="section2" class="section hidden">
@@ -238,10 +241,6 @@ h2, h3{
             <p lang="en">You can stop sharing groups at any time.</p>
         </div>
     
-    <div class="btn-container">
-        <button class="button prev-button" onclick="goPrev()">BACK</button>
-        <button class="button next-button" onclick="goNext()">NEXT</button>
-    </div>
 </div>
 
 <div id="section3" class="section hidden">
@@ -257,10 +256,6 @@ h2, h3{
         </div>
     </div>
 
-    <div class="btn-container">
-        <button class="button prev-button" onclick="goPrev()">BACK</button>
-        <button class="button next-button" onclick="goNext()">NEXT</button>
-    </div>
 </div>
 
 
@@ -271,23 +266,23 @@ h2, h3{
     <div class="content-box">
         <h2 lang="en">Confirm your groups.</h2>
 
-        <div id="groups-adding">
+        <div id="groups-adding" class="hidden">
             <p lang="en">Groups you are granting access to:</p>
             <ul id="groups-adding-list">
             </ul>
         </div>
 
-        <div id="groups-removing">
+        <div id="groups-removing" class="hidden">
             <p lang="en">Groups you are revoking access to:</p>
             <ul id="groups-removing-list">
             </ul>
         </div>
+
+        <div id="groups-nochange">
+            <p lang="en">You are not making any changes to your groups</p>
+        </div>
     </div>
 
-    <div class="btn-container">
-        <button class="button prev-button" onclick="goPrev()">BACK</button>
-        <button class="button next-button" onclick="goNext()">NEXT</button>
-    </div>
 </div>
 
 <div id="section5" class="section hidden">
@@ -304,19 +299,18 @@ h2, h3{
         <p lang="en">Your information and group selection will be anonymized and kept confidential.</p>
     </div>
 
-    <div class="btn-container">
-        <button class="button prev-button" onclick="goPrev()">BACK</button>
-        <button class="button submit-button" onclick="submitHandler()">SUBMIT</button>
-    </div>
+</div>
+
+<div class="btn-container">
+    <button id="button-prev" class="button" onclick="goPrev()">BACK</button>
+    <button id="button-next" class="button" onclick="goNext()">NEXT</button>
 </div>
 
 
 <script>
-    function setLangage(lang) {
-        document.querySelectorAll('[lang]').forEach((el) => el.classList.add('hidden'));
-        document.querySelectorAll(`[lang='${lang}']`).forEach((el) => el.classList.remove('hidden'));
+    function setLanguage(lang) {
+        document.documentElement.lang = lang;
     }
-    setLangage('en');
 
     const userServicesBot = "#{bot_number}";
     const gid_nbytes = 4; //#{gid_nbytes};  // number of bytes from the hashed group JID that were used in the gid
@@ -413,6 +407,7 @@ h2, h3{
     }
 
     function renderConfirmation() {
+        const nochangeDiv = document.getElementById('groups-nochange');
         const addingDiv = document.getElementById('groups-adding');
         const removingDiv = document.getElementById('groups-removing');
         const addingList = document.getElementById('groups-adding-list');
@@ -422,19 +417,25 @@ h2, h3{
         addingList.innerHTML = '';
         removingList.innerHTML = '';
 
+
         addingDiv.classList.add('hidden');
         removingDiv.classList.add('hidden');
-        changes.map((checkbox) => {
-            const li = document.createElement('li');
-            li.innerHTML = `${checkbox.getAttribute('data-name')}`;
-            if (checkbox.checked) {
-                addingList.appendChild(li);
-                addingDiv.classList.remove('hidden');
-            } else {
-                removingList.appendChild(li);
-                removingDiv.classList.remove('hidden');
-            }
-        })
+        nochangeDiv .classList.add("hidden")
+        if (changes.length == 0) {
+            nochangeDiv .classList.remove("hidden")
+        } else {
+            changes.map((checkbox) => {
+                const li = document.createElement('li');
+                li.innerHTML = `${checkbox.getAttribute('data-name')}`;
+                if (checkbox.checked) {
+                    addingList.appendChild(li);
+                    addingDiv.classList.remove('hidden');
+                } else {
+                    removingList.appendChild(li);
+                    removingDiv.classList.remove('hidden');
+                }
+            })
+        }
     }
     checkboxes.map((checkbox) => checkbox.addEventListener("change", renderConfirmation));
 
