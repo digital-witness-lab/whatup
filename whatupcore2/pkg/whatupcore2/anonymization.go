@@ -156,7 +156,7 @@ func AnonymizeInterface[T any](al *AnonLookup, object T) T {
 func DeAnonymizeInterface[T any](al *AnonLookup, object T) T {
 	findRunAction(object, func(value reflect.Value) []reflect.Value {
 		if value.CanInterface() {
-            valueInt := value.Interface()
+			valueInt := value.Interface()
 			if JID, ok := valueInt.(*pb.JID); ok {
 				al.deAnonymizeJIDProto(JID)
 			}

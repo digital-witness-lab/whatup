@@ -30,10 +30,10 @@ const (
 )
 
 var (
-	ErrInvalidMediaMessage = errors.New("Invalid MediaMessage")
-    ErrDownloadRetryCanceled = errors.New("Download Retry canceled")
-	clientCreationLock     = NewMutexMap()
-	appNameSuffix          = os.Getenv("APP_NAME_SUFFIX")
+	ErrInvalidMediaMessage   = errors.New("Invalid MediaMessage")
+	ErrDownloadRetryCanceled = errors.New("Download Retry canceled")
+	clientCreationLock       = NewMutexMap()
+	appNameSuffix            = os.Getenv("APP_NAME_SUFFIX")
 )
 var _DeviceContainer *encsqlstore.EncContainer
 var _DB *sql.DB
@@ -104,9 +104,9 @@ type WhatsAppClient struct {
 	shouldRequestHistory   map[string]bool
 	dbConn                 *sql.DB
 
-	aclStore    *ACLStore
-	encSQLStore *encsqlstore.EncSQLStore
-    encContainer *encsqlstore.EncContainer
+	aclStore     *ACLStore
+	encSQLStore  *encsqlstore.EncSQLStore
+	encContainer *encsqlstore.EncContainer
 
 	connectionHandler uint32
 	historyHandler    uint32
@@ -171,7 +171,7 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 
 		ctxC:                   ctxC,
 		aclStore:               aclStore,
-		encContainer:container,
+		encContainer:           container,
 		dbConn:                 db,
 		username:               username,
 		historyMessageQueue:    historyMessageQueue,
@@ -219,12 +219,12 @@ func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
 			wac.Log.Errorf("Could not send presence: %+v", err)
 		}
 		wac.SetForceActiveDeliveryReceipts(false)
-        wac.encSQLStore = encsqlstore.NewEncSQLStore(wac.encContainer, *wac.Client.Store.ID)
-        wac.anonLookup.makeReady()
+		wac.encSQLStore = encsqlstore.NewEncSQLStore(wac.encContainer, *wac.Client.Store.ID)
+		wac.anonLookup.makeReady()
 	case *events.LoggedOut:
 		wac.Log.Warnf("User has logged out on their device")
 		wac.Unregister()
-        wac.encSQLStore = nil
+		wac.encSQLStore = nil
 		wac.Close()
 	}
 }
@@ -478,7 +478,7 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 				continue
 			}
 
-            canReadMessages := aclEntry.CanRead()
+			canReadMessages := aclEntry.CanRead()
 			if !canReadMessages {
 				wac.Log.Debugf("Skipping history message because we don't have read permissions in group")
 			}
@@ -500,19 +500,19 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 				if newestMsgInfo == nil || wmMsg.Info.Timestamp.After(newestMsgInfo.Timestamp) {
 					newestMsgInfo = &wmMsg.Info
 				}
-                if canReadMessages {
-				    msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
-				    if err != nil {
-				    	wac.Log.Errorf("Failed to convert history message: %v", err)
-				    	continue
-				    }
-				    wac.Log.Debugf("Sending message to HistoryMessageQueue")
-				    wac.historyMessageQueue.SendMessage(msg)
-                }
+				if canReadMessages {
+					msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
+					if err != nil {
+						wac.Log.Errorf("Failed to convert history message: %v", err)
+						continue
+					}
+					wac.Log.Debugf("Sending message to HistoryMessageQueue")
+					wac.historyMessageQueue.SendMessage(msg)
+				}
 			}
-            if newestMsgInfo != nil {
-			    wac.logNewestMessageInfo(newestMsgInfo)
-            }
+			if newestMsgInfo != nil {
+				wac.logNewestMessageInfo(newestMsgInfo)
+			}
 			if *message.Data.SyncType == waProto.HistorySync_ON_DEMAND && oldestMsgInfo != nil {
 				wac.Log.Infof("Continuing on demand history request")
 				go wac.requestHistoryMsgInfo(oldestMsgInfo)
@@ -524,16 +524,16 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 func (wac *WhatsAppClient) RequestHistory(chat types.JID) error {
 	if wac.encSQLStore == nil {
 		wac.Log.Errorf("Tried to request history with a nil encSQLStore")
-        return errors.New("EncSQLStore is nil, cannot find msg info")
-    }
-    msgInfo, err := wac.encSQLStore.GetNewestMessageInfo(chat)
-    if err != nil {
-        wac.Log.Errorf("Could not get newest chat message: %s: %+v", chat.String(), err)
-        return err
-    }
-    wac.Log.Debugf("Found oldest message info: %s: %s: %s", chat.String(), msgInfo.ID, msgInfo.Timestamp.String())
-    wac.requestHistoryMsgInfoRetry(msgInfo)
-    return nil
+		return errors.New("EncSQLStore is nil, cannot find msg info")
+	}
+	msgInfo, err := wac.encSQLStore.GetNewestMessageInfo(chat)
+	if err != nil {
+		wac.Log.Errorf("Could not get newest chat message: %s: %+v", chat.String(), err)
+		return err
+	}
+	wac.Log.Debugf("Found oldest message info: %s: %s: %s", chat.String(), msgInfo.ID, msgInfo.Timestamp.String())
+	wac.requestHistoryMsgInfoRetry(msgInfo)
+	return nil
 }
 
 func (wac *WhatsAppClient) requestHistoryMsgInfoRetry(msgInfo *types.MessageInfo) {
@@ -603,7 +603,7 @@ func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Dur
 }
 
 func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
-    wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
+	wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
 
 	data, err := wac.Client.DownloadAny(msg)
 	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith403) {
@@ -640,33 +640,33 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 	var body []byte
 	var retryError error
 
-    ctxRetry := NewContextWithCancel(ctx)
+	ctxRetry := NewContextWithCancel(ctx)
 	evtHandler := wac.Client.AddEventHandler(func(evt interface{}) {
 		switch retry := evt.(type) {
 		case *events.MediaRetry:
-            wac.Log.Infof("Got Media Retry for message download")
+			wac.Log.Infof("Got Media Retry for message download")
 			if retry.MessageID == msgInfo.ID {
 				retryData, err := whatsmeow.DecryptMediaRetryNotification(retry, mediaKey)
 				if err != nil || retryData.GetResult() != waProto.MediaRetryNotification_SUCCESS {
-                    wac.Log.Errorf("Could not download media through a retry notification: %v", err)
+					wac.Log.Errorf("Could not download media through a retry notification: %v", err)
 					retryError = err
-                    ctxRetry.Cancel()
+					ctxRetry.Cancel()
 				}
-                // TODO: FIX: the following line may be the reason we are
-                // getting 403's on historical media downloads
+				// TODO: FIX: the following line may be the reason we are
+				// getting 403's on historical media downloads
 				directPathValues[0].SetString(*retryData.DirectPath)
 				body, retryError = wac.Client.DownloadAny(msg)
-                ctxRetry.Cancel()
+				ctxRetry.Cancel()
 			}
 		}
 	})
 	defer wac.Client.RemoveEventHandler(evtHandler)
 
-    wac.Log.Debugf("Waiting for retry download to complete")
+	wac.Log.Debugf("Waiting for retry download to complete")
 	<-ctxRetry.Done()
-    if ctx.Err() != nil && retryError == nil {
-        retryError = ErrDownloadRetryCanceled
-    }
+	if ctx.Err() != nil && retryError == nil {
+		retryError = ErrDownloadRetryCanceled
+	}
 	if retryError != nil {
 		wac.Log.Errorf("Error in retry handler: %v", retryError)
 	}
@@ -674,11 +674,11 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 }
 
 func (wac *WhatsAppClient) logNewestMessageInfo(msgInfo *types.MessageInfo) {
-    if msgInfo == nil {
-        return
-    }
+	if msgInfo == nil {
+		return
+	}
 	if wac.encSQLStore != nil {
-        wac.Log.Debugf("Logging message info: %s: %s: %s", msgInfo.Timestamp.String(), msgInfo.Chat.String(), msgInfo.ID)
+		wac.Log.Debugf("Logging message info: %s: %s: %s", msgInfo.Timestamp.String(), msgInfo.Chat.String(), msgInfo.ID)
 		err := wac.encSQLStore.PutNewestMessageInfo(msgInfo)
 		if err != nil {
 			wac.Log.Errorf("Could not insert message info: %+v", err)

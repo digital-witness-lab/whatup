@@ -386,8 +386,8 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 	if _, err := CanReadJID(session, &info.Chat); err != nil {
 		return nil, err
 	}
-    session.Client.anonLookup.deAnonymizeJID(&info.Chat)
-    session.Client.anonLookup.deAnonymizeJID(&info.Sender)
+	session.Client.anonLookup.deAnonymizeJID(&info.Chat)
+	session.Client.anonLookup.deAnonymizeJID(&info.Sender)
 
 	mediaMessage := downloadMediaOptions.GetMediaMessage()
 	if mediaMessage == nil {
@@ -395,10 +395,10 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 	}
 
 	body, err := session.Client.DownloadAnyRetry(
-        ctx,
-        mediaMessage,
-        info,
-    )
+		ctx,
+		mediaMessage,
+		info,
+	)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not download media: %v", err)
 	}
@@ -533,9 +533,9 @@ func (s *WhatUpCoreServer) SetACL(ctx context.Context, groupACL *pb.GroupACL) (*
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not set ACL value: %+v", err)
 	}
-    if strings.HasPrefix(groupACL.Permission.String(), "READ") {
-        session.Client.RequestHistory(jid)
-    }
+	if strings.HasPrefix(groupACL.Permission.String(), "READ") {
+		session.Client.RequestHistory(jid)
+	}
 
 	prevGroupACLProto, err := prevGroupACL.Proto()
 	if err != nil {
@@ -685,21 +685,21 @@ func (s *WhatUpCoreServer) RequestChatHistory(ctx context.Context, historyReques
 	}
 	JID := ProtoToJID(historyRequestOptions.Chat)
 
-    if historyRequestOptions.GetId() == "" || historyRequestOptions.GetTimestamp() == nil {
-        session.Client.Log.Debugf("Requesting history messages from store")
-        session.Client.RequestHistory(JID)
-    } else {
-        session.Client.Log.Debugf("Requesting history messages starting from requested msgID")
-	    lastMessage := types.MessageInfo{
-	    	ID:        historyRequestOptions.Id,
-	    	Timestamp: historyRequestOptions.Timestamp.AsTime(),
-	    	MessageSource: types.MessageSource{
-	    		Chat:     JID,
-	    		IsFromMe: bool(historyRequestOptions.IsFromMe),
-	    	},
-	    }
-	    session.Client.requestHistoryMsgInfoRetry(&lastMessage)
-    }
+	if historyRequestOptions.GetId() == "" || historyRequestOptions.GetTimestamp() == nil {
+		session.Client.Log.Debugf("Requesting history messages from store")
+		session.Client.RequestHistory(JID)
+	} else {
+		session.Client.Log.Debugf("Requesting history messages starting from requested msgID")
+		lastMessage := types.MessageInfo{
+			ID:        historyRequestOptions.Id,
+			Timestamp: historyRequestOptions.Timestamp.AsTime(),
+			MessageSource: types.MessageSource{
+				Chat:     JID,
+				IsFromMe: bool(historyRequestOptions.IsFromMe),
+			},
+		}
+		session.Client.requestHistoryMsgInfoRetry(&lastMessage)
+	}
 
 	groupInfo, err := session.Client.GetGroupInfo(JID)
 	if err != nil {
