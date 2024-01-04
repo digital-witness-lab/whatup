@@ -1,15 +1,19 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WhatsApp Watch User Settings</title>
 <style>
-    html:lang(en) [lang]:not(*:lang(en)) {
+    html:lang(en) {
+        [lang]:not(*:lang(en)) {
             display: none;
+        }
      }
-    html:lang(hi) [lang]:not(*:lang(hi)) {
+    html:lang(hi) {
+        [lang]:not(*:lang(hi)) {
             display: none;
+        }
      }
 
  body {
@@ -53,7 +57,7 @@
         border-radius: 20px;
         padding:10px;
     }    
-.btn-container {
+.button-container {
         display: flex;
         position: fixed;
         bottom: 0;
@@ -90,15 +94,43 @@
         color: white;
     }
 
-.submit-button {
+#button-submit {
         background-color: #007bff;
         color: white;
-        align-items: flex-end;
     }
+
+
+
+select {
+  /* styling */
+  background-color: whitesmoke;
+  border: thin solid #DCF7C5;
+  border-radius: 10px;
+  display: inline-block;
+  line-height: 1em;
+  padding: 1em ;
+  height: 100%;
+
+  /* reset */
+
+  margin: 0;      
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+#language-selection {
+}
 
 .hidden {
         display: none;
     }
+
+.invisible {
+    visibility: hidden;
+}
 
 .group-count{
     font-size:.75em;
@@ -192,7 +224,7 @@ h2, h3{
 </head>
 <body>
 
-<div id="section1" class="section">
+<div id="section1" class="section section-first">
     
     <div class="header">
        <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
@@ -200,7 +232,7 @@ h2, h3{
 
     <div class="content-box">
         <h2 lang="en">Welcome to WhatsApp Watch!</h2>
-        <h2 lang="hi"> व्हाट्सएप वॉच में आपका स्वागत है! </h2>
+        <h2 lang="hi">व्हाट्सएप वॉच में आपका स्वागत है! </h2>
         <p lang="en">WhatsApp Watch is a tool that helps researchers study what’s popular on WhatsApp.</p>
     
     
@@ -285,7 +317,7 @@ h2, h3{
 
 </div>
 
-<div id="section5" class="section hidden">
+<div id="section5" class="section section-last hidden">
     <div class="header">
         <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
      </div>
@@ -301,16 +333,41 @@ h2, h3{
 
 </div>
 
-<div class="btn-container">
-    <button id="button-prev" class="button" onclick="goPrev()">BACK</button>
+<div class="button-container">
+    <button id="button-prev" class="button invisible" onclick="goPrev()">BACK</button>
+    <select id="language-selection" onchange="setLanguageSelector()">
+        <option value="en">English</option>
+        <option value="hi">हिन्दी</option>
+    </select>
     <button id="button-next" class="button" onclick="goNext()">NEXT</button>
+    <button id="button-submit" class="button hidden" onclick="submitHandler()">SUBMIT</button>
 </div>
 
 
 <script>
     function setLanguage(lang) {
+        const langOption = document.querySelectorAll(`#language-selection > option[value="${lang}"]`)
+        if (langOption.length == 0) {
+            return setLanguage('en')
+        }
+        console.log(lang)
+        langOption[0].selected = true
         document.documentElement.lang = lang;
     }
+
+    function setLanguageSelector(el) {
+        const selector = document.getElementById("language-selection");
+        const lang = selector.selectedOptions[0].getAttribute("value");
+        return setLanguage(lang);
+    }
+
+    function setLanguageBrowser() {
+        const lang = navigator.language.split('-')[0]
+        console.log("Setting language based on browser:", lang)
+        return setLanguage();
+    }
+    setLanguageBrowser();
+
 
     const userServicesBot = "#{bot_number}";
     const gid_nbytes = 4; //#{gid_nbytes};  // number of bytes from the hashed group JID that were used in the gid
@@ -357,6 +414,17 @@ h2, h3{
         const toShow = document.getElementById(sectionToShow);
         toShow.classList.remove('hidden');
         toShow.classList.add('visible');
+
+        document.getElementById("button-prev").classList.remove('invisible');
+        document.getElementById("button-next").classList.remove('hidden');
+        document.getElementById("button-submit").classList.add('hidden');
+
+        if (toShow.classList.contains('section-first')) {
+            document.getElementById("button-prev").classList.add('invisible');
+        } else if (toShow.classList.contains('section-last')) {
+            document.getElementById("button-next").classList.add('hidden');
+            document.getElementById("button-submit").classList.remove('hidden');
+        }
     }
     
     function cancelForm() {
