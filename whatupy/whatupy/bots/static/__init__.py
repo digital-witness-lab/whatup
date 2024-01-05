@@ -8,6 +8,10 @@ static_files = {
 }
 
 
+class Template(string.Template):
+    delimeter = "#"
+
+
 def format_template(template_name, **kwargs) -> str:
-    template = string.Template(static_files[template_name].open().read())
+    template = Template(static_files[template_name].open().read())
     return template.safe_substitute(kwargs)
