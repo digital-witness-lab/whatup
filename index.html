@@ -6,43 +6,45 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WhatsApp Watch User Settings</title>
 <style>
-    html:lang(en) {
-        [lang]:not(*:lang(en)) {
-            display: none;
-        }
-     }
-    html:lang(hi) {
-        [lang]:not(*:lang(hi)) {
-            display: none;
-        }
-     }
+html:lang(en) {
+    [lang]:not(*:lang(en)) {
+        display: none;
+    }
+}
+html:lang(hi) {
+    [lang]:not(*:lang(hi)) {
+        display: none;
+    }
+}
 
- body {
-        font-family: Arial, sans-serif;
-        line-height: 140%;
-        background-color: #244062;
-        color: white;
-        display: flex;
-        align-items: flex-start;
-        font-size: 1rem;
-    }
- .section {
-     margin: 0 auto;
- }
+body {
+    flex-direction: column;
+    font-family: Arial, sans-serif;
+    line-height: 140%;
+    background-color: #244062;
+    color: white;
+    display: flex;
+    align-items: flex-start;
+    font-size: 1rem;
+}
+.section {
+    margin: 0 auto;
+}
 .header {
-        text-align: center;
-        color: #4CAF50;
-        padding-top:18px;
-    }
+    margin: 0 auto;
+    text-align: center;
+    color: #4CAF50;
+    padding-top:18px;
+}
 .content-box {
-        padding: 20px;
-        stroke-width: 1px;
-        stroke: #DCF7C5;
-        overflow:scroll;
-        width: 80vw;
-        max-width: 500px;
-        margin-bottom: 10vh;
-    }
+    padding: 20px;
+    stroke-width: 1px;
+    stroke: #DCF7C5;
+    overflow:scroll;
+    width: 80vw;
+    max-width: 500px;
+    margin-bottom: 10vh;
+}
 
 .search {
     width: 98%;
@@ -54,89 +56,89 @@
 }
 
 .callout {
-        color: #DCF7C5;
-        font-feature-settings: 'clig' off, 'liga' off;
-        font-family: Franklin Gothic Book;
-        font-size: 1rem;
-        font-style: normal;
-        font-weight: 400;
-        line-height: 1.125rem;
-        background: rgba(0, 0, 0, 0.25);
-        display:block;
-        border: 1px solid #DCF7C5;
-        border-radius: 20px;
-        padding:10px;
-    }    
+    color: #DCF7C5;
+    font-feature-settings: 'clig' off, 'liga' off;
+    font-family: Franklin Gothic Book;
+    font-size: 1rem;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 1.125rem;
+    background: rgba(0, 0, 0, 0.25);
+    display:block;
+    border: 1px solid #DCF7C5;
+    border-radius: 20px;
+    padding:10px;
+}    
 .button-container {
-        display: flex;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        justify-content: space-between;
-        background-color: #244062;
-        padding-top: 1em;
-        border-top: 1px dashed #DCF7C5;
-    }
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    justify-content: space-between;
+    background-color: #244062;
+    padding-top: 1em;
+    border-top: 1px dashed #DCF7C5;
+}
 .button {
-        padding: 10px 20px;
-        border: 2px solid #fff;
-        border-radius: 20px;
-        font-size: 16px;
-        cursor: pointer;
-        width:120px;
-        margin:0 15px 15px 10px;
-    }
+    padding: 10px 20px;
+    border: 2px solid #fff;
+    border-radius: 20px;
+    font-size: 16px;
+    cursor: pointer;
+    width:120px;
+    margin:0 15px 15px 10px;
+}
 
 .cancel-button {
-        background-color: red;
-        color: white;
-        align-items: flex-end;
-    }
+    background-color: red;
+    color: white;
+    align-items: flex-end;
+}
 
 .button-prev {
-        background-color: tomato;
-        color: white;
-    }
+    background-color: tomato;
+    color: white;
+}
 
 .button-next {
-        background-color: #17a2b8;
-        color: white;
-    }
+    background-color: #17a2b8;
+    color: white;
+}
 
 .button-submit {
-        background-color: #007bff;
-        color: white;
-    }
+    background-color: #007bff;
+    color: white;
+}
 
 select {
-  /* styling */
-  /*background-color: whitesmoke;
-  border: thin solid #DCF7C5;
-  border-radius: 10px;*/
-  display: inline-block;
-  line-height: 1em;
-  padding: 1em ;
-  height: 100%;
-  background-color:#244062;
-  color:#fff;
-  border:0;
-  /* reset */
+    /* styling */
+    /*background-color: whitesmoke;
+thin solid #DCF7C5;
+adius: 10px;*/
+    display: inline-block;
+    line-height: 1em;
+    padding: 1em ;
+    height: 100%;
+    background-color:#244062;
+    color:#fff;
+    border:0;
+    /* reset */
 
-  margin: 0;      
- -webkit-box-sizing: border-box;
-  -moz-box-sizing: border-box;
-  box-sizing: border-box;
-  /*-webkit-appearance: none;
-  -moz-appearance: none;*/
+    margin: 0;      
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    /*-webkit-appearance: none;
+      -moz-appearance: none;*/
 }
 
 #language-selection {
 }
 
 .hidden {
-        display: none;
-    }
+    display: none;
+}
 
 .invisible {
     visibility: hidden;
@@ -144,32 +146,32 @@ select {
 
 /* The container */
 .group-container {
-  display: block;
-  position: relative;
-  padding-left: 35px;
-  padding-top:10px;
-  padding-bottom:10px;
-  margin-bottom: 12px;
-  cursor: pointer;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-  background: rgba(0, 0, 0, 0.25);
+    display: block;
+    position: relative;
+    padding-left: 35px;
+    padding-top:10px;
+    padding-bottom:10px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    background: rgba(0, 0, 0, 0.25);
 }
 
 /* Hide the browser's default checkbox */
 .group-container input {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
-  height: 0;
-  width: 0;
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
 }
 
 .group-topic {
-  font-weight: lighter;
-  font-size: 0.8rem;
+    font-weight: lighter;
+    font-size: 0.8rem;
 }
 
 .group-topic:not(:empty)::before {
@@ -185,47 +187,47 @@ select {
 
 /* Create a custom checkbox */
 .checkmark {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  height: 20px;
-  width: 20px;
-  background-color: #eee;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    height: 20px;
+    width: 20px;
+    background-color: #eee;
 }
 
 /* On mouse-over, add a grey background color */
 .group-container:hover input ~ .checkmark {
-  background-color: #ccc;
+    background-color: #ccc;
 }
 
 /* When the checkbox is checked, add a blue background */
 .group-container input:checked ~ .checkmark {
-  background-color:  #4CAF50;
+    background-color:  #4CAF50;
 }
 
 /* Create the checkmark/indicator (hidden when not checked) */
 .checkmark:after {
-  content: "";
-  position: absolute;
-  display: none;
+    content: "";
+    position: absolute;
+    display: none;
 }
 
 /* Show the checkmark when checked */
 .group-container input:checked ~ .checkmark:after {
-  display: block;
+    display: block;
 }
 
 /* Style the checkmark/indicator */
 .group-container .checkmark:after {
-  left: 5px;
-  top: 2px;
-  width: 5px;
-  height: 10px;
-  border: solid white;
-  border-width: 0 3px 3px 0;
-  -webkit-transform: rotate(45deg);
-  -ms-transform: rotate(45deg);
-  transform: rotate(45deg);
+    left: 5px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    -webkit-transform: rotate(45deg);
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
 }
 
 h2, h3{
@@ -239,19 +241,17 @@ h2, h3{
 #group-list li{
     list-style-type:none;
 }
-
-
 </style>
 
 </head>
 <body>
 
+<div class="header">
+   <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
+</div>
+
 <div id="section1" class="section section-first">
     
-    <div class="header">
-       <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
-    </div>
-
     <div class="content-box">
         <h2 lang="en">Welcome to WhatsApp Watch!</h2>
         <h2 lang="hi">व्हाट्सएप वॉच में आपका स्वागत है!! </h2>
@@ -279,10 +279,6 @@ h2, h3{
 </div>
 
 <div id="section2" class="section hidden">
-    <div class="header">
-        <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
-     </div>
-    
         <div class="content-box">
             <h2 lang="en">Instructions for sharing community groups.</h2>
             <h2 lang="hi">सामुदायिक ग्रूपों को शेयर करने के निर्देश।</h2>
@@ -321,10 +317,6 @@ h2, h3{
 </div>
 
 <div id="section3" class="section hidden">
-    <div class="header">
-        <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
-     </div>
-
     <div class="content-box">
         <h2 lang="en">Select groups to share.</h2>
         <h2 lang="hi">शेयर करने के लिए ग्रूपों को चुनें।</h2>
@@ -342,9 +334,6 @@ h2, h3{
 
 
 <div id="section4" class="section hidden">
-    <div class="header">
-        <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
-     </div>
     <div class="content-box">
         <h2 lang="en">Confirm your groups.</h2>
         <h2 lang="hi">अपने ग्रूपों की पुष्टि करें।</h2>
@@ -372,9 +361,6 @@ h2, h3{
 </div>
 
 <div id="section5" class="section section-last hidden">
-    <div class="header">
-        <img src="images/whatsapp_watch_logo.png" alt="WhatsApp Watch" width="160" height="102">
-     </div>
     <div lang="en" class="content-box">
         <h2>Complete registration on WhatsApp</h2>
         <p>When you click “submit” below, you will be redirected to WhatsApp.</p>
