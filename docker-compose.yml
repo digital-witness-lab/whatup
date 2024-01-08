@@ -189,9 +189,10 @@ services:
       - postgres-messages-passwd
       - ssl-cert
     volumes:
-      - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
+      - ./data/sessions/erica.json:/usr/src/whatupy-data/erica.json:ro
+      - ./data/sessions/registered-users/:/usr/src/whatupy-data/sessions/
       - ./data/public/:/data-public/
-    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert userservicesbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --public-path=/data-public/ --sessions-url  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/erica.json"
+    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert userservicesbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --public-path=/data-public/ --sessions-url  /usr/src/whatupy-data/sessions/ /usr/src/whatupy-data/erica.json"
 
   bot-user-archive:
     build: ./whatupy/

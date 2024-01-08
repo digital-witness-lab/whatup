@@ -16,6 +16,7 @@ from .. import utils
 from ..credentials_manager import CredentialsManager
 from ..device_manager import DeviceManager
 from ..protos import whatupcore_pb2 as wuc
+from ..protos import whatsappweb_pb2 as waw
 from . import BaseBot
 from .static import format_template
 
@@ -227,9 +228,17 @@ class UserServicesBot(BaseBot):
         async with self.with_disappearing_messages(
             user.jid, wuc.DisappearingMessageOptions.TIMER_24HOUR
         ):
-            await self.send_text_message(
+            await self.send_raw_message(
                 user.jid,
-                f"Click on the following link to select which groups you would like to share with us: {acl_url}",
+                waw.Message(
+                    extendedTextMessage=waw.ExtendedTextMessage(
+                        text=f"Click on the following link to select which groups you would like to share with us: {acl_url}",
+                        matchedText=acl_url,
+                        canonicalUrl=acl_url,
+                        description="Click to select the groups you would like to share. This link expires in 24 hours.",
+                        title="WhatsApp Watch Group Selection",
+                    )
+                ),
             )
 
     def bytes_to_url(
