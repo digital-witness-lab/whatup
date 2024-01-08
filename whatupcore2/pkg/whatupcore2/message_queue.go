@@ -59,7 +59,12 @@ func (mc *MessageClient) MessageChan() (chan *QueueMessage, error) {
 				mc.log.Debugf("done by context")
 				mc.Close()
 				return
-			case <-mc.newMessageAlert:
+            case alert := <-mc.newMessageAlert:
+                if alert == false {
+				    mc.log.Debugf("newMessageAlert channel is closed. Closing context and exiting")
+                    mc.Close()
+                    return
+                }
 				mc.log.Debugf("saw new message alert")
 				ok := mc.depleteQueueToChan(msgChan)
 				if !ok {
@@ -115,10 +120,10 @@ func (mc *MessageClient) ReadMessage() (*QueueMessage, bool) {
 
 func (mc *MessageClient) Close() {
 	mc.log.Debugf("Client closing")
-	mc.ctxC.Cancel()
 	mc.valid = false
 	mc.position = nil
 	mc.queue = nil
+	mc.ctxC.Cancel()
 }
 
 func (mc *MessageClient) IsOpen() bool {
