@@ -9,9 +9,10 @@ static_files = {
 
 
 class Template(string.Template):
-    delimeter = "#"
+    delimiter = "#"
 
 
 def format_template(template_name, **kwargs) -> str:
+    print("making template", kwargs)
     template = Template(static_files[template_name].open().read())
     return template.safe_substitute(kwargs)

@@ -379,6 +379,11 @@ class BaseBot:
             content: bytes = b""
             try:
                 content = await self.download_message_media(message)
+                self.logger.info(
+                    "Got content for message: %s: len(content) = %d",
+                    message.info.id,
+                    len(content),
+                )
             except Exception:
                 self.logger.exception(
                     "Could not download media content. Retries = %d: %s",
