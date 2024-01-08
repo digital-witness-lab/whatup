@@ -435,6 +435,17 @@ class BaseBot:
         )
         return await self.core_client.SendMessage(options)
 
+    async def send_raw_message(
+        self, recipient: wuc.JID, message: waw.Message, composing_time: int = 2
+    ) -> wuc.SendMessageReceipt:
+        recipient_nonad = utils.jid_noad(recipient)
+        options = wuc.SendMessageOptions(
+            recipient=recipient_nonad,
+            rawMessage=message,
+            composingTime=composing_time,
+        )
+        return await self.core_client.SendMessage(options)
+
     async def send_media_message(
         self,
         recipient: wuc.JID,

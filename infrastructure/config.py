@@ -32,6 +32,7 @@ whatup_anon_key = config.require_secret("whatupAnonKey")
 
 primary_bot_name = str(config.require("primary_bot_name"))
 temp_bucket_ttl_days = config.require_int("temp_bucket_ttl_days")
+control_groups = config.require_object("control_groups")
 
 # Import the provider's configuration settings.
 gcp_config = pulumi.Config("gcp")
