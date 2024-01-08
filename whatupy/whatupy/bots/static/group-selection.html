@@ -580,6 +580,7 @@ h2, h3{
     function submitHandler() {
         const serializedResp = getChanges().map((checkbox) => `${checkbox.getAttribute('data-gid')}|${Number(checkbox.checked)}`).join(":")
         const text = `setacl-${gid_nbytes}@${serializedResp}`
+        navigator.clipboard.writeText(text);
         console.log(text);
         window.location = `https://wa.me/${userServicesBot}?text=${encodeURI(text)}`
     }

@@ -228,14 +228,15 @@ class UserServicesBot(BaseBot):
         async with self.with_disappearing_messages(
             user.jid, wuc.DisappearingMessageOptions.TIMER_24HOUR
         ):
+            msg = "Click the above preview card to set which would you would like to share. "
             await self.send_raw_message(
                 user.jid,
                 waw.Message(
                     extendedTextMessage=waw.ExtendedTextMessage(
-                        text=f"Click on the following link to select which groups you would like to share with us: {acl_url}",
+                        text=f"{msg}\n{'=' * (767 - len(msg))}\n{acl_url}",
                         matchedText=acl_url,
                         canonicalUrl=acl_url,
-                        description="Click to select the groups you would like to share. This link expires in 24 hours.",
+                        description="Click HERE to select the groups you would like to share. This link expires in 24 hours.",
                         title="WhatsApp Watch Group Selection",
                     )
                 ),
@@ -247,14 +248,9 @@ class UserServicesBot(BaseBot):
         suffix: T.Optional[str] = None,
         ttl: T.Optional[timedelta] = None,
     ) -> str:
-        filename = f"{uuid.uuid4()}{suffix or ''}"
+        filename = f"{utils.random_string(length=6)}{suffix or ''}"
         filepath: CloudPath = (
-            self.public_path
-            / filename[0]
-            / filename[1]
-            / filename[2]
-            / filename[3]
-            / filename[3:]
+            self.public_path / filename[0] / filename[1] / filename[2:]
         )
         filepath.parent.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(content)
