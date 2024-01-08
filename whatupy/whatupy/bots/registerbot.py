@@ -154,5 +154,5 @@ class RegisterBot(BaseBot):
         )
         await self.send_text_message(
             connection_status.JID,
-            "Welcome to the WhatsApp Watch system! You have been added to our first trial which will last until Dec 1, 2023",
+            "Welcome to the WhatsApp Watch system! We are processing your account and will soon start the on boarding process. Note that no data is being collected from your account until your are done with the on boarding.",
         )

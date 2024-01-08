@@ -135,11 +135,11 @@ adius: 10px;*/
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 .invisible {
-    visibility: hidden;
+    visibility: hidden !important;
 }
 
 /* The container */
@@ -333,8 +333,8 @@ h2, h3{
         <p lang="en">You will be able to confirm your choices on the next screen.</p>
         <p lang="hi">आप अगली स्क्रीन पर अपनी पसंद की पुष्टि कर सकेंगे।</p>
    
-        <input type="text" lang="en" class="search" oninput="displayList(this.value)" placeholder="Enter group name to filter" />
-        <input type="text" lang="hi" class="search" oninput="displayList(this.value)" placeholder="ग्रूपों को फ़िल्टर करें" />
+        <input type="text" lang="en" class="search" oninput="filterList(this.value)" placeholder="Enter group name to filter" />
+        <input type="text" lang="hi" class="search" oninput="filterList(this.value)" placeholder="ग्रूपों को फ़िल्टर करें" />
         <div id="group-list">
         </div>
     </div>
@@ -498,17 +498,14 @@ h2, h3{
 
     const groupList = document.getElementById('group-list');
     // Render the JSON data as a list
-    function displayList(filter) {
+    function displayList() {
         groupList.innerHTML = '';
         data.sort((a, b) => a.n_participants < b.n_participants);
         data.forEach(item => {
-            if (filter && !(item.name.toLocaleLowerCase().includes(filter) || item.topic.toLocaleLowerCase().includes(filter))) {
-                return;
-            }
             const listItem = document.createElement('li');
             const checked = item.can_read ? 'checked' : ''
             listItem.innerHTML = `
-        <label class="group-container">
+                    <label class="group-container" data-filterslug="${item.name.toLocaleLowerCase()} ${item.topic.toLocaleLowerCase()}">
           ${item.name} <span class="group-topic">${item.topic || ''}</span>
           <br>
           <span class="group-count" lang="en">${item['n_participants']} people</span>
@@ -521,6 +518,18 @@ h2, h3{
         });
     }
     displayList()
+
+    function filterList(filter) {
+        const items = document.getElementsByClassName("group-container");
+        for (var item of items) {
+            const slug = item.getAttribute("data-filterslug");
+            if (filter && !slug.includes(filter)) {
+                item.classList.add("hidden");
+            } else {
+                item.classList.remove("hidden");
+            }
+        }
+    }
 
     const checkboxes = [...document.querySelectorAll('.group-checkbox')];
     function getChanges() {
@@ -570,8 +579,9 @@ h2, h3{
     // Handle form submission
     function submitHandler() {
         const serializedResp = getChanges().map((checkbox) => `${checkbox.getAttribute('data-gid')}|${Number(checkbox.checked)}`).join(":")
-        const text = encodeURI(`setacl-${gid_nbytes}@${serializedResp}`)
-        window.location = `https://wa.me/${userServicesBot}?text=${text}`
+        const text = `setacl-${gid_nbytes}@${serializedResp}`
+        console.log(text);
+        window.location = `https://wa.me/${userServicesBot}?text=${encodeURI(text)}`
     }
 
     function cancelHandler() {

@@ -278,11 +278,13 @@ async def databasebot_load_archive(
 @click.option("--database-url", type=str)
 @click.option(
     "--sessions-url",
+    required=True,
     type=str,
     help="Credentials manager URL to store sessions for newly registered users",
 )
 @click.option(
     "--public-path",
+    required=True,
     type=click.Path(path_type=AnyPath),
     help="URL to store temporary HTML files for public use",
 )

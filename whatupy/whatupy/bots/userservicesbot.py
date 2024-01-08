@@ -195,16 +195,14 @@ class UserServicesBot(BaseBot):
             summary[can_read].append(data["name"])
             jid = data["jid"]
             await user.core_client.SetACL(wuc.GroupACL(JID=jid, permission=permission))
-            if can_read:
-                asyncio.get_running_loop().call_soon(self._trigger_history, user, jid)
         summary_text = "Thank you for your selection! We will now:"
         if include := summary.get(True):
-            summary_text += "\nMonitor the following groups:\n  -" + "\n  - ".join(
+            summary_text += "\nMonitor the following groups:\n  - " + "\n  - ".join(
                 include
             )
         if exclude := summary.get(False):
             summary_text += (
-                "\nNo longer monitor the following groups:\n  -"
+                "\nNo longer monitor the following groups:\n  - "
                 + "\n  - ".join(exclude)
             )
         await self.send_text_message(
@@ -249,13 +247,9 @@ class UserServicesBot(BaseBot):
             / filename[3]
             / filename[3:]
         )
+        filepath.parent.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(content)
         return utils.gspath_to_self_signed_url(filepath, ttl=ttl)
-
-    async def _trigger_history(self, user: _UserBot, jid: wuc.JID):
-        self.logger.critical("_trigger_history called but not yet implemented")
-        # TODO: this
-        pass
 
     async def unregister_workflow(self, user: _UserBot):
         await self.send_text_message(
