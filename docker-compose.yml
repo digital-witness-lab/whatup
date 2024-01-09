@@ -53,7 +53,7 @@ services:
       - whatup
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
-      - WHATUPY_CONTROL_GROUPS=c+c-prod@g.us anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net # c+c-prod + micha
+      - WHATUPY_CONTROL_GROUPS=c+c-dev@g.us # c+c-dev
     secrets:
       - ssl-cert
     volumes:
@@ -71,7 +71,7 @@ services:
       - whatup
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
-      - WHATUPY_CONTROL_GROUPS=c+c-prod@g.us 33671714377@s.whatsapp.net # c+c-prod + micha
+      - WHATUPY_CONTROL_GROUPS=c+c-dev@g.us # c+c-dev
     secrets:
       - ssl-cert
     ports:
@@ -167,7 +167,7 @@ services:
       - db
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
-      - WHATUPY_CONTROL_GROUPS=c+c-stage@g.us  # coolest friends
+      - WHATUPY_CONTROL_GROUPS=c+c-dev@g.us # c+c-dev
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
     secrets:
       - postgres-messages-passwd

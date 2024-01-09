@@ -23,7 +23,7 @@ config:
   whatup:primary_bot_name: flo
   whatup:temp_bucket_ttl_days: "1"
   whatup:control_groups:
-    - c+c-dev@g.us # c+c-dev
+    - c+c-stage@g.us # c+c-stage
   whatup:usrPassword:
     secure: AAABAKiWovX77BLq0YB4lHfGiknqXyjpgr/IrzLOWzpSy5QcneSnCtYCwwKM6OAouyD81aAoC+ZVt+hJwY+bhg+J6xRQhpMwF+Opxz7ag7P4pEHWAsPXxEcYlZhjeNFq
   whatup:whatupAnonKey:
