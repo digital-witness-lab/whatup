@@ -571,7 +571,24 @@ class BaseBot:
                 recipient=jid_noad, disappearingTime=disappearing_time
             )
         )
-        yield
+
+        expiration_seconds = 0
+        match wuc.DisappearingMessageOptions.DISAPPEARING_TIME.Name(disappearing_time):
+            case "TIMER_OFF":
+                expiration_seconds = 0
+            case "TIMER_24HOUR":
+                expiration_seconds = 60 * 60 * 24
+            case "TIMER_7DAYS":
+                expiration_seconds = 60 * 60 * 24 * 7
+            case "TIMER_90DAYS":
+                expiration_seconds = 60 * 60 * 24 * 90
+
+        if expiration_seconds:
+            context_info = waw.ContextInfo(expiration=expiration_seconds)
+        else:
+            context_info = waw.ContextInfo()
+        yield context_info
+
         await self.core_client.SetDisappearingMessageTime(
             wuc.DisappearingMessageOptions(
                 recipient=jid_noad,
