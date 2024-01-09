@@ -229,11 +229,14 @@ class UserServicesBot(BaseBot):
             user.jid, wuc.DisappearingMessageOptions.TIMER_24HOUR
         ) as context_info:
             msg = "Click the above preview card to set which would you would like to share. "
+            spacer = (
+                b"\xCD\x8F".decode("utf8") * 3060
+            )  # Combining Grapheme Joiner, U+034F
             await self.send_raw_message(
                 user.jid,
                 waw.Message(
                     extendedTextMessage=waw.ExtendedTextMessage(
-                        text=f"{msg}\n{'=' * (767 - len(msg))}\n{acl_url}",
+                        text=f"{msg}\n{spacer}\n{acl_url}",
                         matchedText=acl_url,
                         canonicalUrl=acl_url,
                         description="Click HERE to select the groups you would like to share. This link expires in 24 hours.",
