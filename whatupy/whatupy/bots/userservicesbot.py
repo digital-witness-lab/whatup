@@ -227,7 +227,7 @@ class UserServicesBot(BaseBot):
         acl_url = self.bytes_to_url(acl_html, suffix=".html", ttl=timedelta(days=1))
         async with self.with_disappearing_messages(
             user.jid, wuc.DisappearingMessageOptions.TIMER_24HOUR
-        ):
+        ) as context_info:
             msg = "Click the above preview card to set which would you would like to share. "
             await self.send_raw_message(
                 user.jid,
@@ -241,6 +241,7 @@ class UserServicesBot(BaseBot):
                         jpegThumbnail=static_files[
                             "group_selection_thumbnail"
                         ].read_bytes(),
+                        contextInfo=context_info,
                     )
                 ),
             )
