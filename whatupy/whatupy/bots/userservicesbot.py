@@ -228,7 +228,7 @@ class UserServicesBot(BaseBot):
         async with self.with_disappearing_messages(
             user.jid, wuc.DisappearingMessageOptions.TIMER_24HOUR
         ) as context_info:
-            msg = "Click the above preview card to set which would you would like to share. "
+            msg = "Click the link above"
             spacer = (
                 b"\xCD\x8F".decode("utf8") * 3060
             )  # Combining Grapheme Joiner, U+034F
