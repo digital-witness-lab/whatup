@@ -23,7 +23,7 @@ config:
   whatup:primary_bot_name: flo
   whatup:temp_bucket_ttl_days: "1"
   whatup:control_groups:
-    - 120363182117068328@g.us # test-dev2
+    - 120363159470639781@g.us # coolest friends dev
   whatup:usrPassword:
     secure: AAABAKiWovX77BLq0YB4lHfGiknqXyjpgr/IrzLOWzpSy5QcneSnCtYCwwKM6OAouyD81aAoC+ZVt+hJwY+bhg+J6xRQhpMwF+Opxz7ag7P4pEHWAsPXxEcYlZhjeNFq
   whatup:whatupAnonKey:

@@ -18,7 +18,7 @@ from ..device_manager import DeviceManager
 from ..protos import whatupcore_pb2 as wuc
 from ..protos import whatsappweb_pb2 as waw
 from . import BaseBot
-from .static import format_template
+from .static import format_template, static_files
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +238,9 @@ class UserServicesBot(BaseBot):
                         canonicalUrl=acl_url,
                         description="Click HERE to select the groups you would like to share. This link expires in 24 hours.",
                         title="WhatsApp Watch Group Selection",
+                        jpegThumbnail=static_files[
+                            "group_selection_thumbnail"
+                        ].read_bytes(),
                     )
                 ),
             )
