@@ -1,2 +1,2 @@
-No longer monitor the following groups:
+We will no longer monitor the following groups:
 #{group_list}

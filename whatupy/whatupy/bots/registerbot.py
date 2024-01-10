@@ -111,7 +111,7 @@ class RegisterBot(BaseBot):
                     handler_jid,
                     MediaType.MediaImage,
                     content=content,
-                    caption=f"Registration QR code for {username}",
+                    caption=f"{username} can scan this QR code to link their device. A new code will be sent if the device is not linked in 30 seconds.",
                     mimetype="image/png",
                     filename=f"register-{username}",
                 )
@@ -154,9 +154,9 @@ class RegisterBot(BaseBot):
         )
 
         user_messages = [
-            "Welcome to the WhatsApp Watch system! We are processing your account and will soon start the onboarding process. No data will be collected until the onboarding process is complete.",
+            "Welcome to the WhatsApp Watch system! One moment while we process your request.",
             "व्हाट्सएप वॉच में आपका स्वागत है! हम आपके अकाउंट की जांच कर रहे हैं और जल्द ही ऑनबोर्डिंग प्रक्रिया अर्थात आपके अकाउंट को व्हाट्सएप वॉच सिस्टम में लाने की प्रक्रिया शुरू करेंगे। ऑनबोर्डिंग प्रक्रिया पूरी होने तक कोई डेटा एकत्रित नहीं किया जाएगा।",
-            "Please add us to your contacts before continuing.",
+            "Please add WhatsApp Watch to your contacts before continuing.",
         ]
         for message in user_messages:
             await self.send_text_message(
