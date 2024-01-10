@@ -2,12 +2,7 @@ from pathlib import Path
 import string
 
 static_dir = Path(__file__).parent.absolute()
-static_files = {
-    "group_selection": static_dir / "group-selection.html",
-    "unregister_final_message": static_dir / "unregister_final_message.txt",
-    "unregister_final_message_hi": static_dir / "unregister_final_message_hi.txt",
-    "group_selection_thumbnail": static_dir / "group-selection-thumbnail.jpg",
-}
+static_files = {file.stem: file for file in static_dir.glob("*")}
 
 
 class Template(string.Template):
@@ -15,6 +10,5 @@ class Template(string.Template):
 
 
 def format_template(template_name, **kwargs) -> str:
-    print("making template", kwargs)
     template = Template(static_files[template_name].open().read())
     return template.safe_substitute(kwargs)

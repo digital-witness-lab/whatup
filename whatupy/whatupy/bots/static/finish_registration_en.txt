@@ -1,0 +1,3 @@
+Your registration is complete. Text “set groups”  if you want to add or change groups we collect.
+---
+You can text “unregister” to end data collection.
