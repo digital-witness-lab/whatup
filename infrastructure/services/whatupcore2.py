@@ -74,7 +74,7 @@ whatup_anon_key_secret_source = (
     )
 )
 
-log_level = "INFO" if is_prod_stack() else "DEBUG"
+log_level = "INFO"  # if is_prod_stack() else "DEBUG"
 whatupcore2_service = Service(
     service_name,
     ServiceArgs(
