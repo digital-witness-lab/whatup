@@ -427,11 +427,17 @@ class BaseBot:
         await self.download_queue.put((message, callback, retries))
 
     async def send_text_message(
-        self, recipient: wuc.JID, text: str, composing_time: int = 2
+        self, recipient: wuc.JID, text: str, composing_time: int = 2, context_info=None
     ) -> wuc.SendMessageReceipt:
         recipient_nonad = utils.jid_noad(recipient)
+        message = waw.Message(
+            extendedTextMessage=waw.ExtendedTextMessage(
+                text=text,
+                contextInfo=context_info,
+            )
+        )
         options = wuc.SendMessageOptions(
-            recipient=recipient_nonad, simpleText=text, composingTime=composing_time
+            recipient=recipient_nonad, rawMessage=message, composingTime=composing_time
         )
         return await self.core_client.SendMessage(options)
 

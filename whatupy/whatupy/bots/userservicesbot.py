@@ -3,10 +3,8 @@ import hashlib
 import json
 import logging
 import typing as T
-import uuid
 from datetime import timedelta
 from collections import defaultdict
-from datetime import timedelta
 from functools import partial
 
 import dataset
@@ -123,7 +121,7 @@ class UserServicesBot(BaseBot):
         async with asyncio.TaskGroup() as tg:
             tg.create_task(self.device_manager.start())
 
-    async def on_message(self, message: wuc.WUMessage, **kwargs):
+    async def on_message(self, message: wuc.WUMessage, *args, **kwargs):
         sender = utils.jid_to_str(message.info.source.sender)
         if not sender:
             return
@@ -152,6 +150,9 @@ class UserServicesBot(BaseBot):
         elif text == "restart_onboarding":
             self.reset_onboarding(user)
             await self.onboard_user(user)
+        elif text in ("help", "मदद"):
+            ulog.debug("Serving help text")
+            await self.finish_registration(user)
         else:
             ulog.debug("Unrecognized command: %s", text)
             await self.send_text_message(
@@ -178,13 +179,27 @@ class UserServicesBot(BaseBot):
                 "username": user.username,
                 "onboard_acl": False,
                 "finalize_registration": False,
+                "lang": None,
             },
             ["username"],
         )
 
     async def acl_workflow_finalize(self, user: _UserBot, message: wuc.WUMessage):
         try:
-            base = message.content.text[len("setacl-") :]
+            body = message.content.text[len("setacl-") :]
+            lang, base = body.split("-", 1)
+            if lang in ("en", "hi"):
+                self.db["registered_users"].update(
+                    {
+                        "username": user.username,
+                        "lang": lang,
+                    },
+                    ["username"],
+                )
+            else:
+                self.logger.critical(
+                    "Got invalid language selection: %s: %s", lang, body
+                )
             n_bytes_str, rest = base.split("@")
             n_bytes = int(n_bytes_str)
             gids: T.Dict[str, bool] = {}
@@ -211,34 +226,25 @@ class UserServicesBot(BaseBot):
             summary[can_read].append(data["name"])
             jid = data["jid"]
             await user.core_client.SetACL(wuc.GroupACL(JID=jid, permission=permission))
-        summary_text = "Thank you for your selection! We will now:"
+
+        await self.send_static_message_lang(user, "acl_workflow_finalize_header", lang)
         if include := summary.get(True):
-            summary_text += "\nMonitor the following groups:\n  - " + "\n  - ".join(
-                include
+            group_list = " - " + "\n - ".join(include)
+            await self.send_static_message_lang(
+                user, "acl_workflow_finalize_monitor", group_list=group_list
             )
         if exclude := summary.get(False):
-            summary_text += (
-                "\nNo longer monitor the following groups:\n  - "
-                + "\n  - ".join(exclude)
+            group_list = " - " + "\n - ".join(exclude)
+            await self.send_static_message_lang(
+                user, "acl_workflow_finalize_ignore", group_list=group_list
             )
-        await self.send_text_message(
-            user.jid,
-            summary_text,
-        )
         self.db["registered_users"].update(
             {"username": user.username, "onboard_acl": True}, ["username"]
         )
         await self.onboard_user(user)
 
     async def finish_registration(self, user: _UserBot):
-        messages = [
-            'Your registration is complete. Text "set groups"  if you want to add or change groups we collect.\n'
-            'आपका पंजीकरण पूरा हो गया है। अगर आप ग्रुपों को जोड़ना या बदलना चाहते हैं, तो "ग्रुप सेट करें" लिखकर भेजें। ',
-            "You can text “unregister” to end data collection.\n"
-            'आप डेटा संग्रह समाप्त करने के लिए "अपंजीकरण" लिखकर भेज सकते हैं।',
-        ]
-        for message in messages:
-            await self.send_text_message(user.jid, message)
+        await self.send_static_message_lang(user, "finish_registration")
         self.db["registered_users"].update(
             {"username": user.username, "finalize_registration": True}, ["username"]
         )
@@ -256,9 +262,8 @@ class UserServicesBot(BaseBot):
         async with self.with_disappearing_messages(
             user.jid, wuc.DisappearingMessageOptions.TIMER_24HOUR
         ) as context_info:
-            await self.send_text_message(
-                user.jid,
-                "Click on the link below to select the groups you would like to share with WhatsApp Watch.\nनीचे दिए गए लिंक पर क्लिक करके उन ग्रूपों का चयन करें जिन्हें आप व्हाट्सएप वॉच के साथ शेयर करना चाहते हैं।",
+            await self.send_static_message_lang(
+                user, "acl_workflow", context_info=context_info
             )
             msg = "Click the link above"
             spacer = (
@@ -296,15 +301,7 @@ class UserServicesBot(BaseBot):
         return utils.gspath_to_self_signed_url(filepath, ttl=ttl)
 
     async def unregister_workflow(self, user: _UserBot):
-        await self.send_text_message(
-            user.jid,
-            "Are you sure you want to unregister? "
-            "Send 'yes' within 60 seconds to finalize your request.",
-        )
-        await self.send_text_message(
-            user.jid,
-            "क्या आप व्हाट्सएप वॉच छोड़ना चाहते हैं? अपने अनुरोध को सुनिश्चित करने के लिए अगले 60 सेकंड के अंदर  “हां” लिखकर भेजें। ",
-        )
+        await self.send_static_message_lang(user, "unregister_workflow")
         user.unregistering_timer = asyncio.get_event_loop().call_later(
             60,
             asyncio.create_task,
@@ -331,14 +328,29 @@ class UserServicesBot(BaseBot):
         return await self.unregister_workflow_finalize(user)
 
     async def unregister_workflow_finalize(self, user: _UserBot):
-        message = format_template(
-            "unregister_final_message", anon_user=user.jid_anon.user
+        await self.send_static_message_lang(
+            user, "unregister_final_message", anon_user=user.jid_anon.user
         )
-        await self.send_text_message(user.jid, message)
-        message = format_template(
-            "unregister_final_message_hi", anon_user=user.jid_anon.user
-        )
-        await self.send_text_message(user.jid, message)
         if user.username:
             await self.device_manager.unregister(user.username)
         self.db["registered_users"].delete(username=user.username)
+
+    async def send_static_message_lang(
+        self, user, template, lang=None, context_info=None, **kwargs
+    ):
+        if lang is None:
+            user_state = self.db["registered_users"].find_one(username=user.username)
+            lang = user_state.get("lang")
+            if not lang:
+                await self.send_static_message_lang(
+                    user, template, "en", context_info=context_info, **kwargs
+                )
+                await self.send_static_message_lang(
+                    user, template, "hi", context_info=context_info, **kwargs
+                )
+                return
+        messages = format_template(f"{template}_{lang}", **kwargs)
+        for message in messages.split("---"):
+            await self.send_text_message(
+                user.jid, message.strip(), context_info=context_info
+            )

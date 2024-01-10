@@ -1,0 +1,2 @@
+Monitor the following groups:
+#{group_list}
