@@ -9,7 +9,8 @@ if [ -z "${app_command:-}" ]; then
     exit 1
 fi
 
-DEBUG=$( [[ "$IS_PROD" == "False" ]] && echo "--debug" || echo "" )
+DEBUG=
+#$( [[ "$IS_PROD" == "False" ]] && echo "--debug" || echo "" )
 echo "Running app command: $app_command $DEBUG"
 
 function positive_mod() {
