@@ -134,7 +134,7 @@ class UserServicesBot(BaseBot):
         ulog = self.logger.getChild(user.username)
 
         text = message.content.text.lower().strip()
-        if text == "unregister":
+        if text in ("unregister", "अपंजीकरण"):
             ulog.debug("Starting unregister workflow")
             await self.unregister_workflow(user)
         elif user.unregistering_timer is not None:
@@ -146,9 +146,12 @@ class UserServicesBot(BaseBot):
         elif text.startswith("setacl-"):
             ulog.debug("Setting ACL")
             await self.acl_workflow_finalize(user, message)
-        elif text == "set groups":
+        elif text in ("set groups", "ग्रुप सेट करें"):
             ulog.debug("Starting ACL workflow")
             await self.acl_workflow(user)
+        elif text == "restart_onboarding":
+            self.reset_onboarding(user)
+            await self.onboard_user(user)
         else:
             ulog.debug("Unrecognized command: %s", text)
             await self.send_text_message(
@@ -166,6 +169,18 @@ class UserServicesBot(BaseBot):
         user_state = self.db["registered_users"].find_one(username=user.username)
         if not user_state.get("onboard_acl"):
             await self.acl_workflow(user)
+        elif not user_state.get("finalize_registration"):
+            await self.finish_registration(user)
+
+    def reset_onboarding(self, user: _UserBot):
+        self.db["registered_users"].update(
+            {
+                "username": user.username,
+                "onboard_acl": False,
+                "finalize_registration": False,
+            },
+            ["username"],
+        )
 
     async def acl_workflow_finalize(self, user: _UserBot, message: wuc.WUMessage):
         try:
@@ -215,6 +230,19 @@ class UserServicesBot(BaseBot):
         )
         await self.onboard_user(user)
 
+    async def finish_registration(self, user: _UserBot):
+        messages = [
+            'Your registration is complete. Text "set groups"  if you want to add or change groups we collect.\n'
+            'आपका पंजीकरण पूरा हो गया है। अगर आप ग्रुपों को जोड़ना या बदलना चाहते हैं, तो "ग्रुप सेट करें" लिखकर भेजें। ',
+            "You can text “unregister” to end data collection.\n"
+            'आप डेटा संग्रह समाप्त करने के लिए "अपंजीकरण" लिखकर भेज सकते हैं।',
+        ]
+        for message in messages:
+            await self.send_text_message(user.jid, message)
+        self.db["registered_users"].update(
+            {"username": user.username, "finalize_registration": True}, ["username"]
+        )
+
     async def acl_workflow(self, user: _UserBot):
         n_bytes = 3
         groups_data = await user.group_acl_data(n_bytes=n_bytes)
@@ -228,6 +256,10 @@ class UserServicesBot(BaseBot):
         async with self.with_disappearing_messages(
             user.jid, wuc.DisappearingMessageOptions.TIMER_24HOUR
         ) as context_info:
+            await self.send_text_message(
+                user.jid,
+                "Click on the link below to select the groups you would like to share with WhatsApp Watch.\nनीचे दिए गए लिंक पर क्लिक करके उन ग्रूपों का चयन करें जिन्हें आप व्हाट्सएप वॉच के साथ शेयर करना चाहते हैं।",
+            )
             msg = "Click the link above"
             spacer = (
                 b"\xCD\x8F".decode("utf8") * 3060
@@ -269,6 +301,10 @@ class UserServicesBot(BaseBot):
             "Are you sure you want to unregister? "
             "Send 'yes' within 60 seconds to finalize your request.",
         )
+        await self.send_text_message(
+            user.jid,
+            "क्या आप व्हाट्सएप वॉच छोड़ना चाहते हैं? अपने अनुरोध को सुनिश्चित करने के लिए अगले 60 सेकंड के अंदर  “हां” लिखकर भेजें। ",
+        )
         user.unregistering_timer = asyncio.get_event_loop().call_later(
             60,
             asyncio.create_task,
@@ -297,6 +333,10 @@ class UserServicesBot(BaseBot):
     async def unregister_workflow_finalize(self, user: _UserBot):
         message = format_template(
             "unregister_final_message", anon_user=user.jid_anon.user
+        )
+        await self.send_text_message(user.jid, message)
+        message = format_template(
+            "unregister_final_message_hi", anon_user=user.jid_anon.user
         )
         await self.send_text_message(user.jid, message)
         if user.username:
