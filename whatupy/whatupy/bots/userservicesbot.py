@@ -376,9 +376,9 @@ class UserServicesBot(BaseBot):
 
     async def langselect_workflow_finalize(self, user: _UserBot, text: str):
         if text == "1":
-            lang = "hi"
-        elif text == "2":
             lang = "en"
+        elif text == "2":
+            lang = "hi"
         else:
             return await self.langselect_workflow_start(user)
 
