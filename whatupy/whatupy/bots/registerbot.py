@@ -155,7 +155,8 @@ class RegisterBot(BaseBot):
 
         user_messages = [
             "Welcome to the WhatsApp Watch system! One moment while we process your request.",
-            "व्हाट्सएप वॉच में आपका स्वागत है! हम आपके अकाउंट की जांच कर रहे हैं और जल्द ही ऑनबोर्डिंग प्रक्रिया अर्थात आपके अकाउंट को व्हाट्सएप वॉच सिस्टम में लाने की प्रक्रिया शुरू करेंगे। ऑनबोर्डिंग प्रक्रिया पूरी होने तक कोई डेटा एकत्रित नहीं किया जाएगा।",
+            # SM: Commenting out the hindi welcome message as we now ask them to set the language as the first step.
+            # "व्हाट्सएप वॉच में आपका स्वागत है! हम आपके अकाउंट की जांच कर रहे हैं और जल्द ही ऑनबोर्डिंग प्रक्रिया अर्थात आपके अकाउंट को व्हाट्सएप वॉच सिस्टम में लाने की प्रक्रिया शुरू करेंगे। ऑनबोर्डिंग प्रक्रिया पूरी होने तक कोई डेटा एकत्रित नहीं किया जाएगा।",
             "Please add WhatsApp Watch to your contacts before continuing.",
         ]
         for message in user_messages:
