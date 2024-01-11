@@ -541,7 +541,7 @@ h2, h3{
         const items = document.getElementsByClassName("group-container");
         for (var item of items) {
             const slug = item.getAttribute("data-filterslug");
-            if (filter && !slug.includes(filter)) {
+            if (filter && !slug.includes(filter.toLocaleLowerCase())) {
                 item.classList.add("hidden");
             } else {
                 item.classList.remove("hidden");
