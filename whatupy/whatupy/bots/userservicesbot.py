@@ -136,9 +136,11 @@ class UserServicesBot(BaseBot):
         sender = utils.jid_to_str(message.info.source.sender)
         if not sender:
             return
-        # TODO: make these expire and have a way to re-fetch when needed
         user = self.users.get(sender)
         if user is None or user.username is None:
+            for lang in ("hi", "en"):
+                template = f"unregistered_user_msg_{lang}"
+                await self.send_template_jid(message.info.source.sender, template)
             return
         ulog = self.logger.getChild(user.username)
 
@@ -148,27 +150,28 @@ class UserServicesBot(BaseBot):
                 return await user.active_workflow(user, text)
             except asyncio.CancelledError:
                 pass
-        if text == "1":
-            ulog.debug("Starting ACL workflow")
-            await self.acl_workflow(user)
-        elif text == "2":
-            ulog.debug("Starting unregister workflow")
-            await self.unregister_workflow(user)
-        elif text == "restart_onboarding":
-            self.reset_onboarding(user)
-            await self.onboard_user(user)
-        elif text == "3":
-            ulog.debug("Setting language preference")
-            await self.langselect_workflow_start(user)
-        elif text == "4":
-            ulog.debug("Serving help text")
-            await self.help_text(user)
-        else:
-            ulog.debug("Unrecognized command: %s", text)
-            await self.send_text_message(
-                user.jid, "i recognize you but not your message"
-            )
-            await self.help_text(user)
+        match text:
+            case "1":
+                ulog.debug("Starting ACL workflow")
+                await self.acl_workflow(user)
+            case "2":
+                ulog.debug("Starting unregister workflow")
+                await self.unregister_workflow(user)
+            case "3":
+                ulog.debug("Setting language preference")
+                await self.langselect_workflow_start(user)
+            case "4":
+                ulog.debug("Serving help text")
+                await self.help_text(user)
+            case "restart_onboarding":
+                self.reset_onboarding(user)
+                await self.onboard_user(user)
+            case _:
+                ulog.debug("Unrecognized command: %s", text)
+                await self.send_text_message(
+                    user.jid, "i recognize you but not your message"
+                )
+                await self.help_text(user)
 
     async def new_device(self, user: _UserBot):
         user_jid_str = utils.jid_to_str(user.jid_anon)
@@ -339,6 +342,9 @@ class UserServicesBot(BaseBot):
         await self.send_static_message_lang(
             user, "unregister_final_message", anon_user=user.jid_anon.user
         )
+        jid = utils.jid_to_str(user.jid_anon)
+        if jid:
+            self.users.pop(jid)
         if user.username:
             await self.device_manager.unregister(user.username)
         self.db["registered_users"].delete(username=user.username)
@@ -360,16 +366,21 @@ class UserServicesBot(BaseBot):
                 user, template, "hi", context_info=context_info, **kwargs
             )
             return
-        messages = format_template(f"{template}_{lang}", **kwargs)
+        await self.send_template_jid(
+            user.jid, f"{template}_{lang}", context_info=context_info
+        )
+
+    async def send_template_jid(
+        self, jid: wuc.JID, template: str, context_info=None, **kwargs
+    ):
+        messages = format_template(template, **kwargs)
         for message in messages.split("---"):
             await self.send_text_message(
-                user.jid, message.strip(), context_info=context_info
+                jid, message.strip(), context_info=context_info
             )
 
     async def langselect_workflow_start(self, user: _UserBot):
-        await self.send_static_message_lang(
-            user, "langselect_start", anon_user=user.jid_anon.user, lang="all"
-        )
+        await self.send_static_message_lang(user, "langselect_start", lang="all")
         user.active_workflow = self.langselect_workflow_finalize
 
     async def langselect_workflow_finalize(self, user: _UserBot, text: str):
@@ -389,7 +400,5 @@ class UserServicesBot(BaseBot):
             ["username"],
         )
         user.lang = lang
-        await self.send_static_message_lang(
-            user, "langselect_final", anon_user=user.jid_anon.user
-        )
+        await self.send_static_message_lang(user, "langselect_final")
         await self.onboard_user(user)
