@@ -157,17 +157,11 @@ class UserServicesBot(BaseBot):
             case "3":
                 ulog.debug("Setting language preference")
                 await self.langselect_workflow_start(user)
-            case "4":
-                ulog.debug("Serving help text")
-                await self.help_text(user)
             case "restart_onboarding":
                 self.reset_onboarding(user)
                 await self.onboard_user(user)
             case _:
                 ulog.debug("Unrecognized command: %s", text)
-                await self.send_text_message(
-                    user.jid, "i recognize you but not your message"
-                )
                 await self.help_text(user)
 
     async def new_device(self, user: _UserBot):
