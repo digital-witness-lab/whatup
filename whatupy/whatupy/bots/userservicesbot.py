@@ -358,7 +358,7 @@ class UserServicesBot(BaseBot):
             )
             return
         await self.send_template_jid(
-            user.jid, f"{template}_{lang}", context_info=context_info
+            user.jid, f"{template}_{lang}", context_info=context_info, **kwargs
         )
 
     async def send_template_jid(
