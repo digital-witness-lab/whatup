@@ -254,11 +254,14 @@ class UserServicesBot(BaseBot):
     async def acl_workflow(self, user: _UserBot):
         n_bytes = 3
         groups_data = await user.group_acl_data(n_bytes=n_bytes)
+        user_state = self.db["registered_users"].find_one(username=user.username)
+        skip_intro = int(user_state.get("onboard_acl", False))
         params = {
             "bot_number": f"+{self.connection_status.JID.user}",
             "gid_nbytes": n_bytes,
             "data_jsons": json.dumps(groups_data),
             "default_lang": user.lang,
+            "skip_intro": skip_intro,
         }
         acl_html = format_template("group_selection", **params).encode("utf8")
         acl_url = self.bytes_to_url(acl_html, suffix=".html", ttl=timedelta(days=1))
@@ -313,7 +316,7 @@ class UserServicesBot(BaseBot):
 
     async def unregister_workflow_cancel(self, user: _UserBot):
         user.active_workflow = None
-        await self.send_text_message(user.jid, "Unregister request timed out.")
+        await self.send_template_user(user, "unregister_timeout")
         await self.help_text(user)
 
     async def unregister_workflow_continue(self, user: _UserBot, text: str):
@@ -329,11 +332,8 @@ class UserServicesBot(BaseBot):
         if is_expired:
             raise asyncio.CancelledError()
         elif text != "1":
-            await self.send_text_message(
-                user.jid,
-                "Unrecognized response. Canceling unregister request. Please request to unregister again if you still desire to unregister",
-            )
-            raise asyncio.CancelledError()
+            await self.send_template_user(user, "unregister_unrecognized")
+            return await self.onboard_user(user)
         return await self.unregister_workflow_finalize(user)
 
     async def unregister_workflow_finalize(self, user: _UserBot):
