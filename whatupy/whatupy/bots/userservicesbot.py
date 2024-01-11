@@ -169,7 +169,9 @@ class UserServicesBot(BaseBot):
         if not user_jid_str:
             return
         self.users[user_jid_str] = user
-        await self.onboard_user(user)
+        user_state = self.db["registered_users"].find_one(username=user.username)
+        if not user_state.get("finalize_registration", False):
+            await self.onboard_user(user)
 
     async def onboard_user(self, user: _UserBot):
         user.active_workflow = None
@@ -180,6 +182,8 @@ class UserServicesBot(BaseBot):
             await self.acl_workflow(user)
         elif not user_state.get("finalize_registration"):
             await self.finish_registration(user)
+        else:
+            await self.help_text(user)
 
     def reset_onboarding(self, user: _UserBot):
         user.active_workflow = None
@@ -242,7 +246,7 @@ class UserServicesBot(BaseBot):
         self.db["registered_users"].update(
             {"username": user.username, "finalize_registration": True}, ["username"]
         )
-        await self.help_text(user)
+        await self.onboard_user(user)
 
     async def help_text(self, user: _UserBot):
         await self.send_template_user(user, "help_text")
@@ -310,6 +314,7 @@ class UserServicesBot(BaseBot):
     async def unregister_workflow_cancel(self, user: _UserBot):
         user.active_workflow = None
         await self.send_text_message(user.jid, "Unregister request timed out.")
+        await self.help_text(user)
 
     async def unregister_workflow_continue(self, user: _UserBot, text: str):
         user.active_workflow = None
