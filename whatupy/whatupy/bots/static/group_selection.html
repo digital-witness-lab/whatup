@@ -167,9 +167,22 @@ adius: 10px;*/
     width: 0;
 }
 
+.group-name {
+  text-overflow: ellipsis;
+  overflow: scroll;
+  white-space: nowrap;
+}
+
 .group-topic {
     font-weight: lighter;
     font-size: 0.8rem;
+
+    overflow-y: scroll;
+    overflow-x: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* number of lines to show */
+            line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .group-topic:not(:empty)::before {
@@ -406,6 +419,12 @@ h2, h3{
 
 
 <script>
+    const defaultLang = "#{default_lang}";
+    const userServicesBot = "#{bot_number}";
+    const gid_nbytes = #{gid_nbytes};  // number of bytes from the hashed group JID that were used in the gid
+    const data = #{data_jsons};
+    const sections = [...document.getElementsByClassName("section")];
+
     function setLanguage(lang) {
         const langOption = document.querySelectorAll(`#language-selection > option[value="${lang}"]`)
         if (langOption.length == 0) {
@@ -426,13 +445,13 @@ h2, h3{
         console.log("Setting language based on browser:", lang)
         return setLanguage();
     }
-    setLanguageBrowser();
 
+    if (defaultLang) {
+        setLanguage(defaultLang);
+    } else {
+        setLanguageBrowser();
+    }
 
-    const userServicesBot = "#{bot_number}";
-    const gid_nbytes = #{gid_nbytes};  // number of bytes from the hashed group JID that were used in the gid
-    const data = #{data_jsons};
-    const sections = [...document.getElementsByClassName("section")];
 
     function goNext() {
         const current = document.getElementsByClassName("section visible")[0];
@@ -504,9 +523,9 @@ h2, h3{
             const listItem = document.createElement('li');
             const checked = item.can_read ? 'checked' : ''
             listItem.innerHTML = `
-                    <label class="group-container" data-filterslug="${item.name.toLocaleLowerCase()} ${item.topic.toLocaleLowerCase()}">
-          ${item.name} <span class="group-topic">${item.topic || ''}</span>
-          <br>
+        <label class="group-container" data-filterslug="${item.name.toLocaleLowerCase()} ${item.topic.toLocaleLowerCase()}">
+          <span class="group-name">${item.name}</span>
+          <span class="group-topic">${item.topic || ''}</span>
           <span class="group-count" lang="en">${item['n_participants']} people</span>
           <span class="group-count" lang="hi">${item['n_participants']} लोग</span>
           <input type="checkbox" class="group-checkbox" data-name="${item.name}" data-gid="${item.gid}" data-initial="${item.can_read}" ${checked}>
@@ -535,7 +554,7 @@ h2, h3{
         const changes= [];
         checkboxes.forEach(checkbox => {
             const checked_initial = checkbox.getAttribute('data-initial') == "true";
-            if (checked_initial ^ checkbox.checked) {
+            if (checkbox.checked || checked_initial ^ checkbox.checked) {
                 changes.push(checkbox)
             }
         });
@@ -574,11 +593,12 @@ h2, h3{
         }
     }
     checkboxes.map((checkbox) => checkbox.addEventListener("change", renderConfirmation));
+    renderConfirmation();
 
     // Handle form submission
     function submitHandler() {
-        const serializedResp = getChanges().map((checkbox) => `${checkbox.getAttribute('data-gid')}|${Number(checkbox.checked)}`).join(":")
-        const text = `setacl-${document.documentElement.lang}-${gid_nbytes}@${serializedResp}`
+        const serializedResp = getChanges().map((checkbox) => `${checkbox.getAttribute('data-gid')}~${Number(checkbox.checked)}`).join(":")
+        const text = `setacl-${gid_nbytes}@${serializedResp}`
         navigator.clipboard.writeText(text);
         console.log(text);
         window.location = `https://wa.me/${userServicesBot}?text=${encodeURI(text)}`

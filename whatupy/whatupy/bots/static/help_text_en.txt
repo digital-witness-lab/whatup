@@ -1,0 +1,3 @@
+Text *“1”* to add or remove groups. 
+You can text *“2”* to stop data collection.
+Or you can text *“3”* to change your preferred language.
