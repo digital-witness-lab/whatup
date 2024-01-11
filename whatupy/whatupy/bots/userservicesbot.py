@@ -138,9 +138,6 @@ class UserServicesBot(BaseBot):
             return
         user = self.users.get(sender)
         if user is None or user.username is None:
-            for lang in ("hi", "en"):
-                template = f"unregistered_user_msg_{lang}"
-                await self.send_template_jid(message.info.source.sender, template)
             return
         ulog = self.logger.getChild(user.username)
 
