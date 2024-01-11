@@ -423,6 +423,7 @@ h2, h3{
     const userServicesBot = "#{bot_number}";
     const gid_nbytes = #{gid_nbytes};  // number of bytes from the hashed group JID that were used in the gid
     const data = #{data_jsons};
+    const skip_intro = #{skip_intro};
     const sections = [...document.getElementsByClassName("section")];
 
     function setLanguage(lang) {
@@ -511,7 +512,11 @@ h2, h3{
     
     // Run on initial load
     window.onload = function() {
-        goToSection('section1'); // Show the first section by default
+        if (skip_intro) {
+            goToSection('section2');
+        } else {
+            goToSection('section1'); 
+        }
     };
 
     const groupList = document.getElementById('group-list');
