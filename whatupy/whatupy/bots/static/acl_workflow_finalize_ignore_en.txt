@@ -1,2 +1,0 @@
-We will no longer monitor the following groups:
-#{group_list}
