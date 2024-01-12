@@ -32,6 +32,7 @@ const (
 var (
 	ErrInvalidMediaMessage   = errors.New("Invalid MediaMessage")
 	ErrDownloadRetryCanceled = errors.New("Download Retry canceled")
+    ErrNoChatHistory         = errors.New("Could not find any chat history")
 	clientCreationLock       = NewMutexMap()
 	appNameSuffix            = os.Getenv("APP_NAME_SUFFIX")
 )
@@ -530,8 +531,10 @@ func (wac *WhatsAppClient) RequestHistory(chat types.JID) error {
 	if err != nil {
 		wac.Log.Errorf("Could not get newest chat message: %s: %+v", chat.String(), err)
 		return err
-	}
-	wac.Log.Debugf("Found newest message info: %s: %s: %s", chat.String(), msgInfo.ID, msgInfo.Timestamp.String())
+	} else if msgInfo == nil {
+        return ErrNoChatHistory         
+    }
+
 	wac.requestHistoryMsgInfoRetry(msgInfo)
 	return nil
 }
