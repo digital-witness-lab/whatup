@@ -303,7 +303,7 @@ async def userservicesbot(
     registered user metadata and state should be stored. The sessions directory
     specifies where newly registered user's session file should be stored.
     """
-    credentials_manager = CredentialsManager.from_url(sessions_url)
+    credentials_manager = CredentialsManager.from_url(sessions_url, timeout=30)
     params = {
         "database_url": database_url,
         "credentials_manager": credentials_manager,
