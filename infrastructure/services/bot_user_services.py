@@ -17,9 +17,8 @@ from kms import sessions_encryption_key, sessions_encryption_key_uri
 from network import private_services_network_with_db, vpc
 from service import Service, ServiceArgs
 from storage import sessions_bucket, temp_bucket
-from config import primary_bot_name
+from config import primary_bot_name, control_groups
 
-from .bot_archive import whatupy_control_groups
 from .whatupcore2 import whatupcore2_service
 
 service_name = "bot-user-services"
@@ -140,7 +139,7 @@ bot_user_services = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPY_CONTROL_GROUPS",
-                value=whatupy_control_groups,
+                value=" ".join(control_groups),
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_HOST",

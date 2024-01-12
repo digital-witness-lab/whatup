@@ -15,6 +15,7 @@ from cloudpathlib import AnyPath
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from .. import utils
+from .static import format_lang_template
 from ..connection import create_whatupcore_clients
 from ..credentials_manager.credential import Credential
 from ..protos import whatsappweb_pb2 as waw
@@ -34,6 +35,7 @@ CONTROL_CACHE = deque(maxlen=1028)
 
 DownloadMediaCallback = T.Callable[[wuc.WUMessage, bytes], T.Awaitable[None]]
 MediaType = enum.Enum("MediaType", wuc.SendMessageMedia.MediaType.items())
+TypeLanguages = T.Literal["hi"] | T.Literal["en"]
 
 
 class InvalidCredentialsException(Exception):
@@ -379,6 +381,11 @@ class BaseBot:
             content: bytes = b""
             try:
                 content = await self.download_message_media(message)
+                self.logger.info(
+                    "Got content for message: %s: len(content) = %d",
+                    message.info.id,
+                    len(content),
+                )
             except Exception:
                 self.logger.exception(
                     "Could not download media content. Retries = %d: %s",
@@ -422,11 +429,28 @@ class BaseBot:
         await self.download_queue.put((message, callback, retries))
 
     async def send_text_message(
-        self, recipient: wuc.JID, text: str, composing_time: int = 2
+        self, recipient: wuc.JID, text: str, composing_time: int = 2, context_info=None
+    ) -> wuc.SendMessageReceipt:
+        recipient_nonad = utils.jid_noad(recipient)
+        message = waw.Message(
+            extendedTextMessage=waw.ExtendedTextMessage(
+                text=text,
+                contextInfo=context_info,
+            )
+        )
+        options = wuc.SendMessageOptions(
+            recipient=recipient_nonad, rawMessage=message, composingTime=composing_time
+        )
+        return await self.core_client.SendMessage(options)
+
+    async def send_raw_message(
+        self, recipient: wuc.JID, message: waw.Message, composing_time: int = 2
     ) -> wuc.SendMessageReceipt:
         recipient_nonad = utils.jid_noad(recipient)
         options = wuc.SendMessageOptions(
-            recipient=recipient_nonad, simpleText=text, composingTime=composing_time
+            recipient=recipient_nonad,
+            rawMessage=message,
+            composingTime=composing_time,
         )
         return await self.core_client.SendMessage(options)
 
@@ -555,7 +579,24 @@ class BaseBot:
                 recipient=jid_noad, disappearingTime=disappearing_time
             )
         )
-        yield
+
+        expiration_seconds = 0
+        match wuc.DisappearingMessageOptions.DISAPPEARING_TIME.Name(disappearing_time):
+            case "TIMER_OFF":
+                expiration_seconds = 0
+            case "TIMER_24HOUR":
+                expiration_seconds = 60 * 60 * 24
+            case "TIMER_7DAYS":
+                expiration_seconds = 60 * 60 * 24 * 7
+            case "TIMER_90DAYS":
+                expiration_seconds = 60 * 60 * 24 * 90
+
+        if expiration_seconds:
+            context_info = waw.ContextInfo(expiration=expiration_seconds)
+        else:
+            context_info = waw.ContextInfo()
+        yield context_info
+
         await self.core_client.SetDisappearingMessageTime(
             wuc.DisappearingMessageOptions(
                 recipient=jid_noad,
@@ -568,3 +609,17 @@ class BaseBot:
         self.logger.critical("Calling unregister")
         self.logger.error("Calling unregister")
         await self.core_client.Unregister(wuc.UnregisterOptions)
+
+    async def send_template(
+        self,
+        jid: wuc.JID,
+        template: str,
+        lang: TypeLanguages,
+        context_info=None,
+        **kwargs,
+    ):
+        messages = format_lang_template(template, lang, **kwargs)
+        for message in messages:
+            await self.send_text_message(
+                jid, message.strip(), context_info=context_info
+            )

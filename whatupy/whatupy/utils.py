@@ -113,6 +113,10 @@ def dict_to_csv_bytes(data: T.List[dict]) -> bytes:
     return buffer.read().encode("utf8")
 
 
+def random_string(length=6):
+    return "".join(random.choices(string.ascii_letters, k=length))
+
+
 def random_passphrase(words=5):
     words = random_words(words)
     return "-".join(f"{word.title()}{random.randint(10,99)}" for word in words)

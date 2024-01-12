@@ -9,3 +9,4 @@ message-archive-*/
 sessions-backup/
 message-archive-backup.tar.gz
 media/
+public/
