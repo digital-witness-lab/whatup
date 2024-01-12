@@ -278,11 +278,13 @@ async def databasebot_load_archive(
 @click.option("--database-url", type=str)
 @click.option(
     "--sessions-url",
+    required=True,
     type=str,
     help="Credentials manager URL to store sessions for newly registered users",
 )
 @click.option(
     "--public-path",
+    required=True,
     type=click.Path(path_type=AnyPath),
     help="URL to store temporary HTML files for public use",
 )
@@ -301,7 +303,7 @@ async def userservicesbot(
     registered user metadata and state should be stored. The sessions directory
     specifies where newly registered user's session file should be stored.
     """
-    credentials_manager = CredentialsManager.from_url(sessions_url)
+    credentials_manager = CredentialsManager.from_url(sessions_url, timeout=30)
     params = {
         "database_url": database_url,
         "credentials_manager": credentials_manager,

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="348u9283yf9asdfsdf39"
+RAND="asjdkf28394usduifhfjuhf"
 app_command=$1
 
 if [ -z "${app_command:-}" ]; then
@@ -9,7 +9,8 @@ if [ -z "${app_command:-}" ]; then
     exit 1
 fi
 
-DEBUG=$( [[ "$IS_PROD" == "False" ]] && echo "--debug" || echo "" )
+DEBUG=
+#$( [[ "$IS_PROD" == "False" ]] && echo "--debug" || echo "" )
 echo "Running app command: $app_command $DEBUG"
 
 function positive_mod() {

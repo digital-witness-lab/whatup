@@ -32,6 +32,7 @@ const (
 var (
 	ErrInvalidMediaMessage   = errors.New("Invalid MediaMessage")
 	ErrDownloadRetryCanceled = errors.New("Download Retry canceled")
+    ErrNoChatHistory         = errors.New("Could not find any chat history")
 	clientCreationLock       = NewMutexMap()
 	appNameSuffix            = os.Getenv("APP_NAME_SUFFIX")
 )
@@ -530,8 +531,10 @@ func (wac *WhatsAppClient) RequestHistory(chat types.JID) error {
 	if err != nil {
 		wac.Log.Errorf("Could not get newest chat message: %s: %+v", chat.String(), err)
 		return err
-	}
-	wac.Log.Debugf("Found oldest message info: %s: %s: %s", chat.String(), msgInfo.ID, msgInfo.Timestamp.String())
+	} else if msgInfo == nil {
+        return ErrNoChatHistory         
+    }
+
 	wac.requestHistoryMsgInfoRetry(msgInfo)
 	return nil
 }
@@ -654,8 +657,10 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 				}
 				// TODO: FIX: the following line may be the reason we are
 				// getting 403's on historical media downloads
+                wac.Log.Debugf("OLD direct path: %s", directPathValues[0].String())
+                wac.Log.Debugf("NEW direct path: %s", *retryData.DirectPath)
 				directPathValues[0].SetString(*retryData.DirectPath)
-				body, retryError = wac.Client.DownloadAny(msg)
+				body, retryError = wac.DownloadAnyRetry(ctxRetry.Context, msg, msgInfo)
 				ctxRetry.Cancel()
 			}
 		}
@@ -670,6 +675,9 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 	if retryError != nil {
 		wac.Log.Errorf("Error in retry handler: %v", retryError)
 	}
+    if len(body) > 0 {
+        wac.Log.Debugf("Media Retry got body of length: %d", len(body))
+    }
 	return body, retryError
 }
 

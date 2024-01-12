@@ -152,7 +152,7 @@ func (s *WhatUpCoreServer) SendMessage(ctx context.Context, messageOptions *pb.S
 	switch payload := messageOptions.GetPayload().(type) {
 	case *pb.SendMessageOptions_SimpleText:
 		message = &waProto.Message{
-			Conversation: proto.String(payload.SimpleText),
+            Conversation: proto.String(payload.SimpleText),
 		}
 	case *pb.SendMessageOptions_RawMessage:
 		message = payload.RawMessage

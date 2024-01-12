@@ -53,7 +53,7 @@ services:
       - whatup
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
-      - WHATUPY_CONTROL_GROUPS=120363104970691776@g.us anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net # cool friends + micha
+      - WHATUPY_CONTROL_GROUPS=120363182117068328@g.us # test-dev2
     secrets:
       - ssl-cert
     volumes:
@@ -71,7 +71,7 @@ services:
       - whatup
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
-      - WHATUPY_CONTROL_GROUPS=120363104970691776@g.us 33671714377@s.whatsapp.net # cool friends + micha
+      - WHATUPY_CONTROL_GROUPS=120363182117068328@g.us # test-dev2
     secrets:
       - ssl-cert
     ports:
@@ -146,7 +146,7 @@ services:
       - donotstart
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission DENIED --credentials-url "/usr/src/whatupy-data/sessions/" ${SESSION_NAME}
+    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission READWRITE --credentials-url "/usr/src/whatupy-data/sessions/" ${SESSION_NAME}
 
   bot-chatbot:
     build: ./whatupy/
@@ -167,7 +167,7 @@ services:
       - db
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
-      - WHATUPY_CONTROL_GROUPS=120363159470639781@g.us  # coolest friends
+      - WHATUPY_CONTROL_GROUPS=120363182117068328@g.us # test-dev2
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
     secrets:
       - postgres-messages-passwd
@@ -189,8 +189,10 @@ services:
       - postgres-messages-passwd
       - ssl-cert
     volumes:
-      - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
-    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert userservicesbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --sessions-url  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/erica.json"
+      - ./data/sessions/erica.json:/usr/src/whatupy-data/erica.json:ro
+      - ./data/sessions/registered-users/:/usr/src/whatupy-data/sessions/
+      - ./data/public/:/data-public/
+    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert userservicesbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --public-path=/data-public/ --sessions-url  /usr/src/whatupy-data/sessions/ /usr/src/whatupy-data/erica.json"
 
   bot-user-archive:
     build: ./whatupy/
