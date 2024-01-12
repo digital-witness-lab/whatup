@@ -15,13 +15,10 @@ from ..credentials_manager import CredentialsManager
 from ..device_manager import DeviceManager
 from ..protos import whatupcore_pb2 as wuc
 from ..protos import whatsappweb_pb2 as waw
-from . import BaseBot
-from .static import format_template, static_files
+from .basebot import BaseBot, TypeLanguages
+from . import static
 
 logger = logging.getLogger(__name__)
-
-
-TypeLanguages = T.Literal["hi"] | T.Literal["en"]
 
 
 class _UserBot(BaseBot):
@@ -39,6 +36,16 @@ class _UserBot(BaseBot):
             read_messages=False,
             read_historical_messages=False,
         )
+
+    def set_lang(self, lang):
+        self.db["registered_users"].update(
+            {
+                "username": self.username,
+                "lang": lang,
+            },
+            ["username"],
+        )
+        self.lang = lang
 
     async def post_start(self):
         connection_status: wuc.ConnectionStatus = (
@@ -201,7 +208,8 @@ class UserServicesBot(BaseBot):
 
     async def acl_workflow_finalize(self, user: _UserBot, text: str):
         try:
-            base = text[len("setacl-") :]
+            body = text[len("setacl-") :]
+            lang, base = body.split("-", 1)
             n_bytes_str, rest = base.strip().split("@")
             n_bytes = int(n_bytes_str)
             gids: T.Dict[str, bool] = {}
@@ -214,6 +222,7 @@ class UserServicesBot(BaseBot):
             await self.send_template_user(user, "acl_workflow_error_code")
             return await self.acl_workflow(user)
 
+        user.set_lang(lang)
         group_info_lookup = await user.group_acl_jid_lookup(n_bytes=n_bytes)
         summary = defaultdict(list)
         for gid, can_read in gids.items():
@@ -263,8 +272,12 @@ class UserServicesBot(BaseBot):
             "default_lang": user.lang,
             "skip_intro": skip_intro,
         }
-        acl_html = format_template("group_selection", **params).encode("utf8")
-        acl_url = self.bytes_to_url(acl_html, suffix=".html", ttl=timedelta(days=1))
+        acl_html = static.substitute(
+            static.static_files["group_selection"].read_text("utf8"), **params
+        )
+        acl_url = self.bytes_to_url(
+            acl_html.encode("utf8"), suffix=".html", ttl=timedelta(days=1)
+        )
         async with self.with_disappearing_messages(
             user.jid, wuc.DisappearingMessageOptions.TIMER_24HOUR
         ) as context_info:
@@ -284,7 +297,7 @@ class UserServicesBot(BaseBot):
                         canonicalUrl=acl_url,
                         description="Click HERE to select the groups you would like to share. This link expires in 24 hours.",
                         title="WhatsApp Watch Group Selection",
-                        jpegThumbnail=static_files[
+                        jpegThumbnail=static.static_files[
                             "group_selection_thumbnail"
                         ].read_bytes(),
                         contextInfo=context_info,
@@ -364,18 +377,9 @@ class UserServicesBot(BaseBot):
                 user, template, "hi", context_info=context_info, **kwargs
             )
             return
-        await self.send_template_jid(
-            user.jid, f"{template}_{lang}", context_info=context_info, **kwargs
+        await self.send_template(
+            user.jid, template, lang, context_info=context_info, **kwargs
         )
-
-    async def send_template_jid(
-        self, jid: wuc.JID, template: str, context_info=None, **kwargs
-    ):
-        messages = format_template(template, **kwargs)
-        for message in messages.split("---"):
-            await self.send_text_message(
-                jid, message.strip(), context_info=context_info
-            )
 
     async def langselect_workflow_start(self, user: _UserBot):
         await self.send_template_user(user, "langselect_start", lang="all")
@@ -390,13 +394,6 @@ class UserServicesBot(BaseBot):
             return await self.langselect_workflow_start(user)
 
         user.active_workflow = None
-        self.db["registered_users"].update(
-            {
-                "username": user.username,
-                "lang": lang,
-            },
-            ["username"],
-        )
-        user.lang = lang
+        user.set_lang(lang)
         await self.send_template_user(user, "langselect_final")
         await self.onboard_user(user)

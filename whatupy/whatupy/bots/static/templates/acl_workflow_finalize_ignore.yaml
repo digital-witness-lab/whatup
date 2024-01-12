@@ -1,0 +1,8 @@
+en:
+- |-
+  We will no longer monitor the following groups:
+  #{group_list}
+hi:
+- |-
+  हम इन ग्रुपों का अध्ययन अब नहीं करेंगे:
+  #{group_list}

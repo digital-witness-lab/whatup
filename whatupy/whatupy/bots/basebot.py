@@ -15,6 +15,7 @@ from cloudpathlib import AnyPath
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from .. import utils
+from .static import format_lang_template
 from ..connection import create_whatupcore_clients
 from ..credentials_manager.credential import Credential
 from ..protos import whatsappweb_pb2 as waw
@@ -34,6 +35,7 @@ CONTROL_CACHE = deque(maxlen=1028)
 
 DownloadMediaCallback = T.Callable[[wuc.WUMessage, bytes], T.Awaitable[None]]
 MediaType = enum.Enum("MediaType", wuc.SendMessageMedia.MediaType.items())
+TypeLanguages = T.Literal["hi"] | T.Literal["en"]
 
 
 class InvalidCredentialsException(Exception):
@@ -607,3 +609,17 @@ class BaseBot:
         self.logger.critical("Calling unregister")
         self.logger.error("Calling unregister")
         await self.core_client.Unregister(wuc.UnregisterOptions)
+
+    async def send_template(
+        self,
+        jid: wuc.JID,
+        template: str,
+        lang: TypeLanguages,
+        context_info=None,
+        **kwargs,
+    ):
+        messages = format_lang_template(template, lang, **kwargs)
+        for message in messages:
+            await self.send_text_message(
+                jid, message.strip(), context_info=context_info
+            )

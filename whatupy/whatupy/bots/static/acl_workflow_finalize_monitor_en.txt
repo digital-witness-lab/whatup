@@ -1,2 +1,0 @@
-We will now monitor the following groups:
-#{group_list}
