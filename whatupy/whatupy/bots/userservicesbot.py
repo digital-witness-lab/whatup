@@ -264,7 +264,7 @@ class UserServicesBot(BaseBot):
         n_bytes = 3
         groups_data = await user.group_acl_data(n_bytes=n_bytes)
         user_state = self.db["registered_users"].find_one(username=user.username)
-        skip_intro = int(user_state.get("onboard_acl", False))
+        skip_intro = int(user_state.get("onboard_acl") or False)
         params = {
             "bot_number": f"+{self.connection_status.JID.user}",
             "gid_nbytes": n_bytes,
