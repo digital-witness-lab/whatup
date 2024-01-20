@@ -21,3 +21,29 @@ jobs:
       - name: Lint
         run: make lint-ci
         working-directory: infrastructure
+
+  preview:
+    needs: lint
+    permissions:
+      contents: read # Allows actions/checkout to read the repo.
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: "Authenticate to GCP"
+        uses: "google-github-actions/auth@v2"
+        with:
+          create_credentials_file: true
+          project_id: whatup-deploy
+          workload_identity_provider: "<example-workload-identity-provider>"
+
+      - id: gcloud
+        name: "gcloud"
+        run: |-
+          gcloud auth login --brief --cred-file="${{ steps.auth.outputs.credentials_file_path }}"
+
+      - uses: pulumi/actions@v4
+        with:
+          work-dir: infrastructure
