@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 from .. import NotRegisteredError, utils
@@ -27,7 +28,8 @@ class OnboardBot(BaseBot):
                 default_group_permission,
                 get_history=get_history,
             ):
-                print(utils.qrcode_gen(qrcode))
+                if os.environ.get("IS_PROD", "").lower() != "true":
+                    print(utils.qrcode_gen(qrcode))
                 logger.critical("QRCode: %s", qrcode)
         except NotRegisteredError:
             logger.exception("Could not register user")
