@@ -14,18 +14,33 @@ def hash_images(file_or_dir):
     file_or_dir = AnyPath(file_or_dir)
     files = []
     hashes = [] 
-    if file_or_dir.is_dir():
-        files.extend(file_or_dir.glob("*"))
+
+    # below block could maybe be more efficient? i think this is the block that takes a while. 
+    if file_or_dir.is_dir(): # are local directory structures going to mirror the bucket? 
+        media_dirs = list(file_or_dir.rglob("*/media"))
+        for obj in media_dirs:
+            files.extend(AnyPath(obj).rglob("*"))
+        files = [path for path in files if path.is_file() and not path.name.startswith('.')]
     else:
         files.append(file_or_dir)
+    i = 0
     for file in files:
         file = AnyPath(file)
-        if not file.name.startswith('.'):
-            hash = imagehash.phash(Image.open(file.open("rb")))
-            hashes.append(hash.hash)
-            hash_file : AnyPath = f"{file.name}.json"
-            entry = {"id": file.name, "embedding": hash.hash}
-            with hash_file.open("w") as fd:
-                fd.write(entry)
 
-    print(hashes)
+        try:
+            #blob = bucket.blob(f"{file.stem}.json")
+            #if blob.exists(): continue
+            
+            hash = 1 * imagehash.phash(Image.open(file.open("rb"))).hash.flatten()
+            hashes.append(hash)
+            entry = {"id": file.name, "embedding": hash.tolist()} # UPDATE TO DB ENTRY
+
+            # INSERT IN DB
+
+            i+= 1
+            if i == 5: return
+        except:
+            print("Skipping a non-image file.")
+
+    print(len(hashes))
+    print(i)
