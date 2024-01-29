@@ -453,6 +453,10 @@ class DatabaseBot(BaseBot):
         if community_info is not None:
             self.logger.debug("Using community info to update groups for community")
             for group_from_community in community_info:
+                self.logger.debug(
+                    "Inserting community group: %s",
+                    utils.jid_to_str(group_from_community.JID),
+                )
                 await self.insert_group_info(db, group_from_community, now)
         elif group_info is not None:
             self.logger.debug("Using group info to update group: %s", chat_jid)
@@ -492,11 +496,13 @@ class DatabaseBot(BaseBot):
             group_info_flat["provenance"].update(db_provenance)
 
         if has_prev_group_info:
+            logger.debug("Has prev group info")
             keys = set(group_info_flat.keys())
             [keys.discard(f) for f in ("provenance", "last_update", "record_mtime")]
-            if changed_keys := [
+            changed_keys = [
                 k for k in keys if group_info_flat.get(k) != group_info_prev.get(k)
-            ]:
+            ]
+            if changed_keys:
                 logger.debug(
                     "Found previous out-of-date entry, updating: %s: %s",
                     chat_jid,
@@ -520,7 +526,7 @@ class DatabaseBot(BaseBot):
                 db["group_info"].insert(group_info_prev)
                 db["group_info"].upsert(group_info_flat, ["id"])
             else:
-                logger.debug("Updating group info last updated field")
+                logger.debug("Updating group info last updated field: %s", changed_keys)
                 db["group_info"].update(
                     {
                         "id": chat_jid,

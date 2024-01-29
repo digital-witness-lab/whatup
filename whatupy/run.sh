@@ -43,6 +43,7 @@ case $app_command in
     ;;
 
     databasebot)
+        DEBUG=--debug
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
             --port 443 \
             databasebot \
