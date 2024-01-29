@@ -430,9 +430,9 @@ class DatabaseBot(BaseBot):
         if is_archive:
             if archive_data.CommunityInfo is not None:
                 community_info = archive_data.CommunityInfo
-            elif archive_data.GroupInfo is not None:
+            if archive_data.GroupInfo is not None:
                 group_info = archive_data.GroupInfo
-            else:
+            if not (archive_data or community_info):
                 return
             now = archive_data.WUMessage.info.timestamp.ToDatetime()
             self.logger.debug("Storing archived message timestamp: %s", now)
@@ -448,6 +448,7 @@ class DatabaseBot(BaseBot):
                     community_info = await utils.aiter_to_list(community_info_iterator)
             except grpc.aio._call.AioRpcError as e:
                 if "rate-overlimit" in (e.details() or ""):
+                    self.logger.warn("Rate Overlimit for group info: %s", chat_jid)
                     return
 
         if community_info is not None:
@@ -461,6 +462,10 @@ class DatabaseBot(BaseBot):
         elif group_info is not None:
             self.logger.debug("Using group info to update group: %s", chat_jid)
             await self.insert_group_info(db, group_info, now)
+        else:
+            self.logger.critical(
+                "Both community_info and group_info are none...: %s", chat_jid
+            )
 
     async def insert_group_info(
         self, db: dataset.Database, group_info: wuc.GroupInfo, update_time: datetime

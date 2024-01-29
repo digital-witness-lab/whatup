@@ -14,6 +14,7 @@ import (
 
 	pb "github.com/digital-witness-lab/whatup/protos"
 	"github.com/digital-witness-lab/whatup/whatupcore2/pkg/encsqlstore"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
@@ -113,6 +114,7 @@ type WhatsAppClient struct {
 	historyHandler    uint32
 	messageHandler    uint32
 	archiveHandler    uint32
+    groupInfoCache *expirable.LRU[string, *types.GroupInfo]
 
 	anonLookup *AnonLookup
 }
@@ -179,6 +181,7 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 		messageQueue:           messageQueue,
 		historyRequestContexts: make(map[string]ContextWithCancel),
 		shouldRequestHistory:   make(map[string]bool),
+        groupInfoCache: expirable.NewLRU[string, *types.GroupInfo](128, nil, time.Minute),
 	}
 	go func() {
 		<-ctx.Done()
@@ -692,4 +695,16 @@ func (wac *WhatsAppClient) logNewestMessageInfo(msgInfo *types.MessageInfo) {
 			wac.Log.Errorf("Could not insert message info: %+v", err)
 		}
 	}
+}
+
+func (wac *WhatsAppClient) GetGroupInfo(jid types.JID) (*types.GroupInfo, error) {
+    chatJID := jid.ToNonAD().String()
+    if groupInfo, ok := wac.groupInfoCache.Get(chatJID); ok {
+        return groupInfo, nil
+    }
+    groupInfo, err := wac.Client.GetGroupInfo(jid)
+    if err == nil {
+        wac.groupInfoCache.Add(chatJID, groupInfo)
+    }
+    return groupInfo, err
 }
