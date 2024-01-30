@@ -415,6 +415,9 @@ func (wac *WhatsAppClient) getMessages(evt interface{}) {
 	wac.Log.Debugf("GetMessages handler got something: %T", evt)
 	switch wmMsg := evt.(type) {
 	case *events.Message:
+        if wmMsg.Info.Category == "peer" {
+            return
+        }
 		if !MessageHasContent(wmMsg) {
 			return
 		}
