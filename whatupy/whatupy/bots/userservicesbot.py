@@ -55,7 +55,10 @@ class _UserBot(BaseBot):
         user_state = self.db["registered_users"].find_one(username=self.username)
         self.lang = user_state.get("lang")
         self.is_bot = user_state.get("is_bot")
-        self.mark_messages_read = self.is_bot
+        if self.is_bot:
+            self.mark_messages_read = True
+            self.read_historical_messages = True
+            self.read_messages = True
         return self
 
     async def post_start(self):
