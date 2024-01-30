@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="asjdkf28394usduifhasdff"
+RAND="asjasdfjhsakdfjdshfsdff"
 app_command=$1
 
 if [ -z "${app_command:-}" ]; then
@@ -43,7 +43,6 @@ case $app_command in
     ;;
 
     databasebot)
-        DEBUG=--debug
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
             --port 443 \
             databasebot \
