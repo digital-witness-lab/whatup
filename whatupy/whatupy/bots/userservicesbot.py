@@ -3,7 +3,7 @@ import hashlib
 import json
 import logging
 import typing as T
-from datetime import timedelta
+from datetime import timedelta, datetime
 from collections import defaultdict
 from functools import partial
 
@@ -139,7 +139,21 @@ class UserServicesBot(BaseBot):
         async with asyncio.TaskGroup() as tg:
             tg.create_task(self.device_manager.start())
 
-    async def on_message(self, message: wuc.WUMessage, *args, **kwargs):
+    async def on_message(
+        self,
+        message: wuc.WUMessage,
+        *args,
+        is_history=False,
+        is_archive=False,
+        **kwargs,
+    ):
+        if is_history or is_archive:
+            return
+
+        now = datetime.now()
+        if now - message.info.timestamp > timedelta(minutes=5):
+            return
+
         sender = utils.jid_to_str(message.info.source.sender)
         if not sender:
             return
