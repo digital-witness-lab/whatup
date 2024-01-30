@@ -176,6 +176,7 @@ class BaseBot:
             return self.core_client.GetPendingHistory(
                 wuc.PendingHistoryOptions(
                     heartbeatTimeout=self.stream_heartbeat_timeout,
+                    markMessagesRead=self.mark_messages_read,
                 )
             )
 

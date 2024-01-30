@@ -28,6 +28,8 @@ class _UserBot(BaseBot):
         self.unregistering_timer: T.Optional[asyncio.TimerHandle] = None
         self.db = db
         self.lang: T.Optional[TypeLanguages] = None
+        user_state = self.db["registered_users"].find_one(username=self.username)
+        self.is_bot = user_state.get("is_bot", False)
         super().__init__(
             host,
             port,
@@ -47,16 +49,22 @@ class _UserBot(BaseBot):
         )
         self.lang = lang
 
+    async def login(self, *args, **kwargs):
+        await super().login(*args, **kwargs)
+        self.username = self.authenticator.username
+        user_state = self.db["registered_users"].find_one(username=self.username)
+        self.lang = user_state.get("lang")
+        self.is_bot = user_state.get("is_bot")
+        self.mark_messages_read = self.is_bot
+        return self
+
     async def post_start(self):
         connection_status: wuc.ConnectionStatus = (
             await self.core_client.GetConnectionStatus(wuc.ConnectionStatusOptions())
         )
-        self.username = self.authenticator.username
         self.jid = connection_status.JID
         self.jid_anon = connection_status.JIDAnon
 
-        user_state = self.db["registered_users"].find_one(username=self.username)
-        self.lang = user_state.get("lang")
         await self.services_bot.new_device(self)
 
     @staticmethod
@@ -151,7 +159,7 @@ class UserServicesBot(BaseBot):
             return
 
         now = datetime.now()
-        if now - message.info.timestamp > timedelta(minutes=5):
+        if now - message.info.timestamp.ToDatetime() > timedelta(minutes=5):
             return
 
         sender = utils.jid_to_str(message.info.source.sender)

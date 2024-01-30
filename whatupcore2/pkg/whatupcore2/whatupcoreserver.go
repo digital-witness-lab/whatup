@@ -369,6 +369,9 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 			if err := server.Send(&pb.MessageStream{Content: msgAnon}); err != nil {
 				return nil
 			}
+			if historyOptions.MarkMessagesRead {
+				msg.MarkRead()
+			}
 		}
 	}
 }
