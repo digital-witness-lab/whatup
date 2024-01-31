@@ -222,7 +222,7 @@ class BaseBot:
                         backoff = 0
                         last_timestamp = message.info.timestamp
                         tg.create_task(callback(message))
-                    log.info("Message stream ended. Reconnecting")
+                    raise Exception("Message stream ended. Should try to reconnect")
                 except StreamMissedHeartbeat:
                     log.info("Missed heartbeat")
                 backoff += 1
