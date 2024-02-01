@@ -209,12 +209,6 @@ class DatabaseBot(BaseBot):
             primary_type=db.types.text,
             primary_increment=False,
         )
-        db.create_table(
-            "phash_images",
-            primary_id="filename",
-            primary_type=db.types.text,
-            primary_increment=False,
-        )
 
     def setup_command_args(self):
         parser = BotCommandArgs(

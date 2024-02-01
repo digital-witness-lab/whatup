@@ -8,4 +8,4 @@ RUN pip install -r requirements.txt
 COPY . .
 RUN pip install -e .
 
-ENTRYPOINT ["hash-gen"]
+# ENTRYPOINT ["hash-gen"]
