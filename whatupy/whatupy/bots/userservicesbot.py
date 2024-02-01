@@ -28,8 +28,6 @@ class _UserBot(BaseBot):
         self.unregistering_timer: T.Optional[asyncio.TimerHandle] = None
         self.db = db
         self.lang: T.Optional[TypeLanguages] = None
-        user_state = self.db["registered_users"].find_one(username=self.username)
-        self.is_bot = user_state.get("is_bot", False)
         super().__init__(
             host,
             port,
