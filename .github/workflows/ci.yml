@@ -5,67 +5,34 @@ on:
     branches: main
     paths:
       - infrastructure/**
-      - .github/workflows/lint-infra.yml
+      - .github/workflows/ci.yml
 
   pull_request:
     paths:
       - infrastructure/**
-      - .github/workflows/lint-infra.yml
+      - .github/workflows/ci.yml
 
-  workflow_dispatch:
-    inputs:
-      command:
-        description: up or destroy? (cannot run destroy if stack name is prod.)
-        default: "up"
-        required: true
-      stackName:
-        type: choice
-        required: true
-        description: Pulumi stack name
-        default: test
-        options:
-          - test
-          - prod
+concurrency:
+  group: ci_${{ github.ref }}
+  # Never cancel in-progress push builds as it could leave the
+  # infrastructure in a bad state.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read # Allows actions/checkout to read the repo.
   id-token: write
 
 jobs:
-  pulumi:
-    env:
-      PULUMI_COMMAND: preview
-      PULUMI_STACK_NAME: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+  preview-or-deploy-test-infra:
+    if: github.base_ref == 'main'
+    uses: ./.github/workflows/pulumi.yml
+    secrets: inherit
+    with:
+      gh-environment: test
 
-      - name: Copy workflow_dispatch inputs
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          COMMAND_INPUT: ${{ github.event.inputs.command }}
-          STACK_NAME_INPUT: ${{ github.event.inputs.stackName }}
-        run: |-
-          echo "PULUMI_COMMAND=$COMMAND_INPUT" >> "$GITHUB_ENV"
-          echo "PULUMI_STACK_NAME=$STACK_NAME_INPUT" >> "$GITHUB_ENV"
-
-      - id: auth
-        name: "Authenticate to GCP"
-        uses: "google-github-actions/auth@v2"
-        with:
-          create_credentials_file: true
-          project_id: whatup-deploy
-          workload_identity_provider: "<example-workload-identity-provider>"
-
-      - id: gcloud
-        name: "gcloud"
-        run: |-
-          gcloud auth login --brief --cred-file="${{ steps.auth.outputs.credentials_file_path }}"
-
-      - name: Run pulumi
-        uses: pulumi/actions@v4
-        with:
-          command: ${{ env.PULUMI_COMMAND }}
-          stack-name: ${{ env.PULUMI_STACK_NAME }}
-          work-dir: infrastructure
-          comment-on-pr: ${{ github.event_name == 'pull_request' }}
+  preview-or-deploy-prod-infra:
+    if: github.base_ref == 'production'
+    uses: ./.github/workflows/pulumi.yml
+    secrets: inherit
+    with:
+      gh-environment: prod

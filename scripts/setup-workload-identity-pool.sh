@@ -14,7 +14,7 @@ REPO_SLUG="${REPO_OWNER}/${REPO_NAME}"
 echo "****************************"
 echo "This script only works when executed by a user who has admin-level privileges in the project ${PROJECT_ID}."
 echo "****************************"
-
+echo ""
 read -p "Press Enter to continue or Ctrl+c to quit..."
 
 SERVICE_ACCOUNT_NAME="github-actions-service-account"
@@ -28,11 +28,6 @@ gcloud iam workload-identity-pools create "github" \
   --display-name="GitHub Actions Pool" \
   --description="Workload identity pool used for running Pulumi in GitHub Actions"
 
-gcloud iam workload-identity-pools describe "github" \
-  --project="${PROJECT_ID}" \
-  --location="global" \
-  --format="value(name)"
-
 gcloud iam workload-identity-pools providers create-oidc "${REPO_NAME}" \
   --project="${PROJECT_ID}" \
   --location="global" \
@@ -41,15 +36,10 @@ gcloud iam workload-identity-pools providers create-oidc "${REPO_NAME}" \
   --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
   --issuer-uri="https://token.actions.githubusercontent.com"
 
-WORKLOAD_IDENTITY_POOL_ID=gcloud iam workload-identity-pools providers describe "${REPO_NAME}" \
+WORKLOAD_IDENTITY_POOL_ID=$(gcloud iam workload-identity-pools describe "github" \
   --project="${PROJECT_ID}" \
   --location="global" \
-  --workload-identity-pool="github" \
-  --format="value(name)" 
-
-echo "****************************"
-echo "Granting the workload ID pool access to GCP services..."
-echo "****************************"
+  --format="value(name)")
 
 # First, allow authentications from the Workload Identity Pool to the service account.
 gcloud iam service-accounts add-iam-policy-binding "${SERVICE_ACCOUNT_EMAIL}" \
@@ -57,10 +47,14 @@ gcloud iam service-accounts add-iam-policy-binding "${SERVICE_ACCOUNT_EMAIL}" \
   --role="roles/iam.workloadIdentityUser" \
   --member="principalSet://iam.googleapis.com/${WORKLOAD_IDENTITY_POOL_ID}/attribute.repository/${REPO_SLUG}"
 
+echo "****************************"
+echo "Granting the workload ID pool access to GCP services..."
+echo "****************************"
+
 function grant_role_to_service_account() {
   role=$1
 
-  gcloud iam service-accounts add-iam-policy-binding "${SERVICE_ACCOUNT_EMAIL}" \
+  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --project="${PROJECT_ID}" \
     --role="${role}" \
     --member="serviceAccount:${SERVICE_ACCOUNT_EMAIL}"

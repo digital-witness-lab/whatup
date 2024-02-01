@@ -1,0 +1,45 @@
+name: Preview or update Pulumi app
+
+on:
+  workflow_call:
+    inputs:
+      gh-environment:
+        required: true
+        type: string
+
+jobs:
+  pulumi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: "Authenticate to GCP"
+        uses: "google-github-actions/auth@v2"
+        with:
+          create_credentials_file: true
+          project_id: ${{ secrets.PROJECT_ID }}
+          workload_identity_provider: "${{ secrets.WORKLOAD_IDENTITY_POOL_ID}}/providers/github"
+          service_account: github-actions-service-account@${{ secrets.PROJECT_ID }}.iam.gserviceaccount.com
+
+      - id: gcloud
+        name: "gcloud"
+        run: |-
+          gcloud auth login --brief --cred-file="${{ steps.auth.outputs.credentials_file_path }}"
+
+      - name: Run pulumi preview
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: pulumi/actions@v4
+        with:
+          command: preview
+          stack-name: ${{ env.PULUMI_STACK_NAME }}
+          work-dir: infrastructure
+          comment-on-pr: true
+
+      - name: Run pulumi up
+        if: ${{ github.event_name == 'push' }}
+        uses: pulumi/actions@v4
+        with:
+          command: up
+          stack-name: ${{ env.PULUMI_STACK_NAME }}
+          work-dir: infrastructure
