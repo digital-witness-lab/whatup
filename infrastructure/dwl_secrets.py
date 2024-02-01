@@ -7,6 +7,7 @@ from config import db_configs, db_root_password, whatup_anon_key, whatup_salt
 from database import get_sql_instance_url
 
 db_url_secrets: Dict[str, secretmanager.Secret] = {}
+db_pass_secrets: Dict[str, secretmanager.Secret] = {}
 for db in db_configs.values():
     db_url_secrets[db.name] = secret = secretmanager.Secret(
         f"{db.name_short}-db-url",
@@ -22,6 +23,24 @@ for db in db_configs.values():
         secretmanager.SecretVersionArgs(
             secret=secret.id,
             secret_data=get_sql_instance_url(db.name),
+            enabled=True,
+        ),
+    )
+
+    db_pass_secrets[db.name] = secret = secretmanager.Secret(
+        f"{db.name_short}-db-pass",
+        secretmanager.SecretArgs(
+            secret_id=f"{db.name_short}-db-pass-{get_stack()}",
+            replication=secretmanager.SecretReplicationArgs(
+                auto=secretmanager.SecretReplicationAutoArgs(),
+            ),
+        ),
+    )
+    secretmanager.SecretVersion(
+        f"{db.name_short}-db-pass-secret",
+        secretmanager.SecretVersionArgs(
+            secret=secret.id,
+            secret_data=db.password,
             enabled=True,
         ),
     )
