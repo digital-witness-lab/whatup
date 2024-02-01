@@ -207,9 +207,19 @@ services:
 
   hash-gen:
     build: ./hash-gen/
+    links:
+      - db
     environment:
       - ssl-cert
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
+    secrets:
+      - ssl-cert
+      - postgres-messages-passwd
+    env_file:
+      - .env
     profiles:
       - donotstart
     volumes:
       - ./data/media/:/usr/src/whatupy-data/media/
+    command: sh -c "hash-gen "/usr/src/whatupy-data/media/another.jpg" --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\""
+    
