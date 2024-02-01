@@ -18,9 +18,9 @@ jobs:
         uses: "google-github-actions/auth@v2"
         with:
           create_credentials_file: true
-          project_id: ${{ secrets.PROJECT_ID }}
+          project_id: ${{ env.PROJECT_ID }}
           workload_identity_provider: "${{ secrets.WORKLOAD_IDENTITY_POOL_ID}}/providers/github"
-          service_account: github-actions-service-account@${{ secrets.PROJECT_ID }}.iam.gserviceaccount.com
+          service_account: github-actions-service-account@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
 
       - id: gcloud
         name: "gcloud"
