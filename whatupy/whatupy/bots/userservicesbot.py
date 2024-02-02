@@ -203,29 +203,25 @@ class UserServicesBot(BaseBot):
         if not user_state.get("finalize_registration", False):
             await self.onboard_user(user)
 
-    async def onboard_user(self, user: _UserBot):
-        user.active_workflow = None
-        user_state = self.db["registered_users"].find_one(username=user.username)
-        if user_state.get("is_bot") and not user_state.get("finalize_registration"):
-            await self.send_text_message(
-                user.jid,
-                "Welcome bot! No need to register. "
-                "I will show you the standard menu, "
-                "but oly the 'unregister' option is "
-                "really useful for you. We are currently "
-                "reading all messages going through this "
-                "device",
-            )
+    async def onboard_bot(self, user: _UserBot, user_state: T.Dict):
+        if not user_state.get("finalize_registration"):
             self.db["registered_users"].update(
                 {
                     "username": user.username,
-                    "onboard_acl": True,
                     "finalize_registration": True,
                     "lang": "en",
                 },
                 ["username"],
             )
-        if not user_state.get("lang"):
+            await self.send_template_user(user, "onboard_bot_welcome", lang="en")
+        await self.help_text(user)
+
+    async def onboard_user(self, user: _UserBot):
+        user.active_workflow = None
+        user_state = self.db["registered_users"].find_one(username=user.username)
+        if user_state.get("is_bot"):
+            return await self.onboard_bot(user, user_state)
+        elif not user_state.get("lang"):
             await self.langselect_workflow_start(user)
         elif not user_state.get("onboard_acl"):
             await self.acl_workflow(user)
