@@ -4,35 +4,28 @@ import json
 from cloudpathlib import CloudPath, AnyPath
 from google.cloud import storage
 import click
-import dataset
-from sqlalchemy import types
-
-def db_setup(database_url):
-    print(database_url)
-    db: dataset.Database = dataset.connect(database_url)
-    phash_table = db.create_table(
-        "phash_images",
-        primary_id="filename",
-        primary_type=db.types.text,
-        primary_increment=False
-    )
-    phash_table.create_column('phash', types.ARRAY(db.types.integer))
-    return db
+#import dataset
+#from sqlalchemy import types
+from google.cloud import bigquery
 
 # Process image files or directories
 @click.command()
-@click.option("--database-url", type=str)
 @click.argument(
     "file-or-dir", type=click.Path(path_type=AnyPath)
 )
-def hash_images(file_or_dir, database_url):
-    db = db_setup(database_url)
+def hash_images(file_or_dir):
+    client = bigquery.Client()
+    table_id = "whatup-deploy.messages_test.phash_images"
+
+    schema = [
+        bigquery.SchemaField("filename", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("phash", "BYTES", mode="REQUIRED"),
+    ]
 
     file_or_dir = AnyPath(file_or_dir)
     files = []
     hashes = [] 
 
-    # below block could maybe be more efficient? i think this is the block that takes a while. 
     if file_or_dir.is_dir(): # are local directory structures going to mirror the bucket? 
         media_dirs = list(file_or_dir.rglob("*/media"))
         for obj in media_dirs:
@@ -45,18 +38,25 @@ def hash_images(file_or_dir, database_url):
         file = AnyPath(file)
 
         try:
-            #blob = bucket.blob(f"{file.stem}.json")
-            #if blob.exists(): continue
-            
-            hash = 1 * imagehash.phash(Image.open(file.open("rb"))).hash.flatten()
-            hashes.append(hash)
-            entry = {"filename": file.name, "phash": hash.tolist()}
-            
-            db["phash_images"].insert(entry)
-            i+= 1
-            if i == 5: return
+            QUERY = ('SELECT filename FROM `{}` WHERE filename = "{}" ').format(table_id, file.name)
+            query_job = client.query(QUERY) 
+            rows = query_job.result()  
+            if rows.total_rows > 0: break # hash already exists
+
+            hash = str(imagehash.phash(Image.open(file.open("rb"))))
+            byte_hash = bytes.fromhex(hash)
+
+            entry = [{"filename": file.name, "phash": byte_hash}]
+            errors = client.insert_rows(table_id, entry, schema)
+            if errors == []:
+                i+= 1
+            else:
+                print("Encountered errors while inserting rows: {}".format(errors))
         except:
             print("Skipping a non-image file.")
 
     print(len(hashes))
     print(i)
+
+if __name__ == '__main__':
+    hash_images()
