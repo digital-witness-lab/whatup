@@ -221,5 +221,5 @@ services:
       - donotstart
     volumes:
       - ./data/media/:/usr/src/whatupy-data/media/
-    command: sh -c "hash-gen "/usr/src/whatupy-data/media/another.jpg" --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\""
+    command: sh -c "hash-gen "/usr/src/whatupy-data/media""
     
