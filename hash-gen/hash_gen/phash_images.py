@@ -51,7 +51,6 @@ def hash_images(file_or_dir):
         for file in files[media_dir]:
             if not file.is_file() or file.name.startswith('.') or file.name in existing_hashes: continue
             file = AnyPath(file)
-            print("yo")
             try:
                 hash = str(imagehash.phash(Image.open(file.open("rb"))))
                 byte_hash = bytes.fromhex(hash)
