@@ -32,27 +32,27 @@ def hash_images(file_or_dir):
     files = {}
 
     if file_or_dir.is_dir():
-        print("start")
         media_dirs = list(file_or_dir.rglob("*/media")) # takes ~ 30 secs - 1 min locally given 36 media dirs as of 2.5.24
         #media_dirs = list(file_or_dir.rglob("media")) # use this if directly pointing to one media directory
         for obj in media_dirs:
             files[obj] = list(AnyPath(obj).rglob("*"))
     else:
         files[file_or_dir] = [file_or_dir]
+    
+    QUERY = ('SELECT filename FROM `{}`').format(table_id)
+    query_job = client.query(QUERY) 
+    rows = query_job.result()  
+    existing_hashes = [row[0] for row in list(rows)]
+
     i = 0
     # run through every key and its list of files. This took ~45 mins.
     for media_dir in files:
         new_entries = []
         for file in files[media_dir]:
-            if not file.is_file() or file.name.startswith('.'): continue
+            if not file.is_file() or file.name.startswith('.') or file.name in existing_hashes: continue
             file = AnyPath(file)
-
+            print("yo")
             try:
-                QUERY = ('SELECT filename FROM `{}` WHERE filename = "{}"').format(table_id, file.name)
-                query_job = client.query(QUERY) 
-                rows = query_job.result()  
-                if rows.total_rows > 0: break # hash already exists
-
                 hash = str(imagehash.phash(Image.open(file.open("rb"))))
                 byte_hash = bytes.fromhex(hash)
 
