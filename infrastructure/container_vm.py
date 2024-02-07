@@ -1,3 +1,4 @@
+from typing import Sequence
 from attr import dataclass
 
 import pulumi
@@ -10,6 +11,8 @@ from gcloud import get_project_number
 @dataclass
 class ContainerOnVmArgs:
     network: gcp.compute.v1.Network
+    container_image: pulumi.Output[str]
+    service_account_email: pulumi.Output[str]
 
 
 project_number = get_project_number()
@@ -19,7 +22,7 @@ class ContainerOnVm(pulumi.ComponentResource):
     def __init__(
         self, name: str, args: ContainerOnVmArgs, opts: ResourceOptions
     ):
-        super().__init__("dwl:containeronvm", name, args.__dict__, opts)
+        super().__init__("dwl:gce:ContainerOnVm", name, args.__dict__, opts)
 
         instance_template_args = gcp.compute.v1.InstanceTemplateArgs(
             properties=gcp.compute.v1.InstancePropertiesArgs(
@@ -45,7 +48,14 @@ class ContainerOnVm(pulumi.ComponentResource):
                         boot=True,
                         disk_size_gb="10",
                         initialize_params=gcp.compute.v1.AttachedDiskInitializeParamsArgs(
-                            source_image="projects/ubuntu-os-cloud/global/images/ubuntu-2204-jammy-v20220810"
+                            # Use Google's Container-Optimized OS (cos),
+                            # which comes with Docker pre-installed.
+                            # We are using latest production-ready
+                            # stable version of cos.
+                            #
+                            # The version number scheme is defined at:
+                            # https://cloud.google.com/container-optimized-os/docs/concepts/versioning
+                            source_image="projects/cos-cloud/global/images/cos-stable"
                         ),
                     ),
                 ],
@@ -58,6 +68,15 @@ class ContainerOnVm(pulumi.ComponentResource):
                         ),
                         gcp.compute.v1.MetadataItemsItemArgs(
                             key="enable-oslogin-2fa", value="true"
+                        ),
+                        gcp.compute.v1.MetadataItemsItemArgs(
+                            key="google-monitoring-enabled", value="true"
+                        ),
+                        gcp.compute.v1.MetadataItemsItemArgs(
+                            key="gce-container-declaration",
+                            value=pulumi.Output.all(
+                                args.container_image
+                            ).apply(self.get_container_declaration),
                         ),
                     ]
                 ),
@@ -106,3 +125,14 @@ class ContainerOnVm(pulumi.ComponentResource):
         #         mostDisruptiveAllowedAction: "REPLACE",
         #     },
         # });
+
+    def get_container_declaration(self, args: Sequence[str]):
+        return f"""
+spec:
+  containers:
+    - name: instance-container
+      image: {args[0]}
+      stdin: false
+      tty: false
+      restartPolicy: Always
+"""
