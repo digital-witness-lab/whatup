@@ -1,5 +1,8 @@
+from enum import Enum
 from typing import Sequence
 from attr import dataclass
+
+import yaml
 
 import pulumi
 from pulumi.resource import ResourceOptions
@@ -8,10 +11,40 @@ import pulumi_google_native as gcp
 from gcloud import get_project_number
 
 
+class SharedCoreMachineType(Enum):
+    E2Micro = "e2-micro"
+    E2Small = "e2-small"
+    E2Medium = "e2-medium"
+
+
+@dataclass
+class ContainerEnv:
+    name: str
+    value: str
+
+
+@dataclass
+class ContainerSecurityContext:
+    privileged: bool
+
+
+@dataclass
+class ContainerSpec:
+    args: Sequence[str]
+    command: Sequence[str]
+    env: Sequence[ContainerEnv]
+    image: pulumi.Output[str]
+    securityContext: ContainerSecurityContext
+    tty: bool
+    restartPolicy: str
+
+
 @dataclass
 class ContainerOnVmArgs:
+    container_spec: ContainerSpec
+    machine_type: SharedCoreMachineType
     network: gcp.compute.v1.Network
-    container_image: pulumi.Output[str]
+    secret_env: Sequence[gcp.compute.v1.MetadataItemsItemArgs]
     service_account_email: pulumi.Output[str]
 
 
@@ -28,7 +61,6 @@ class ContainerOnVm(pulumi.ComponentResource):
             properties=gcp.compute.v1.InstancePropertiesArgs(
                 can_ip_forward=True,
                 confidential_instance_config=gcp.compute.v1.ConfidentialInstanceConfigArgs(
-                    # TODO: Would enabling this have pricing implications?
                     enable_confidential_compute=False,
                 ),
                 network_interfaces=[
@@ -59,7 +91,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                         ),
                     ),
                 ],
-                machine_type="e2-micro",
+                machine_type=args.machine_type.value,
                 metadata=gcp.compute.v1.MetadataArgs(
                     items=[
                         gcp.compute.v1.MetadataItemsItemArgs(
@@ -74,11 +106,13 @@ class ContainerOnVm(pulumi.ComponentResource):
                         ),
                         gcp.compute.v1.MetadataItemsItemArgs(
                             key="gce-container-declaration",
-                            value=pulumi.Output.all(
-                                args.container_image
-                            ).apply(self.get_container_declaration),
+                            value=args.container_spec.image.apply(
+                                lambda i: self.__get_container_declaration(
+                                    args.container_spec, i
+                                )
+                            ),
                         ),
-                    ]
+                    ].extend(args.secret_env)
                 ),
                 scheduling=gcp.compute.v1.SchedulingArgs(
                     provisioning_model=gcp.compute.v1.SchedulingProvisioningModel.STANDARD,
@@ -99,13 +133,19 @@ class ContainerOnVm(pulumi.ComponentResource):
                             "https://www.googleapis.com/auth/service.management.readonly",
                             "https://www.googleapis.com/auth/trace.append",
                         ],
-                    )
+                    ),
+                    gcp.compute.v1.ServiceAccountArgs(
+                        email=args.service_account_email,
+                        scopes=[
+                            "https://www.googleapis.com/auth/cloud-platform",
+                        ],
+                    ),
                 ],
             )
         )
 
         self.instance_template = gcp.compute.v1.InstanceTemplate(
-            "instance",
+            f"{name}-instance-template",
             args=instance_template_args,
             opts=pulumi.ResourceOptions(
                 # Instance templates are immutable so we need to Pulumi
@@ -115,24 +155,18 @@ class ContainerOnVm(pulumi.ComponentResource):
             ),
         )
 
-        # const instanceGroup = new gcp.compute.v1.InstanceGroupManager("instance-group-manager", {
-        #     targetSize: 1,
-        #     baseInstanceName: pulumi.getStack(),
-        #     instanceTemplate: instanceTemplate.selfLink,
-        #     zone: gcp.config.zone,
-        #     updatePolicy: {
-        #         type: "PROACTIVE",
-        #         mostDisruptiveAllowedAction: "REPLACE",
-        #     },
-        # });
+        self.instance_group = gcp.compute.v1.InstanceGroupManager(
+            f"{name}-instance-group",
+            base_instance_name=name,
+            instance_template=self.instance_template.self_link,
+            target_size=1,
+            update_policy=gcp.compute.v1.InstanceGroupManagerUpdatePolicyArgs(
+                type=gcp.compute.v1.InstanceGroupManagerUpdatePolicyType.PROACTIVE,
+                most_disruptive_allowed_action=gcp.compute.v1.InstanceGroupManagerUpdatePolicyMostDisruptiveAllowedAction.REFRESH,
+            ),
+        )
 
-    def get_container_declaration(self, args: Sequence[str]):
-        return f"""
-spec:
-  containers:
-    - name: instance-container
-      image: {args[0]}
-      stdin: false
-      tty: false
-      restartPolicy: Always
-"""
+    def __get_container_declaration(self, spec: ContainerSpec, image: str):
+        obj = spec.__dict__
+        obj["image"] = image
+        return yaml.dump(obj)
