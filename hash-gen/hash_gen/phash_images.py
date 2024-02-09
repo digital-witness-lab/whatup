@@ -42,7 +42,7 @@ def hash_images(file_or_dir):
     QUERY = ('SELECT filename FROM `{}`').format(table_id)
     query_job = client.query(QUERY) 
     rows = query_job.result()  
-    existing_hashes = [row[0] for row in list(rows)]
+    existing_hashes = {row[0] for row in list(rows)}
 
     i = 0
     # run through every key and its list of files. This took ~45 mins.
