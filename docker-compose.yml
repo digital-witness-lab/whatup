@@ -212,6 +212,7 @@ services:
     environment:
       - ssl-cert
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
+      - GOOGLE_APPLICATION_CREDENTIALS=/auth-gcloud/application_default_credentials.json
     secrets:
       - ssl-cert
       - postgres-messages-passwd
@@ -221,5 +222,5 @@ services:
       - donotstart
     volumes:
       - ./data/media/:/usr/src/whatupy-data/media/
-    command: sh -c "hash-gen "/usr/src/whatupy-data/media""
+      - /Users/aa3576/.config/gcloud:/auth-gcloud
     
