@@ -179,6 +179,4 @@ class ContainerOnVm(pulumi.ComponentResource):
     def __get_container_declaration(self, spec: ContainerSpec, image: str):
         obj = spec.__dict__
         obj["image"] = image
-        # This file will be written by cloud-config when the VM boots up.
-        obj["env-file"] = "/tmp/secrets.env"
         return yaml.dump(obj)
