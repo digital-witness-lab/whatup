@@ -1,4 +1,5 @@
 from enum import Enum
+import os
 from typing import Sequence
 from attr import dataclass
 
@@ -30,9 +31,18 @@ class ContainerSecurityContext:
 
 @dataclass
 class ContainerSpec:
+    """
+    The container spec that will be serialized as yaml
+    and added as the value for the instance metdata
+    property `gce-container-declaration`.
+    """
+
     args: Sequence[str]
     command: Sequence[str]
     env: Sequence[ContainerEnv]
+    # The image property will be flattened before
+    # this container spec is serialized and injected
+    # into the instance metadata value.
     image: pulumi.Output[str]
     securityContext: ContainerSecurityContext
     tty: bool
@@ -59,7 +69,7 @@ class ContainerOnVm(pulumi.ComponentResource):
 
         instance_template_args = gcp.compute.v1.InstanceTemplateArgs(
             properties=gcp.compute.v1.InstancePropertiesArgs(
-                can_ip_forward=True,
+                can_ip_forward=False,
                 confidential_instance_config=gcp.compute.v1.ConfidentialInstanceConfigArgs(
                     enable_confidential_compute=False,
                 ),
@@ -80,14 +90,10 @@ class ContainerOnVm(pulumi.ComponentResource):
                         boot=True,
                         disk_size_gb="10",
                         initialize_params=gcp.compute.v1.AttachedDiskInitializeParamsArgs(
-                            # Use Google's Container-Optimized OS (cos),
-                            # which comes with Docker pre-installed.
-                            # We are using latest production-ready
-                            # stable version of cos.
-                            #
-                            # The version number scheme is defined at:
-                            # https://cloud.google.com/container-optimized-os/docs/concepts/versioning
-                            source_image="projects/cos-cloud/global/images/cos-stable"
+                            # Only certain image support running containers
+                            # automatically via the gce-container-declaration
+                            # instance metadata.
+                            source_image="projects/ubuntu-os-cloud/global/images/ubuntu-2004-lts"
                         ),
                     ),
                 ],
@@ -112,6 +118,13 @@ class ContainerOnVm(pulumi.ComponentResource):
                                 )
                             ),
                         ),
+                        gcp.compute.v1.MetadataItemsItemArgs(
+                            key="user-data",
+                            value=self.__get_user_data_script(),
+                        ),
+                        # gcp.compute.v1.MetadataItemsItemArgs(
+                        #     key="startup-script", value=""
+                        # ),
                     ].extend(args.secret_env)
                 ),
                 scheduling=gcp.compute.v1.SchedulingArgs(
@@ -166,7 +179,37 @@ class ContainerOnVm(pulumi.ComponentResource):
             ),
         )
 
+    def __get_user_data_script(self):
+        configure_secrets_file = open(
+            os.path.join("configure_vm_secrets", "main.py"), "r"
+        )
+        configure_secrets_requiremens_txt_file = open(
+            os.path.join("configure_vm_secrets", "requirements.txt"), "r"
+        )
+        return f"""#cloud-config
+
+write_files:
+- path: /tmp/requirements.txt
+  permissions: 0744
+  owner: root
+  content: |
+    {configure_secrets_requiremens_txt_file.read()}
+
+- path: /tmp/configure_secrets.py
+  permissions: 0744
+  owner: root
+  content: |
+    {configure_secrets_file.read()}
+
+runcmd:
+- python -m pip install -r /tmp/requirements.txt
+- python /tmp/main.py
+
+"""
+
     def __get_container_declaration(self, spec: ContainerSpec, image: str):
         obj = spec.__dict__
         obj["image"] = image
+        # This file will be written by cloud-config when the VM boots up.
+        obj["env-file"] = "/tmp/secrets.env"
         return yaml.dump(obj)
