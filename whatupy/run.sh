@@ -13,6 +13,11 @@ DEBUG=
 #$( [[ "$IS_PROD" == "False" ]] && echo "--debug" || echo "" )
 echo "Running app command: $app_command $DEBUG"
 
+# Run the VM secrets configurator.
+# If we are not running inside a VM,
+# it will exit silently.
+/configureVmSecrets
+
 function positive_mod() {
     local dividend=$1
     local divisor=$2
