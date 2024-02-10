@@ -3,7 +3,7 @@
 This Go-based app reads the instance metadata attributes of the instance it's running in
 and checks if any of them are references to secrets inside Google Secret Manager.
 For all such attributes, it accesses the secret value and writes them to a file
-`/tmp/.env`. An app can then load this .env file to load all the necessary env
+`/tmp/whatup/.env`. An app can then load this .env file to load all the necessary env
 vars at startup.
 
 The recommended way to run this app is inside your container image so that the file

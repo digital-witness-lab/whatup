@@ -7,13 +7,14 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 )
 
-const envFile = "/tmp/.env"
+const envFile = "/tmp/whatup/.env"
 
 var httpClient *http.Client
 
@@ -152,6 +153,7 @@ func main() {
 		secrets[attr] = secretValue
 	}
 
+	os.MkdirAll(path.Dir(envFile), 0755)
 	f, err := os.Create(envFile)
 
 	defer func() {
