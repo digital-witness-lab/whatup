@@ -37,16 +37,13 @@ def create_image(image_name, app_path) -> docker.Image:
                 "ENVIRONMENT": get_stack()
             },
         ),
-        # opts=child_opts, // IS THIS NEEDED??
     )
     export(image_name, image.repo_digest)
     return image
 
 
-whatupy_image: docker.Image = create_image("whatupy", "../whatupy/")
-whatupcore2_image: docker.Image = create_image(
-    "whatupcore2", "../whatupcore2/"
-)
+whatupy_image: docker.Image = create_image("whatupy", "../")
+whatupcore2_image: docker.Image = create_image("whatupcore2", "../")
 migrations_image: docker.Image = create_image("migrations", "../migrations/")
 bq_init_schema_image: docker.Image = create_image(
     "bq-init-schema", "../bq-init-schema/"

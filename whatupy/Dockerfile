@@ -1,4 +1,22 @@
+# Note: This Dockerfile is executed with the root of
+# the repo as the context since it relies on
+# configure-vm-secrets.
+
+FROM golang:1.20-bullseye AS configure-vm-secrets
+
+WORKDIR /build
+
+COPY configure-vm-secrets/. .
+
+RUN go mod download
+
+RUN make build
+
 FROM python:3.11-slim-bullseye
+
+WORKDIR /
+
+COPY --from=configure-vm-secrets /build/configureVmSecrets /configureVmSecrets
 
 WORKDIR /usr/src/whatupy
 
@@ -10,7 +28,7 @@ RUN mkdir -p /usr/share/dict/ && \
 COPY requirements.txt .
 RUN pip install -r requirements.txt ; mkdir /usr/src/whatupy-data/
 
-COPY . .
+COPY whatupy/ .
 RUN pip install -e .
 
 # Ensure the script is executable.
