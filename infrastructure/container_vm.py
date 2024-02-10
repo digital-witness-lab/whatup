@@ -1,5 +1,4 @@
 from enum import Enum
-import os
 from typing import Sequence
 from attr import dataclass
 
@@ -118,10 +117,6 @@ class ContainerOnVm(pulumi.ComponentResource):
                                 )
                             ),
                         ),
-                        gcp.compute.v1.MetadataItemsItemArgs(
-                            key="user-data",
-                            value=self.__get_user_data_script(),
-                        ),
                         # gcp.compute.v1.MetadataItemsItemArgs(
                         #     key="startup-script", value=""
                         # ),
@@ -180,33 +175,6 @@ class ContainerOnVm(pulumi.ComponentResource):
                 most_disruptive_allowed_action=gcp.compute.v1.InstanceGroupManagerUpdatePolicyMostDisruptiveAllowedAction.REFRESH,
             ),
         )
-
-    def __get_user_data_script(self):
-        configure_secrets_file = open(
-            os.path.join("configure_vm_secrets", "main.py"), "r"
-        )
-        configure_secrets_requiremens_txt_file = open(
-            os.path.join("configure_vm_secrets", "requirements.txt"), "r"
-        )
-        return f"""#cloud-config
-
-write_files:
-- path: /tmp/requirements.txt
-  permissions: 0744
-  owner: root
-  content: |
-    {configure_secrets_requiremens_txt_file.read()}
-
-- path: /tmp/configure_secrets.py
-  permissions: 0744
-  owner: root
-  content: |
-    {configure_secrets_file.read()}
-
-runcmd:
-- python -m pip install -r /tmp/requirements.txt
-- python /tmp/main.py
-"""
 
     def __get_container_declaration(self, spec: ContainerSpec, image: str):
         obj = spec.__dict__
