@@ -139,6 +139,8 @@ class ContainerOnVm(pulumi.ComponentResource):
                             lambda p: f"{p}-compute@developer.gserviceaccount.com"
                         ),
                         scopes=[
+                            # TODO: Grant access to pull container image from
+                            # Artifact Registry.
                             "https://www.googleapis.com/auth/devstorage.read_only",
                             "https://www.googleapis.com/auth/logging.write",
                             "https://www.googleapis.com/auth/monitoring.write",
@@ -204,7 +206,6 @@ write_files:
 runcmd:
 - python -m pip install -r /tmp/requirements.txt
 - python /tmp/main.py
-
 """
 
     def __get_container_declaration(self, spec: ContainerSpec, image: str):
