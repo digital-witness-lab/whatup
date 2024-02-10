@@ -153,12 +153,19 @@ func main() {
 	}
 
 	f, err := os.Create(envFile)
+
+	defer func() {
+		// Ignore file close errors.
+		f.Close()
+	}()
+
 	if err != nil {
 		panic(fmt.Errorf("creating file %s: %v", envFile, err))
 	}
 
 	for k, v := range secrets {
-		f.WriteString(fmt.Sprintf("%s=%s", k, v))
+		_, err := f.WriteString(fmt.Sprintf("%s=%s", k, v))
+		panic(fmt.Errorf("failed to write secret to env file: %v", err))
 	}
 
 	fmt.Printf("Wrote env file %s!", envFile)
