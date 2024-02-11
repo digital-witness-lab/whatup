@@ -5,6 +5,8 @@ config:
   google-native:project: whatup-deploy
   google-native:region: us-central1
   google-native:zone: us-central1-a
+  whatup:control_groups:
+    - c+c-stage@g.us
   whatup:createOnboardBulkJob: "true"
   whatup:databases:
     - name: messages
@@ -20,6 +22,8 @@ config:
     secure: AAABANhgCzfWyQD9FMkora2kYOJuZIpMa7NZ9qmy0m0F59Br5dA+2okl6Oq6Gg==
   whatup:msgPassword:
     secure: AAABAFCeqZXdCh5cgR360Wu0Mu6LePPwNRVPQbJ6Va6Er0WnHwRUbBjoUhnGaw==
+  whatup:primary_bot_name: flo
+  whatup:temp_bucket_ttl_days: "1"
   whatup:usrPassword:
     secure: AAABAAqukuGD3tj4wfxRZCnJqnRntSY5fKY/BVAtYFrCNrv5LeZqnHCqOnfJ0w==
   whatup:whatupAnonKey:
