@@ -8,6 +8,7 @@ import pulumi
 from pulumi.resource import ResourceOptions
 import pulumi_google_native as gcp
 
+from config import project
 from gcloud import get_project_number
 
 
@@ -49,19 +50,19 @@ class ContainerSpec:
 class ContainerOnVmArgs:
     container_spec: ContainerSpec
     machine_type: SharedCoreMachineType
-    network: gcp.compute.v1.Network
+    subnet: pulumi.Output[str]
     secret_env: List[gcp.compute.v1.MetadataItemsItemArgs]
     service_account_email: pulumi.Output[str]
 
 
-project_number = get_project_number()
+project_number = get_project_number(project)
 
 
 class ContainerOnVm(pulumi.ComponentResource):
     def __init__(
         self, name: str, args: ContainerOnVmArgs, opts: ResourceOptions
     ):
-        super().__init__("dwl:gce:ContainerOnVm", name, args.__dict__, opts)
+        super().__init__("dwl:gce:ContainerOnVm", name, None, opts)
 
         instance_template_args = gcp.compute.v1.InstanceTemplateArgs(
             properties=gcp.compute.v1.InstancePropertiesArgs(
@@ -71,7 +72,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                 ),
                 network_interfaces=[
                     gcp.compute.v1.NetworkInterfaceArgs(
-                        network=args.network.self_link,
+                        subnetwork=args.subnet,
                         # Use the default NAT that will assign an ephemeral public IP.
                         access_configs=[
                             gcp.compute.v1.AccessConfigArgs(
