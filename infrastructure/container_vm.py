@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Sequence
+from typing import List
 from attr import dataclass
 
 import yaml
@@ -20,7 +20,7 @@ class SharedCoreMachineType(Enum):
 @dataclass
 class ContainerEnv:
     name: str
-    value: str
+    value: pulumi.Input[str]
 
 
 @dataclass
@@ -36,13 +36,10 @@ class ContainerSpec:
     property `gce-container-declaration`.
     """
 
-    args: Sequence[str]
-    command: Sequence[str]
-    env: Sequence[ContainerEnv]
-    # The image property will be flattened before
-    # this container spec is serialized and injected
-    # into the instance metadata value.
-    image: pulumi.Output[str]
+    args: List[str]
+    command: List[str]
+    env: List[ContainerEnv]
+    image: pulumi.Input[str]
     securityContext: ContainerSecurityContext
     tty: bool
     restartPolicy: str
@@ -53,7 +50,7 @@ class ContainerOnVmArgs:
     container_spec: ContainerSpec
     machine_type: SharedCoreMachineType
     network: gcp.compute.v1.Network
-    secret_env: Sequence[gcp.compute.v1.MetadataItemsItemArgs]
+    secret_env: List[gcp.compute.v1.MetadataItemsItemArgs]
     service_account_email: pulumi.Output[str]
 
 
@@ -111,10 +108,8 @@ class ContainerOnVm(pulumi.ComponentResource):
                         ),
                         gcp.compute.v1.MetadataItemsItemArgs(
                             key="gce-container-declaration",
-                            value=args.container_spec.image.apply(
-                                lambda i: self.__get_container_declaration(
-                                    args.container_spec, i
-                                )
+                            value=self.__get_container_declaration(
+                                args.container_spec
                             ),
                         ),
                         # gcp.compute.v1.MetadataItemsItemArgs(
@@ -176,7 +171,33 @@ class ContainerOnVm(pulumi.ComponentResource):
             ),
         )
 
-    def __get_container_declaration(self, spec: ContainerSpec, image: str):
-        obj = spec.__dict__
-        obj["image"] = image
-        return yaml.dump(obj)
+    def __lift_container_spec_env_vars(
+        self, spec: ContainerSpec, values: List[str]
+    ) -> ContainerSpec:
+        i = 0
+        for env_var in spec.env:
+            env_var.value = values[i]
+            i += 1
+
+        return spec
+
+    def __lift_container_spec_image(
+        self, spec: ContainerSpec, image: str
+    ) -> ContainerSpec:
+        spec.image = image
+        return spec
+
+    def __get_container_declaration(self, spec: ContainerSpec):
+        # HACK! In order to "lift" the output values in the spec,
+        # we need to "apply" each of them, overwrite the corresponding
+        # property in the spec. Each method that overwrites the property
+        # with the lifted plain value, it must return the spec so that
+        # we can continue the chain.
+        return (
+            pulumi.Output.all(*(env_var.value for env_var in spec.env))
+            .apply(lambda v: self.__lift_container_spec_env_vars(spec, v))
+            .apply(lambda _: spec.image)
+            .apply(lambda i: self.__lift_container_spec_image(spec, i))
+            # The end goal is to serialize the spec as a yaml string.
+            .apply(lambda s: yaml.dump(s.__dict__))
+        )
