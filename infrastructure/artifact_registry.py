@@ -1,3 +1,4 @@
+from typing import Optional
 from pulumi import export
 import pulumi_docker as docker
 from pulumi import Output, get_stack
@@ -22,12 +23,15 @@ repository_url = Output.concat(
 )
 
 
-def create_image(image_name, app_path) -> docker.Image:
+def create_image(
+    image_name: str, app_path: str, dockerfile_path: Optional[str] = None
+) -> docker.Image:
     image = docker.Image(
         f"{image_name}-{get_stack()}-img",
         image_name=Output.concat(repository_url, "/", image_name),
         build=docker.DockerBuildArgs(
             context=app_path,
+            dockerfile=dockerfile_path,
             platform="linux/amd64",
             args={
                 # There is a cache bug in the Docker provider
@@ -42,8 +46,12 @@ def create_image(image_name, app_path) -> docker.Image:
     return image
 
 
-whatupy_image: docker.Image = create_image("whatupy", "../")
-whatupcore2_image: docker.Image = create_image("whatupcore2", "../")
+whatupy_image: docker.Image = create_image(
+    "whatupy", "../", "../whatupy/Dockerfile"
+)
+whatupcore2_image: docker.Image = create_image(
+    "whatupcore2", "../", "../whatupcore2/Dockerfile"
+)
 migrations_image: docker.Image = create_image("migrations", "../migrations/")
 bq_init_schema_image: docker.Image = create_image(
     "bq-init-schema", "../bq-init-schema/"
