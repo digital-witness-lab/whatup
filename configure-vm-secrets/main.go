@@ -93,6 +93,7 @@ func isGoogleComputeEngineEnv() bool {
 			// the metadata service is not
 			// available.
 			if ty.Timeout() {
+				fmt.Println("Request to internal metadata service timed-out")
 				return false
 			}
 
@@ -105,6 +106,7 @@ func isGoogleComputeEngineEnv() bool {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
+		fmt.Println("Request to internal metadata service failed with status: " + resp.Status)
 		return false
 	}
 

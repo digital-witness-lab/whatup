@@ -24,6 +24,29 @@ private_services_network_block = (
 )
 
 compute.NetworkFirewallPolicyRule(
+    "allow-from-internet",
+    compute.NetworkFirewallPolicyRuleArgs(
+        action="allow",
+        description="Allow incoming SSH connections",
+        direction="INGRESS",
+        disabled=False,
+        enable_logging=False,
+        firewall_policy=firewall_policy.name,
+        priority=998,
+        rule_name="allow-ssh",
+        match=compute.NetworkFirewallPolicyRuleMatchArgs(
+            src_ip_ranges=["0.0.0.0/0"],
+            layer4_configs=[
+                compute.NetworkFirewallPolicyRuleMatchLayer4ConfigArgs(
+                    ip_protocol="tcp", ports=["22"]
+                )
+            ],
+            dest_ip_ranges=["0.0.0.0/0"],
+        ),
+    ),
+)
+
+compute.NetworkFirewallPolicyRule(
     "deny-to-db",
     compute.NetworkFirewallPolicyRuleArgs(
         action="deny",

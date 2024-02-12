@@ -16,7 +16,7 @@ from network import private_services_network_with_db
 from container_vm import (
     ContainerOnVm,
     ContainerOnVmArgs,
-    ContainerSpec,
+    Container,
     ContainerEnv,
     SharedCoreMachineType,
     ContainerSecurityContext,
@@ -86,9 +86,9 @@ log_level = "INFO"  # if is_prod_stack() else "DEBUG"
 whatupcore2_service = ContainerOnVm(
     service_name,
     ContainerOnVmArgs(
-        container_spec=ContainerSpec(
-            command=["rpc"],
-            args=[f"--log-level={log_level}"],
+        container_spec=Container(
+            command=None,
+            args=["rpc", f"--log-level={log_level}"],
             image=whatupcore2_image.repo_digest,
             env=[
                 ContainerEnv(
@@ -104,11 +104,11 @@ whatupcore2_service = ContainerOnVm(
                     value="34943534473298",
                 ),
             ],
-            restartPolicy="Always",
             tty=False,
             securityContext=ContainerSecurityContext(privileged=False),
         ),
         machine_type=SharedCoreMachineType.E2Small,
+        restart_policy="Always",
         secret_env=[
             compute.v1.MetadataItemsItemArgs(
                 key="DATABASE_URL",
