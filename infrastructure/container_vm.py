@@ -173,19 +173,6 @@ class ContainerOnVm(pulumi.ComponentResource):
                     provisioning_model=gcp.compute.v1.SchedulingProvisioningModel.STANDARD,
                 ),
                 service_accounts=[
-                    # gcp.compute.v1.ServiceAccountArgs(
-                    #     email=project_number.apply(
-                    #         lambda p: f"{p}-compute@developer.gserviceaccount.com"
-                    #     ),
-                    #     scopes=[
-                    #         "https://www.googleapis.com/auth/devstorage.read_only",
-                    #         "https://www.googleapis.com/auth/logging.write",
-                    #         "https://www.googleapis.com/auth/monitoring.write",
-                    #         "https://www.googleapis.com/auth/servicecontrol",
-                    #         "https://www.googleapis.com/auth/service.management.readonly",
-                    #         "https://www.googleapis.com/auth/trace.append",
-                    #     ],
-                    # ),
                     gcp.compute.v1.ServiceAccountArgs(
                         email=args.service_account_email,
                         scopes=[
@@ -259,7 +246,7 @@ class ContainerOnVm(pulumi.ComponentResource):
         # HACK! In order to "lift" the output values in the spec,
         # we need to "apply" each of them, overwrite the corresponding
         # property in the spec. Each method that overwrites the property
-        # with the lifted plain value, it must return the spec so that
+        # with the lifted plain value must return the spec so that
         # we can continue the chain.
         return (
             pulumi.Output.all(*(env_var.value for env_var in container.env))

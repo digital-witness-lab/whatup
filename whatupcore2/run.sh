@@ -15,9 +15,13 @@ fi
 # it will exit silently.
 /configureVmSecrets
 
+echo "Listing /tmp/whatup..."
+ls /tmp/whatup
+
 # Start the application
 case $app_command in
     rpc)
+        echo "Starting whatupcore2..."
         exec /whatupcore2 $@
     ;;
 
@@ -26,6 +30,7 @@ case $app_command in
             echo "WHATUPCORE2_REMOVE_USER env var is required."
             exit 1
         fi
+        echo "Starting whatupcore2..."
         exec /whatupcore2 remove-user ${WHATUPCORE2_REMOVE_USER}
     ;;
 esac
