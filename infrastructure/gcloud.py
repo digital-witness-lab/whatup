@@ -24,6 +24,6 @@ def get_current_user_email() -> str:
 
 
 @cache
-def get_project_number(project) -> Output[int]:
+def get_project_number(project: str) -> Output[int]:
     proj = projects.get_project_output(filter=f"id:{project}")
     return proj.apply(lambda p: p.projects[0].number)

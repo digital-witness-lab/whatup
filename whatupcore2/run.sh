@@ -10,6 +10,11 @@ if [ -e /run/secrets/whatupcore-anon-key ]; then
     export ANON_KEY=$( cat /run/secrets/whatupcore-anon-key )
 fi
 
+# Run the VM secrets configurator.
+# If we are not running inside a VM,
+# it will exit silently.
+/configureVmSecrets
+
 # Start the application
 case $app_command in
     rpc)
