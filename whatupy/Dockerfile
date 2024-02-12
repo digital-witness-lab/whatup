@@ -25,7 +25,7 @@ RUN apt update && apt upgrade -y && apt install -y curl
 RUN mkdir -p /usr/share/dict/ && \
     curl -o /usr/share/dict/words "https://svnweb.freebsd.org/base/head/share/dict/web2?revision=326913&view=co&pathrev=326913"
 
-COPY requirements.txt .
+COPY whatupy/requirements.txt .
 RUN pip install -r requirements.txt ; mkdir /usr/src/whatupy-data/
 
 COPY whatupy/ .
