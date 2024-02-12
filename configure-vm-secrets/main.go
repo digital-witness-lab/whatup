@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
@@ -21,7 +22,7 @@ var httpClient *http.Client
 // Run initialization on package init.
 func init() {
 	httpClient = &http.Client{
-		Timeout: 20,
+		Timeout: time.Duration(20) * time.Second,
 	}
 }
 
@@ -169,7 +170,9 @@ func main() {
 
 	for k, v := range secrets {
 		_, err := f.WriteString(fmt.Sprintf("%s=%s", k, v))
-		panic(fmt.Errorf("failed to write secret to env file: %v", err))
+		if err != nil {
+			panic(fmt.Errorf("failed to write secret to env file: %v", err))
+		}
 	}
 
 	fmt.Printf("Wrote env file %s!", envFile)
