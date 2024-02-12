@@ -183,6 +183,7 @@ class ContainerOnVm(pulumi.ComponentResource):
             )
         )
 
+        # Add all the secret env vars as custom instance metadata items.
         instance_template_args.properties.metadata.items.extend(
             args.secret_env
         )
@@ -200,7 +201,7 @@ class ContainerOnVm(pulumi.ComponentResource):
         )
 
         container_declaration.apply(
-            lambda cd: pulumi.log.info(cd, self.instance_template)
+            lambda cd: pulumi.log.debug(cd, self.instance_template)
         )
 
         self.instance_group = gcp.compute.v1.InstanceGroupManager(

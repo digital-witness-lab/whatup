@@ -50,6 +50,7 @@ COPY --from=whatupcore2 /lib64/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2
 COPY --from=whatupcore2 /bin/bash /bin/bash
 COPY --from=whatupcore2 /usr/bin/env /usr/bin/env
 COPY --from=whatupcore2 /bin/cat /bin/cat
+COPY --from=whatupcore2 /bin/ls /bin/ls
 
 # Finally, copy the app binary and related scripts.
 COPY --from=whatupcore2 /build/whatupcore2 /whatupcore2
