@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"path"
 
 	"github.com/joho/godotenv"
@@ -9,7 +10,9 @@ import (
 )
 
 func main() {
-	if err := godotenv.Load(path.Join("/", "tmp", "whatup", ".env")); err != nil {
+	p := path.Join("/", "tmp", "whatup", ".env")
+	fmt.Printf("Loading vars from .env file %s if it's there...\n", p)
+	if err := godotenv.Load(p); err != nil {
 		// Note: godotenv will NOT return an err if the .env file is not found.
 		panic(err)
 	}
