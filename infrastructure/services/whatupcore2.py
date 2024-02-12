@@ -113,16 +113,18 @@ whatupcore2_service = ContainerOnVm(
             compute.v1.MetadataItemsItemArgs(
                 key="DATABASE_URL",
                 value=Output.concat(
-                    db_url_secrets["whatupcore"].id, "/latest"
+                    db_url_secrets["whatupcore"].id, "/versions/latest"
                 ),
             ),
             compute.v1.MetadataItemsItemArgs(
                 key="ENC_KEY_SALT",
-                value=Output.concat(whatup_salt_secret.id, "/latest"),
+                value=Output.concat(whatup_salt_secret.id, "/versions/latest"),
             ),
             compute.v1.MetadataItemsItemArgs(
                 key="ANON_KEY",
-                value=Output.concat(whatup_anon_key_secret.id, "/latest"),
+                value=Output.concat(
+                    whatup_anon_key_secret.id, "/versions/latest"
+                ),
             ),
         ],
         service_account_email=service_account.email,
