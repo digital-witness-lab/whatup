@@ -9,7 +9,10 @@ import (
 )
 
 func main() {
-	godotenv.Load(path.Join("/", "tmp", "whatup", ".env"))
+	if err := godotenv.Load(path.Join("/", "tmp", "whatup", ".env")); err != nil {
+		// Note: godotenv will NOT return an err if the .env file is not found.
+		panic(err)
+	}
 
 	whatupcore2.Execute()
 }

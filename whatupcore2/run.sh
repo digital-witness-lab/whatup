@@ -16,7 +16,7 @@ fi
 /configureVmSecrets
 
 echo "Listing /tmp/whatup..."
-ls /tmp/whatup
+ls -a /tmp/whatup
 
 # Start the application
 case $app_command in
