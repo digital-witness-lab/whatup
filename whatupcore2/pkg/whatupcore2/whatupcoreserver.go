@@ -131,13 +131,7 @@ func (s *WhatUpCoreServer) SendMessage(ctx context.Context, messageOptions *pb.S
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
-	if strings.HasPrefix(messageOptions.Recipient.User, "anon.") {
-		deanonRecipient, isDeAnon := session.Client.anonLookup.deAnonymizeJIDProto(messageOptions.Recipient)
-		if !isDeAnon {
-			return nil, status.Errorf(codes.Internal, "Could not deanonimize recipient of message: %s", messageOptions.Recipient.User)
-		}
-		messageOptions.Recipient = deanonRecipient
-	}
+    messageOptions = DeAnonymizeInterface(session.Client.anonLookup, messageOptions)
 	jid := ProtoToJID(messageOptions.Recipient)
 	if _, err := CanWriteJID(session, &jid); err != nil {
 		return nil, err
@@ -182,19 +176,13 @@ func (s *WhatUpCoreServer) SetDisappearingMessageTime(ctx context.Context, disap
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
+    disappearingMessageOptions = DeAnonymizeInterface(session.Client.anonLookup, disappearingMessageOptions)
 	recipient := ProtoToJID(disappearingMessageOptions.Recipient)
 	if _, err := CanWriteJID(session, &recipient); err != nil {
 		return nil, err
 	}
 
 	var disappearingTime time.Duration
-	if strings.HasPrefix(disappearingMessageOptions.Recipient.User, "anon.") {
-		deanonRecipient, isDeAnon := session.Client.anonLookup.deAnonymizeJIDProto(disappearingMessageOptions.Recipient)
-		if !isDeAnon {
-			return nil, status.Errorf(codes.Internal, "Could not deanonimize recipient of message: %s", disappearingMessageOptions.Recipient.User)
-		}
-		disappearingMessageOptions.Recipient = deanonRecipient
-	}
 	autoClearTime := disappearingMessageOptions.AutoClearTime
 	switch disappearingMessageOptions.DisappearingTime.String() {
 	case "TIMER_OFF":
@@ -231,6 +219,7 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 	if !ok {
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+    messageOptions = DeAnonymizeInterface(session.Client.anonLookup, messageOptions)
 
 	var lastMessageTimestamp time.Time
 	if messageOptions.LastMessageTimestamp != nil {
@@ -313,6 +302,7 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 	if !ok {
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+    historyOptions = DeAnonymizeInterface(session.Client.anonLookup, historyOptions)
 
 	ctxC := NewContextWithCancel(ctx)
 	defer ctxC.Cancel()
@@ -381,6 +371,8 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+    downloadMediaOptions = DeAnonymizeInterface(session.Client.anonLookup, downloadMediaOptions)
+
 	if downloadMediaOptions.GetInfo() == nil || downloadMediaOptions.GetMediaMessage() == nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "info and mediaMessage are required fields")
 	}
@@ -389,8 +381,6 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 	if _, err := CanReadJID(session, &info.Chat); err != nil {
 		return nil, err
 	}
-	session.Client.anonLookup.deAnonymizeJID(&info.Chat)
-	session.Client.anonLookup.deAnonymizeJID(&info.Sender)
 
 	mediaMessage := downloadMediaOptions.GetMediaMessage()
 	if mediaMessage == nil {
@@ -519,6 +509,7 @@ func (s *WhatUpCoreServer) SetACL(ctx context.Context, groupACL *pb.GroupACL) (*
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+    groupACL = DeAnonymizeInterface(session.Client.anonLookup, groupACL)
 
 	aclStore := session.Client.aclStore
 
@@ -554,6 +545,7 @@ func (s *WhatUpCoreServer) GetACL(ctx context.Context, jidProto *pb.JID) (*pb.Gr
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
 
+    jidProto = DeAnonymizeInterface(session.Client.anonLookup, jidProto)
 	aclStore := session.Client.aclStore
 
 	jid := ProtoToJID(jidProto)
@@ -569,79 +561,44 @@ func (s *WhatUpCoreServer) GetACL(ctx context.Context, jidProto *pb.JID) (*pb.Gr
 	return AnonymizeInterface(session.Client.anonLookup, groupACLProto), nil
 }
 
-func (s *WhatUpCoreServer) GetACLAll(getACLAllOptions *pb.GetACLAllOptions, server pb.WhatUpCore_GetACLAllServer) error {
-	ctx := server.Context()
-	session, ok := ctx.Value("session").(*Session)
-	if !ok {
-		return status.Errorf(codes.FailedPrecondition, "Could not find session")
-	}
-
-	aclValues, err := session.Client.aclStore.GetAll()
-	if err != nil {
-		return status.Errorf(codes.Internal, "Could not get ACL values: %+v", err)
-	}
-
-	for _, groupACL := range aclValues {
-		groupACLProto, err := groupACL.Proto()
-		if err != nil {
-			return status.Errorf(codes.Internal, "Could not convert to protobuf: %+v", err)
-		}
-		groupACLProtoAnon := AnonymizeInterface(session.Client.anonLookup, groupACLProto)
-		if err := server.Send(groupACLProtoAnon); err != nil {
-			s.log.Errorf("Could not send message to client: %v", err)
-			return nil
-		}
-	}
-	session.log.Debugf("Ending GetACLAll")
-	return nil
-}
-
 func (s *WhatUpCoreServer) GetJoinedGroups(getJoinedGroupsOptions *pb.GetJoinedGroupsOptions, server pb.WhatUpCore_GetJoinedGroupsServer) error {
 	ctx := server.Context()
 	session, ok := ctx.Value("session").(*Session)
 	if !ok {
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+    getJoinedGroupsOptions = DeAnonymizeInterface(session.Client.anonLookup, getJoinedGroupsOptions)
 
 	defaultACL, err := session.Client.aclStore.GetDefault()
 	if err != nil {
 		return status.Errorf(codes.Internal, "Could not get default ACL value: %+v", err)
 	}
-	defaultACLProto, err := defaultACL.Proto()
+
+    aclLookup, err := session.Client.aclStore.CachedLookup()
 	if err != nil {
-		return status.Errorf(codes.Internal, "Could not convert default ACL value to proto: %+v", err)
+        return status.Errorf(codes.Internal, "Could not get ACL entries in lookup: %+v", err)
 	}
 
-	aclValues, err := session.Client.aclStore.GetAll()
-	if err != nil {
-		return status.Errorf(codes.Internal, "Could not get ACL values: %+v", err)
-	}
-	aclMap := make(map[string]*pb.GroupACL)
-	for _, aclEntry := range aclValues {
-		aclEntryProto, err := aclEntry.Proto()
-		if err != nil {
-			return status.Errorf(codes.Internal, "Could not convert ACL value to proto: %+v", err)
-		}
-		aclMap[aclEntry.JID] = aclEntryProto
-	}
-
-	groupInfos, err := session.Client.GetJoinedGroups()
+    groupInfos, err := session.Client.GetJoinedGroups()
 	if err != nil {
 		return status.Errorf(codes.Internal, "Could not get joined groups: %+v", err)
 	}
 
 	for _, groupInfo := range groupInfos {
-		groupJIDStr := groupInfo.JID.ToNonAD().String()
 		groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
-
-		aclEntry, aclFound := aclMap[groupJIDStr]
+		aclEntry, aclFound := aclLookup.GetByJID(&groupInfo.JID)
 		if !aclFound {
-			aclEntry = defaultACLProto
+			aclEntry = defaultACL
 		}
+
+        aclEntryProto, err := aclEntry.Proto()
+        if err != nil {
+		    return status.Errorf(codes.Internal, "Could not convert acl entry to proto: %+v", err)
+        }
 
 		jgProto := &pb.JoinedGroup{
 			GroupInfo: groupInfoProto,
-			Acl:       aclEntry,
+			Acl:       aclEntryProto,
 		}
 		jgProtoAnon := AnonymizeInterface(session.Client.anonLookup, jgProto)
 		if err := server.Send(jgProtoAnon); err != nil {
@@ -657,6 +614,7 @@ func (s *WhatUpCoreServer) Unregister(ctx context.Context, options *pb.Unregiste
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+    options = DeAnonymizeInterface(session.Client.anonLookup, options)
 
 	JID := *session.Client.Store.ID
 	JIDProto := JIDToProto(JID)
@@ -678,14 +636,8 @@ func (s *WhatUpCoreServer) RequestChatHistory(ctx context.Context, historyReques
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+    historyRequestOptions = DeAnonymizeInterface(session.Client.anonLookup, historyRequestOptions)
 
-	if strings.HasPrefix(historyRequestOptions.Chat.User, "anon.") {
-		deanonChat, isDeAnon := session.Client.anonLookup.deAnonymizeJIDProto(historyRequestOptions.Chat)
-		if !isDeAnon {
-			return nil, status.Errorf(codes.Internal, "Could not deanonimize chat JID: %s", historyRequestOptions.Chat.User)
-		}
-		historyRequestOptions.Chat = deanonChat
-	}
 	JID := ProtoToJID(historyRequestOptions.Chat)
 
 	if historyRequestOptions.GetId() == "" || historyRequestOptions.GetTimestamp() == nil {
