@@ -19,18 +19,18 @@ class SharedCoreMachineType(Enum):
 
 
 @dataclass
-class ContainerEnv:
+class ContainerEnv(yaml.YAMLObject):
     name: str
     value: pulumi.Input[str]
 
 
 @dataclass
-class ContainerSecurityContext:
+class ContainerSecurityContext(yaml.YAMLObject):
     privileged: bool
 
 
 @dataclass
-class ContainerSpec:
+class ContainerSpec(yaml.YAMLObject):
     """
     The container spec that will be serialized as yaml
     and added as the value for the instance metdata
@@ -64,6 +64,10 @@ class ContainerOnVm(pulumi.ComponentResource):
     ):
         super().__init__("dwl:gce:ContainerOnVm", name, None, opts)
 
+        container_declaration = self.__get_container_declaration(
+            args.container_spec
+        )
+
         instance_template_args = gcp.compute.v1.InstanceTemplateArgs(
             properties=gcp.compute.v1.InstancePropertiesArgs(
                 can_ip_forward=False,
@@ -90,7 +94,15 @@ class ContainerOnVm(pulumi.ComponentResource):
                             # Only certain image support running containers
                             # automatically via the gce-container-declaration
                             # instance metadata.
-                            source_image="projects/ubuntu-os-cloud/global/images/ubuntu-2004-lts"
+                            source_image="projects/ubuntu-os-cloud/global/images/family/ubuntu-2004-lts"
+                            # Use Google's Container-Optimized OS (cos),
+                            # which comes with Docker pre-installed.
+                            # We are using latest production-ready
+                            # stable version of cos.
+                            #
+                            # The version number scheme is defined at:
+                            # https://cloud.google.com/container-optimized-os/docs/concepts/versioning
+                            # source_image="projects/cos-cloud/global/images/family/cos-stable"
                         ),
                     ),
                 ],
@@ -109,37 +121,32 @@ class ContainerOnVm(pulumi.ComponentResource):
                         ),
                         gcp.compute.v1.MetadataItemsItemArgs(
                             key="gce-container-declaration",
-                            value=self.__get_container_declaration(
-                                args.container_spec
-                            ),
+                            value=container_declaration,
                         ),
                         # gcp.compute.v1.MetadataItemsItemArgs(
                         #     key="startup-script", value=""
                         # ),
-                    ].extend(args.secret_env)
+                    ]
                 ),
                 scheduling=gcp.compute.v1.SchedulingArgs(
                     provisioning_model=gcp.compute.v1.SchedulingProvisioningModel.STANDARD,
-                    # Cannot set this to DELETE action since the managed instance group (MIG) prohibits
-                    # that action for Spot provisioning model.
-                    instance_termination_action=gcp.compute.v1.SchedulingInstanceTerminationAction.STOP,
                 ),
                 service_accounts=[
-                    gcp.compute.v1.ServiceAccountArgs(
-                        email=project_number.apply(
-                            lambda p: f"{p}-compute@developer.gserviceaccount.com"
-                        ),
-                        scopes=[
-                            # TODO: Grant access to pull container image from
-                            # Artifact Registry.
-                            "https://www.googleapis.com/auth/devstorage.read_only",
-                            "https://www.googleapis.com/auth/logging.write",
-                            "https://www.googleapis.com/auth/monitoring.write",
-                            "https://www.googleapis.com/auth/servicecontrol",
-                            "https://www.googleapis.com/auth/service.management.readonly",
-                            "https://www.googleapis.com/auth/trace.append",
-                        ],
-                    ),
+                    # gcp.compute.v1.ServiceAccountArgs(
+                    #     email=project_number.apply(
+                    #         lambda p: f"{p}-compute@developer.gserviceaccount.com"
+                    #     ),
+                    #     scopes=[
+                    #         # TODO: Grant access to pull container image from
+                    #         # Artifact Registry.
+                    #         "https://www.googleapis.com/auth/devstorage.read_only",
+                    #         "https://www.googleapis.com/auth/logging.write",
+                    #         "https://www.googleapis.com/auth/monitoring.write",
+                    #         "https://www.googleapis.com/auth/servicecontrol",
+                    #         "https://www.googleapis.com/auth/service.management.readonly",
+                    #         "https://www.googleapis.com/auth/trace.append",
+                    #     ],
+                    # ),
                     gcp.compute.v1.ServiceAccountArgs(
                         email=args.service_account_email,
                         scopes=[
@@ -148,6 +155,10 @@ class ContainerOnVm(pulumi.ComponentResource):
                     ),
                 ],
             )
+        )
+
+        instance_template_args.properties.metadata.items.extend(
+            args.secret_env
         )
 
         self.instance_template = gcp.compute.v1.InstanceTemplate(
@@ -161,15 +172,19 @@ class ContainerOnVm(pulumi.ComponentResource):
             ),
         )
 
+        container_declaration.apply(
+            lambda cd: pulumi.log.info(cd, self.instance_template)
+        )
+
         self.instance_group = gcp.compute.v1.InstanceGroupManager(
             f"{name}-instance-group",
             base_instance_name=name,
             instance_template=self.instance_template.self_link,
             target_size=1,
-            update_policy=gcp.compute.v1.InstanceGroupManagerUpdatePolicyArgs(
-                type=gcp.compute.v1.InstanceGroupManagerUpdatePolicyType.PROACTIVE,
-                most_disruptive_allowed_action=gcp.compute.v1.InstanceGroupManagerUpdatePolicyMostDisruptiveAllowedAction.REFRESH,
-            ),
+            # update_policy=gcp.compute.v1.InstanceGroupManagerUpdatePolicyArgs(
+            #     type=gcp.compute.v1.InstanceGroupManagerUpdatePolicyType.PROACTIVE,
+            #     most_disruptive_allowed_action=gcp.compute.v1.InstanceGroupManagerUpdatePolicyMostDisruptiveAllowedAction.REPLACE,
+            # ),
         )
 
     def __lift_container_spec_env_vars(
@@ -189,6 +204,8 @@ class ContainerOnVm(pulumi.ComponentResource):
         return spec
 
     def __get_container_declaration(self, spec: ContainerSpec):
+        yaml.emitter.Emitter.process_tag = lambda self, *args, **kw: None
+
         # HACK! In order to "lift" the output values in the spec,
         # we need to "apply" each of them, overwrite the corresponding
         # property in the spec. Each method that overwrites the property
@@ -200,5 +217,5 @@ class ContainerOnVm(pulumi.ComponentResource):
             .apply(lambda _: spec.image)
             .apply(lambda i: self.__lift_container_spec_image(spec, i))
             # The end goal is to serialize the spec as a yaml string.
-            .apply(lambda s: yaml.dump(s.__dict__))
+            .apply(lambda s: yaml.dump(s))
         )
