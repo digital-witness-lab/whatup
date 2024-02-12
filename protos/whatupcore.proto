@@ -17,7 +17,6 @@ service WhatUpCoreAuth {
 service WhatUpCore {
     rpc GetConnectionStatus(ConnectionStatusOptions) returns (ConnectionStatus) {}
 
-    rpc GetACLAll(GetACLAllOptions) returns (stream GroupACL) {}
     rpc SetACL(GroupACL) returns (GroupACL) {}
     rpc GetACL(JID) returns (GroupACL) {}
 
@@ -57,8 +56,6 @@ message JoinedGroup {
 message GetJoinedGroupsOptions {
 }
 
-message GetACLAllOptions {
-}
 
 enum GroupPermission {
     DENIED = 0;
