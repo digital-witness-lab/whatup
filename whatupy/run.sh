@@ -107,6 +107,18 @@ case $app_command in
         exit $retval
     ;;
 
+    delete-groups)
+        if [ -z "${WHATUPY_DELETE_GROUPS:-}" ]; then
+            echo "WHATUPY_DELETE_GROUPS env var is required."
+            exit 1
+        fi
+        exec whatupy $DEBUG \
+            databasebot-delete-groups \
+                    --database-url ${DATABASE_URL} \
+                    --media-base "gs://${MEDIA_BUCKET}/" \
+                    "${WHATUPY_DELETE_GROUPS}"
+    ;;
+
     *)
         echo "Unknown app command $app_command"
         exit 1

@@ -606,3 +606,51 @@ class DatabaseBot(BaseBot):
                 },
                 ["id"],
             )
+
+    async def delete_groups(self, jids: T.List[str], delete_media=True):
+        with self.db as tx:
+            self.logger.info("Clearing messages_seen table")
+            tx.query("""
+                DELETE FROM messages_seen
+                WHERE id in (SELECT id FROM messages WHERE chat_jid IN $1)
+            """, jids)
+
+            self.logger.info("Clearing reactions table")
+            tx.query("""
+                DELETE FROM reactions
+                WHERE id in (SELECT id FROM messages WHERE chat_jid IN $1)
+            """, jids)
+
+            self.logger.info("Clearing media table")
+            tx.query("""
+                DELETE FROM media
+                WHERE filename in (
+                    SELECT filename 
+                    FROM messages 
+                    WHERE chat_jid IN $1 AND filename IS NOT NULL
+                )
+            """, jids)
+
+            self.logger.info("Clearing group_info table")
+            tx.query("""
+                DELETE FROM group_info
+                WHERE JID in $1
+            """, jids)
+
+            self.logger.info("Clearing group_participants table")
+            tx.query("""
+                DELETE FROM group_participants
+                WHERE chat_jid in $1
+            """, jids)
+
+            self.logger.info("Clearing messages table")
+            tx.query("""
+                DELETE FROM messages
+                WHERE chat_jid in $1
+            """, jids)
+
+        if delete_media:
+            for jid in jids:
+                media_path = self.media_base_path / jid
+                self.logger.info("Removing media path: %s", media_path)
+                media_path.rmtree()
