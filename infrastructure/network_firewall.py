@@ -19,7 +19,7 @@ firewall_association = compute.NetworkFirewallPolicyAssociation(
     attachment_target=vpc.id,
 )
 
-private_services_network_block = (
+private_service_connect_network_block = (
     f"{private_services_connect_ip_prefix}/{private_services_connect_ip_range}"
 )
 
@@ -64,7 +64,7 @@ compute.NetworkFirewallPolicyRule(
                     ip_protocol="all",
                 )
             ],
-            dest_ip_ranges=[private_services_network_block],
+            dest_ip_ranges=[private_service_connect_network_block],
         ),
     ),
 )
@@ -87,7 +87,7 @@ compute.NetworkFirewallPolicyRule(
                     ip_protocol="all",
                 )
             ],
-            dest_ip_ranges=[private_services_network_block],
+            dest_ip_ranges=[private_service_connect_network_block],
         ),
     ),
 )
@@ -136,7 +136,7 @@ compute.NetworkFirewallPolicyRule(
                     ip_protocol="all",
                 )
             ],
-            dest_ip_ranges=[private_services_network_block],
+            dest_ip_ranges=[private_service_connect_network_block],
         ),
     ),
 )
