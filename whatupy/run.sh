@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="asdfsdfjhksfasfdshfsdff"
+RAND="asia8dfuy89asdfiusdsdff"
 app_command=$1
 
 if [ -z "${app_command:-}" ]; then
@@ -12,6 +12,11 @@ fi
 DEBUG=
 #$( [[ "$IS_PROD" == "False" ]] && echo "--debug" || echo "" )
 echo "Running app command: $app_command $DEBUG"
+
+# Run the VM secrets configurator.
+# If we are not running inside a VM,
+# it will exit silently.
+/configureVmSecrets
 
 function positive_mod() {
     local dividend=$1

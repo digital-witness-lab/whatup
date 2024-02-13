@@ -404,6 +404,7 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+    pJID = DeAnonymizeInterface(session.Client.anonLookup, pJID)
 
 	JID := ProtoToJID(pJID)
 	if _, err := CanReadJID(session, &JID); err != nil {
@@ -424,6 +425,7 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
 	if !ok {
 		return status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+    pJID = DeAnonymizeInterface(session.Client.anonLookup, pJID)
 
 	ctxC := NewContextWithCancel(ctx)
 	defer ctxC.Cancel()
@@ -457,6 +459,12 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
 			groupInfo = &types.GroupInfo{
 				JID:       gJID,
 				GroupName: subgroup.GroupName,
+                GroupLinkedParent: types.GroupLinkedParent{
+                    LinkedParentJID: JID,
+                },
+                GroupIsDefaultSub: types.GroupIsDefaultSub{
+                    IsDefaultSubGroup: subgroup.IsDefaultSubGroup,
+                },
 			}
 			isPartial = true
 		}
@@ -475,6 +483,7 @@ func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context, inviteCode *pb.
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+    inviteCode = DeAnonymizeInterface(session.Client.anonLookup, inviteCode)
 
 	groupInfo, err := session.Client.GetGroupInfoFromLink(inviteCode.Link)
 	if err != nil {
@@ -490,6 +499,7 @@ func (s *WhatUpCoreServer) JoinGroup(ctx context.Context, inviteCode *pb.InviteC
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
 	}
+    inviteCode = DeAnonymizeInterface(session.Client.anonLookup, inviteCode)
 
 	groupInfo, err := session.Client.GetGroupInfoFromLink(inviteCode.Link)
 	if err != nil {
