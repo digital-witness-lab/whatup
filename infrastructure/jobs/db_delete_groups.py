@@ -5,32 +5,23 @@ from pulumi_gcp.cloudrunv2 import (  # noqa: E501
     JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
 )
 
+from jobs.db_migrations import migrations_job_complete
 from artifact_registry import whatupy_image
 from dwl_secrets import db_url_secrets
 from job import Job, JobArgs
-from jobs.db_migrations import migrations_job_complete
 from network import private_services_network_with_db, vpc
-from storage import media_bucket, message_archive_bucket
+from storage import media_bucket
 
-service_name = "bot-db-load-archive"
+service_name = "db-del-grp"
 
 service_account = serviceaccount.Account(
-    "db-load-archive",
-    account_id=f"bot-db-load-archive-{get_stack()}",
+    "db-del-grp",
+    account_id=f"db-del-grp-{get_stack()}",
     description=f"Service account for {service_name}",
 )
 
-message_archive_bucket_perm = storage.BucketIAMMember(
-    "db-ld-archive-arch-perm",
-    storage.BucketIAMMemberArgs(
-        bucket=message_archive_bucket.name,
-        member=Output.concat("serviceAccount:", service_account.email),
-        role="roles/storage.objectViewer",
-    ),
-)
-
 media_bucket_perm = storage.BucketIAMMember(
-    "db-ld-media-perm",
+    "db-del-grp-media-perm",
     storage.BucketIAMMemberArgs(
         bucket=media_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
@@ -39,7 +30,7 @@ media_bucket_perm = storage.BucketIAMMember(
 )
 
 secret_manager_perm = secretmanager.SecretIamMember(
-    "db-ld-archive-scrt-perm",
+    "db-del-grp-archive-scrt-perm",
     secretmanager.SecretIamMemberArgs(
         secret_id=db_url_secrets["messages"].id,
         role="roles/secretmanager.secretAccessor",
@@ -54,19 +45,18 @@ db_url_secret_source = JobTemplateTemplateContainerEnvValueSourceArgs(
     )
 )
 
-db_migrations_job = Job(
+bot_onboard_bulk_job = Job(
     service_name,
     JobArgs(
-        args=["/usr/src/whatupy/run.sh", "load-archive"],
-        cpu="2",
-        task_count=10,
+        args=["/usr/src/whatupy/run.sh", "delete-groups"],
+        cpu="1",
         # Route all egress traffic via the VPC network.
         egress="ALL_TRAFFIC",
         image=whatupy_image,
         # We want this service to only be reachable from within
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
-        memory="6Gi",
+        memory="1Gi",
         service_account=service_account,
         # Specifying the subnet causes CloudRun to use
         # Direct VPC egress for outbound traffic based
@@ -78,10 +68,6 @@ db_migrations_job = Job(
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                 name="DATABASE_URL",
                 value_source=db_url_secret_source,
-            ),
-            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                name="MESSAGE_ARCHIVE_BUCKET",
-                value=message_archive_bucket.name,
             ),
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                 name="MEDIA_BUCKET",
@@ -96,11 +82,5 @@ db_migrations_job = Job(
         ],
         timeout="3600s",
     ),
-    opts=ResourceOptions(
-        depends_on=[
-            message_archive_bucket_perm,
-            media_bucket_perm,
-            secret_manager_perm,
-        ]
-    ),
+    opts=ResourceOptions(depends_on=[media_bucket_perm, secret_manager_perm]),
 )
