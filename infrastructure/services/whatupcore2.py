@@ -1,9 +1,6 @@
 from pulumi import Output, ResourceOptions, get_stack
-from pulumi_gcp import cloudrunv2, secretmanager, serviceaccount
+from pulumi_gcp import secretmanager, serviceaccount
 from pulumi_google_native import compute
-from pulumi_gcp.cloudrunv2 import (
-    ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
-)  # noqa: E501
 
 from artifact_registry import whatupcore2_image
 from config import is_prod_stack
@@ -39,13 +36,6 @@ db_secret_manager_perm = secretmanager.SecretIamMember(
     ),
 )
 
-db_url_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
-    secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
-        secret=db_url_secrets["whatupcore"].name,
-        version="latest",
-    )
-)
-
 salt_secret_manager_perm = secretmanager.SecretIamMember(
     "whatupcore-salt-perm",
     secretmanager.SecretIamMemberArgs(
@@ -55,15 +45,6 @@ salt_secret_manager_perm = secretmanager.SecretIamMember(
     ),
 )
 
-whatup_salt_secret_source = (
-    cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
-        secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
-            secret=whatup_salt_secret.name,
-            version="latest",
-        )
-    )
-)
-
 anon_key_secret_manager_perm = secretmanager.SecretIamMember(
     "whatupcore-anon-key-perm",
     secretmanager.SecretIamMemberArgs(
@@ -71,15 +52,6 @@ anon_key_secret_manager_perm = secretmanager.SecretIamMember(
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
-)
-
-whatup_anon_key_secret_source = (
-    cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
-        secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
-            secret=whatup_anon_key_secret.name,
-            version="latest",
-        )
-    )
 )
 
 log_level = "INFO"  # if is_prod_stack() else "DEBUG"
