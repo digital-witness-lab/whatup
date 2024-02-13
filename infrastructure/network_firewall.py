@@ -24,7 +24,7 @@ private_services_network_block = (
 )
 
 compute.NetworkFirewallPolicyRule(
-    "allow-from-internet",
+    "allow-ssh",
     compute.NetworkFirewallPolicyRuleArgs(
         action="allow",
         description="Allow incoming SSH connections",
