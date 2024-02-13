@@ -1,19 +1,19 @@
-grpcio-tools
+grpcio-tools==1.60.1
 qrcode
-click
-types_protobuf
-pyyaml
+click==8.1.7
+types_protobuf==4.24.0.20240129
+pyyaml==6.0.1
 
 packaging
 aioconsole
 
 # databasebot
-dataset
+dataset==1.6.2
 psycopg2_binary
 sqlalchemy-bigquery[bqstorage]
-phonenumbers
+phonenumbers==8.13.30
 
-cloudpathlib[gs]
+cloudpathlib[gs]==0.17.0
 tink[gcpkms]
 
 python-dotenv==1.0.1
