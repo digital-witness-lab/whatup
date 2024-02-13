@@ -3,10 +3,13 @@ import imagehash
 import json
 from cloudpathlib import CloudPath, AnyPath
 from google.cloud import storage
+from cloudpathlib import GSClient
 import click
+import os
 #import dataset
 #from sqlalchemy import types
 from google.cloud import bigquery
+import google.auth
 
 bucket_dir = "whatup-deploy.messages_test" # can use this in run command 
 
@@ -16,10 +19,12 @@ bucket_dir = "whatup-deploy.messages_test" # can use this in run command
 @click.option(
     "--file-or-dir", type=click.Path(path_type=AnyPath)) # use this argument to process a specific local or cloud directory or image.
 def hash_images(bucket_dir, file_or_dir):
-    print("HI")
     client = bigquery.Client(project="whatup-deploy")
     table_id = "{}.phash_images".format(bucket_dir)
-
+    creds = google.auth.default()[0] # I have to manually access creds just for CloudPathLib's GSClient instantiation (https://cloudpathlib.drivendata.org/v0.6/authentication/)
+    
+    gs_client = GSClient(credentials=creds, project="whatup-deploy")
+    gs_client.set_as_default_client()
     schema = [
         bigquery.SchemaField("filename", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("phash", "BYTES", mode="REQUIRED"),
@@ -44,8 +49,6 @@ def hash_images(bucket_dir, file_or_dir):
         existing_hashes = {row[0] for row in list(rows)}
 
     else:
-        print("in this else block")
-        print(client)
         QUERY = ('SELECT content_url FROM (SELECT * FROM `{}.media` WHERE REGEXP_CONTAINS(mimetype, \'image/*\')) as a LEFT JOIN `{}.phash_images` as b ON a.filename = b.filename WHERE b.filename IS NULL and content_url IS NOT NULL').format(bucket_dir,bucket_dir)
         query_job = client.query(QUERY) 
         rows = query_job.result()  
