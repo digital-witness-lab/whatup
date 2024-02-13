@@ -2,6 +2,9 @@ import asyncio
 import logging
 import typing as T
 from pathlib import Path
+import os
+
+from dotenv import load_dotenv
 
 import click
 from cloudpathlib import AnyPath
@@ -26,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 
 GROUP_PERMISSIONS = dict(wuc.GroupPermission.items())
+
+load_dotenv(dotenv_path=os.path.join("/", "tmp", "whatup", ".env"))
 
 
 @click.group()

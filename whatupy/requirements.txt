@@ -15,3 +15,5 @@ phonenumbers
 
 cloudpathlib[gs]
 tink[gcpkms]
+
+python-dotenv==1.0.1

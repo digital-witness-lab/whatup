@@ -453,6 +453,10 @@ class DatabaseBot(BaseBot):
 
         if community_info is not None:
             self.logger.debug("Using community info to update groups for community")
+            parentJID = next(gi.JID for gi in community_info if gi.isCommunity)
+            for gi in community_info:
+                if not gi.isCommunity and not gi.parentJID:
+                    gi.parentJID.CopyFrom(parentJID)
             for group_from_community in community_info:
                 self.logger.debug(
                     "Inserting community group: %s",
