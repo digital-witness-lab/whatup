@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="jashdfkdsjfkjdshfkh23khassdf"
+RAND="asjdfhas98d0uf9s8adhjwfhnaks"
 app_command=$1
 echo "Starting whatupcore2 with command $app_command."
 
