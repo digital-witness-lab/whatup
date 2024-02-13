@@ -36,10 +36,8 @@ def hash_images(bucket_dir, file_or_dir):
         file_or_dir = AnyPath(file_or_dir)
         images_to_process = []
         if file_or_dir.is_dir():
-            media_dirs = list(file_or_dir.rglob("*/media")) 
-            #media_dirs = list(file_or_dir.rglob("media/*")) # use this if directly pointing to one media directory
-            for obj in media_dirs:
-                images_to_process.append(list(AnyPath(obj).rglob("*")))
+            media_dirs = list(AnyPath(file_or_dir.rglob("*/media/*"))) 
+            #media_dirs = list(AnyPath(file_or_dir.rglob("media/*")))  # use this if directly pointing to one media directory
         else:
             images_to_process.append(file_or_dir)
 
