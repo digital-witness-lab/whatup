@@ -49,7 +49,6 @@ class _UserBot(BaseBot):
 
     async def login(self, *args, **kwargs):
         await super().login(*args, **kwargs)
-        self.username = self.authenticator.username
         user_state = self.db["registered_users"].find_one(username=self.username)
         self.lang = user_state.get("lang")
         self.is_bot = user_state.get("is_bot")
@@ -60,12 +59,6 @@ class _UserBot(BaseBot):
         return self
 
     async def post_start(self):
-        connection_status: wuc.ConnectionStatus = (
-            await self.core_client.GetConnectionStatus(wuc.ConnectionStatusOptions())
-        )
-        self.jid = connection_status.JID
-        self.jid_anon = connection_status.JIDAnon
-
         await self.services_bot.new_device(self)
 
     @staticmethod
