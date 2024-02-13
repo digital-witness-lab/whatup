@@ -281,6 +281,7 @@ async def databasebot_load_archive(
 @cli.command("databasebot-delete-groups")
 @async_cli
 @click.option("--database-url", type=str)
+@click.option("--no-delete-media", type=bool, default=False, is_flag=True)
 @click.option(
     "--media-base", type=click.Path(path_type=AnyPath), default=Path("./dbmedia/")
 )
@@ -290,18 +291,20 @@ async def database_delete_groups(
     ctx,
     group_jid,
     database_url,
+    no_delete_media,
     media_base,
 ):
     """
     desc="File glob for archived messages to load. Will load the messages then quit",
     """
+    group_jid = [jid for gj in group_jid for jid in gj.split(" ")]
     params = {
         "database_url": database_url,
         "media_base_path": media_base,
         **ctx.obj["connection_params"],
     }
     db = DatabaseBot(connect=False, **params)
-    db.delete_groups(group_jid, media_base=media_base)
+    db.delete_groups(group_jid, delete_media=not no_delete_media)
 
 
 @cli.command()
