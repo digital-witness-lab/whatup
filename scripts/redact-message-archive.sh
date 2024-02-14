@@ -51,19 +51,16 @@ for source in $( find "$source_archive" -type f -name \*.json -or -type d -name 
     target_parent=$target_archive/$( dirname "$target_rel" )
     target=$target_archive/$target_rel
 
+    [[ ! -e "${target_parent}" ]] & mkdir -p "${target_parent}"
     if [[ "$source" =~ $find_groupinfo ]]; then
         message_type="GroupInfo"
     elif [[ "$source" =~ $find_wumessage ]]; then
         message_type="WUMessage"
     elif [[ "$source" =~ $find_communityinfo ]]; then
-        message_type="GroupInfo"
-        # DO THE THING HERE
-        mkdir -p "${target_parent}"
         echo -en "jq -j '.[] | tojson + \"\\\u0000\"' $source | xargs -0 -I{} bash -c \"echo '{}' | $redact_cmd -m GroupInfo\" | jq -s '.' > $target\0"
         continue
     elif [[ "$source" =~ $find_media ]]; then
         if [ ! -e $target ]; then
-            mkdir -p "${target_parent}"
             echo -en "rsync -avh $source $target\0"
         fi
         continue
@@ -71,8 +68,6 @@ for source in $( find "$source_archive" -type f -name \*.json -or -type d -name 
         # This will fail and will continue to fail if retrying through parallel's joblog.
         message_type="XXXX"
     fi
-    mkdir -p "${target_parent}"
     echo -en "cat $source | $redact_cmd -m ${message_type} > $target\0"
 done;
-)
-# | parallel --jobs "200%" --bar --total-jobs $N --null --joblog ${target_archive}/job.log
+) | parallel --jobs "200%" --bar --total-jobs $N --null --joblog ${target_archive}/job.log
