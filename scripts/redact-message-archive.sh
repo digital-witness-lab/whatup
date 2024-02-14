@@ -59,7 +59,7 @@ for source in $( find "$source_archive" -type f -name \*.json -or -type d -name 
         message_type="GroupInfo"
         # DO THE THING HERE
         mkdir -p "${target_parent}"
-        echo -en "jq -j '.[] | tojson + \"\u0000\"' $source | xargs -0 -I{} bash -c \"echo '{}' | $redact_cmd -m GroupInfo\" | jq -s '.' > $target\0"
+        echo -en "jq -j '.[] | tojson + \"\\\u0000\"' $source | xargs -0 -I{} bash -c \"echo '{}' | $redact_cmd -m GroupInfo\" | jq -s '.' > $target\0"
         continue
     elif [[ "$source" =~ $find_media ]]; then
         if [ ! -e $target ]; then
@@ -74,4 +74,5 @@ for source in $( find "$source_archive" -type f -name \*.json -or -type d -name 
     mkdir -p "${target_parent}"
     echo -en "cat $source | $redact_cmd -m ${message_type} > $target\0"
 done;
-) | parallel --jobs "200%" --bar --total-jobs $N --null --joblog ${target_archive}/job.log
+)
+# | parallel --jobs "200%" --bar --total-jobs $N --null --joblog ${target_archive}/job.log
