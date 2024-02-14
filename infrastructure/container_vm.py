@@ -67,10 +67,11 @@ class Spec(yaml.YAMLObject):
 class ContainerOnVmArgs:
     container_spec: Container
     machine_type: SharedCoreMachineType
-    subnet: pulumi.Output[str]
+    restart_policy: str
     secret_env: List[native_compute_v1.MetadataItemsItemArgs]
     service_account_email: pulumi.Output[str]
-    restart_policy: str
+    subnet: pulumi.Output[str]
+    tcp_healthcheck_port: Optional[int]
 
 
 project_number = get_project_number(project)
@@ -209,6 +210,20 @@ class ContainerOnVm(pulumi.ComponentResource):
             lambda cd: pulumi.log.debug(cd, self.instance_template)
         )
 
+        autohealing = None
+        if args.tcp_healthcheck_port is not None:
+            autohealing = classic_gcp_compute.HealthCheck(
+                "autohealing",
+                check_interval_sec=5,
+                timeout_sec=5,
+                healthy_threshold=2,
+                unhealthy_threshold=10,
+                tcp_health_check=classic_gcp_compute.HealthCheckTcpHealthCheckArgs(
+                    port=args.tcp_healthcheck_port,
+                ),
+                opts=pulumi.ResourceOptions(parent=self),
+            )
+
         # Due to an issue with the Pulumi Google Native provider,
         # we have to use the classic GCP provider to create the
         # managed instance group.
@@ -227,6 +242,14 @@ class ContainerOnVm(pulumi.ComponentResource):
             ],
             zone=zone,
             target_size=1,
+            auto_healing_policies=(
+                classic_gcp_compute.InstanceGroupManagerAutoHealingPoliciesArgs(
+                    initial_delay_sec=30,
+                    health_check=autohealing.id,
+                )
+                if autohealing is not None
+                else None
+            ),
             update_policy=classic_gcp_compute.InstanceGroupManagerUpdatePolicyArgs(
                 type="PROACTIVE",
                 minimal_action="REFRESH",
