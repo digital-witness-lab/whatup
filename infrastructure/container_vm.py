@@ -5,8 +5,8 @@ from attr import dataclass
 import yaml
 
 from google.cloud.compute_v1 import (
-    RegionInstanceGroupManagersClient,
-    ListManagedInstancesRegionInstanceGroupManagersRequest,
+    InstanceGroupManagersClient,
+    ListManagedInstancesInstanceGroupManagersRequest,
 )
 
 import pulumi
@@ -14,7 +14,7 @@ from pulumi.resource import ResourceOptions
 from pulumi_google_native.compute import v1 as native_compute_v1
 from pulumi_gcp import projects, compute as classic_gcp_compute
 
-from config import project, location
+from config import project, zone
 from gcloud import get_project_number
 from network_firewall import firewall_association
 
@@ -217,23 +217,25 @@ class ContainerOnVm(pulumi.ComponentResource):
         #
         # Note: A PR was opened to fix the issue in the provider
         # but there is no timeline on when it would be merged.
-        self.region_instance_group = classic_gcp_compute.RegionInstanceGroupManager(
-            f"{name}-region-instance-group",
+        self.zonal_instance_group = classic_gcp_compute.InstanceGroupManager(
+            f"{name}-instance-group",
             base_instance_name=name,
             versions=[
-                classic_gcp_compute.RegionInstanceGroupManagerVersionArgs(
+                classic_gcp_compute.InstanceGroupManagerVersionArgs(
                     instance_template=self.instance_template.self_link
                 )
             ],
-            region=location,
+            zone=zone,
             target_size=1,
-            update_policy=classic_gcp_compute.RegionInstanceGroupManagerUpdatePolicyArgs(
+            update_policy=classic_gcp_compute.InstanceGroupManagerUpdatePolicyArgs(
                 type="PROACTIVE",
                 minimal_action="REFRESH",
                 most_disruptive_allowed_action="REPLACE",
+                max_unavailable_fixed=3,
+                replacement_method="RECREATE",
             ),
             stateful_internal_ips=[
-                classic_gcp_compute.RegionInstanceGroupManagerStatefulInternalIpArgs(
+                classic_gcp_compute.InstanceGroupManagerStatefulInternalIpArgs(
                     delete_rule="ON_PERMANENT_INSTANCE_DELETION",
                     interface_name="nic0",
                 )
@@ -257,11 +259,11 @@ class ContainerOnVm(pulumi.ComponentResource):
         # of the Google providers in Pulumi offer a way to list managed
         # instances of a group. At least at the of this writing they
         # didn't.
-        client = RegionInstanceGroupManagersClient()
-        request = ListManagedInstancesRegionInstanceGroupManagersRequest(
+        client = InstanceGroupManagersClient()
+        request = ListManagedInstancesInstanceGroupManagersRequest(
             instance_group_manager=instance_group_manager_name,
             project=project,
-            region=location,
+            zone=zone,
         )
         page_result = client.list_managed_instances(request)
         internal_ip_addr = ""
@@ -271,10 +273,13 @@ class ContainerOnVm(pulumi.ComponentResource):
                 or instance.current_action
                 not in ["NONE", "CREATING", "REFRESHING", "VERIFYING"]
             ):
+                pulumi.log.info(
+                    f"Skipping managed instance with status: {instance.instance_status} and current action: {instance.current_action}"
+                )
                 continue
 
             internal_ip_addr = (
-                instance.preserved_state_from_config.internal_i_ps[
+                instance.preserved_state_from_policy.internal_i_ps[
                     "nic0"
                 ].ip_address.literal
             )
@@ -296,8 +301,8 @@ class ContainerOnVm(pulumi.ComponentResource):
         # run and there is no way to know if the resource
         # was actually created.
         return pulumi.Output.all(
-            self.region_instance_group.name,
-            self.region_instance_group.self_link,
+            self.zonal_instance_group.name,
+            self.zonal_instance_group.self_link,
         ).apply(lambda args: self.__get_internal_ip(args[0]))
 
     def __lift_container_spec_env_vars(
