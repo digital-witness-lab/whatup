@@ -12,7 +12,7 @@ from google.cloud.compute_v1 import (
 import pulumi
 from pulumi.resource import ResourceOptions
 from pulumi_google_native.compute import v1 as native_compute_v1
-from pulumi_gcp import projects
+from pulumi_gcp import projects, compute as classic_gcp_compute
 
 from config import project, location
 from gcloud import get_project_number
@@ -209,26 +209,35 @@ class ContainerOnVm(pulumi.ComponentResource):
             lambda cd: pulumi.log.debug(cd, self.instance_template)
         )
 
-        self.region_instance_group = native_compute_v1.RegionInstanceGroupManager(
+        # Due to an issue with the Pulumi Google Native provider,
+        # we have to use the classic GCP provider to create the
+        # managed instance group.
+        #
+        # https://github.com/pulumi/pulumi-google-native/issues/401
+        #
+        # Note: A PR was opened to fix the issue in the provider
+        # but there is no timeline on when it would be merged.
+        self.region_instance_group = classic_gcp_compute.RegionInstanceGroupManager(
             f"{name}-region-instance-group",
             base_instance_name=name,
-            instance_template=self.instance_template.self_link,
+            versions=[
+                classic_gcp_compute.RegionInstanceGroupManagerVersionArgs(
+                    instance_template=self.instance_template.self_link
+                )
+            ],
             region=location,
             target_size=1,
-            update_policy=native_compute_v1.InstanceGroupManagerUpdatePolicyArgs(
-                type=native_compute_v1.InstanceGroupManagerUpdatePolicyType.PROACTIVE,
-                most_disruptive_allowed_action=native_compute_v1.InstanceGroupManagerUpdatePolicyMostDisruptiveAllowedAction.REPLACE,
+            update_policy=classic_gcp_compute.RegionInstanceGroupManagerUpdatePolicyArgs(
+                type="PROACTIVE",
+                minimal_action="REFRESH",
+                most_disruptive_allowed_action="REPLACE",
             ),
-            # stateful_policy=native_compute_v1.StatefulPolicyArgs(
-            #     preserved_state=native_compute_v1.StatefulPolicyPreservedStateArgs(
-            #         # https://github.com/pulumi/pulumi-google-native/issues/401
-            #         internal_ips={
-            #             "nic0": {
-            #                 "autoDelete": "ON_PERMANENT_INSTANCE_DELETION"
-            #             }
-            #         }
-            #     ),
-            # ),
+            stateful_internal_ips=[
+                classic_gcp_compute.RegionInstanceGroupManagerStatefulInternalIpArgs(
+                    delete_rule="ON_PERMANENT_INSTANCE_DELETION",
+                    interface_name="nic0",
+                )
+            ],
             opts=pulumi.ResourceOptions(
                 parent=self,
                 depends_on=[
@@ -239,8 +248,15 @@ class ContainerOnVm(pulumi.ComponentResource):
             ),
         )
 
-    def __get_host_internal(self, instance_group_manager_name: str):
-        # POST https://compute.googleapis.com/compute/v1/projects/{project}/regions/{region}/instanceGroupManagers/{instanceGroupManager}/listManagedInstances
+    def __get_internal_ip(self, instance_group_manager_name: str):
+        """
+        Returns the internal IP address for a valid managed instance
+        created by the (MIG) managed instance group.
+        """
+        # We use the Google Cloud SDK to do this because neither versions
+        # of the Google providers in Pulumi offer a way to list managed
+        # instances of a group. At least at the of this writing they
+        # didn't.
         client = RegionInstanceGroupManagersClient()
         request = ListManagedInstancesRegionInstanceGroupManagersRequest(
             instance_group_manager=instance_group_manager_name,
@@ -282,7 +298,7 @@ class ContainerOnVm(pulumi.ComponentResource):
         return pulumi.Output.all(
             self.region_instance_group.name,
             self.region_instance_group.self_link,
-        ).apply(lambda args: self.__get_host_internal(args[0]))
+        ).apply(lambda args: self.__get_internal_ip(args[0]))
 
     def __lift_container_spec_env_vars(
         self, spec: Container, values: List[str]
