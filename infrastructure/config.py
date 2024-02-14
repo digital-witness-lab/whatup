@@ -38,6 +38,7 @@ control_groups = config.require_object("control_groups")
 gcp_config = pulumi.Config("gcp")
 location = gcp_config.require("region")
 project = gcp_config.require("project")
+zone = gcp_config.require("zone")
 
 
 def is_prod_stack() -> bool:
