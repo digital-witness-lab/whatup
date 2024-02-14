@@ -18,6 +18,7 @@ find_groupinfo='group-info_[0-9]+.json'
 find_wumessage='[0-9]+_[A-Z0-9]+\.json$'
 find_media='/media$'
 find_deanon_dir='[0-9]{4,}@s.whatsapp.net'
+find_deanon_group_dir='[0-9]+-[0-9]+@g.us'
 
 log_success=$target_archive/redact.success.log
 log_fail=$target_archive/redact.fail.log
@@ -31,6 +32,8 @@ function clean-path() {
         fi
         if [[ "$comp" =~ $find_deanon_dir ]]; then 
             $redact_string_cmd ${comp%@*} ; echo -n "@s.whatsapp.net"
+        elif [[ "$comp" =~ $find_deanon_group_dir ]]; then 
+            $redact_string_cmd ${comp%@*} ; echo -n "@g.us"
         else
             echo -n $comp
         fi
@@ -53,6 +56,7 @@ for source in $( find "$source_archive" -type f -name \*.json -or -type d -name 
         message_type="WUMessage"
     elif [[ "$source" =~ $find_media ]]; then
         if [ ! -e $target ]; then
+            mkdir -p "${target_parent}"
             echo -en "rsync -avh $source $target\0"
         fi
         continue
@@ -63,4 +67,4 @@ for source in $( find "$source_archive" -type f -name \*.json -or -type d -name 
     mkdir -p "${target_parent}"
     echo -en "cat $source | $redact_cmd -m ${message_type} > $target\0"
 done;
-) | parallel --jobs "200%" --null --total-jobs $N --bar --joblog $target_archive/job.log
+) | parallel --jobs "200%" --bar --total-jobs $N --null --joblog $target_archive/job.log
