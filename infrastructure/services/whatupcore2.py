@@ -1,4 +1,4 @@
-from pulumi import Output, ResourceOptions, get_stack
+from pulumi import Output, ResourceOptions, get_stack, log
 from pulumi_gcp import secretmanager, serviceaccount
 from pulumi_google_native import compute
 
@@ -108,4 +108,8 @@ whatupcore2_service = ContainerOnVm(
             salt_secret_manager_perm,
         ]
     ),
+)
+
+whatupcore2_service.get_host_output().apply(
+    lambda addr: log.info(f"whatupcore2 address: {addr}", whatupcore2_service)
 )

@@ -10,7 +10,10 @@ isort==5.12.0
 flake8==6.1.0
 pylint==3.0.2
 
+# Cloud Run client library to execute jobs.
 google-cloud-run==0.9.1
+# Google Compute Engine client library to list managed instances.
+google-cloud-compute==1.16.1
 
 pulumi==3.86.0
 pulumi-docker==4.5.1

@@ -4,12 +4,17 @@ from attr import dataclass
 
 import yaml
 
+from google.cloud.compute_v1 import (
+    RegionInstanceGroupManagersClient,
+    ListManagedInstancesRegionInstanceGroupManagersRequest,
+)
+
 import pulumi
 from pulumi.resource import ResourceOptions
-import pulumi_google_native as gcp
+from pulumi_google_native.compute import v1 as native_compute_v1
 from pulumi_gcp import projects
 
-from config import project
+from config import project, location
 from gcloud import get_project_number
 from network_firewall import firewall_association
 
@@ -63,7 +68,7 @@ class ContainerOnVmArgs:
     container_spec: Container
     machine_type: SharedCoreMachineType
     subnet: pulumi.Output[str]
-    secret_env: List[gcp.compute.v1.MetadataItemsItemArgs]
+    secret_env: List[native_compute_v1.MetadataItemsItemArgs]
     service_account_email: pulumi.Output[str]
     restart_policy: str
 
@@ -110,29 +115,29 @@ class ContainerOnVm(pulumi.ComponentResource):
             opts=pulumi.ResourceOptions(parent=self),
         )
 
-        instance_template_args = gcp.compute.v1.InstanceTemplateArgs(
-            properties=gcp.compute.v1.InstancePropertiesArgs(
+        instance_template_args = native_compute_v1.InstanceTemplateArgs(
+            properties=native_compute_v1.InstancePropertiesArgs(
                 can_ip_forward=False,
-                confidential_instance_config=gcp.compute.v1.ConfidentialInstanceConfigArgs(
+                confidential_instance_config=native_compute_v1.ConfidentialInstanceConfigArgs(
                     enable_confidential_compute=False,
                 ),
                 network_interfaces=[
-                    gcp.compute.v1.NetworkInterfaceArgs(
+                    native_compute_v1.NetworkInterfaceArgs(
                         subnetwork=args.subnet,
                         # Use the default NAT that will assign an ephemeral public IP.
                         access_configs=[
-                            gcp.compute.v1.AccessConfigArgs(
-                                type=gcp.compute.v1.AccessConfigType.ONE_TO_ONE_NAT
+                            native_compute_v1.AccessConfigArgs(
+                                type=native_compute_v1.AccessConfigType.ONE_TO_ONE_NAT
                             )
                         ],
                     )
                 ],
                 disks=[
-                    gcp.compute.v1.AttachedDiskArgs(
+                    native_compute_v1.AttachedDiskArgs(
                         auto_delete=True,
                         boot=True,
                         disk_size_gb="10",
-                        initialize_params=gcp.compute.v1.AttachedDiskInitializeParamsArgs(
+                        initialize_params=native_compute_v1.AttachedDiskInitializeParamsArgs(
                             # Use Google's Container-Optimized OS (cos),
                             # which comes with Docker pre-installed.
                             # We are using latest production-ready
@@ -145,35 +150,35 @@ class ContainerOnVm(pulumi.ComponentResource):
                     ),
                 ],
                 machine_type=args.machine_type.value,
-                metadata=gcp.compute.v1.MetadataArgs(
+                metadata=native_compute_v1.MetadataArgs(
                     items=[
-                        gcp.compute.v1.MetadataItemsItemArgs(
+                        native_compute_v1.MetadataItemsItemArgs(
                             key="enable-oslogin",
                             value="true",
                         ),
-                        gcp.compute.v1.MetadataItemsItemArgs(
+                        native_compute_v1.MetadataItemsItemArgs(
                             key="enable-oslogin-2fa", value="true"
                         ),
-                        gcp.compute.v1.MetadataItemsItemArgs(
+                        native_compute_v1.MetadataItemsItemArgs(
                             key="google-monitoring-enabled", value="true"
                         ),
-                        gcp.compute.v1.MetadataItemsItemArgs(
+                        native_compute_v1.MetadataItemsItemArgs(
                             key="google-logging-enabled", value="true"
                         ),
-                        gcp.compute.v1.MetadataItemsItemArgs(
+                        native_compute_v1.MetadataItemsItemArgs(
                             key="gce-container-declaration",
                             value=container_declaration,
                         ),
-                        # gcp.compute.v1.MetadataItemsItemArgs(
+                        # native_compute_v1.MetadataItemsItemArgs(
                         #     key="startup-script", value=""
                         # ),
                     ]
                 ),
-                scheduling=gcp.compute.v1.SchedulingArgs(
-                    provisioning_model=gcp.compute.v1.SchedulingProvisioningModel.STANDARD,
+                scheduling=native_compute_v1.SchedulingArgs(
+                    provisioning_model=native_compute_v1.SchedulingProvisioningModel.STANDARD,
                 ),
                 service_accounts=[
-                    gcp.compute.v1.ServiceAccountArgs(
+                    native_compute_v1.ServiceAccountArgs(
                         email=args.service_account_email,
                         scopes=[
                             "https://www.googleapis.com/auth/cloud-platform",
@@ -188,7 +193,7 @@ class ContainerOnVm(pulumi.ComponentResource):
             args.secret_env
         )
 
-        self.instance_template = gcp.compute.v1.InstanceTemplate(
+        self.instance_template = native_compute_v1.InstanceTemplate(
             f"{name}-instance-template",
             args=instance_template_args,
             opts=pulumi.ResourceOptions(
@@ -204,15 +209,26 @@ class ContainerOnVm(pulumi.ComponentResource):
             lambda cd: pulumi.log.debug(cd, self.instance_template)
         )
 
-        self.instance_group = gcp.compute.v1.InstanceGroupManager(
-            f"{name}-instance-group",
+        self.region_instance_group = native_compute_v1.RegionInstanceGroupManager(
+            f"{name}-region-instance-group",
             base_instance_name=name,
             instance_template=self.instance_template.self_link,
+            region=location,
             target_size=1,
-            update_policy=gcp.compute.v1.InstanceGroupManagerUpdatePolicyArgs(
-                type=gcp.compute.v1.InstanceGroupManagerUpdatePolicyType.PROACTIVE,
-                most_disruptive_allowed_action=gcp.compute.v1.InstanceGroupManagerUpdatePolicyMostDisruptiveAllowedAction.REPLACE,
+            update_policy=native_compute_v1.InstanceGroupManagerUpdatePolicyArgs(
+                type=native_compute_v1.InstanceGroupManagerUpdatePolicyType.PROACTIVE,
+                most_disruptive_allowed_action=native_compute_v1.InstanceGroupManagerUpdatePolicyMostDisruptiveAllowedAction.REPLACE,
             ),
+            # stateful_policy=native_compute_v1.StatefulPolicyArgs(
+            #     preserved_state=native_compute_v1.StatefulPolicyPreservedStateArgs(
+            #         # https://github.com/pulumi/pulumi-google-native/issues/401
+            #         internal_ips={
+            #             "nic0": {
+            #                 "autoDelete": "ON_PERMANENT_INSTANCE_DELETION"
+            #             }
+            #         }
+            #     ),
+            # ),
             opts=pulumi.ResourceOptions(
                 parent=self,
                 depends_on=[
@@ -222,6 +238,51 @@ class ContainerOnVm(pulumi.ComponentResource):
                 ],
             ),
         )
+
+    def __get_host_internal(self, instance_group_manager_name: str):
+        # POST https://compute.googleapis.com/compute/v1/projects/{project}/regions/{region}/instanceGroupManagers/{instanceGroupManager}/listManagedInstances
+        client = RegionInstanceGroupManagersClient()
+        request = ListManagedInstancesRegionInstanceGroupManagersRequest(
+            instance_group_manager=instance_group_manager_name,
+            project=project,
+            region=location,
+        )
+        page_result = client.list_managed_instances(request)
+        internal_ip_addr = ""
+        for instance in page_result:
+            if (
+                instance.instance_status == "STOPPED"
+                or instance.current_action
+                not in ["NONE", "CREATING", "REFRESHING", "VERIFYING"]
+            ):
+                continue
+
+            internal_ip_addr = (
+                instance.preserved_state_from_config.internal_i_ps[
+                    "nic0"
+                ].ip_address.literal
+            )
+            break
+
+        if internal_ip_addr == "":
+            raise Exception(
+                "Did not find a reserved IP address or any running instances in the managed instance group"
+            )
+
+        return f"https://{internal_ip_addr}"
+
+    def get_host_output(self) -> pulumi.Output[str]:
+        # The self_link is only available once the instance group manager
+        # resource is created, so creating a dependency on that will
+        # ensure that the lambda will not run until after the
+        # resource has been created. If we apply()'d on the
+        # `name` property, the enclosed lambda will always
+        # run and there is no way to know if the resource
+        # was actually created.
+        return pulumi.Output.all(
+            self.region_instance_group.name,
+            self.region_instance_group.self_link,
+        ).apply(lambda args: self.__get_host_internal(args[0]))
 
     def __lift_container_spec_env_vars(
         self, spec: Container, values: List[str]
