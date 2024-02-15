@@ -51,6 +51,9 @@ for source in $( find "$source_archive" -type f -name \*.json -or -type d -name 
     target_parent=$target_archive/$( dirname "$target_rel" )
     target=$target_archive/$target_rel
 
+    if [[ -e "${target}" ]]; then
+        continue
+    fi
     [[ ! -e "${target_parent}" ]] & mkdir -p "${target_parent}"
     if [[ "$source" =~ $find_groupinfo ]]; then
         message_type="GroupInfo"
