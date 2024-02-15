@@ -4,101 +4,60 @@ from pulumi import get_stack
 from pulumi_gcp import secretmanager
 
 from config import db_configs, db_root_password, whatup_anon_key, whatup_salt
+from certificates import ssl_private_key, ssl_cert
 from database import get_sql_instance_url
 
 db_url_secrets: Dict[str, secretmanager.Secret] = {}
 db_pass_secrets: Dict[str, secretmanager.Secret] = {}
+
+
+def create_secret(name: str, data) -> secretmanager.Secret:
+    secret = secretmanager.Secret(
+        name,
+        secretmanager.SecretArgs(
+            secret_id=f"{name}-{get_stack()}",
+            replication=secretmanager.SecretReplicationArgs(
+                auto=secretmanager.SecretReplicationAutoArgs(),
+            ),
+        ),
+    )
+    secretmanager.SecretVersion(
+        f"{name}-secret",
+        secretmanager.SecretVersionArgs(
+            secret=secret.id,
+            secret_data=data,
+            enabled=True,
+        ),
+    )
+    return secret
+
+
 for db in db_configs.values():
-    db_url_secrets[db.name] = secret = secretmanager.Secret(
-        f"{db.name_short}-db-url",
-        secretmanager.SecretArgs(
-            secret_id=f"{db.name_short}-db-url-{get_stack()}",
-            replication=secretmanager.SecretReplicationArgs(
-                auto=secretmanager.SecretReplicationAutoArgs(),
-            ),
-        ),
+    db_url_secrets[db.name] = create_secret(
+        f"{db.name_short}-db-url", get_sql_instance_url(db.name)
     )
-    secretmanager.SecretVersion(
-        f"{db.name_short}-db-url-secret",
-        secretmanager.SecretVersionArgs(
-            secret=secret.id,
-            secret_data=get_sql_instance_url(db.name),
-            enabled=True,
-        ),
-    )
-
-    db_pass_secrets[db.name] = secret = secretmanager.Secret(
-        f"{db.name_short}-db-pass",
-        secretmanager.SecretArgs(
-            secret_id=f"{db.name_short}-db-pass-{get_stack()}",
-            replication=secretmanager.SecretReplicationArgs(
-                auto=secretmanager.SecretReplicationAutoArgs(),
-            ),
-        ),
-    )
-    secretmanager.SecretVersion(
-        f"{db.name_short}-db-pass-secret",
-        secretmanager.SecretVersionArgs(
-            secret=secret.id,
-            secret_data=db.password,
-            enabled=True,
-        ),
+    db_pass_secrets[db.name] = create_secret(
+        f"{db.name_short}-db-pass", db.password
     )
 
 
-db_root_pass_secret = secretmanager.Secret(
+db_root_pass_secret = create_secret(
     "db-root",
-    secretmanager.SecretArgs(
-        secret_id=f"db-root-{get_stack()}",
-        replication=secretmanager.SecretReplicationArgs(
-            auto=secretmanager.SecretReplicationAutoArgs(),
-        ),
-    ),
+    db_root_password,
 )
 
-secretmanager.SecretVersion(
-    "db-root-secret",
-    secretmanager.SecretVersionArgs(
-        secret=db_root_pass_secret.id,
-        secret_data=db_root_password,
-        enabled=True,
-    ),
-)
-
-whatup_salt_secret = secretmanager.Secret(
+whatup_salt_secret = create_secret(
     "whatup-salt",
-    secretmanager.SecretArgs(
-        secret_id=f"whatup-salt-{get_stack()}",
-        replication=secretmanager.SecretReplicationArgs(
-            auto=secretmanager.SecretReplicationAutoArgs(),
-        ),
-    ),
+    whatup_salt,
 )
 
-secretmanager.SecretVersion(
-    "whatup-salt",
-    secretmanager.SecretVersionArgs(
-        secret=whatup_salt_secret.id,
-        secret_data=whatup_salt,
-        enabled=True,
-    ),
-)
-
-whatup_anon_key_secret = secretmanager.Secret(
+whatup_anon_key_secret = create_secret(
     "whatup-anon-key",
-    secretmanager.SecretArgs(
-        secret_id=f"whatup-anon-key-{get_stack()}",
-        replication=secretmanager.SecretReplicationArgs(
-            auto=secretmanager.SecretReplicationAutoArgs(),
-        ),
-    ),
+    whatup_anon_key,
 )
 
-secretmanager.SecretVersion(
-    "whatup-anon-key",
-    secretmanager.SecretVersionArgs(
-        secret=whatup_anon_key_secret.id,
-        secret_data=whatup_anon_key,
-        enabled=True,
-    ),
+ssl_private_key_pem_secret = create_secret(
+    "whatup-ssl-pk-pem", ssl_private_key.private_key_pem
 )
+
+ssl_cert_pem_secret = create_secret("whatup-ssl-cert-pem", ssl_cert.cert_pem)

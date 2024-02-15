@@ -18,6 +18,14 @@ fi
 echo "Listing /tmp/whatup..."
 ls -a /tmp/whatup
 
+if [ ! -z "$SSL_CERT_PEM" ] ; then
+    echo $SSL_CERT_PEM > /run/secrets/ssl-cert
+fi
+
+if [ ! -z "$SSL_PRIV_KEY_PEM" ] ; then
+    echo $SSL_PRIV_KEY_PEM> /run/secrets/ssl-key
+fi
+
 # Start the application
 case $app_command in
     rpc)
