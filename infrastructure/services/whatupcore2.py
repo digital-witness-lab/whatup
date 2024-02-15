@@ -8,6 +8,8 @@ from dwl_secrets import (
     db_url_secrets,
     whatup_anon_key_secret,
     whatup_salt_secret,
+    ssl_cert_pem_secret,
+    ssl_private_key_pem_secret,
 )
 from network import private_services_network_with_db
 from container_vm import (
@@ -54,6 +56,24 @@ anon_key_secret_manager_perm = secretmanager.SecretIamMember(
     ),
 )
 
+ssl_private_key_pem_perm = secretmanager.SecretIamMember(
+    "whatupcore-ssl-pk-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=ssl_private_key_pem_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+
+ssl_cert_pem_perm = secretmanager.SecretIamMember(
+    "whatupcore-ssl-cert-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=ssl_cert_pem_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+
 log_level = "INFO"  # if is_prod_stack() else "DEBUG"
 whatupcore2_service = ContainerOnVm(
     service_name,
@@ -65,7 +85,7 @@ whatupcore2_service = ContainerOnVm(
             env=[
                 ContainerEnv(
                     name="USE_SSL",
-                    value="false",
+                    value="true",
                 ),
                 ContainerEnv(
                     name="APP_NAME_SUFFIX",
@@ -96,6 +116,18 @@ whatupcore2_service = ContainerOnVm(
                 key="ANON_KEY",
                 value=Output.concat(
                     whatup_anon_key_secret.id, "/versions/latest"
+                ),
+            ),
+            compute.v1.MetadataItemsItemArgs(
+                key="SSL_CERT_PEM",
+                value=Output.concat(
+                    ssl_cert_pem_secret.id, "/versions/latest"
+                ),
+            ),
+            compute.v1.MetadataItemsItemArgs(
+                key="SSL_PRIV_KEY_PEM",
+                value=Output.concat(
+                    ssl_private_key_pem_secret.id, "/versions/latest"
                 ),
             ),
         ],
