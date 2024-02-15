@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="asdfsdfjhksfasfdshfsdff"
+RAND="asia8dfuy89asdfiusdsdff"
 app_command=$1
 
 if [ -z "${app_command:-}" ]; then
@@ -105,6 +105,18 @@ case $app_command in
         retval=$?
         echo "Exiting run.sh with code: $retval"
         exit $retval
+    ;;
+
+    delete-groups)
+        if [ -z "${WHATUPY_DELETE_GROUPS:-}" ]; then
+            echo "WHATUPY_DELETE_GROUPS env var is required."
+            exit 1
+        fi
+        exec whatupy $DEBUG \
+            databasebot-delete-groups \
+                    --database-url ${DATABASE_URL} \
+                    --media-base "gs://${MEDIA_BUCKET}/" \
+                    "${WHATUPY_DELETE_GROUPS}"
     ;;
 
     *)

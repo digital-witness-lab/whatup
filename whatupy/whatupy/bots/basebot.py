@@ -94,6 +94,10 @@ class BaseBot:
         self.logger = logger.getChild(self.__class__.__name__)
         self._stop_on_event: T.Optional[asyncio.Event] = None
 
+        self.username: T.Optional[str] = None
+        self.jid: T.Optional[wuc.JID] = None
+        self.jid_anon: T.Optional[wuc.JID] = None
+
         self.control_groups = control_groups
         self.mark_messages_read = mark_messages_read
         self.read_messages = read_messages
@@ -127,6 +131,7 @@ class BaseBot:
 
     async def login(self, credential: Credential, **kwargs) -> T.Self:
         self.logger = self.logger.getChild(credential.username)
+        self.username = credential.username
         self.logger.info("Logging in")
         self.meta.update(credential.meta or {})
         try:
@@ -135,6 +140,11 @@ class BaseBot:
             if e.details() == "the store doesn't contain a device JID":
                 raise InvalidCredentialsException
             raise e
+        connection_status: wuc.ConnectionStatus = (
+            await self.core_client.GetConnectionStatus(wuc.ConnectionStatusOptions())
+        )
+        self.jid = connection_status.JID
+        self.jid_anon = connection_status.JIDAnon
         return self
 
     async def start(self, **kwargs):

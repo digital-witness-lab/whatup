@@ -9,6 +9,7 @@ from jobs import (
     bot_onboard_bulk,
     bq_init_schema,
     db_migrations,
+    db_delete_groups,
     whatupcore_remove_user,
 )
 from services import (

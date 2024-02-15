@@ -453,6 +453,10 @@ class DatabaseBot(BaseBot):
 
         if community_info is not None:
             self.logger.debug("Using community info to update groups for community")
+            parentJID = next(gi.JID for gi in community_info if gi.isCommunity)
+            for gi in community_info:
+                if not gi.isCommunity and not gi.parentJID:
+                    gi.parentJID.CopyFrom(parentJID)
             for group_from_community in community_info:
                 self.logger.debug(
                     "Inserting community group: %s",
@@ -602,3 +606,61 @@ class DatabaseBot(BaseBot):
                 },
                 ["id"],
             )
+
+    def delete_groups(self, jids: T.List[str], delete_media=True):
+        jids = list(jids)
+
+        with self.db as tx:
+            self.logger.info("Clearing messages_seen table")
+            tx.query("""
+                DELETE FROM messages_seen
+                WHERE id in (
+                    SELECT id
+                    FROM messages
+                    WHERE chat_jid = ANY( :jids )
+                )
+            """, jids=jids)
+
+            self.logger.info("Clearing reactions table")
+            tx.query("""
+                DELETE FROM reactions
+                WHERE id in (
+                    SELECT id
+                    FROM messages
+                    WHERE chat_jid = ANY( :jids )
+                )
+            """, jids=jids)
+
+            self.logger.info("Clearing media table")
+            tx.query("""
+                DELETE FROM media
+                WHERE filename in (
+                    SELECT filename
+                    FROM messages
+                    WHERE chat_jid = ANY( :jids ) AND filename IS NOT NULL
+                )
+            """, jids=jids)
+
+            self.logger.info("Clearing group_info table")
+            tx.query("""
+                DELETE FROM group_info
+                WHERE "JID" = ANY( :jids )
+            """, jids=jids)
+
+            self.logger.info("Clearing group_participants table")
+            tx.query("""
+                DELETE FROM group_participants
+                WHERE chat_jid = ANY( :jids )
+            """, jids=jids)
+
+            self.logger.info("Clearing messages table")
+            tx.query("""
+                DELETE FROM messages
+                WHERE chat_jid = ANY( :jids )
+            """, jids=jids)
+
+        if delete_media:
+            for jid in jids:
+                media_path = self.media_base_path / jid
+                self.logger.info("Removing media path: %s", media_path)
+                media_path.rmtree()
