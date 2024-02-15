@@ -170,6 +170,15 @@ func main() {
 	}
 
 	for k, v := range secrets {
+		if strings.HasSuffix(k, "PEM") {
+			err := writeCertFile(ctx, k, v)
+			if err != nil {
+				panic(fmt.Errorf("error writing secret %s to its own file: %v", k, err))
+			}
+
+			continue
+		}
+
 		_, err := f.WriteString(fmt.Sprintf("%s=%s\n", k, v))
 		if err != nil {
 			panic(fmt.Errorf("failed to write secret to env file: %v", err))
@@ -177,4 +186,16 @@ func main() {
 	}
 
 	fmt.Printf("Wrote env file %s!\n", envFile)
+}
+
+func writeCertFile(ctx context.Context, name, value string) error {
+	p := path.Join("/", "run", "secrets")
+	os.MkdirAll(p, 0755)
+
+	fileName := "ssl-cert"
+	if strings.Contains(name, "KEY") {
+		fileName = "ssl-key"
+	}
+	err := os.WriteFile(path.Join(p, fileName), []byte(value), 0600)
+	return err
 }

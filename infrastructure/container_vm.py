@@ -122,9 +122,6 @@ class ContainerOnVm(pulumi.ComponentResource):
 
         self.__create_zonal_instance_group()
 
-        if args.private_address is not None:
-            self.__create_per_instance_config()
-
         super().register_outputs({})
 
     def __create_instance_template(self):
@@ -150,6 +147,18 @@ class ContainerOnVm(pulumi.ComponentResource):
                                 type=native_compute_v1.AccessConfigType.ONE_TO_ONE_NAT
                             )
                         ],
+                        # Use the private address if it was provided.
+                        # This means any instance created with this template
+                        # will only have this private IP. It also limits the
+                        # number of instances to 1. If we are going to set
+                        # the number of instances to be > 1, we need an LB
+                        # and wouldn't be assigning static private IPs
+                        # directly to VMs anyway.
+                        network_ip=(
+                            args.private_address.address
+                            if args.private_address
+                            else None
+                        ),
                     )
                 ],
                 disks=[
@@ -279,12 +288,6 @@ class ContainerOnVm(pulumi.ComponentResource):
                 )
             ],
             zone=zone,
-            # Note: Setting the target size > 1 does not make sense
-            # without using a load balancer to spread traffic across
-            # those instances. That's why this is hard-coded to 1.
-            # Moreover, changing this doesn't make sense when there
-            # is only one static private IP available for instances.
-            # See the per-instance config.
             target_size=1,
             auto_healing_policies=(
                 classic_gcp_compute.InstanceGroupManagerAutoHealingPoliciesArgs(
@@ -296,17 +299,21 @@ class ContainerOnVm(pulumi.ComponentResource):
             ),
             update_policy=classic_gcp_compute.InstanceGroupManagerUpdatePolicyArgs(
                 type="PROACTIVE",
-                minimal_action="REFRESH",
-                most_disruptive_allowed_action="REPLACE",
+                minimal_action="REPLACE",
+                # most_disruptive_allowed_action="REPLACE",
                 max_unavailable_fixed=3,
                 replacement_method="RECREATE",
             ),
-            stateful_internal_ips=[
-                classic_gcp_compute.InstanceGroupManagerStatefulInternalIpArgs(
-                    delete_rule="ON_PERMANENT_INSTANCE_DELETION",
-                    interface_name="nic0",
-                )
-            ],
+            stateful_internal_ips=(
+                [
+                    classic_gcp_compute.InstanceGroupManagerStatefulInternalIpArgs(
+                        delete_rule="ON_PERMANENT_INSTANCE_DELETION",
+                        interface_name="nic0",
+                    )
+                ]
+                if args.automatic_static_private_ip
+                else None
+            ),
             opts=pulumi.ResourceOptions(
                 parent=self,
                 depends_on=[
@@ -315,35 +322,6 @@ class ContainerOnVm(pulumi.ComponentResource):
                     logging_perm,
                 ],
             ),
-        )
-
-    def __create_per_instance_config(self):
-        args = self.__args
-        name = self.__name
-
-        if args.private_address is None:
-            raise Exception(
-                "Per-instance config requires a pre-allocated private IP."
-            )
-
-        classic_gcp_compute.PerInstanceConfig(
-            f"{name}-private-ip-config",
-            classic_gcp_compute.PerInstanceConfigArgs(
-                instance_group_manager=self.zonal_instance_group.name,
-                zone=zone,
-                preserved_state=classic_gcp_compute.PerInstanceConfigPreservedStateArgs(
-                    internal_ips=[
-                        classic_gcp_compute.PerInstanceConfigPreservedStateInternalIpArgs(
-                            auto_delete="ON_PERMANENT_INSTANCE_DELETION",
-                            interface_name="nic0",
-                            ip_address=classic_gcp_compute.PerInstanceConfigPreservedStateInternalIpIpAddressArgs(
-                                address=args.private_address.id
-                            ),
-                        )
-                    ]
-                ),
-            ),
-            opts=pulumi.ResourceOptions(parent=self),
         )
 
     def __get_internal_ip(self, instance_group_manager_name: str):
