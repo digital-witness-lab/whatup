@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import List, Optional
-from attr import dataclass
+from attr import dataclass, field
 
 import yaml
 
@@ -71,7 +71,7 @@ class ContainerOnVmArgs:
     secret_env: List[native_compute_v1.MetadataItemsItemArgs]
     service_account_email: pulumi.Output[str]
     subnet: pulumi.Output[str]
-    tcp_healthcheck_port: Optional[int]
+    tcp_healthcheck_port: Optional[int] = field(default=None)
 
 
 project_number = get_project_number(project)
