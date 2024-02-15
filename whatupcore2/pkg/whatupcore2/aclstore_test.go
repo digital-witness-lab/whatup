@@ -2,7 +2,6 @@ package whatupcore2
 
 import (
 	"database/sql"
-	"fmt"
 	"testing"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
@@ -126,55 +125,42 @@ func TestMutliUser(t *testing.T) {
 	if found_22.Permission != 1 {
 		t.Fatalf("Unexpected permission found user2/jid2: %d != %d", found_22.Permission, 1)
 	}
-
-	acl1All, err := acl1.GetAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	acl2All, err := acl2.GetAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(acl1All) != 1 {
-		t.Fatalf("Didn't find correct number of entries for ACL1: %d", len(acl1All))
-	}
-	if len(acl2All) != 2 {
-		t.Fatalf("Didn't find correct number of entries for ACL2: %d", len(acl2All))
-	}
 }
 
-func TestListACL(t *testing.T) {
-	acl := createACL("username")
+func TestCache(t *testing.T) {
+	acl := createACL("user1")
 
-	aclValues, err := acl.GetAll()
-	if err != nil {
-		t.Fatalf("Error getting all ACLs: %s", err)
-	}
-	if L := len(aclValues); L != 0 {
-		t.Fatalf("ACL Should be empty, found n_rows: %d", L)
-	}
+    JIDs := []types.JID{
+	    types.NewJID("jid1", types.GroupServer),
+	    types.NewJID("jid2", types.GroupServer),
+	    types.NewJID("asdf-jid3", types.GroupServer),
+	    types.NewJID("asdf-jid3", types.GroupServer),
+    }
 
-	permissions := make([]*pb.GroupPermission, 0)
-	for _, permission_num := range pb.GroupPermission_value {
-		permission := pb.GroupPermission(permission_num)
-		permissions = append(permissions, &permission)
-	}
+	permission := pb.GroupPermission(1)
 
-	for i := 1; i < 100; i += 1 {
-		uniqueJID := types.NewJID(fmt.Sprintf("user-%d", i), types.GroupServer)
-		permission := permissions[i%len(permissions)]
-		err := acl.SetByJID(&uniqueJID, permission)
-		if err != nil {
-			t.Fatalf("Error setting permission: %v: %v", uniqueJID, *permission)
-		}
+    for _, jid := range JIDs {
+	    acl.SetByJID(&jid, &permission)
+    }
 
-		aclValues, err := acl.GetAll()
-		if err != nil {
-			t.Fatalf("Error getting all ACLs: %s", err)
-		}
-		if L := len(aclValues); L != i {
-			t.Fatalf("ACL doesn't have expected # rows: %d: %d", i, L)
-		}
-	}
+    cache, err := acl.CachedLookup()
+    if err != nil {
+        t.Fatal(err)
+    }
+
+    for _, jid := range JIDs {
+        entry, found := cache.GetByJID(&jid)
+        if !found {
+            t.Fatalf("Should have found cached ACL value: %s", jid.String())
+        }
+        if entry.Permission != 1 {
+            t.Fatalf("Incorrect permission found in cache: %d != %d", entry.Permission, 1)
+        }
+    }
+
+    unkJID := types.NewJID("sdfjaoifhasifhsadkjfs", types.DefaultUserServer)
+    _, found := cache.GetByJID(&unkJID)
+    if found {
+        t.Fatalf("Should not have found unknown JID: %s", unkJID.String())
+    }
 }

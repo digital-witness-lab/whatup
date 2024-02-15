@@ -1,6 +1,5 @@
-# Note: This Dockerfile is executed with the root of
-# the repo as the context since it relies on
-# configure-vm-secrets.
+ARG CONFIGURE_VM_SECRETS_REPO=configure-vm-secrets
+FROM $CONFIGURE_VM_SECRETS_REPO as configure-vm-secrets
 
 FROM golang:1.20-bullseye AS whatupcore2
 
@@ -15,12 +14,15 @@ RUN apt update \
 RUN apt auto-clean && \
     rm -rf /var/lib/apt/lists/*
 
-COPY whatupcore2/ ./
-
-RUN go mod download
+COPY . .
 
 ENV GOCACHE /usr/local/cache/go-build-cache/
 ENV GOMODCACHE /usr/local/cache/go-mod-cache/
+
+RUN \
+    --mount=type=cache,target=/usr/local/cache/go-build-cache/ \
+    --mount=type=cache,target=/usr/local/cache/go-mod-cache/ \
+    go mod download
 
 # Ensure the script is executable.
 RUN chmod +x /build/run.sh
@@ -29,16 +31,6 @@ RUN \
     --mount=type=cache,target=/usr/local/cache/go-build-cache/ \
     --mount=type=cache,target=/usr/local/cache/go-mod-cache/ \
     make whatupcore2
-
-FROM golang:1.20-bullseye AS configure-vm-secrets
-
-WORKDIR /build
-
-COPY configure-vm-secrets/. .
-
-RUN go mod download
-
-RUN make build
 
 FROM gcr.io/distroless/base-debian11 AS run
 
@@ -63,7 +55,8 @@ COPY --from=whatupcore2 /bin/cat /bin/cat
 COPY --from=whatupcore2 /build/whatupcore2 /whatupcore2
 COPY --from=whatupcore2 /build/run.sh /run.sh
 
-COPY --from=configure-vm-secrets /build/configureVmSecrets /configureVmSecrets
+ARG CONFIGURE_VM_SECRETS_REPO=configure-vm-secrets
+COPY --from=configure-vm-secrets /configureVmSecrets /configureVmSecrets
 
 EXPOSE 3447
 

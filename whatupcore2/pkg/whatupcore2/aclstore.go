@@ -26,6 +26,28 @@ type ACLEntry struct {
 	UpdatedAt  time.Time
 }
 
+type CachedACLLookup struct {
+    data map[string]*ACLEntry
+    store *ACLStore
+}
+
+func NewCachedACLLookup(store *ACLStore) *CachedACLLookup {
+    return &CachedACLLookup{
+        data: make(map[string]*ACLEntry),
+        store: store,
+    }
+}
+
+func (cacl *CachedACLLookup) GetByJID(jid *types.JID) (*ACLEntry, bool) {
+    anonJID := cacl.store.jidToHash(jid)
+    entry, found := cacl.data[anonJID]
+    return entry, found
+}
+
+func (cacl *CachedACLLookup) Add(acle *ACLEntry) {
+    cacl.data[acle.JID] = acle
+}
+
 func NewACLEntryFromProto(groupACL *pb.GroupACL) *ACLEntry {
 	return &ACLEntry{
 		JID:        ProtoToJID(groupACL.JID).String(),
@@ -181,11 +203,15 @@ func (acls *ACLStore) SetDefault(permission *pb.GroupPermission) error {
 	return acls.setByString(defaultJID, permission)
 }
 
+func (acls *ACLStore) jidToHash(jid *types.JID) string {
+    return AnonymizeString(jid.ToNonAD().String() + acls.username)
+}
+
 func (acls *ACLStore) SetByJID(jid *types.JID, permission *pb.GroupPermission) error {
 	if jid.IsEmpty() {
 		return errors.New("Cannot set ACL for empty JID")
 	}
-	jidStr := jid.ToNonAD().String()
+	jidStr := acls.jidToHash(jid)
 	return acls.setByString(jidStr, permission)
 }
 
@@ -218,13 +244,36 @@ func (acls *ACLStore) setByString(jidStr string, permission *pb.GroupPermission)
 	return err
 }
 
+func (acls *ACLStore) CachedLookup() (*CachedACLLookup, error) {
+    cachedLookup := NewCachedACLLookup(acls)
+	query, err := acls.db.Query(`
+        SELECT
+            JID, permission, updatedAt
+        FROM aclstore_permissions
+        WHERE jid != $1 AND username = $2
+    `, defaultJID, acls.username)
+	if err != nil {
+		return nil, err
+	}
+	defer query.Close()
+
+	for query.Next() {
+		row := &ACLEntry{}
+		if err := query.Scan(&row.JID, &row.Permission, &row.UpdatedAt); err != nil {
+			return nil, err
+		}
+        cachedLookup.Add(row)
+	}
+	return cachedLookup, nil
+}
+
 func (acls *ACLStore) GetByJID(jid *types.JID) (*ACLEntry, error) {
 	var jidStr string
 	permission := &ACLEntry{}
 	if jid.IsEmpty() {
 		jidStr = defaultJID
 	} else {
-		jidStr = jid.ToNonAD().String()
+		jidStr = acls.jidToHash(jid)
 	}
 	row := acls.db.QueryRow(`
         SELECT
@@ -247,30 +296,6 @@ func (acls *ACLStore) GetByJID(jid *types.JID) (*ACLEntry, error) {
 		return nil, err
 	}
 	return permission, nil
-}
-
-func (acls *ACLStore) GetAll() ([]*ACLEntry, error) {
-	aclEntries := make([]*ACLEntry, 0)
-	query, err := acls.db.Query(`
-        SELECT
-            JID, permission, updatedAt
-        FROM aclstore_permissions
-        WHERE jid != $1 AND username = $2
-    `, defaultJID, acls.username)
-	if err != nil {
-		return nil, err
-	}
-	defer query.Close()
-
-	for query.Next() {
-		row := &ACLEntry{}
-		if err := query.Scan(&row.JID, &row.Permission, &row.UpdatedAt); err != nil {
-			return nil, err
-		}
-		aclEntries = append(aclEntries, row)
-	}
-	return aclEntries, nil
-
 }
 
 func (acls *ACLStore) Delete() error {
