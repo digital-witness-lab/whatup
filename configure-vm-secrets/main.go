@@ -15,9 +15,10 @@ import (
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 )
 
-const envFile = "/tmp/whatup/.env"
-
-var httpClient *http.Client
+var (
+	envFile    = path.Join("/", "tmp", "whatup", ".env")
+	httpClient *http.Client
+)
 
 // Run initialization on package init.
 func init() {
