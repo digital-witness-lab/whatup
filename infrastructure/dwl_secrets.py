@@ -4,7 +4,6 @@ from pulumi import get_stack
 from pulumi_gcp import secretmanager
 
 from config import db_configs, db_root_password, whatup_anon_key, whatup_salt
-from certificates import ssl_private_key, ssl_cert
 from database import get_sql_instance_url
 
 db_url_secrets: Dict[str, secretmanager.Secret] = {}
@@ -55,9 +54,3 @@ whatup_anon_key_secret = create_secret(
     "whatup-anon-key",
     whatup_anon_key,
 )
-
-ssl_private_key_pem_secret = create_secret(
-    "whatup-ssl-pk-pem", ssl_private_key.private_key_pem
-)
-
-ssl_cert_pem_secret = create_secret("whatup-ssl-cert-pem", ssl_cert.cert_pem)

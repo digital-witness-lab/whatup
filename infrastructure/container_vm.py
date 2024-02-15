@@ -65,6 +65,16 @@ class Spec(yaml.YAMLObject):
 
 @dataclass
 class ContainerOnVmArgs:
+    # Flag indicating if you want the instance group to automatically
+    # promote any private IP to be a static one.
+    #
+    # Note: Conflicts with `private_address`.
+    automatic_static_private_ip: bool
+    # The static private IP to assign to the managed instance
+    # in the group.
+    #
+    # Note: Conflicts with `automatic_static_private_ip`.
+    private_address: Optional[native_compute_v1.Address]
     container_spec: Container
     machine_type: SharedCoreMachineType
     restart_policy: str
@@ -78,42 +88,51 @@ project_number = get_project_number(project)
 
 
 class ContainerOnVm(pulumi.ComponentResource):
+    __args: ContainerOnVmArgs
+    __name: str
+
     def __init__(
         self, name: str, args: ContainerOnVmArgs, opts: ResourceOptions
     ):
         super().__init__("dwl:gce:ContainerOnVm", name, None, opts)
 
+        if args.automatic_static_private_ip and args.private_address:
+            raise Exception(
+                "Cannot configure both automatic static private IP AND pass in a static private IP."
+            )
+
+        self.__args = args
+        self.__name = name
+
+        self.__create_instance_template()
+
+        self.__autohealing = None
+        if args.tcp_healthcheck_port is not None:
+            self.__autohealing = classic_gcp_compute.HealthCheck(
+                "autohealing",
+                check_interval_sec=5,
+                timeout_sec=5,
+                healthy_threshold=2,
+                unhealthy_threshold=10,
+                tcp_health_check=classic_gcp_compute.HealthCheckTcpHealthCheckArgs(
+                    port=args.tcp_healthcheck_port,
+                ),
+                opts=pulumi.ResourceOptions(parent=self),
+            )
+
+        self.__create_zonal_instance_group()
+
+        if args.private_address is not None:
+            self.__create_per_instance_config()
+
+        super().register_outputs({})
+
+    def __create_instance_template(self):
+        args = self.__args
+        name = self.__name
+
         container_declaration = self.__get_container_declaration(
             args.container_spec, args.restart_policy
-        )
-
-        # Grant access to pull container image from Artifact Registry.
-        artifact_registry_perm = projects.IAMBinding(
-            f"{name}-artifact-reg-perm",
-            projects.IAMBindingArgs(
-                members=[
-                    pulumi.Output.concat(
-                        "serviceAccount:", args.service_account_email
-                    )
-                ],
-                role="roles/artifactregistry.reader",
-                project=project,
-            ),
-            opts=pulumi.ResourceOptions(parent=self),
-        )
-
-        logging_perm = projects.IAMBinding(
-            f"{name}-logging-perm",
-            projects.IAMBindingArgs(
-                members=[
-                    pulumi.Output.concat(
-                        "serviceAccount:", args.service_account_email
-                    )
-                ],
-                role="roles/logging.logWriter",
-                project=project,
-            ),
-            opts=pulumi.ResourceOptions(parent=self),
         )
 
         instance_template_args = native_compute_v1.InstanceTemplateArgs(
@@ -210,19 +229,38 @@ class ContainerOnVm(pulumi.ComponentResource):
             lambda cd: pulumi.log.debug(cd, self.instance_template)
         )
 
-        autohealing = None
-        if args.tcp_healthcheck_port is not None:
-            autohealing = classic_gcp_compute.HealthCheck(
-                "autohealing",
-                check_interval_sec=5,
-                timeout_sec=5,
-                healthy_threshold=2,
-                unhealthy_threshold=10,
-                tcp_health_check=classic_gcp_compute.HealthCheckTcpHealthCheckArgs(
-                    port=args.tcp_healthcheck_port,
-                ),
-                opts=pulumi.ResourceOptions(parent=self),
-            )
+    def __create_zonal_instance_group(self):
+        args = self.__args
+        name = self.__name
+
+        # Grant access to pull container image from Artifact Registry.
+        artifact_registry_perm = projects.IAMBinding(
+            f"{name}-artifact-reg-perm",
+            projects.IAMBindingArgs(
+                members=[
+                    pulumi.Output.concat(
+                        "serviceAccount:", args.service_account_email
+                    )
+                ],
+                role="roles/artifactregistry.reader",
+                project=project,
+            ),
+            opts=pulumi.ResourceOptions(parent=self),
+        )
+
+        logging_perm = projects.IAMBinding(
+            f"{name}-logging-perm",
+            projects.IAMBindingArgs(
+                members=[
+                    pulumi.Output.concat(
+                        "serviceAccount:", args.service_account_email
+                    )
+                ],
+                role="roles/logging.logWriter",
+                project=project,
+            ),
+            opts=pulumi.ResourceOptions(parent=self),
+        )
 
         # Due to an issue with the Pulumi Google Native provider,
         # we have to use the classic GCP provider to create the
@@ -241,13 +279,19 @@ class ContainerOnVm(pulumi.ComponentResource):
                 )
             ],
             zone=zone,
+            # Note: Setting the target size > 1 does not make sense
+            # without using a load balancer to spread traffic across
+            # those instances. That's why this is hard-coded to 1.
+            # Moreover, changing this doesn't make sense when there
+            # is only one static private IP available for instances.
+            # See the per-instance config.
             target_size=1,
             auto_healing_policies=(
                 classic_gcp_compute.InstanceGroupManagerAutoHealingPoliciesArgs(
                     initial_delay_sec=30,
-                    health_check=autohealing.id,
+                    health_check=self.__autohealing.id,
                 )
-                if autohealing is not None
+                if self.__autohealing is not None
                 else None
             ),
             update_policy=classic_gcp_compute.InstanceGroupManagerUpdatePolicyArgs(
@@ -271,6 +315,35 @@ class ContainerOnVm(pulumi.ComponentResource):
                     logging_perm,
                 ],
             ),
+        )
+
+    def __create_per_instance_config(self):
+        args = self.__args
+        name = self.__name
+
+        if args.private_address is None:
+            raise Exception(
+                "Per-instance config requires a pre-allocated private IP."
+            )
+
+        classic_gcp_compute.PerInstanceConfig(
+            f"{name}-private-ip-config",
+            classic_gcp_compute.PerInstanceConfigArgs(
+                instance_group_manager=self.zonal_instance_group.name,
+                zone=zone,
+                preserved_state=classic_gcp_compute.PerInstanceConfigPreservedStateArgs(
+                    internal_ips=[
+                        classic_gcp_compute.PerInstanceConfigPreservedStateInternalIpArgs(
+                            auto_delete="ON_PERMANENT_INSTANCE_DELETION",
+                            interface_name="nic0",
+                            ip_address=classic_gcp_compute.PerInstanceConfigPreservedStateInternalIpIpAddressArgs(
+                                address=args.private_address.id
+                            ),
+                        )
+                    ]
+                ),
+            ),
+            opts=pulumi.ResourceOptions(parent=self),
         )
 
     def __get_internal_ip(self, instance_group_manager_name: str):
@@ -313,9 +386,14 @@ class ContainerOnVm(pulumi.ComponentResource):
                 "Did not find a reserved IP address or any running instances in the managed instance group"
             )
 
-        return f"https://{internal_ip_addr}"
+        return internal_ip_addr
 
     def get_host_output(self) -> pulumi.Output[str]:
+        if self.__args.private_address:
+            return pulumi.Output.concat(
+                "https://", self.__args.private_address.address
+            )
+
         # The self_link is only available once the instance group manager
         # resource is created, so creating a dependency on that will
         # ensure that the lambda will not run until after the
@@ -323,10 +401,14 @@ class ContainerOnVm(pulumi.ComponentResource):
         # `name` property, the enclosed lambda will always
         # run and there is no way to know if the resource
         # was actually created.
-        return pulumi.Output.all(
-            self.zonal_instance_group.name,
-            self.zonal_instance_group.self_link,
-        ).apply(lambda args: self.__get_internal_ip(args[0]))
+        return (
+            pulumi.Output.all(
+                self.zonal_instance_group.name,
+                self.zonal_instance_group.self_link,
+            )
+            .apply(lambda args: self.__get_internal_ip(args[0]))
+            .apply(lambda ip: f"https://{ip}")
+        )
 
     def __lift_container_spec_env_vars(
         self, spec: Container, values: List[str]
