@@ -99,7 +99,7 @@ class RegisterBot(BaseBot):
     ):
         is_bot = user_params.get("is_bot", False)
         is_demo = user_params.get("is_demo", False)
-        if is_bot:
+        if is_bot and not is_demo:
             default_group_permission = wuc.GroupPermission.READWRITE
         else:
             default_group_permission = wuc.GroupPermission.DENIED
@@ -108,6 +108,15 @@ class RegisterBot(BaseBot):
         logger.info("Registering user")
         passphrase = utils.random_passphrase()
         core_client, authenticator = create_whatupcore_clients(**self.connection_params)
+        notes = []
+        if is_bot:
+            notes.append(
+                "*NOTE*: the user is being registered as a bot and all their data will be collected on scanning"
+            )
+        elif is_demo:
+            notes.append(
+                "*NOTE*: this is a demo user and no data will be collected from the device"
+            )
         try:
             async for qrcode in authenticator.register(
                 username,
@@ -120,7 +129,8 @@ class RegisterBot(BaseBot):
                     handler_jid,
                     MediaType.MediaImage,
                     content=content,
-                    caption=f"{username} can scan this QR code to link their device. A new code will be sent if the device is not linked in 30 seconds.",
+                    caption=f"{username} can scan this QR code to link their device. A new code will be sent if the device is not linked in 30 seconds.\n"
+                    + "\n".join(notes),
                     mimetype="image/png",
                     filename=f"register-{username}",
                 )
