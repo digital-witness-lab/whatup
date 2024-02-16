@@ -281,7 +281,7 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 			if messageOptions.MarkMessagesRead {
 				msg.MarkRead()
 			}
-			msg.log.Infof("Sending message to client: %s", msg.DebugString())
+			msg.log.Debugf("Sending message to client: %s", msg.DebugString())
 			msgProto, ok := msg.ToProto()
 			if !ok {
 				msg.log.Errorf("Could not convert message to WUMessage proto: %s", msg.DebugString())
