@@ -373,7 +373,7 @@ func (wac *WhatsAppClient) UNSAFEArchiveHack_OnArchiveGetHistory(evt interface{}
 func (wac *WhatsAppClient) UNSAFEArchiveHack_ShouldProcess(msg *events.Message) bool {
 	if strings.HasSuffix(wac.username, "-a") {
 		if !msg.Info.IsGroup {
-			wac.Log.Warnf("HACK: chat not in group")
+			wac.Log.Debugf("HACK: chat not in group")
 			return false
 		}
 		chat_jid := msg.Info.Chat
@@ -383,10 +383,10 @@ func (wac *WhatsAppClient) UNSAFEArchiveHack_ShouldProcess(msg *events.Message) 
 			return false
 		}
 		if !groupSettings.Archived {
-			wac.Log.Warnf("HACK: Not archived")
+			wac.Log.Debugf("HACK: Not archived")
 			return false
 		}
-		wac.Log.Warnf("HACK: allowing message through, archive status: %t", groupSettings.Archived)
+		wac.Log.Debugf("HACK: allowing message through, archive status: %t", groupSettings.Archived)
 		if wac.shouldRequestHistory[chat_jid.String()] {
 			wac.Log.Warnf("HACK: requesting message history for group: %s", chat_jid.String())
 			wac.requestHistoryMsgInfoRetry(&msg.Info)
@@ -400,15 +400,15 @@ func (wac *WhatsAppClient) UNSAFEArchiveHack_ShouldProcess(msg *events.Message) 
 func (wac *WhatsAppClient) UNSAFEArchiveHack_ShouldProcessConversation(jid *types.JID, conv *waProto.Conversation) bool {
 	if strings.HasSuffix(wac.username, "-a") {
 		if jid.Server != types.GroupServer {
-			wac.Log.Warnf("HACK: chat not in group")
+			wac.Log.Debugf("HACK: chat not in group")
 			return false
 		}
 		var isArchived bool = *conv.Archived
 		if isArchived != true {
-			wac.Log.Warnf("HACK: Not archived")
+			wac.Log.Debugf("HACK: Not archived")
 			return false
 		}
-		wac.Log.Warnf("HACK: allowing conversation through, archive status: %t", isArchived)
+		wac.Log.Debugf("HACK: allowing conversation through, archive status: %t", isArchived)
 		return true
 	}
 	return true
@@ -444,7 +444,7 @@ func (wac *WhatsAppClient) getMessages(evt interface{}) {
 		}
 		// <HACK>
 		if !wac.UNSAFEArchiveHack_ShouldProcess(wmMsg) {
-			wac.Log.Warnf("HACK: skipping message")
+			wac.Log.Debugf("HACK: skipping message")
 			return
 		}
 		// </HACK>
@@ -486,7 +486,7 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 
 			// <HACK>
 			if !wac.UNSAFEArchiveHack_ShouldProcessConversation(&chatJID, conv) {
-				wac.Log.Warnf("HACK: skipping conversation")
+				wac.Log.Debugf("HACK: skipping conversation")
 				continue
 			}
 			// </HACK>

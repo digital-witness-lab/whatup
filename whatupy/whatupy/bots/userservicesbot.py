@@ -52,9 +52,10 @@ class _UserBot(BaseBot):
     async def login(self, *args, **kwargs):
         await super().login(*args, **kwargs)
         user_state = self.db["registered_users"].find_one(username=self.username)
-        self.lang = user_state.get("lang")
-        self.is_bot = user_state.get("is_bot")
-        self.is_demo = user_state.get("is_demo")
+        if user_state:
+            self.lang = user_state.get("lang")
+            self.is_bot = user_state.get("is_bot")
+            self.is_demo = user_state.get("is_demo")
         if self.is_bot:
             self.mark_messages_read = True
             self.read_historical_messages = True

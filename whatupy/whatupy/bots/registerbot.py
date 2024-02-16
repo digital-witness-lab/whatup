@@ -152,12 +152,12 @@ class RegisterBot(BaseBot):
                 default_group_permission
             ),
         }
-        credential = Credential(username=username, passphrase=passphrase, meta=meta)
-        self.credentials_manager.write_credential(credential)
 
+        logger.info(f"{username}: Getting connection status")
         connection_status = await core_client.GetConnectionStatus(
             wuc.ConnectionStatusOptions()
         )
+        logger.info(f"{username}: Pinging users database")
         self.db["registered_users"].delete(username=username)
         self.db["registered_users"].insert(
             {
@@ -167,6 +167,13 @@ class RegisterBot(BaseBot):
                 "jid_anon": utils.jid_to_str(connection_status.JIDAnon),
             }
         )
+
+        logger.info(f"{username}: Saving credentials")
+        credential = Credential(username=username, passphrase=passphrase, meta=meta)
+        self.credentials_manager.write_credential(credential)
+
+        logger.info(f"{username}: Messaging handler and user")
+
         # now how to trigger user services.... ?
         await self.send_text_message(
             handler_jid,
@@ -177,7 +184,7 @@ class RegisterBot(BaseBot):
             "Welcome to the WhatsApp Watch system! One moment while we process your request.",
             # SM: Commenting out the hindi welcome message as we now ask them to set the language as the first step.
             # "व्हाट्सएप वॉच में आपका स्वागत है! हम आपके अकाउंट की जांच कर रहे हैं और जल्द ही ऑनबोर्डिंग प्रक्रिया अर्थात आपके अकाउंट को व्हाट्सएप वॉच सिस्टम में लाने की प्रक्रिया शुरू करेंगे। ऑनबोर्डिंग प्रक्रिया पूरी होने तक कोई डेटा एकत्रित नहीं किया जाएगा।",
-            # "Please add WhatsApp Watch to your contacts before continuing.",
+            "Please add WhatsApp Watch to your contacts before continuing.",
         ]
         for message in user_messages:
             await self.send_text_message(

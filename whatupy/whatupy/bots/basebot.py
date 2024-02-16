@@ -307,7 +307,7 @@ class BaseBot:
                     )
                     await self._dispatch_control(message, source_hash)
             else:
-                self.logger.info(
+                self.logger.debug(
                     "Got normal message: %s: %s",
                     utils.jid_to_str(jid_from),
                     message.info.id,
@@ -392,7 +392,7 @@ class BaseBot:
             content: bytes = b""
             try:
                 content = await self.download_message_media(message)
-                self.logger.info(
+                self.logger.debug(
                     "Got content for message: %s: len(content) = %d",
                     message.info.id,
                     len(content),
