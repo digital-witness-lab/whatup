@@ -69,7 +69,7 @@ func (s *WhatUpCoreAuthServer) Register(registerOptions *pb.RegisterOptions, qrS
 	for !regState.Completed {
 		select {
 		case qrCode, open := <-regState.QRCodes:
-			if !open {
+			if !open || regState.Success {
 				break
 			}
 			clientErr := qrStream.Send(&pb.RegisterMessages{
@@ -79,7 +79,7 @@ func (s *WhatUpCoreAuthServer) Register(registerOptions *pb.RegisterOptions, qrS
 				return fmt.Errorf("Client Disconnected")
 			}
 		case err, open := <-regState.Errors:
-			if !open {
+			if !open || regState.Success {
 				break
 			}
 			fmt.Printf("Recieved error while logging in: %+v\n", err)
