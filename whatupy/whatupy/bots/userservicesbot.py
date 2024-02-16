@@ -28,6 +28,8 @@ class _UserBot(BaseBot):
         self.unregistering_timer: T.Optional[asyncio.TimerHandle] = None
         self.db = db
         self.lang: T.Optional[TypeLanguages] = None
+        self.is_bot: T.Optional[bool] = None
+        self.is_demo: T.Optional[bool] = None
         super().__init__(
             host,
             port,
@@ -52,6 +54,7 @@ class _UserBot(BaseBot):
         user_state = self.db["registered_users"].find_one(username=self.username)
         self.lang = user_state.get("lang")
         self.is_bot = user_state.get("is_bot")
+        self.is_demo = user_state.get("is_demo")
         if self.is_bot:
             self.mark_messages_read = True
             self.read_historical_messages = True
@@ -256,6 +259,11 @@ class UserServicesBot(BaseBot):
         user.set_lang(lang)
         group_info_lookup = await user.group_acl_jid_lookup(n_bytes=n_bytes)
         summary = defaultdict(list)
+        if user.is_demo:
+            await self.send_text_message(
+                user.jid,
+                "(You are in demo mode. We are going to simulate changing your group preferences however no data will be collected)",
+            )
         for gid, can_read in gids.items():
             permission = (
                 wuc.GroupPermission.READONLY if can_read else wuc.GroupPermission.DENIED
@@ -263,7 +271,10 @@ class UserServicesBot(BaseBot):
             data = group_info_lookup[gid]
             summary[can_read].append(data["name"])
             jid = data["jid"]
-            await user.core_client.SetACL(wuc.GroupACL(JID=jid, permission=permission))
+            if not user.is_demo:
+                await user.core_client.SetACL(
+                    wuc.GroupACL(JID=jid, permission=permission)
+                )
 
         await self.send_template_user(user, "acl_workflow_finalize_header")
         if include := summary.get(True):
@@ -335,6 +346,11 @@ class UserServicesBot(BaseBot):
                     )
                 ),
             )
+            if user.is_demo:
+                await self.send_text_message(
+                    user.jid,
+                    "(You are in demo mode. We are going to simulate changing your group preferences however no data will be collected)",
+                )
         user.active_workflow = self.acl_workflow_finalize
 
     def bytes_to_url(

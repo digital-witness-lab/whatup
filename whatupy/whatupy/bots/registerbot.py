@@ -39,6 +39,12 @@ class RegisterBot(BaseBot):
             description="Register a given user as a user",
         )
         register.add_argument(
+            "--demo",
+            action="store_true",
+            default=False,
+            help="Whether this is a demo account",
+        )
+        register.add_argument(
             "alias",
             type=str,
             help="Alias for user in data records",
@@ -64,9 +70,12 @@ class RegisterBot(BaseBot):
             return
         sender: wuc.JID = message.info.source.sender
 
-        is_bot: bool
+        is_bot: bool = False
+        is_demo: bool = False
         if params.command == "register":
             is_bot = False
+            if params.demo:
+                is_demo = True
         elif params.command == "register-bot":
             is_bot = True
         else:
@@ -75,6 +84,7 @@ class RegisterBot(BaseBot):
                 f"Unknown command: {params.command}",
             )
 
+        user_params = {"is_bot": is_bot, "is_demo": is_demo}
         alias = str(params.alias) or "-".join(utils.random_words(5))
         if not alias or VALID_ALIAS.match(alias) is None:
             return await self.send_text_message(
@@ -82,14 +92,13 @@ class RegisterBot(BaseBot):
                 f"Invalid alias... must only be alpha-numeric: {alias}",
             )
 
-        return await self.start_registration(sender, alias, is_bot=is_bot)
+        return await self.start_registration(sender, alias, user_params)
 
     async def start_registration(
-        self,
-        handler_jid: wuc.JID,
-        username: str,
-        is_bot: bool,
+        self, handler_jid: wuc.JID, username: str, user_params: dict
     ):
+        is_bot = user_params.get("is_bot", False)
+        is_demo = user_params.get("is_demo", False)
         if is_bot:
             default_group_permission = wuc.GroupPermission.READWRITE
         else:
@@ -144,6 +153,7 @@ class RegisterBot(BaseBot):
             {
                 "username": username,
                 "is_bot": is_bot,
+                "is_demo": is_demo,
                 "jid_anon": utils.jid_to_str(connection_status.JIDAnon),
             }
         )
@@ -157,7 +167,7 @@ class RegisterBot(BaseBot):
             "Welcome to the WhatsApp Watch system! One moment while we process your request.",
             # SM: Commenting out the hindi welcome message as we now ask them to set the language as the first step.
             # "व्हाट्सएप वॉच में आपका स्वागत है! हम आपके अकाउंट की जांच कर रहे हैं और जल्द ही ऑनबोर्डिंग प्रक्रिया अर्थात आपके अकाउंट को व्हाट्सएप वॉच सिस्टम में लाने की प्रक्रिया शुरू करेंगे। ऑनबोर्डिंग प्रक्रिया पूरी होने तक कोई डेटा एकत्रित नहीं किया जाएगा।",
-            "Please add WhatsApp Watch to your contacts before continuing.",
+            # "Please add WhatsApp Watch to your contacts before continuing.",
         ]
         for message in user_messages:
             await self.send_text_message(
