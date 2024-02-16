@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	CONNECT_TIMEOUT = 5 * time.Second
+	CONNECT_TIMEOUT = 10 * time.Second
 	HISTORY_TIMEOUT = 10 * time.Minute // time to wait for a request for history messages before getting rid of the history event handler
 )
 
@@ -278,14 +278,16 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions 
 	wac.Log.Debugf("Starting QR Code loop")
 	go func(state *RegistrationState) {
 		for {
-			success := wac.qrCodeLoop(ctx, state)
+            err, success := wac.qrCodeLoop(ctx, state)
+			wac.Log.Infof("LoginOrRegister qrCodeLoop. qrErr = %w, qrSuccess = %v", err, success)
+
 			// we stop the registration flow if either:
 			//   - there is an explicit error or timeout for registration
 			//   - we sucessfully connected but the client remains not logged in
 			//
 			// NOTE: we could just use WaitForConnection but we also check
 			//       success and IsLoggedIn to be explicit
-			if !success || (success && wac.WaitForConnection(CONNECT_TIMEOUT) && wac.IsLoggedIn()) {
+			if !success || (success && wac.WaitForConnection(2 * CONNECT_TIMEOUT) && wac.IsLoggedIn()) {
 				state.Success = wac.IsLoggedIn()
 				state.Completed = true
 				wac.Log.Infof("LoginOrRegister flow complete. success = %v, completed = %v", state.Success, state.Completed)
@@ -302,26 +304,34 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions 
 	return state
 }
 
-func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationState) bool {
+func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationState) (error, bool) {
 	wac.Log.Debugf("Connecting to WhatsApp from qrCodeLoop() to check login status")
-	err := wac.Connect()
-	if err != nil {
-		state.Errors <- err
-		return false
-	}
+    if ! wac.IsConnected() {
+	    err := wac.Connect()
+	    if err != nil {
+	    	state.Errors <- err
+            wac.Log.Warnf("qrCodeLoop error on first connect")
+	    	return err, false
+	    }
+    }
 	wac.WaitForConnection(CONNECT_TIMEOUT)
 	if wac.IsLoggedIn() {
-		return true
+		return nil, true
 	}
 
 	wac.Log.Infof("User not logged in, starting registration flow")
 	wac.Disconnect()
 	inQrChan, _ := wac.GetQRChannel(context.Background())
 	wac.Log.Debugf("Connecting to WhatsApp from qrCodeLoop() to start registration")
-	err = wac.Connect()
+    err := wac.Connect()
 	if err != nil {
-		state.Errors <- err
-		return false
+        // we don't signal an error here because if it was a real connection
+        // error we would have triggered it on the first connect above. chances
+        // are we are re-using a websocket and running this function again will
+        // yield a success
+		//state.Errors <- err
+        wac.Log.Warnf("qrCodeLoop error on second connect")
+		return err, false
 	}
 	for {
 		select {
@@ -330,16 +340,17 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 				state.QRCodes <- evt.Code
 			} else if evt.Event == "success" {
 				wac.Log.Debugf("Login event: %v", evt.Event)
-				return true
+				return nil, true
 			} else {
 				wac.Log.Debugf("Unknown event: %v", evt.Event)
-				state.Errors <- fmt.Errorf("Unknown event during login: %v: %s", evt.Code, evt.Event)
-				return false
+                err := fmt.Errorf("Unknown event during login: %v: %s", evt.Code, evt.Event)
+				state.Errors <- err
+				return err, false
 			}
 		case <-ctx.Done():
-			return false
+			return nil, false
 		case <-wac.ctxC.Done():
-			return false
+			return nil, false
 		}
 	}
 }
