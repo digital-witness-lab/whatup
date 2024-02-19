@@ -145,14 +145,6 @@ class RegisterBot(BaseBot):
             )
         logger.info(f"User {username} registered")
 
-        meta = {
-            "registerbot__timestamp": datetime.now().isoformat(),
-            "registerbot__triggered_by": utils.jid_to_str(handler_jid),
-            "registerbot__default_permission": wuc.GroupPermission.Name(
-                default_group_permission
-            ),
-        }
-
         logger.info(f"{username}: Getting connection status")
         connection_status = await core_client.GetConnectionStatus(
             wuc.ConnectionStatusOptions()
@@ -169,6 +161,17 @@ class RegisterBot(BaseBot):
         )
 
         logger.info(f"{username}: Saving credentials")
+        meta = {
+            "registerbot__is_bot": is_bot,
+            "registerbot__is_demo": is_demo,
+            "registerbot__timestamp": datetime.now().isoformat(),
+            "registerbot__triggered_by": utils.jid_to_str(handler_jid),
+            "registerbot__jid": utils.jid_to_str(connection_status.JIDAnon),
+            "registerbot__username": username,
+            "registerbot__default_permission": wuc.GroupPermission.Name(
+                default_group_permission
+            ),
+        }
         credential = Credential(username=username, passphrase=passphrase, meta=meta)
         self.credentials_manager.write_credential(credential)
 
