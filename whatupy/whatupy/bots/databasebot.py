@@ -281,6 +281,9 @@ class DatabaseBot(BaseBot):
                 filename="group-country-codes.csv",
             )
 
+    def _ping_user_stats(self, message: wuc.WUMessage):
+        pass
+
     async def on_message(
         self,
         message: wuc.WUMessage,
@@ -296,6 +299,7 @@ class DatabaseBot(BaseBot):
         message.provenance["databasebot__version"] = self.__version__
         message.provenance.update(self.meta)
 
+        self._ping_user_stats(message)
         if not self.db["messages_seen"].count(id=msg_id):
             self.db["messages_seen"].insert({"id": msg_id, **message.provenance})
             if message.messageProperties.isReaction:

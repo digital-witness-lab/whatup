@@ -1,3 +1,4 @@
+import os
 import argparse
 import asyncio
 import enum
@@ -111,6 +112,9 @@ class BaseBot:
                 self.host, self.port, self.cert
             )
         self.arg_parser = self.setup_command_args()
+
+    def is_prod(self) -> bool:
+        return os.environ.get("IS_PROD", "").lower() == "true"
 
     def setup_command_args(self) -> T.Optional[BotCommandArgs]:
         return None
