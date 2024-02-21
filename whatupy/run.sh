@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="83293u4oisfsdjfiusdsdff"
+RAND="2323488923r2j3hiusdsdff"
 app_command=$1
 
 if [ -z "${app_command:-}" ]; then
@@ -94,6 +94,7 @@ case $app_command in
         echo "Loading archive: Job $idx out of $n_jobs"
 
         whatupy gs-ls "gs://${MESSAGE_ARCHIVE_BUCKET}/" | \
+            egrep ${ARCHIVE_FILTER} | \
             filter-by-job $idx $n_jobs | \
             tee /dev/stderr | \
             xargs -P 2 -I{} \
