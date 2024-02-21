@@ -122,6 +122,13 @@ ssl_cert_pem_perm = secretmanager.SecretIamMember(
     ),
 )
 
+if is_prod_stack():
+    cpu = "2"
+    memory = "6Gi"
+else:
+    cpu = "1"
+    memory = "1Gi"
+
 log_level = "INFO"  # if is_prod_stack() else "DEBUG"
 whatupcore2_service = ContainerOnVm(
     service_name,

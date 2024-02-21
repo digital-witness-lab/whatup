@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 
 from .. import NotRegisteredError, utils
@@ -28,7 +27,7 @@ class OnboardBot(BaseBot):
                 default_group_permission,
                 get_history=get_history,
             ):
-                if os.environ.get("IS_PROD", "").lower() != "true":
+                if self.is_prod():
                     print(utils.qrcode_gen(qrcode))
                 logger.critical("QRCode: %s", qrcode)
         except NotRegisteredError:

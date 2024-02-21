@@ -21,15 +21,47 @@ from . import static
 logger = logging.getLogger(__name__)
 
 
+class UserState(dict):
+    def connect(self, username, table):
+        self.username = username
+        self.table = table
+        self.data = {}
+        self.sync()
+
+    def sync(self):
+        super().update(self.table.find_one(username=self.username))
+
+    def __setitem__(self, key, item):
+        super().__setitem__(key, item)
+        self.table.update({key: item, "username": self.username}, ["username"])
+
+    def update(self, **kwargs):
+        super().update(kwargs)
+        self.table.update({**kwargs, "username": self.username}, ["username"])
+
+    def clear(self):
+        self.table.delete(username=self.username)
+        super().clear()
+
+
 class _UserBot(BaseBot):
-    def __init__(self, host, port, cert, services_bot, db, **kwargs):
+    def __init__(
+        self,
+        host,
+        port,
+        cert,
+        services_bot,
+        db,
+        group_min_participants: int = 6,
+        **kwargs,
+    ):
         self.services_bot: UserServicesBot = services_bot
         self.active_workflow: T.Optional[T.Callable] = None
         self.unregistering_timer: T.Optional[asyncio.TimerHandle] = None
         self.db = db
-        self.lang: T.Optional[TypeLanguages] = None
-        self.is_bot: T.Optional[bool] = None
-        self.is_demo: T.Optional[bool] = None
+        self.state: UserState = UserState()
+
+        self.group_min_participants = group_min_participants
         super().__init__(
             host,
             port,
@@ -39,24 +71,10 @@ class _UserBot(BaseBot):
             read_historical_messages=False,
         )
 
-    def set_lang(self, lang):
-        self.db["registered_users"].update(
-            {
-                "username": self.username,
-                "lang": lang,
-            },
-            ["username"],
-        )
-        self.lang = lang
-
     async def login(self, *args, **kwargs):
         await super().login(*args, **kwargs)
-        user_state = self.db["registered_users"].find_one(username=self.username)
-        if user_state:
-            self.lang = user_state.get("lang")
-            self.is_bot = user_state.get("is_bot")
-            self.is_demo = user_state.get("is_demo")
-        if self.is_bot:
+        self.state.connect(self.username, self.db["registered_users"])
+        if self.state.get("is_bot"):
             self.mark_messages_read = True
             self.read_historical_messages = True
             self.read_messages = True
@@ -69,16 +87,14 @@ class _UserBot(BaseBot):
     def _hash_jid(jid: wuc.JID, n_bytes: int):
         return hashlib.sha1(jid.user.encode("utf8")).hexdigest()[:n_bytes]
 
-    async def group_acl_jid_lookup(
-        self, n_bytes, min_participants=6
-    ) -> T.Dict[str, T.Dict]:
+    async def group_acl_jid_lookup(self, n_bytes) -> T.Dict[str, T.Dict]:
         joined_group_iter = self.core_client.GetJoinedGroups(
             wuc.GetJoinedGroupsOptions()
         )
         lookup = {}
         async for data in joined_group_iter:
             n_participants = len(data.groupInfo.participants)
-            if n_participants < min_participants:
+            if n_participants < self.group_min_participants:
                 continue
             gid = self._hash_jid(data.groupInfo.JID, n_bytes)
             lookup[gid] = {
@@ -87,14 +103,14 @@ class _UserBot(BaseBot):
             }
         return lookup
 
-    async def group_acl_data(self, n_bytes=5, min_participants=6):
+    async def group_acl_data(self, n_bytes=5):
         joined_group_iter = self.core_client.GetJoinedGroups(
             wuc.GetJoinedGroupsOptions()
         )
         groups = []
         async for data in joined_group_iter:
             n_participants = len(data.groupInfo.participants)
-            if n_participants < min_participants:
+            if n_participants < self.group_min_participants:
                 continue
             permission = data.acl.permission
             can_read = permission in (
@@ -126,11 +142,22 @@ class UserServicesBot(BaseBot):
         super().__init__(*args, **kwargs)
 
         self.public_path = public_path
-        self.db: dataset.Database = dataset.connect(database_url)
+        self.db: dataset.Database = dataset.connect(
+            database_url,
+        )
         self.users: T.Dict[str, _UserBot] = {}
 
+        group_min_participants = 6
+        if not self.is_prod():
+            group_min_participants = 0
+
         bot_factory = partial(
-            _UserBot, services_bot=self, logger=self.logger, db=self.db, **kwargs
+            _UserBot,
+            services_bot=self,
+            logger=self.logger,
+            db=self.db,
+            group_min_participants=group_min_participants,
+            **kwargs,
         )
         self.credentials_manager = credentials_manager
         self.device_manager = DeviceManager(
@@ -196,33 +223,24 @@ class UserServicesBot(BaseBot):
         if not user_jid_str:
             return
         self.users[user_jid_str] = user
-        user_state = self.db["registered_users"].find_one(username=user.username)
-        if not user_state.get("finalize_registration", False):
+        if not user.state.get("finalize_registration", False):
             await self.onboard_user(user)
 
-    async def onboard_bot(self, user: _UserBot, user_state: T.Dict):
-        if not user_state.get("finalize_registration"):
-            self.db["registered_users"].update(
-                {
-                    "username": user.username,
-                    "finalize_registration": True,
-                    "lang": "en",
-                },
-                ["username"],
-            )
+    async def onboard_bot(self, user: _UserBot):
+        if not user.state.get("finalize_registration"):
+            user.state.update(finalize_registration=True, lang="en")
             await self.send_template_user(user, "onboard_bot_welcome", lang="en")
         await self.help_text(user)
 
     async def onboard_user(self, user: _UserBot):
         user.active_workflow = None
-        user_state = self.db["registered_users"].find_one(username=user.username)
-        if user_state.get("is_bot"):
-            return await self.onboard_bot(user, user_state)
-        elif not user_state.get("lang"):
+        if user.state.get("is_bot"):
+            return await self.onboard_bot(user)
+        elif not user.state.get("lang"):
             await self.langselect_workflow_start(user)
-        elif not user_state.get("onboard_acl"):
+        elif not user.state.get("onboard_acl"):
             await self.acl_workflow(user)
-        elif not user_state.get("finalize_registration"):
+        elif not user.state.get("finalize_registration"):
             await self.finish_registration(user)
         else:
             await self.help_text(user)
@@ -231,15 +249,7 @@ class UserServicesBot(BaseBot):
         user.active_workflow = None
         if user.unregistering_timer is not None:
             user.unregistering_timer.cancel()
-        self.db["registered_users"].update(
-            {
-                "username": user.username,
-                "onboard_acl": False,
-                "finalize_registration": False,
-                "lang": None,
-            },
-            ["username"],
-        )
+        user.state.update(onboard_acl=False, finalize_registration=False, lang=None)
 
     async def acl_workflow_finalize(self, user: _UserBot, text: str):
         try:
@@ -257,10 +267,10 @@ class UserServicesBot(BaseBot):
             await self.send_template_user(user, "acl_workflow_error_code")
             return await self.acl_workflow(user)
 
-        user.set_lang(lang)
+        user.state["lang"] = lang
         group_info_lookup = await user.group_acl_jid_lookup(n_bytes=n_bytes)
         summary = defaultdict(list)
-        if user.is_demo:
+        if user.state["is_demo"]:
             await self.send_text_message(
                 user.jid,
                 "(You are in demo mode. We are going to simulate changing your group preferences however no data will be collected)",
@@ -272,7 +282,7 @@ class UserServicesBot(BaseBot):
             data = group_info_lookup[gid]
             summary[can_read].append(data["name"])
             jid = data["jid"]
-            if not user.is_demo:
+            if not user.state["is_demo"]:
                 await user.core_client.SetACL(
                     wuc.GroupACL(JID=jid, permission=permission)
                 )
@@ -288,16 +298,12 @@ class UserServicesBot(BaseBot):
             await self.send_template_user(
                 user, "acl_workflow_finalize_ignore", group_list=group_list
             )
-        self.db["registered_users"].update(
-            {"username": user.username, "onboard_acl": True}, ["username"]
-        )
+        user.state["onboard_acl"] = True
         await self.onboard_user(user)
 
     async def finish_registration(self, user: _UserBot):
         await self.send_template_user(user, "finish_registration")
-        self.db["registered_users"].update(
-            {"username": user.username, "finalize_registration": True}, ["username"]
-        )
+        user.state["finalize_registration"] = True
         await self.onboard_user(user)
 
     async def help_text(self, user: _UserBot):
@@ -306,13 +312,12 @@ class UserServicesBot(BaseBot):
     async def acl_workflow(self, user: _UserBot):
         n_bytes = 3
         groups_data = await user.group_acl_data(n_bytes=n_bytes)
-        user_state = self.db["registered_users"].find_one(username=user.username)
-        skip_intro = int(user_state.get("onboard_acl") or False)
+        skip_intro = int(user.state.get("onboard_acl") or False)
         params = {
             "bot_number": f"+{self.connection_status.JID.user}",
             "gid_nbytes": n_bytes,
             "data_jsons": json.dumps(groups_data),
-            "default_lang": user.lang,
+            "default_lang": user.state.get("lang", "en"),
             "skip_intro": skip_intro,
         }
         acl_html = static.substitute(
@@ -347,7 +352,7 @@ class UserServicesBot(BaseBot):
                     )
                 ),
             )
-            if user.is_demo:
+            if user.state["is_demo"]:
                 await self.send_text_message(
                     user.jid,
                     "(You are in demo mode. We are going to simulate changing your group preferences however no data will be collected)",
@@ -406,7 +411,7 @@ class UserServicesBot(BaseBot):
             self.users.pop(jid)
         if user.username:
             await self.device_manager.unregister(user.username)
-        self.db["registered_users"].delete(username=user.username)
+        user.state.clear()
 
     async def send_template_user(
         self,
@@ -416,7 +421,7 @@ class UserServicesBot(BaseBot):
         context_info=None,
         **kwargs,
     ):
-        lang = lang or user.lang or "all"
+        lang = lang or user.state.get("lang") or "all"
         if lang == "all":
             await self.send_template_user(
                 user, template, "en", context_info=context_info, **kwargs
@@ -442,6 +447,6 @@ class UserServicesBot(BaseBot):
             return await self.langselect_workflow_start(user)
 
         user.active_workflow = None
-        user.set_lang(lang)
+        user.state["lang"] = lang
         await self.send_template_user(user, "langselect_final")
         await self.onboard_user(user)

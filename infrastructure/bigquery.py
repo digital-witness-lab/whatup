@@ -24,6 +24,27 @@ messages_tables = {
 }
 
 
+def create_sql_connection(db_config) -> Connection:
+    connection_credential = CloudSqlCredentialArgs(
+        username=db_config.name, password=db_config.password
+    )
+    return Connection(
+        f"bg-to-sql-{db_config.name_short}",
+        args=ConnectionArgs(
+            location=location,
+            connection_id=f"{db_config.name}_{get_stack()}",
+            friendly_name=f"{db_config.name}_{get_stack()}",
+            description="Connection resource for running federated queries in BigQuery.",  # noqa: E501
+            cloud_sql=CloudSqlPropertiesArgs(
+                instance_id=primary_cloud_sql_instance.connection_name,
+                database=db_config.name,
+                type=CloudSqlPropertiesType.POSTGRES,
+                credential=connection_credential,
+            ),
+        ),
+    )
+
+
 messages_dataset = bigquery.v2.Dataset(
     "messages",
     bigquery.v2.DatasetArgs(
@@ -36,24 +57,9 @@ messages_dataset = bigquery.v2.Dataset(
     ),
 )
 
-connection_credential = CloudSqlCredentialArgs(
-    username="messages", password=db_configs["messages"].password
-)
-bigquery_sql_connection = Connection(
-    "bg-to-sql",
-    args=ConnectionArgs(
-        location=location,
-        connection_id=f"messages_{get_stack()}",
-        friendly_name=f"messages_{get_stack()}",
-        description="Connection resource for running federated queries in BigQuery.",  # noqa: E501
-        cloud_sql=CloudSqlPropertiesArgs(
-            instance_id=primary_cloud_sql_instance.connection_name,
-            database="messages",
-            type=CloudSqlPropertiesType.POSTGRES,
-            credential=connection_credential,
-        ),
-    ),
-)
+
+create_sql_connection(db_configs["users"])
+bigquery_sql_connection = create_sql_connection(db_configs["messages"])
 
 # Grant access to the service account automatically created
 # by GCP when the above connection resource is created in
