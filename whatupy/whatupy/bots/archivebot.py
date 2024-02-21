@@ -73,8 +73,8 @@ class ArchiveBot(BaseBot):
             "archivebot__version": self.__version__,
             "archivebot__archiveId": archive_id,
             "archivebot__isHistory": "true" if is_history else "false",
-            **self.meta,
         }
+        provenance.update({str(k): str(v) for k, v in self.meta.items()})
         message.provenance.update(provenance)
 
         refresh_dt = self.group_info_refresh_time.total_seconds()
