@@ -11,6 +11,7 @@ from jobs import (
     db_migrations,
     db_delete_groups,
     whatupcore_remove_user,
+    #hash_gen
 )
 from services import (
     bot_archive,

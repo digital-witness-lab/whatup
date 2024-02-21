@@ -21,8 +21,8 @@ messages_tables = {
     "group_participants": {"pk": "id"},
     "messages": {"pk": "id"},
     "media": {"pk": "filename"},
+    #"phash_images": {"pk": "filename"}
 }
-
 
 def create_sql_connection(db_config) -> Connection:
     connection_credential = CloudSqlCredentialArgs(
