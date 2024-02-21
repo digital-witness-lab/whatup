@@ -26,6 +26,15 @@ class RegisterBot(BaseBot):
         kwargs["read_historical_messages"] = False
         kwargs["mark_messages_read"] = True
         super().__init__(*args, **kwargs)
+        self.init_database(self.db)
+
+    def init_database(self, db):
+        db.create_table(
+            "registered_users",
+            primary_id="username",
+            primary_type=db.types.text,
+            primary_increment=False,
+        )
 
     def setup_command_args(self):
         parser = BotCommandArgs(
@@ -84,7 +93,11 @@ class RegisterBot(BaseBot):
                 f"Unknown command: {params.command}",
             )
 
-        user_params = {"is_bot": is_bot, "is_demo": is_demo}
+        user_params = {
+            "is_bot": is_bot,
+            "is_demo": is_demo,
+            "control_group": message.info.source.chat,
+        }
         alias = str(params.alias) or "-".join(utils.random_words(5))
         if not alias or VALID_ALIAS.match(alias) is None:
             return await self.send_text_message(
@@ -149,29 +162,35 @@ class RegisterBot(BaseBot):
         connection_status = await core_client.GetConnectionStatus(
             wuc.ConnectionStatusOptions()
         )
-        logger.info(f"{username}: Pinging users database")
-        self.db["registered_users"].delete(username=username)
-        self.db["registered_users"].insert(
-            {
-                "username": username,
-                "is_bot": is_bot,
-                "is_demo": is_demo,
-                "jid_anon": utils.jid_to_str(connection_status.JIDAnon),
-            }
-        )
-
-        logger.info(f"{username}: Saving credentials")
         meta = {
             "registerbot__is_bot": is_bot,
             "registerbot__is_demo": is_demo,
             "registerbot__timestamp": datetime.now().isoformat(),
             "registerbot__triggered_by": utils.jid_to_str(handler_jid),
             "registerbot__jid": utils.jid_to_str(connection_status.JIDAnon),
+            "registerbot__control_group": utils.jid_to_str(
+                user_params["control_group"]
+            ),
             "registerbot__username": username,
             "registerbot__default_permission": wuc.GroupPermission.Name(
                 default_group_permission
             ),
         }
+
+        logger.info(f"{username}: Pinging users database")
+        self.db["registered_users"].upsert(
+            {
+                "username": username,
+                "is_bot": is_bot,
+                "is_demo": is_demo,
+                "jid_anon": utils.jid_to_str(connection_status.JIDAnon),
+                "control_group": utils.jid_to_str(user_params["control_group"]),
+                "provenance": meta,
+            },
+            ["username"],
+        )
+
+        logger.info(f"{username}: Saving credentials")
         credential = Credential(username=username, passphrase=passphrase, meta=meta)
         self.credentials_manager.write_credential(credential)
 

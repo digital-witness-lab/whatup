@@ -1,3 +1,4 @@
+import os
 import argparse
 import asyncio
 import enum
@@ -90,7 +91,7 @@ class BaseBot:
         self.host = host
         self.port = port
         self.cert = cert
-        self.meta = dict()
+        self.meta: T.Dict = dict()
         self.logger = logger.getChild(self.__class__.__name__)
         self._stop_on_event: T.Optional[asyncio.Event] = None
 
@@ -111,6 +112,9 @@ class BaseBot:
                 self.host, self.port, self.cert
             )
         self.arg_parser = self.setup_command_args()
+
+    def is_prod(self) -> bool:
+        return os.environ.get("IS_PROD", "").lower() == "true"
 
     def setup_command_args(self) -> T.Optional[BotCommandArgs]:
         return None
@@ -133,7 +137,7 @@ class BaseBot:
         self.logger = self.logger.getChild(credential.username)
         self.username = credential.username
         self.logger.info("Logging in")
-        self.meta.update(credential.meta or {})
+        self.meta.update(dict(credential.meta or {}))
         try:
             await self.authenticator.login(credential.username, credential.passphrase)
         except grpc.aio._call.AioRpcError as e:
@@ -506,19 +510,20 @@ class BaseBot:
     async def process_archive(self, filenames: T.List[Path]):
         # TODO: this is tightly coupled to ArchiveBot... decouple it somehow
         group_infos = {}
+        community_infos = {}
         filenames.sort()
         for filename in filenames:
             try:
-                await self._process_archive_file(filename, group_infos)
+                await self._process_archive_file(filename, group_infos, community_infos)
             except Exception:
                 self.logger.exception(
                     f"Could not load file: {filename}... trying to continue"
                 )
 
     async def _process_archive_file(
-        self, filename, group_infos: T.Dict[str, wuc.GroupInfo]
+            self, filename, group_infos: T.Dict[str, wuc.GroupInfo], community_infos: T.Dict[str, T.List[wuc.GroupInfo]]
     ):
-        self.logger.info("Loading archive file: %s", filename)
+        self.logger.debug("Loading archive file: %s", filename)
         filename_path = AnyPath(filename)
         with filename_path.open() as fd:
             message: wuc.WUMessage = utils.jsons_to_protobuf(fd.read(), wuc.WUMessage)
@@ -558,10 +563,13 @@ class BaseBot:
                             wuc.GroupInfo
                         ] = utils.json_list_to_protobuf_list(fd.read(), wuc.GroupInfo)
                     metadata["CommunityInfo"] = community_info_list
+                    community_infos[chat_id] = community_info_list
                 except FileNotFoundError:
                     self.logger.critical(
                         "Could not find community info in path: %s", community_info_path
                     )
+            elif chat_id in community_infos:
+                metadata["CommunityInfo"] = community_infos[chat_id]
 
         if media_filename := message.provenance.get("archivebot__mediaPath"):
             media_path = filename_path.parent / media_filename

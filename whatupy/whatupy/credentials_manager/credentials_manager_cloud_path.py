@@ -99,7 +99,7 @@ class CredentialsManagerCloudPath(CredentialsManager):
         self.logger.info("Removing session file: %s", credential_file)
         try:
             credential_file.unlink(missing_ok=True)
-        except OSError as e:
+        except Exception as e:
             self.logger.critical(
                 "Could not remove credentials file: %s: %s", credential_file, e
             )
