@@ -131,7 +131,7 @@ def query_group_country_codes(db):
 
 
 class DatabaseBot(BaseBot):
-    __version__ = "2.0.0"
+    __version__ = "2.1.0"
 
     def __init__(
         self,
