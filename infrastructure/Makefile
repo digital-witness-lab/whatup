@@ -1,10 +1,12 @@
 .PHONY: auth auth-test auth-prod lint-ci
 
 auth-test:
+	pulumi org set-default digitalwitnesslab
 	pulumi stack select test
 	make auth
 
 auth-prod:
+	pulumi org set-default mynameisfiber
 	pulumi stack select prod
 	make auth
 
