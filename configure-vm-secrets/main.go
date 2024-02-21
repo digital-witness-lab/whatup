@@ -18,6 +18,7 @@ import (
 var (
 	envFile    = path.Join("/", "tmp", "whatup", ".env")
 	httpClient *http.Client
+    version = "0.0.1"
 )
 
 // Run initialization on package init.
@@ -112,10 +113,12 @@ func isGoogleComputeEngineEnv() bool {
 		return false
 	}
 
+    fmt.Printf("Got response. Flavor = %s\n", resp.Header.Get("Metadata-Flavor"))
 	return resp.Header.Get("Metadata-Flavor") == "Google"
 }
 
 func main() {
+    fmt.Printf("Running configureVmSecrets version: %s\n", version)
 	ctx := context.Background()
 
 	if !isGoogleComputeEngineEnv() {
@@ -171,6 +174,7 @@ func main() {
 	}
 
 	for k, v := range secrets {
+        fmt.Println("Found secret:", k)
 		if strings.HasSuffix(k, "PEM") {
 			err := writeCertFile(ctx, k, v)
 			if err != nil {
@@ -197,6 +201,9 @@ func writeCertFile(ctx context.Context, name, value string) error {
 	if strings.Contains(name, "KEY") {
 		fileName = "ssl-key"
 	}
-	err := os.WriteFile(path.Join(p, fileName), []byte(value), 0600)
+
+    filePath := path.Join(p, fileName)
+    fmt.Println("Writing cert file to:", filePath)
+	err := os.WriteFile(filePath, []byte(value), 0600)
 	return err
 }

@@ -74,7 +74,6 @@ class ContainerOnVmArgs:
     # in the group.
     #
     # Note: Conflicts with `automatic_static_private_ip`.
-    private_address: Optional[native_compute_v1.Address]
     container_spec: Container
     machine_type: SharedCoreMachineType
     restart_policy: str
@@ -82,6 +81,7 @@ class ContainerOnVmArgs:
     service_account_email: pulumi.Output[str]
     subnet: pulumi.Output[str]
     tcp_healthcheck_port: Optional[int] = field(default=None)
+    private_address: Optional[native_compute_v1.Address] = field(default=None)
 
 
 project_number = get_project_number(project)

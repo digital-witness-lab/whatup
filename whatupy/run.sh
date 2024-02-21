@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="2asdjfhasdfdfd3hiusdsdff"
+RAND="2asdjfhas234233hiusdsdff"
 app_command=$1
 
 if [ -z "${app_command:-}" ]; then
@@ -17,6 +17,11 @@ echo "Running app command: $app_command $DEBUG"
 # If we are not running inside a VM,
 # it will exit silently.
 /configureVmSecrets
+if [ -e /tmp/whatup/.env ]; then
+    set -o allexport
+    source /tmp/whatup/.env 
+    set +o allexport
+fi
 
 function positive_mod() {
     local dividend=$1
