@@ -1,3 +1,4 @@
+import os
 import argparse
 import asyncio
 import enum
@@ -15,6 +16,7 @@ from cloudpathlib import AnyPath
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from .. import utils
+from .static import format_lang_template
 from ..connection import create_whatupcore_clients
 from ..credentials_manager.credential import Credential
 from ..protos import whatsappweb_pb2 as waw
@@ -32,8 +34,9 @@ COMMAND_PINNING: T.Dict[bytes, PinningEntry] = {}
 BOT_REGISTRY = defaultdict(dict)
 CONTROL_CACHE = deque(maxlen=1028)
 
-DownloadMediaCallback = T.Type[T.Callable[[wuc.WUMessage, bytes], T.Awaitable[None]]]
+DownloadMediaCallback = T.Callable[[wuc.WUMessage, bytes], T.Awaitable[None]]
 MediaType = enum.Enum("MediaType", wuc.SendMessageMedia.MediaType.items())
+TypeLanguages = T.Literal["hi"] | T.Literal["en"]
 
 
 class InvalidCredentialsException(Exception):
@@ -88,9 +91,13 @@ class BaseBot:
         self.host = host
         self.port = port
         self.cert = cert
-        self.meta = dict()
+        self.meta: T.Dict = dict()
         self.logger = logger.getChild(self.__class__.__name__)
         self._stop_on_event: T.Optional[asyncio.Event] = None
+
+        self.username: T.Optional[str] = None
+        self.jid: T.Optional[wuc.JID] = None
+        self.jid_anon: T.Optional[wuc.JID] = None
 
         self.control_groups = control_groups
         self.mark_messages_read = mark_messages_read
@@ -105,6 +112,9 @@ class BaseBot:
                 self.host, self.port, self.cert
             )
         self.arg_parser = self.setup_command_args()
+
+    def is_prod(self) -> bool:
+        return os.environ.get("IS_PROD", "").lower() == "true"
 
     def setup_command_args(self) -> T.Optional[BotCommandArgs]:
         return None
@@ -125,14 +135,20 @@ class BaseBot:
 
     async def login(self, credential: Credential, **kwargs) -> T.Self:
         self.logger = self.logger.getChild(credential.username)
+        self.username = credential.username
         self.logger.info("Logging in")
-        self.meta.update(credential.meta or {})
+        self.meta.update(dict(credential.meta or {}))
         try:
             await self.authenticator.login(credential.username, credential.passphrase)
         except grpc.aio._call.AioRpcError as e:
             if e.details() == "the store doesn't contain a device JID":
                 raise InvalidCredentialsException
             raise e
+        connection_status: wuc.ConnectionStatus = (
+            await self.core_client.GetConnectionStatus(wuc.ConnectionStatusOptions())
+        )
+        self.jid = connection_status.JID
+        self.jid_anon = connection_status.JIDAnon
         return self
 
     async def start(self, **kwargs):
@@ -170,73 +186,69 @@ class BaseBot:
         pass
 
     async def listen_historical_messages(self):
-        self.logger.info("Reading historical messages")
-        messages: grpc.aio.UnaryStreamCall = self.core_client.GetPendingHistory(
-            wuc.PendingHistoryOptions(
-                heartbeatTimeout=self.stream_heartbeat_timeout,
-            )
-        )
-        async with asyncio.TaskGroup() as tg:
-            try:
-                async for message in self._listen_message_stream(messages):
-                    jid_from: wuc.JID = message.info.source.chat
-                    self.logger.debug(
-                        "Got historical message: %s: %s",
-                        utils.jid_to_str(jid_from),
-                        message.info.id,
-                    )
-                    tg.create_task(
-                        self._dispatch_message(
-                            message, skip_control=True, is_history=True
-                        )
-                    )
-            except StreamMissedHeartbeat:
-                self.logger.info(
-                    "History handler missed a heartbeat... closing handler"
+        def stream_factory(last_timestamp):
+            return self.core_client.GetPendingHistory(
+                wuc.PendingHistoryOptions(
+                    heartbeatTimeout=self.stream_heartbeat_timeout,
+                    markMessagesRead=self.mark_messages_read,
                 )
-                return
-            except grpc.aio._call.AioRpcError as e:
-                if e.code == grpc.StatusCode.UNAVAILABLE:
-                    self.logger.info("Closing history handler")
-                    return
-                raise e
+            )
+
+        def callback(message):
+            return self._dispatch_message(message, skip_control=True, is_history=True)
+
+        await self._listen_messages(
+            stream_factory, callback, self.logger.getChild("messages")
+        )
 
     async def listen_messages(self):
-        self.logger.info("Reading messages")
+        def stream_factory(last_timestamp):
+            return self.core_client.GetMessages(
+                wuc.MessagesOptions(
+                    markMessagesRead=self.mark_messages_read,
+                    lastMessageTimestamp=last_timestamp,
+                    heartbeatTimeout=self.stream_heartbeat_timeout,
+                ),
+            )
+
+        def callback(message):
+            return self._dispatch_message(message)
+
+        await self._listen_messages(
+            stream_factory, callback, self.logger.getChild("history")
+        )
+
+    async def _listen_messages(
+        self,
+        stream_factory: T.Callable[[Timestamp | None], grpc.aio.UnaryStreamCall],
+        callback: T.Callable[[wuc.WUMessage], T.Any],
+        log: logging.Logger,
+    ):
+        log.info("Reading messages")
         last_timestamp: T.Optional[Timestamp] = None
         backoff = 0
         async with asyncio.TaskGroup() as tg:
             while True:
-                messages: grpc.aio.UnaryStreamCall = self.core_client.GetMessages(
-                    wuc.MessagesOptions(
-                        markMessagesRead=self.mark_messages_read,
-                        lastMessageTimestamp=last_timestamp,
-                        heartbeatTimeout=self.stream_heartbeat_timeout,
-                    ),
-                )
+                messages: grpc.aio.UnaryStreamCall = stream_factory(last_timestamp)
                 try:
                     message: wuc.WUMessage
-                    backoff = 0
-                    async for message in self._listen_message_stream(messages):
+                    async for message in self._read_stream_heartbeat(messages):
+                        backoff = 0
                         last_timestamp = message.info.timestamp
-                        tg.create_task(self._dispatch_message(message))
-                    self.logger.info("Message stream ended. Reconnecting")
+                        tg.create_task(callback(message))
+                    raise Exception("Message stream ended. Should try to reconnect")
                 except StreamMissedHeartbeat:
-                    backoff += 1
-                    if last_timestamp:
-                        t = last_timestamp.ToDatetime().isoformat()
-                    else:
-                        t = "no messages seen"
-                    sleep_time = min(2**backoff, 60)
-                    self.logger.info(
-                        "Re-triggering GetMessages after a missed heartbeat: %s: %ds: sleepin %f",
-                        t,
-                        self.stream_heartbeat_timeout,
-                        sleep_time,
-                    )
-                    await asyncio.sleep(sleep_time)
+                    log.info("Missed heartbeat")
+                backoff += 1
+                sleep_time = min(2**backoff, 60)
+                log.info(
+                    "Re-triggering after backoff: %ds: sleeping %f",
+                    self.stream_heartbeat_timeout,
+                    sleep_time,
+                )
+                await asyncio.sleep(sleep_time)
 
-    async def _listen_message_stream(
+    async def _read_stream_heartbeat(
         self, stream: grpc.aio.UnaryStreamCall
     ) -> T.AsyncIterator[wuc.WUMessage]:
         while True:
@@ -299,7 +311,7 @@ class BaseBot:
                     )
                     await self._dispatch_control(message, source_hash)
             else:
-                self.logger.info(
+                self.logger.debug(
                     "Got normal message: %s: %s",
                     utils.jid_to_str(jid_from),
                     message.info.id,
@@ -375,7 +387,7 @@ class BaseBot:
 
     async def _download_messages_background(self):
         while True:
-            message, callback = await self.download_queue.get()
+            message, callback, tries = await self.download_queue.get()
             self.logger.info(
                 "Download queue processing message: %s: messages left: %d",
                 message.info.id,
@@ -384,8 +396,20 @@ class BaseBot:
             content: bytes = b""
             try:
                 content = await self.download_message_media(message)
+                self.logger.debug(
+                    "Got content for message: %s: len(content) = %d",
+                    message.info.id,
+                    len(content),
+                )
             except Exception:
-                callback(message, b"")
+                self.logger.exception(
+                    "Could not download media content. Retries = %d: %s",
+                    tries,
+                    message.info.id,
+                )
+                asyncio.create_task(
+                    self.download_message_media_eventually(message, callback, tries + 1)
+                )
             try:
                 await callback(message, content)
             except Exception:
@@ -393,20 +417,55 @@ class BaseBot:
                     "Exception calling download_media_message_eventually callback: %s",
                     message.info.id,
                 )
-            sleep_time = random.randint(1, 10)
+            sleep_time = random.randint(1, 5)
             await asyncio.sleep(sleep_time)
 
     async def download_message_media_eventually(
-        self, message: wuc.WUMessage, callback: DownloadMediaCallback
+        self,
+        message: wuc.WUMessage,
+        callback: DownloadMediaCallback,
+        retries: int = 0,
     ):
-        await self.download_queue.put((message, callback))
+        if retries > 5:
+            self.logger.info(
+                "Out of retries... running callback with empty bytes: %s",
+                message.info.id,
+            )
+            return await callback(message, b"")
+        elif retries > 0:
+            t = min(2**retries, 60 * 60)
+            self.logger.info(
+                "Retrying media download: %s: %d tries / 5: t = %f",
+                message.info.id,
+                retries,
+                t,
+            )
+            await asyncio.sleep(t)
+        await self.download_queue.put((message, callback, retries))
 
     async def send_text_message(
-        self, recipient: wuc.JID, text: str, composing_time: int = 2
+        self, recipient: wuc.JID, text: str, composing_time: int = 2, context_info=None
+    ) -> wuc.SendMessageReceipt:
+        recipient_nonad = utils.jid_noad(recipient)
+        message = waw.Message(
+            extendedTextMessage=waw.ExtendedTextMessage(
+                text=text,
+                contextInfo=context_info,
+            )
+        )
+        options = wuc.SendMessageOptions(
+            recipient=recipient_nonad, rawMessage=message, composingTime=composing_time
+        )
+        return await self.core_client.SendMessage(options)
+
+    async def send_raw_message(
+        self, recipient: wuc.JID, message: waw.Message, composing_time: int = 2
     ) -> wuc.SendMessageReceipt:
         recipient_nonad = utils.jid_noad(recipient)
         options = wuc.SendMessageOptions(
-            recipient=recipient_nonad, simpleText=text, composingTime=composing_time
+            recipient=recipient_nonad,
+            rawMessage=message,
+            composingTime=composing_time,
         )
         return await self.core_client.SendMessage(options)
 
@@ -535,7 +594,24 @@ class BaseBot:
                 recipient=jid_noad, disappearingTime=disappearing_time
             )
         )
-        yield
+
+        expiration_seconds = 0
+        match wuc.DisappearingMessageOptions.DISAPPEARING_TIME.Name(disappearing_time):
+            case "TIMER_OFF":
+                expiration_seconds = 0
+            case "TIMER_24HOUR":
+                expiration_seconds = 60 * 60 * 24
+            case "TIMER_7DAYS":
+                expiration_seconds = 60 * 60 * 24 * 7
+            case "TIMER_90DAYS":
+                expiration_seconds = 60 * 60 * 24 * 90
+
+        if expiration_seconds:
+            context_info = waw.ContextInfo(expiration=expiration_seconds)
+        else:
+            context_info = waw.ContextInfo()
+        yield context_info
+
         await self.core_client.SetDisappearingMessageTime(
             wuc.DisappearingMessageOptions(
                 recipient=jid_noad,
@@ -548,3 +624,17 @@ class BaseBot:
         self.logger.critical("Calling unregister")
         self.logger.error("Calling unregister")
         await self.core_client.Unregister(wuc.UnregisterOptions)
+
+    async def send_template(
+        self,
+        jid: wuc.JID,
+        template: str,
+        lang: TypeLanguages,
+        context_info=None,
+        **kwargs,
+    ):
+        messages = format_lang_template(template, lang, **kwargs)
+        for message in messages:
+            await self.send_text_message(
+                jid, message.strip(), context_info=context_info
+            )

@@ -13,11 +13,14 @@ import string
 import typing as T
 import warnings
 from collections import namedtuple
+from datetime import timedelta
 from functools import wraps
 from pathlib import Path
 
+import google.auth
 import qrcode
 from cloudpathlib import AnyPath, CloudPath, GSPath
+from google.auth.transport.requests import Request
 from google.protobuf.json_format import MessageToDict, ParseDict
 
 from .protos import whatupcore_pb2 as wuc
@@ -29,6 +32,30 @@ RANDOM_SALT = random.randbytes(32)
 
 CommandQuery = namedtuple("CommandQuery", "namespace command params".split(" "))
 Generic = T.TypeVar("Generic")
+
+
+def gspath_to_self_signed_url(
+    path: GSPath | CloudPath | Path, ttl: T.Optional[timedelta]
+) -> str:
+    if isinstance(path, GSPath):
+        try:
+            client = path.client.client
+            bucket = client.bucket(path.bucket)
+            blob = bucket.get_blob(path.blob)
+            if blob is not None:
+                credentials, project_id = google.auth.default()
+                if credentials.token is None:
+                    credentials.refresh(Request())
+                return blob.generate_signed_url(
+                    version="v4",
+                    expiration=ttl,
+                    service_account_email=credentials.service_account_email,
+                    access_token=credentials.token,
+                    method="GET",
+                )
+        except Exception:
+            logger.exception("Could not create self signed url")
+    return path.as_uri()
 
 
 def expand_glob(path: CloudPath | Path) -> T.List[CloudPath | Path]:
@@ -84,6 +111,10 @@ def dict_to_csv_bytes(data: T.List[dict]) -> bytes:
     writer.writerows(data)
     buffer.seek(0)
     return buffer.read().encode("utf8")
+
+
+def random_string(length=6):
+    return "".join(random.choices(string.ascii_letters, k=length))
 
 
 def random_passphrase(words=5):

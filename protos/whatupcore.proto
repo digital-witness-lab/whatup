@@ -17,7 +17,6 @@ service WhatUpCoreAuth {
 service WhatUpCore {
     rpc GetConnectionStatus(ConnectionStatusOptions) returns (ConnectionStatus) {}
 
-    rpc GetACLAll(GetACLAllOptions) returns (stream GroupACL) {}
     rpc SetACL(GroupACL) returns (GroupACL) {}
     rpc GetACL(JID) returns (GroupACL) {}
 
@@ -29,6 +28,7 @@ service WhatUpCore {
 
     rpc GetMessages(MessagesOptions) returns (stream MessageStream) {}
     rpc GetPendingHistory(PendingHistoryOptions) returns (stream MessageStream) {}
+    rpc RequestChatHistory(HistoryRequestOptions) returns (GroupInfo) {}
     // DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
     rpc DownloadMedia(DownloadMediaOptions) returns (MediaContent) {}
 
@@ -56,8 +56,6 @@ message JoinedGroup {
 message GetJoinedGroupsOptions {
 }
 
-message GetACLAllOptions {
-}
 
 enum GroupPermission {
     DENIED = 0;
@@ -70,6 +68,7 @@ enum GroupPermission {
 message RegisterOptions {
     WUCredentials credentials = 1;
     GroupPermission defaultGroupPermission = 10;
+    bool getHistory = 11;
 }
 
 message GroupACL {
@@ -128,9 +127,19 @@ message DownloadMediaOptions {
     MessageInfo info = 2;
 }
 
+message HistoryRequestOptions {
+    JID chat = 1;
+    string id = 2;
+    bool isFromMe = 3;
+    google.protobuf.Timestamp timestamp = 4;
+
+    int64 num_messages = 20;
+}
+
 message PendingHistoryOptions {
     reserved "historyReadTimeout";
     reserved 1;
+    bool markMessagesRead = 2; 
     uint32 heartbeatTimeout = 40;
 }
 

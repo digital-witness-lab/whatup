@@ -52,10 +52,9 @@ func (s *WhatUpCoreAuthServer) Register(registerOptions *pb.RegisterOptions, qrS
 		return status.Error(codes.InvalidArgument, "Passphrase too short. Must be >= 8 characters")
 	}
 	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	ctxC := NewContextWithCancel(ctx)
+	defer ctxC.Cancel()
 
-	// ADD DEFAULT ACL STUFF HERE
 	session, regState, err := s.sessionManager.AddRegistration(ctx, credentials.Username, credentials.Passphrase, registerOptions)
 	if err != nil {
 		return err
@@ -70,7 +69,7 @@ func (s *WhatUpCoreAuthServer) Register(registerOptions *pb.RegisterOptions, qrS
 	for !regState.Completed {
 		select {
 		case qrCode, open := <-regState.QRCodes:
-			if !open {
+			if !open || regState.Success {
 				break
 			}
 			clientErr := qrStream.Send(&pb.RegisterMessages{
@@ -80,7 +79,7 @@ func (s *WhatUpCoreAuthServer) Register(registerOptions *pb.RegisterOptions, qrS
 				return fmt.Errorf("Client Disconnected")
 			}
 		case err, open := <-regState.Errors:
-			if !open {
+			if !open || regState.Success {
 				break
 			}
 			fmt.Printf("Recieved error while logging in: %+v\n", err)

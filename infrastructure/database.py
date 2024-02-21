@@ -25,7 +25,10 @@ sql_instance_settings = sql.DatabaseInstanceSettingsArgs(
     backup_configuration=backup_config,
     # Only disable disable protection if you are intentional
     # about wanting to delete the instance.
-    deletion_protection_enabled=False if is_prod_stack() else True,
+    deletion_protection_enabled=is_prod_stack(),
+    insights_config=sql.DatabaseInstanceSettingsInsightsConfigArgs(
+        query_insights_enabled=True,
+    ),
     ip_configuration=sql.DatabaseInstanceSettingsIpConfigurationArgs(
         allocated_ip_range=private_ip_address_range.name,
         # Allow BigQuery to connect to the DB via the SQL

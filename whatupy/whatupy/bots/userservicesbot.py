@@ -3,26 +3,44 @@ import hashlib
 import json
 import logging
 import typing as T
+from datetime import timedelta, datetime
 from collections import defaultdict
 from functools import partial
-from pathlib import Path
 
 import dataset
+from cloudpathlib import CloudPath
 
 from .. import utils
-from ..credentials_manager import CredentialsManagerCloudPath
+from ..credentials_manager import CredentialsManager
 from ..device_manager import DeviceManager
 from ..protos import whatupcore_pb2 as wuc
-from . import BaseBot, MediaType
-from .static import static_files
+from ..protos import whatsappweb_pb2 as waw
+from .basebot import BaseBot, TypeLanguages
+from . import static
 
 logger = logging.getLogger(__name__)
 
 
 class _UserBot(BaseBot):
-    def __init__(self, host, port, cert, services_bot, **kwargs):
+    def __init__(
+        self,
+        host,
+        port,
+        cert,
+        services_bot,
+        db,
+        group_min_participants: int = 6,
+        **kwargs,
+    ):
         self.services_bot: UserServicesBot = services_bot
+        self.active_workflow: T.Optional[T.Callable] = None
         self.unregistering_timer: T.Optional[asyncio.TimerHandle] = None
+        self.db = db
+        self.lang: T.Optional[TypeLanguages] = None
+        self.is_bot: T.Optional[bool] = None
+        self.is_demo: T.Optional[bool] = None
+
+        self.group_min_participants = group_min_participants
         super().__init__(
             host,
             port,
@@ -32,29 +50,44 @@ class _UserBot(BaseBot):
             read_historical_messages=False,
         )
 
-    async def post_start(self):
-        connection_status: wuc.ConnectionStatus = (
-            await self.core_client.GetConnectionStatus(wuc.ConnectionStatusOptions())
+    def set_lang(self, lang):
+        self.db["registered_users"].update(
+            {
+                "username": self.username,
+                "lang": lang,
+            },
+            ["username"],
         )
-        self.username = self.authenticator.username
-        self.jid = connection_status.JID
-        self.jid_anon = connection_status.JIDAnon
+        self.lang = lang
+
+    async def login(self, *args, **kwargs):
+        await super().login(*args, **kwargs)
+        user_state = self.db["registered_users"].find_one(username=self.username)
+        if user_state:
+            self.lang = user_state.get("lang")
+            self.is_bot = user_state.get("is_bot")
+            self.is_demo = user_state.get("is_demo")
+        if self.is_bot:
+            self.mark_messages_read = True
+            self.read_historical_messages = True
+            self.read_messages = True
+        return self
+
+    async def post_start(self):
         await self.services_bot.new_device(self)
 
     @staticmethod
     def _hash_jid(jid: wuc.JID, n_bytes: int):
         return hashlib.sha1(jid.user.encode("utf8")).hexdigest()[:n_bytes]
 
-    async def group_acl_jid_lookup(
-        self, n_bytes, min_participants=6
-    ) -> T.Dict[str, T.Dict]:
+    async def group_acl_jid_lookup(self, n_bytes) -> T.Dict[str, T.Dict]:
         joined_group_iter = self.core_client.GetJoinedGroups(
             wuc.GetJoinedGroupsOptions()
         )
         lookup = {}
         async for data in joined_group_iter:
             n_participants = len(data.groupInfo.participants)
-            if n_participants < min_participants:
+            if n_participants < self.group_min_participants:
                 continue
             gid = self._hash_jid(data.groupInfo.JID, n_bytes)
             lookup[gid] = {
@@ -63,14 +96,14 @@ class _UserBot(BaseBot):
             }
         return lookup
 
-    async def group_acl_data(self, n_bytes=5, min_participants=6):
+    async def group_acl_data(self, n_bytes=5):
         joined_group_iter = self.core_client.GetJoinedGroups(
             wuc.GetJoinedGroupsOptions()
         )
         groups = []
         async for data in joined_group_iter:
             n_participants = len(data.groupInfo.participants)
-            if n_participants < min_participants:
+            if n_participants < self.group_min_participants:
                 continue
             permission = data.acl.permission
             can_read = permission in (
@@ -91,18 +124,36 @@ class _UserBot(BaseBot):
 
 
 class UserServicesBot(BaseBot):
-    def __init__(self, sessions_dir: Path, database_url: str, *args, **kwargs):
+    def __init__(
+        self,
+        credentials_manager: CredentialsManager,
+        database_url: str,
+        public_path: CloudPath,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
 
-        self.sessions_dir = sessions_dir
+        self.public_path = public_path
         self.db: dataset.Database = dataset.connect(database_url)
         self.users: T.Dict[str, _UserBot] = {}
 
-        bot_factory = partial(_UserBot, services_bot=self, logger=self.logger, **kwargs)
-        credential_manager = CredentialsManagerCloudPath([sessions_dir])
+        group_min_participants = 6
+        if not self.is_prod():
+            group_min_participants = 0
+
+        bot_factory = partial(
+            _UserBot,
+            services_bot=self,
+            logger=self.logger,
+            db=self.db,
+            group_min_participants=group_min_participants,
+            **kwargs,
+        )
+        self.credentials_manager = credentials_manager
         self.device_manager = DeviceManager(
             bot_factory=bot_factory,
-            credential_managers=[credential_manager],
+            credential_managers=[credentials_manager],
         )
 
     async def post_start(self):
@@ -112,71 +163,126 @@ class UserServicesBot(BaseBot):
         async with asyncio.TaskGroup() as tg:
             tg.create_task(self.device_manager.start())
 
-    async def on_message(self, message: wuc.WUMessage, **kwargs):
+    async def on_message(
+        self,
+        message: wuc.WUMessage,
+        *args,
+        is_history=False,
+        is_archive=False,
+        **kwargs,
+    ):
+        if is_history or is_archive:
+            return
+
+        now = datetime.now()
+        if now - message.info.timestamp.ToDatetime() > timedelta(minutes=5):
+            return
+
         sender = utils.jid_to_str(message.info.source.sender)
         if not sender:
             return
-        # TODO: make these expire and have a way to re-fetch when needed
         user = self.users.get(sender)
-        if user is None:
+        if user is None or user.username is None:
             return
         ulog = self.logger.getChild(user.username)
 
         text = message.content.text.lower().strip()
-        if text == "unregister":
-            ulog.debug("Starting unregister workflow")
-            await self.unregister_workflow(user)
-        elif user.unregistering_timer is not None:
-            ulog.debug("Continuing unregister workflow")
+        if text == "restart_onboarding":
+            self.reset_onboarding(user)
+            return await self.onboard_user(user)
+        elif user.active_workflow is not None:
             try:
-                return await self.unregister_workflow_continue(user, text)
+                return await user.active_workflow(user, text)
             except asyncio.CancelledError:
                 pass
-        elif text.startswith("setacl-"):
-            ulog.debug("Setting ACL")
-            await self.acl_workflow_finalize(user, message)
-        elif text == "set groups":
-            ulog.debug("Starting ACL workflow")
-            await self.acl_workflow(user)
-        else:
-            ulog.debug("Unrecognized command: %s", text)
-            await self.send_text_message(
-                user.jid, "i recognize you but not your message"
-            )
+        match text:
+            case "1":
+                ulog.debug("Starting ACL workflow")
+                await self.acl_workflow(user)
+            case "2":
+                ulog.debug("Starting unregister workflow")
+                await self.unregister_workflow(user)
+            case "3":
+                ulog.debug("Setting language preference")
+                await self.langselect_workflow_start(user)
+            case _:
+                ulog.debug("Unrecognized command: %s", text)
+                await self.help_text(user)
 
     async def new_device(self, user: _UserBot):
         user_jid_str = utils.jid_to_str(user.jid_anon)
         if not user_jid_str:
             return
         self.users[user_jid_str] = user
-        await self.onboard_user(user)
+        user_state = self.db["registered_users"].find_one(username=user.username)
+        if not user_state.get("finalize_registration", False):
+            await self.onboard_user(user)
+
+    async def onboard_bot(self, user: _UserBot, user_state: T.Dict):
+        if not user_state.get("finalize_registration"):
+            self.db["registered_users"].update(
+                {
+                    "username": user.username,
+                    "finalize_registration": True,
+                    "lang": "en",
+                },
+                ["username"],
+            )
+            await self.send_template_user(user, "onboard_bot_welcome", lang="en")
+        await self.help_text(user)
 
     async def onboard_user(self, user: _UserBot):
+        user.active_workflow = None
         user_state = self.db["registered_users"].find_one(username=user.username)
-        if not user_state.get("onboard_acl"):
+        if user_state.get("is_bot"):
+            return await self.onboard_bot(user, user_state)
+        elif not user_state.get("lang"):
+            await self.langselect_workflow_start(user)
+        elif not user_state.get("onboard_acl"):
             await self.acl_workflow(user)
+        elif not user_state.get("finalize_registration"):
+            await self.finish_registration(user)
+        else:
+            await self.help_text(user)
 
-    async def acl_workflow_finalize(self, user: _UserBot, message: wuc.WUMessage):
+    def reset_onboarding(self, user: _UserBot):
+        user.active_workflow = None
+        if user.unregistering_timer is not None:
+            user.unregistering_timer.cancel()
+        self.db["registered_users"].update(
+            {
+                "username": user.username,
+                "onboard_acl": False,
+                "finalize_registration": False,
+                "lang": None,
+            },
+            ["username"],
+        )
+
+    async def acl_workflow_finalize(self, user: _UserBot, text: str):
         try:
-            base = message.content.text[len("setacl-") :]
-            n_bytes_str, rest = base.split("@")
+            body = text[len("setacl-") :]
+            lang, base = body.split("-", 1)
+            n_bytes_str, rest = base.strip().split("@")
             n_bytes = int(n_bytes_str)
             gids: T.Dict[str, bool] = {}
-            for gid_spec in rest.split(":"):
-                gid, can_read_str = gid_spec.split("|")
-                gids[gid] = can_read_str == "1"
+            if rest:
+                for gid_spec in rest.split(":"):
+                    gid, can_read_str = gid_spec.split("~")
+                    gids[gid] = can_read_str == "1"
         except Exception:
-            self.logger.exception(
-                "Could not decode ACL response: %s", message.content.text
-            )
-            await self.send_text_message(
-                user.jid,
-                "I didn't understand that. Could you try again with the following message and if the problem persists please contact the research team",
-            )
+            self.logger.exception("Could not decode ACL response: %s", text)
+            await self.send_template_user(user, "acl_workflow_error_code")
             return await self.acl_workflow(user)
 
+        user.set_lang(lang)
         group_info_lookup = await user.group_acl_jid_lookup(n_bytes=n_bytes)
         summary = defaultdict(list)
+        if user.is_demo:
+            await self.send_text_message(
+                user.jid,
+                "(You are in demo mode. We are going to simulate changing your group preferences however no data will be collected)",
+            )
         for gid, can_read in gids.items():
             permission = (
                 wuc.GroupPermission.READONLY if can_read else wuc.GroupPermission.DENIED
@@ -184,73 +290,116 @@ class UserServicesBot(BaseBot):
             data = group_info_lookup[gid]
             summary[can_read].append(data["name"])
             jid = data["jid"]
-            await user.core_client.SetACL(wuc.GroupACL(JID=jid, permission=permission))
-            if can_read:
-                asyncio.get_running_loop().call_soon(self._trigger_history, user, jid)
-        summary_text = "Thank you for your selection! We will now:"
+            if not user.is_demo:
+                await user.core_client.SetACL(
+                    wuc.GroupACL(JID=jid, permission=permission)
+                )
+
+        await self.send_template_user(user, "acl_workflow_finalize_header")
         if include := summary.get(True):
-            summary_text += "\nMonitor the following groups:\n  -" + "\n  - ".join(
-                include
+            group_list = " - " + "\n - ".join(include)
+            await self.send_template_user(
+                user, "acl_workflow_finalize_monitor", group_list=group_list
             )
         if exclude := summary.get(False):
-            summary_text += (
-                "\nNo longer monitor the following groups:\n  -"
-                + "\n  - ".join(exclude)
+            group_list = " - " + "\n - ".join(exclude)
+            await self.send_template_user(
+                user, "acl_workflow_finalize_ignore", group_list=group_list
             )
-        await self.send_text_message(
-            user.jid,
-            summary_text,
-        )
         self.db["registered_users"].update(
             {"username": user.username, "onboard_acl": True}, ["username"]
         )
         await self.onboard_user(user)
 
+    async def finish_registration(self, user: _UserBot):
+        await self.send_template_user(user, "finish_registration")
+        self.db["registered_users"].update(
+            {"username": user.username, "finalize_registration": True}, ["username"]
+        )
+        await self.onboard_user(user)
+
+    async def help_text(self, user: _UserBot):
+        await self.send_template_user(user, "help_text")
+
     async def acl_workflow(self, user: _UserBot):
         n_bytes = 3
         groups_data = await user.group_acl_data(n_bytes=n_bytes)
+        user_state = self.db["registered_users"].find_one(username=user.username)
+        skip_intro = int(user_state.get("onboard_acl") or False)
         params = {
             "bot_number": f"+{self.connection_status.JID.user}",
             "gid_nbytes": n_bytes,
             "data_jsons": json.dumps(groups_data),
+            "default_lang": user.lang,
+            "skip_intro": skip_intro,
         }
-        content = (
-            static_files["group_selection"]
-            .open()
-            .read()
-            .format_map(params)
-            .encode("utf8")
+        acl_html = static.substitute(
+            static.static_files["group_selection"].read_text("utf8"), **params
+        )
+        acl_url = self.bytes_to_url(
+            acl_html.encode("utf8"), suffix=".html", ttl=timedelta(days=1)
         )
         async with self.with_disappearing_messages(
             user.jid, wuc.DisappearingMessageOptions.TIMER_24HOUR
-        ):
-            await self.send_media_message(
-                user.jid,
-                MediaType.MediaDocument,
-                content=content,
-                caption="Click the above attachment and open in Chrome to select the groups you would like to share",
-                mimetype="text/html",
-                filename="onboard-group-selection.html",
+        ) as context_info:
+            await self.send_template_user(
+                user, "acl_workflow", context_info=context_info
             )
+            msg = "Click the link above"
+            spacer = (
+                b"\xCD\x8F".decode("utf8") * 3060
+            )  # Combining Grapheme Joiner, U+034F
+            await self.send_raw_message(
+                user.jid,
+                waw.Message(
+                    extendedTextMessage=waw.ExtendedTextMessage(
+                        text=f"{msg}\n{spacer}\n{acl_url}",
+                        matchedText=acl_url,
+                        canonicalUrl=acl_url,
+                        description="Click HERE to select the groups you would like to share. This link expires in 24 hours.",
+                        title="WhatsApp Watch Group Selection",
+                        jpegThumbnail=static.static_files[
+                            "group_selection_thumbnail"
+                        ].read_bytes(),
+                        contextInfo=context_info,
+                    )
+                ),
+            )
+            if user.is_demo:
+                await self.send_text_message(
+                    user.jid,
+                    "(You are in demo mode. We are going to simulate changing your group preferences however no data will be collected)",
+                )
+        user.active_workflow = self.acl_workflow_finalize
 
-    async def _trigger_history(self, user: _UserBot, jid: wuc.JID):
-        self.logger.critical("_trigger_history called but not yet implemented")
-        # TODO: this
-        pass
+    def bytes_to_url(
+        self,
+        content: bytes,
+        suffix: T.Optional[str] = None,
+        ttl: T.Optional[timedelta] = None,
+    ) -> str:
+        filename = f"{utils.random_string(length=6)}{suffix or ''}"
+        filepath: CloudPath = (
+            self.public_path / filename[0] / filename[1] / filename[2:]
+        )
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        filepath.write_bytes(content)
+        return utils.gspath_to_self_signed_url(filepath, ttl=ttl)
 
     async def unregister_workflow(self, user: _UserBot):
-        await self.send_text_message(
-            user.jid,
-            "Are you sure you want to unregister? "
-            "Send 'yes' within 60 seconds to finalize your request.",
-        )
+        await self.send_template_user(user, "unregister_workflow")
         user.unregistering_timer = asyncio.get_event_loop().call_later(
-            60,
-            asyncio.create_task,
-            self.send_text_message(user.jid, "Unregister request timed out."),
+            60, asyncio.create_task, self.unregister_workflow_cancel(user)
         )
+        user.active_workflow = self.unregister_workflow_continue
+
+    async def unregister_workflow_cancel(self, user: _UserBot):
+        user.active_workflow = None
+        await self.send_template_user(user, "unregister_timeout")
+        await self.help_text(user)
 
     async def unregister_workflow_continue(self, user: _UserBot, text: str):
+        user.active_workflow = None
         if user.unregistering_timer is not None:
             user.unregistering_timer.cancel()
             is_expired = (
@@ -261,19 +410,56 @@ class UserServicesBot(BaseBot):
         user.unregistering_timer = None
         if is_expired:
             raise asyncio.CancelledError()
-        elif text != "yes":
-            await self.send_text_message(
-                user.jid,
-                "Unrecognized response. Canceling unregister request. Please request to unregister again if you still desire to unregister",
-            )
-            raise asyncio.CancelledError()
+        elif text != "1":
+            await self.send_template_user(user, "unregister_unrecognized")
+            return await self.onboard_user(user)
         return await self.unregister_workflow_finalize(user)
 
     async def unregister_workflow_finalize(self, user: _UserBot):
-        final_message = static_files["unregister_final_message"].open().read()
-        await self.send_text_message(
-            user.jid,
-            final_message.format(anon_user=user.jid_anon.user),
+        await self.send_template_user(
+            user, "unregister_final_message", anon_user=user.jid_anon.user
         )
-        await self.device_manager.unregister(user.username)
+        jid = utils.jid_to_str(user.jid_anon)
+        if jid:
+            self.users.pop(jid)
+        if user.username:
+            await self.device_manager.unregister(user.username)
         self.db["registered_users"].delete(username=user.username)
+
+    async def send_template_user(
+        self,
+        user,
+        template,
+        lang: T.Optional[TypeLanguages | T.Literal["all"]] = None,
+        context_info=None,
+        **kwargs,
+    ):
+        lang = lang or user.lang or "all"
+        if lang == "all":
+            await self.send_template_user(
+                user, template, "en", context_info=context_info, **kwargs
+            )
+            await self.send_template_user(
+                user, template, "hi", context_info=context_info, **kwargs
+            )
+            return
+        await self.send_template(
+            user.jid, template, lang, context_info=context_info, **kwargs
+        )
+
+    async def langselect_workflow_start(self, user: _UserBot):
+        await self.send_template_user(user, "langselect_start", lang="all")
+        user.active_workflow = self.langselect_workflow_finalize
+
+    async def langselect_workflow_finalize(self, user: _UserBot, text: str):
+        if text == "1":
+            lang = "en"
+        elif text == "2":
+            lang = "hi"
+        else:
+            return await self.langselect_workflow_start(user)
+
+        user.active_workflow = None
+        user.set_lang(lang)
+        await self.send_template_user(user, "langselect_final")
+        await self.onboard_user(user)

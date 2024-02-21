@@ -14,13 +14,21 @@ class OnboardBot(BaseBot):
         default_group_permission: wuc.GroupPermission.ValueType,
     ):
         logger = self.logger.getChild(username)
-        logger.info("Registering user")
         passphrase = utils.random_passphrase()
+        get_history = default_group_permission in (
+            wuc.GroupPermission.READWRITE,
+            wuc.GroupPermission.READONLY,
+        )
+        logger.info(f"Registering user: {get_history=}, {default_group_permission=}")
         try:
             async for qrcode in self.authenticator.register(
-                username, passphrase, default_group_permission
+                username,
+                passphrase,
+                default_group_permission,
+                get_history=get_history,
             ):
-                # print(utils.qrcode_gen(qrcode))
+                if self.is_prod():
+                    print(utils.qrcode_gen(qrcode))
                 logger.critical("QRCode: %s", qrcode)
         except NotRegisteredError:
             logger.exception("Could not register user")

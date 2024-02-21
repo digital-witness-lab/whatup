@@ -58,6 +58,15 @@ func (al *AnonLookup) makeReady() bool {
 		anonUser := AnonymizeString(jid.User)
 		al.lookup.Store(anonUser, jid.User)
 	}
+    groups, err := al.client.GetJoinedGroups() 
+    if err != nil {
+        al.client.Log.Errorf("Could not get joined groups to initialized anon lookup: %v", err)
+    }
+	for _, groupInfo := range groups {
+        jid := groupInfo.JID
+		anonUser := AnonymizeString(jid.User)
+		al.lookup.Store(anonUser, jid.User)
+	}
 	al.isReady = true
 	return true
 }
@@ -78,11 +87,25 @@ func (al *AnonLookup) DeAnonString(anonString string) (string, bool) {
 	return clear.(string), found
 }
 
+func (al *AnonLookup) JIDNeedsAnonymization(JID *pb.JID) bool {
+    switch server := JID.GetServer(); server {
+    case types.DefaultUserServer:
+        return true
+    case types.LegacyUserServer:
+        return true
+    case types.GroupServer:
+        if strings.Contains(JID.GetUser(), "-") {
+            return true
+        }
+    }
+    return false
+}
+
 func (al *AnonLookup) anonymizeJIDProto(JID *pb.JID) *pb.JID {
 	if JID == nil {
 		return JID
 	}
-	if !strings.HasPrefix(JID.GetUser(), "anon.") && (JID.GetServer() == types.DefaultUserServer || JID.GetServer() == types.LegacyUserServer) {
+	if !strings.HasPrefix(JID.GetUser(), "anon.") && al.JIDNeedsAnonymization(JID) {
 		anonUser := AnonymizeString(JID.User)
 		user := JID.User
 		al.setAnon(anonUser, JID.User)
@@ -91,6 +114,18 @@ func (al *AnonLookup) anonymizeJIDProto(JID *pb.JID) *pb.JID {
 		JID.UserGeocode = UserToCountry(user)
 	}
 	return JID
+}
+
+func (al *AnonLookup) deAnonymizeJID(JID *types.JID) (*types.JID, bool) {
+	if strings.HasPrefix(JID.User, "anon.") {
+		user, found := al.lookup.Load(JID.User)
+		if found {
+			JID.User = user.(string)
+			return JID, true
+		}
+		return JID, false
+	}
+	return JID, true
 }
 
 func (al *AnonLookup) deAnonymizeJIDProto(JID *pb.JID) (*pb.JID, bool) {
@@ -144,7 +179,8 @@ func AnonymizeInterface[T any](al *AnonLookup, object T) T {
 func DeAnonymizeInterface[T any](al *AnonLookup, object T) T {
 	findRunAction(object, func(value reflect.Value) []reflect.Value {
 		if value.CanInterface() {
-			if JID, ok := value.Interface().(*pb.JID); ok {
+			valueInt := value.Interface()
+			if JID, ok := valueInt.(*pb.JID); ok {
 				al.deAnonymizeJIDProto(JID)
 			}
 		}

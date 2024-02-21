@@ -74,14 +74,22 @@ whatup_anon_key_secret_source = (
     )
 )
 
-log_level = "INFO" if is_prod_stack() else "DEBUG"
+if is_prod_stack():
+    cpu = "2"
+    memory = "6Gi"
+else:
+    cpu = "1"
+    memory = "1Gi"
+
+log_level = "INFO"  # if is_prod_stack() else "DEBUG"
 whatupcore2_service = Service(
     service_name,
     ServiceArgs(
         args=["rpc", f"--log-level={log_level}"],
         concurrency=500,
         container_port=3447,
-        cpu="1",
+        cpu=cpu,
+        memory=memory,
         # Route only egress traffic bound for private IPs
         # via the VPC network. All other traffic will take
         # the default route bound for the internet gateway.
@@ -93,7 +101,6 @@ whatupcore2_service = Service(
         # We want this service to only be reachable from within
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
-        memory="1Gi",
         public_access=True,
         service_account=service_account,
         # Specifying the subnet causes CloudRun to use
@@ -122,6 +129,10 @@ whatupcore2_service = Service(
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="ANON_KEY",
                 value_source=whatup_anon_key_secret_source,
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="RAND_STRING",  # change rand string to force deploy
+                value="32394082320394",
             ),
         ],
     ),

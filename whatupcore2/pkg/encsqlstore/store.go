@@ -780,3 +780,46 @@ func (s *EncSQLStore) GetPrivacyToken(user types.JID) (*store.PrivacyToken, erro
 		return &token, nil
 	}
 }
+
+const (
+	putNewestMessage = `
+        INSERT INTO whatsmeow_enc_newest_message as m (our_jid, chat_jid, message_id, timestamp, is_from_me)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (our_jid, chat_jid) DO UPDATE
+        SET (message_id, timestamp, is_from_me) = (EXCLUDED.message_id, EXCLUDED.timestamp, EXCLUDED.is_from_me)
+        WHERE m.timestamp < EXCLUDED.timestamp
+    `
+	getNewestMessage = `SELECT message_id, timestamp, is_from_me FROM whatsmeow_enc_newest_message WHERE our_jid=$1 AND chat_jid=$2`
+)
+
+func (s *EncSQLStore) PutNewestMessageInfo(msgInfo *types.MessageInfo) error {
+	result, err := encryptQueryRows(s, s.db.Exec, putNewestMessage, s.JID, msgInfo.Chat.ToNonAD(), msgInfo.ID, msgInfo.Timestamp.Unix(), msgInfo.IsFromMe)
+	if err == nil {
+		rows, _ := result.RowsAffected()
+		s.log.Debugf("Inserted message metadata: n_rows = %d", rows)
+	} else {
+		s.log.Debugf("Could not insert newest message info: %w", err)
+	}
+	return err
+}
+
+func (s *EncSQLStore) GetNewestMessageInfo(chat types.JID) (*types.MessageInfo, error) {
+	var timestamp int64
+	var id string
+	var isFromMe bool
+	s.log.Debugf("Getting newest message info for: %s <-> %s", s.JID, chat.String())
+	err := decryptDBScan(s, encryptQueryRow(s, s.db.QueryRow, getNewestMessage, s.JID, chat.ToNonAD()), &id, &timestamp, &isFromMe)
+	if err == nil {
+		return &types.MessageInfo{
+			Timestamp: time.Unix(timestamp, 0),
+			ID:        id,
+			MessageSource: types.MessageSource{
+				Chat:     chat,
+				IsFromMe: isFromMe,
+			},
+		}, nil
+	} else if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return nil, err
+}

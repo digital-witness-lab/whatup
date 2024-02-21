@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+RAND="2323488923r2j3hiusdsdff"
 app_command=$1
 
 if [ -z "${app_command:-}" ]; then
@@ -8,8 +9,14 @@ if [ -z "${app_command:-}" ]; then
     exit 1
 fi
 
-DEBUG=$( [[ "$IS_PROD" == "False" ]] && echo "--debug" || echo "" )
+DEBUG=
+#$( [[ "$IS_PROD" == "False" ]] && echo "--debug" || echo "" )
 echo "Running app command: $app_command $DEBUG"
+
+# Run the VM secrets configurator.
+# If we are not running inside a VM,
+# it will exit silently.
+/configureVmSecrets
 
 function positive_mod() {
     local dividend=$1
@@ -54,8 +61,18 @@ case $app_command in
             --port 443 \
             registerbot \
             --database-url "${DATABASE_URL}" \
-            --sessions-url "kek+gs://${SESSIONS_BUCKET}/${SESSIONS_USER_SUBDIR}/" \
-            "kek+gs://${SESSIONS_BUCKET}/${ONBOARD_BOT}.json"
+            --sessions-url "kek+gs://${SESSIONS_BUCKET}/users/" \
+            "kek+gs://${SESSIONS_BUCKET}/${PRIMARY_BOT_NAME}.json"
+    ;;
+
+    userservices)
+        exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
+            --port 443 \
+            userservicesbot \
+            --database-url "${DATABASE_URL}" \
+            --sessions-url "kek+gs://${SESSIONS_BUCKET}/users/" \
+            --public-path "gs://${TEMP_BUCKET}/" \
+            "kek+gs://${SESSIONS_BUCKET}/${PRIMARY_BOT_NAME}.json"
     ;;
 
     onboard)
@@ -77,6 +94,7 @@ case $app_command in
         echo "Loading archive: Job $idx out of $n_jobs"
 
         whatupy gs-ls "gs://${MESSAGE_ARCHIVE_BUCKET}/" | \
+            egrep ${ARCHIVE_FILTER} | \
             filter-by-job $idx $n_jobs | \
             tee /dev/stderr | \
             xargs -P 2 -I{} \
@@ -88,6 +106,18 @@ case $app_command in
         retval=$?
         echo "Exiting run.sh with code: $retval"
         exit $retval
+    ;;
+
+    delete-groups)
+        if [ -z "${WHATUPY_DELETE_GROUPS:-}" ]; then
+            echo "WHATUPY_DELETE_GROUPS env var is required."
+            exit 1
+        fi
+        exec whatupy $DEBUG \
+            databasebot-delete-groups \
+                    --database-url ${DATABASE_URL} \
+                    --media-base "gs://${MEDIA_BUCKET}/" \
+                    "${WHATUPY_DELETE_GROUPS}"
     ;;
 
     *)
