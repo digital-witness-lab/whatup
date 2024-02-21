@@ -102,7 +102,6 @@ ssl_cert = tls.SelfSignedCert(
 ssl_private_key_pem_secret = create_secret(
     "whatup-ssl-pk-pem", ssl_private_key.private_key_pem
 )
-
 ssl_cert_pem_secret = create_secret("whatup-ssl-cert-pem", ssl_cert.cert_pem)
 
 ssl_private_key_pem_perm = secretmanager.SecretIamMember(

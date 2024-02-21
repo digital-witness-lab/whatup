@@ -15,6 +15,7 @@ import gcp_services
 # )
 from services import (
     whatupcore2,
+    bot_register,
 )
 
 # pulumi.export("bigquery_connection_id", bigquery_sql_connection.connection_id)
