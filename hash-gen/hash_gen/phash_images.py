@@ -15,12 +15,12 @@ bucket_dir = "whatup-deploy.messages_test" # can use this in run command
 
 # Process local or cloud image files or directories
 @click.command()
-@click.option("--bucket-dir", type=str) # use this to process all unprocessed images in a particular bucket
+@click.option("--database-url", type=str) # use this to process all unprocessed images in a particular bucket
 @click.option(
-    "--file-or-dir", type=click.Path(path_type=AnyPath)) # use this argument to process a specific local or cloud directory or image.
-def hash_images(bucket_dir, file_or_dir):
+    "--file-or-dir", type=click.Path(path_type=AnyPath)) # use this argument to process an unprocessed specific local or cloud directory or image.
+def hash_images(database_url, file_or_dir):
     client = bigquery.Client(project="whatup-deploy")
-    table_id = "{}.phash_images".format(bucket_dir)
+    table_id = "{}.phash_images".format(database_url)
     creds = google.auth.default()[0] # I have to manually access creds just for CloudPathLib's GSClient instantiation (https://cloudpathlib.drivendata.org/v0.6/authentication/)
     
     gs_client = GSClient(credentials=creds, project="whatup-deploy")
@@ -36,8 +36,8 @@ def hash_images(bucket_dir, file_or_dir):
         file_or_dir = AnyPath(file_or_dir)
         images_to_process = []
         if file_or_dir.is_dir():
-            media_dirs = list(AnyPath(file_or_dir.rglob("*/media/*"))) 
-            #media_dirs = list(AnyPath(file_or_dir.rglob("media/*")))  # use this if directly pointing to one media directory
+            images_to_process = list(AnyPath(file_or_dir.rglob("*/media/*"))) 
+            #images_to_process = list(AnyPath(file_or_dir.rglob("media/*")))  # use this if directly pointing to one media directory
         else:
             images_to_process.append(file_or_dir)
 
@@ -46,8 +46,8 @@ def hash_images(bucket_dir, file_or_dir):
         rows = query_job.result()  
         existing_hashes = {row[0] for row in list(rows)}
 
-    else:
-        QUERY = ('SELECT content_url FROM (SELECT * FROM `{}.media` WHERE REGEXP_CONTAINS(mimetype, \'image/*\')) as a LEFT JOIN `{}.phash_images` as b ON a.filename = b.filename WHERE b.filename IS NULL and content_url IS NOT NULL').format(bucket_dir,bucket_dir)
+    else: # the preferable method
+        QUERY = ('SELECT content_url FROM (SELECT * FROM `{}.media` WHERE REGEXP_CONTAINS(mimetype, \'image/*\')) as a LEFT JOIN `{}.phash_images` as b ON a.filename = b.filename WHERE b.filename IS NULL and content_url IS NOT NULL').format(database_url,database_url)
         query_job = client.query(QUERY) 
         rows = query_job.result()  
         images_to_process = [AnyPath(row[0]) for row in list(rows)]
