@@ -93,7 +93,11 @@ class RegisterBot(BaseBot):
                 f"Unknown command: {params.command}",
             )
 
-        user_params = {"is_bot": is_bot, "is_demo": is_demo}
+        user_params = {
+            "is_bot": is_bot,
+            "is_demo": is_demo,
+            "control_group": message.info.source.chat,
+        }
         alias = str(params.alias) or "-".join(utils.random_words(5))
         if not alias or VALID_ALIAS.match(alias) is None:
             return await self.send_text_message(
@@ -164,6 +168,9 @@ class RegisterBot(BaseBot):
             "registerbot__timestamp": datetime.now().isoformat(),
             "registerbot__triggered_by": utils.jid_to_str(handler_jid),
             "registerbot__jid": utils.jid_to_str(connection_status.JIDAnon),
+            "registerbot__control_group": utils.jid_to_str(
+                user_params["control_group"]
+            ),
             "registerbot__username": username,
             "registerbot__default_permission": wuc.GroupPermission.Name(
                 default_group_permission
@@ -177,6 +184,7 @@ class RegisterBot(BaseBot):
                 "is_bot": is_bot,
                 "is_demo": is_demo,
                 "jid_anon": utils.jid_to_str(connection_status.JIDAnon),
+                "control_group": utils.jid_to_str(user_params["control_group"]),
                 "provenance": meta,
             },
             ["username"],
