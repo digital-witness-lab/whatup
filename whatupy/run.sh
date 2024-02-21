@@ -37,6 +37,10 @@ function filter-by-job() {
 }
 export -f filter-by-job
 
+if [ -n "${SSL_CERT_PEM}" ]; then
+    echo $SSL_CERT_PEM > /tmp/cert.pem
+fi
+
 case $app_command in
 
     archivebot)
@@ -58,6 +62,7 @@ case $app_command in
 
     registerbot)
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
+            --cert /tmp/cert.pem \
             --port 443 \
             registerbot \
             --database-url "${DATABASE_URL}" \

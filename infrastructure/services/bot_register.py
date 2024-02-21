@@ -13,7 +13,7 @@ from service import Service, ServiceArgs
 from storage import sessions_bucket
 from config import primary_bot_name, control_groups
 
-from .whatupcore2 import whatupcore2_service
+from .whatupcore2 import whatupcore2_service, ssl_cert_pem_secret
 
 service_name = "bot-register"
 
@@ -70,6 +70,22 @@ encryption_key_perm = kms.CryptoKeyIAMMember(
     ),
 )
 
+ssl_cert_pem_perm = secretmanager.SecretIamMember(
+    "bot-reg-ssl-cert-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=ssl_cert_pem_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+
+ssl_cert_pem_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
+    secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
+        secret=ssl_cert_pem_secret.name,
+        version="latest",
+    )
+)
+
 db_usr_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
         secret=db_url_secrets["users"].name,
@@ -100,6 +116,10 @@ bot_register = Service(
             network=vpc.id, subnetwork=private_services_network_with_db.id
         ),
         envs=[
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="SSL_CERT_PEM",
+                value_source=ssl_cert_pem_source,
+            ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="DATABASE_URL",
                 value_source=db_usr_secret_source,
@@ -133,6 +153,10 @@ bot_register = Service(
         ],
     ),
     opts=ResourceOptions(
-        depends_on=[sessions_bucket_perm, encryption_key_perm]
+        depends_on=[
+            sessions_bucket_perm,
+            encryption_key_perm,
+            ssl_cert_pem_perm,
+        ]
     ),
 )
