@@ -138,7 +138,7 @@ bot_register = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_HOST",
-                value=whatupcore2_service.get_host(),
+                value=whatupcore2_service.get_host_output(),
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="PRIMARY_BOT_NAME",
