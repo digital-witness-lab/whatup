@@ -22,7 +22,16 @@ logger = logging.getLogger(__name__)
 
 
 class _UserBot(BaseBot):
-    def __init__(self, host, port, cert, services_bot, db, **kwargs):
+    def __init__(
+        self,
+        host,
+        port,
+        cert,
+        services_bot,
+        db,
+        group_min_participants: int = 6,
+        **kwargs,
+    ):
         self.services_bot: UserServicesBot = services_bot
         self.active_workflow: T.Optional[T.Callable] = None
         self.unregistering_timer: T.Optional[asyncio.TimerHandle] = None
@@ -30,6 +39,8 @@ class _UserBot(BaseBot):
         self.lang: T.Optional[TypeLanguages] = None
         self.is_bot: T.Optional[bool] = None
         self.is_demo: T.Optional[bool] = None
+
+        self.group_min_participants = group_min_participants
         super().__init__(
             host,
             port,
@@ -69,16 +80,14 @@ class _UserBot(BaseBot):
     def _hash_jid(jid: wuc.JID, n_bytes: int):
         return hashlib.sha1(jid.user.encode("utf8")).hexdigest()[:n_bytes]
 
-    async def group_acl_jid_lookup(
-        self, n_bytes, min_participants=6
-    ) -> T.Dict[str, T.Dict]:
+    async def group_acl_jid_lookup(self, n_bytes) -> T.Dict[str, T.Dict]:
         joined_group_iter = self.core_client.GetJoinedGroups(
             wuc.GetJoinedGroupsOptions()
         )
         lookup = {}
         async for data in joined_group_iter:
             n_participants = len(data.groupInfo.participants)
-            if n_participants < min_participants:
+            if n_participants < self.group_min_participants:
                 continue
             gid = self._hash_jid(data.groupInfo.JID, n_bytes)
             lookup[gid] = {
@@ -87,14 +96,14 @@ class _UserBot(BaseBot):
             }
         return lookup
 
-    async def group_acl_data(self, n_bytes=5, min_participants=6):
+    async def group_acl_data(self, n_bytes=5):
         joined_group_iter = self.core_client.GetJoinedGroups(
             wuc.GetJoinedGroupsOptions()
         )
         groups = []
         async for data in joined_group_iter:
             n_participants = len(data.groupInfo.participants)
-            if n_participants < min_participants:
+            if n_participants < self.group_min_participants:
                 continue
             permission = data.acl.permission
             can_read = permission in (
@@ -129,8 +138,17 @@ class UserServicesBot(BaseBot):
         self.db: dataset.Database = dataset.connect(database_url)
         self.users: T.Dict[str, _UserBot] = {}
 
+        group_min_participants = 6
+        if not self.is_prod():
+            group_min_participants = 0
+
         bot_factory = partial(
-            _UserBot, services_bot=self, logger=self.logger, db=self.db, **kwargs
+            _UserBot,
+            services_bot=self,
+            logger=self.logger,
+            db=self.db,
+            group_min_participants=group_min_participants,
+            **kwargs,
         )
         self.credentials_manager = credentials_manager
         self.device_manager = DeviceManager(
