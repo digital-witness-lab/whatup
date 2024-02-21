@@ -91,7 +91,7 @@ class BaseBot:
         self.host = host
         self.port = port
         self.cert = cert
-        self.meta = dict()
+        self.meta: T.Dict = dict()
         self.logger = logger.getChild(self.__class__.__name__)
         self._stop_on_event: T.Optional[asyncio.Event] = None
 
@@ -137,7 +137,7 @@ class BaseBot:
         self.logger = self.logger.getChild(credential.username)
         self.username = credential.username
         self.logger.info("Logging in")
-        self.meta.update(credential.meta or {})
+        self.meta.update(dict(credential.meta or {}))
         try:
             await self.authenticator.login(credential.username, credential.passphrase)
         except grpc.aio._call.AioRpcError as e:
