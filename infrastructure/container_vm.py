@@ -368,9 +368,10 @@ class ContainerOnVm(pulumi.ComponentResource):
 
     def get_host_output(self) -> pulumi.Output[str]:
         if self.__args.private_address:
-            return pulumi.Output.concat(
-                "https://", self.__args.private_address.address
-            )
+            return self.__args.private_address.address
+            # return pulumi.Output.concat(
+            #    "https://", self.__args.private_address.address
+            # )
 
         # The self_link is only available once the instance group manager
         # resource is created, so creating a dependency on that will
@@ -383,9 +384,8 @@ class ContainerOnVm(pulumi.ComponentResource):
             pulumi.Output.all(
                 self.zonal_instance_group.name,
                 self.zonal_instance_group.self_link,
-            )
-            .apply(lambda args: self.__get_internal_ip(args[0]))
-            .apply(lambda ip: f"https://{ip}")
+            ).apply(lambda args: self.__get_internal_ip(args[0]))
+            # .apply(lambda ip: f"https://{ip}")
         )
 
     def __lift_container_spec_env_vars(
