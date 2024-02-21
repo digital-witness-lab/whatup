@@ -297,7 +297,8 @@ class DatabaseBot(BaseBot):
 
         message.provenance["databasebot__timestamp"] = datetime.now().isoformat()
         message.provenance["databasebot__version"] = self.__version__
-        message.provenance.update(self.meta)
+        # provenance only supports Dict[str, str]
+        message.provenance.update({str(k): str(v) for k, v in self.meta.items()})
 
         self._ping_user_stats(message)
         if not self.db["messages_seen"].count(id=msg_id):
