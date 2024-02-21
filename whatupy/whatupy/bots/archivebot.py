@@ -23,7 +23,7 @@ def to_message(mediaMessage: wuc.MediaMessage) -> waw.Message:
 
 
 class ArchiveBot(BaseBot):
-    __version__ = "1.0.0"
+    __version__ = "1.1.0"
 
     def __init__(
         self,
