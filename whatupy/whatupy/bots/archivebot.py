@@ -23,7 +23,7 @@ def to_message(mediaMessage: wuc.MediaMessage) -> waw.Message:
 
 
 class ArchiveBot(BaseBot):
-    __version__ = "1.0.0"
+    __version__ = "1.1.0"
 
     def __init__(
         self,
@@ -36,6 +36,7 @@ class ArchiveBot(BaseBot):
         self.group_info_refresh_time = group_info_refresh_time
         kwargs["mark_messages_read"] = True
         kwargs["read_historical_messages"] = True
+        self.group_info_last_attempt: T.Dict[str, int]
         super().__init__(*args, **kwargs)
 
     async def on_message(self, message: wuc.WUMessage, is_history: bool, **kwargs):
@@ -72,8 +73,8 @@ class ArchiveBot(BaseBot):
             "archivebot__version": self.__version__,
             "archivebot__archiveId": archive_id,
             "archivebot__isHistory": "true" if is_history else "false",
-            **self.meta,
         }
+        provenance.update({str(k): str(v) for k, v in self.meta.items()})
         message.provenance.update(provenance)
 
         refresh_dt = self.group_info_refresh_time.total_seconds()
@@ -86,7 +87,12 @@ class ArchiveBot(BaseBot):
             conversation_dir / "community-info" / f"community-info_{timestamp}.json"
         )
 
-        if message.info.source.isGroup:
+        should_check_messages = (
+            message.info.source.isGroup
+            and not meta_group_path.exists()
+            and not meta_community_path.exists()
+        )
+        if should_check_messages:
             group: wuc.JID = message.info.source.chat
             try:
                 group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(group)

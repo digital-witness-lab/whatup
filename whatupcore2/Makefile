@@ -11,10 +11,10 @@ connect: whatupcore2
 test: test-whatupcore2 test-encsqlstore
 
 test-whatupcore2:
-	go test -v ./pkg/whatupcore2
+	ANON_KEY="asdf" go test -v ./pkg/whatupcore2
 
 test-encsqlstore:
-	go test -v ./pkg/encsqlstore
+	ANON_KEY="asdf" go test -v ./pkg/encsqlstore
 
 clean:
 	rm -rf ./whatupcore2

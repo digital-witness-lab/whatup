@@ -2,6 +2,9 @@ config:
   gcp:project: whatup-deploy
   gcp:region: europe-west3
   gcp:zone: europe-west3-a
+  google-native:project: whatup-deploy
+  google-native:region: europe-west3
+  google-native:zone: europe-west3
   whatup:createOnboardBulkJob: "true"
   whatup:databases:
     - name: messages
@@ -10,13 +13,17 @@ config:
     - name: whatupcore
       nameShort: wuc
       passwordKey: wucPassword
-    - name: user
+    - name: users
       nameShort: usr
       passwordKey: usrPassword
   whatup:dbRootPassword:
     secure: AAABADVUvMSQDJbmM1efOsI9/xM0BDBF8zU9/11FbNH2ErKOZ9/FdZjAEG0tJtcjW4IeWkJE6/d1PIgY/BmisAUd4m1NWgMQ3mcfJMwPjnSEnb1vPjubiH5BmlOEPi2L
   whatup:msgPassword:
     secure: AAABADidjer3HeL9MDtQF7uJ/cCA0T0aLaKA4Scm1DLzScD5s5oJhXR3fF+TurCdwU69uOUV08u1VzAbZABQcsH5UkBAY77Bm/G8PNxLxbTa6lLszF1+0fpRrPy0YzrK
+  whatup:primary_bot_name: flo
+  whatup:temp_bucket_ttl_days: "1"
+  whatup:control_groups:
+    - 120363159470639781@g.us # coolest friends dev
   whatup:usrPassword:
     secure: AAABAKiWovX77BLq0YB4lHfGiknqXyjpgr/IrzLOWzpSy5QcneSnCtYCwwKM6OAouyD81aAoC+ZVt+hJwY+bhg+J6xRQhpMwF+Opxz7ag7P4pEHWAsPXxEcYlZhjeNFq
   whatup:whatupAnonKey:

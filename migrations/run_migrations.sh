@@ -4,9 +4,6 @@ set -eo pipefail
 
 echo "Running migrations..."
 
-ls /migrations
-ls /migrations/*
-
 ENCODED_DATABASE_ROOT_PASSWORD=$(echo "$DATABASE_ROOT_PASSWORD" | python3 -c 'import urllib.parse; print(urllib.parse.quote(input(), ""))')
 
 if [ -z "${ENCODED_DATABASE_ROOT_PASSWORD:-}" ]; then
@@ -20,3 +17,4 @@ for DATABASE in ${DATABASES//,/ }; do
 done
 
 echo "DB migrations executed successfully!"
+

@@ -1,4 +1,9 @@
+ARG CONFIGURE_VM_SECRETS_REPO=configure-vm-secrets
+FROM $CONFIGURE_VM_SECRETS_REPO as configure-vm-secrets
+
 FROM python:3.11-slim-bullseye
+
+COPY --from=configure-vm-secrets /configureVmSecrets /configureVmSecrets
 
 WORKDIR /usr/src/whatupy
 
@@ -15,3 +20,6 @@ RUN pip install -e .
 
 # Ensure the script is executable.
 RUN chmod +x /usr/src/whatupy/*.sh
+
+ARG ENVIRONMENT="dev"
+ENV ENVIRONMENT=$ENVIRONMENT

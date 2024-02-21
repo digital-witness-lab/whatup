@@ -1,3 +1,5 @@
+from typing import Optional
+from pulumi import export
 import pulumi_docker as docker
 from pulumi import Output, get_stack
 from pulumi_gcp import artifactregistry
@@ -21,27 +23,50 @@ repository_url = Output.concat(
 )
 
 
-def create_image(image_name, app_path) -> docker.Image:
-    return docker.Image(
+def create_image(
+    image_name: str, app_path: str, build_args: Optional[dict] = None
+) -> docker.Image:
+    image = docker.Image(
         f"{image_name}-{get_stack()}-img",
         image_name=Output.concat(repository_url, "/", image_name),
         build=docker.DockerBuildArgs(
             context=app_path,
+            builder_version=docker.BuilderVersion.BUILDER_BUILD_KIT,
             platform="linux/amd64",
             args={
                 # There is a cache bug in the Docker provider
                 # that causes the provider to reuse an image
                 # digest that was built for a different
                 # location.
-                "LOCATION": location
+                "ENVIRONMENT": get_stack(),
+                **(build_args or {}),
             },
         ),
-        # opts=child_opts, // IS THIS NEEDED??
     )
+    docker.Tag(
+        image_name,
+        target_image=f"whatup/{image_name}",
+        source_image=image.base_image_name,
+    )
+    export(image_name, image.repo_digest)
+    return image
 
 
-whatupy_image: docker.Image = create_image("whatupy", "../whatupy/")
+configure_vm_secrets_image: docker.Image = create_image(
+    "configure-vm-secrets", "../configure-vm-secrets/"
+)
+
+configure_vm_build_args = {
+    "CONFIGURE_VM_SECRETS_REPO ": configure_vm_secrets_image.image_name
+}
+
+whatupy_image: docker.Image = create_image(
+    "whatupy", "../whatupy/", build_args=configure_vm_build_args
+)
 whatupcore2_image: docker.Image = create_image(
-    "whatupcore2", "../whatupcore2/"
+    "whatupcore2", "../whatupcore2/", build_args=configure_vm_build_args
 )
 migrations_image: docker.Image = create_image("migrations", "../migrations/")
+bq_init_schema_image: docker.Image = create_image(
+    "bq-init-schema", "../bq-init-schema/"
+)

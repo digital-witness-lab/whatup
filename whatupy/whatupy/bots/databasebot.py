@@ -131,7 +131,7 @@ def query_group_country_codes(db):
 
 
 class DatabaseBot(BaseBot):
-    __version__ = "2.0.0"
+    __version__ = "2.1.0"
 
     def __init__(
         self,
@@ -281,6 +281,9 @@ class DatabaseBot(BaseBot):
                 filename="group-country-codes.csv",
             )
 
+    def _ping_user_stats(self, message: wuc.WUMessage):
+        pass
+
     async def on_message(
         self,
         message: wuc.WUMessage,
@@ -290,26 +293,85 @@ class DatabaseBot(BaseBot):
         **kwargs,
     ):
         msg_id = message.info.id
-        if self.db["messages_seen"].count(id=msg_id) > 0:
-            self.logger.info("Already seen messages, skipping: %s", msg_id)
-            return
+        media_filename = utils.media_message_filename(message)
+
         message.provenance["databasebot__timestamp"] = datetime.now().isoformat()
         message.provenance["databasebot__version"] = self.__version__
-        message.provenance.update(self.meta)
-        self.db["messages_seen"].insert({"id": msg_id, **message.provenance})
+        # provenance only supports Dict[str, str]
+        message.provenance.update({str(k): str(v) for k, v in self.meta.items()})
 
-        if message.messageProperties.isReaction:
-            await self._update_reaction(message)
-        elif message.messageProperties.isEdit:
-            await self._update_edit(message)
-        elif message.messageProperties.isDelete:
-            source_message_id = message.content.inReferenceToId
-            with self.db as db:
-                db["messages"].upsert(
-                    {"id": source_message_id, "isDelete": True}, ["id"]
+        self._ping_user_stats(message)
+        if not self.db["messages_seen"].count(id=msg_id):
+            self.db["messages_seen"].insert({"id": msg_id, **message.provenance})
+            if message.messageProperties.isReaction:
+                await self._update_reaction(message)
+            elif message.messageProperties.isEdit:
+                await self._update_edit(message)
+            elif message.messageProperties.isDelete:
+                source_message_id = message.content.inReferenceToId
+                with self.db as db:
+                    db["messages"].upsert(
+                        {"id": source_message_id, "isDelete": True}, ["id"]
+                    )
+            else:
+                await self._update_message(
+                    message,
+                    is_archive,
+                    is_history,
+                    archive_data,
+                    media_filename=media_filename,
                 )
+
+        if media_filename:
+            existingMedia = self.db["media"].count(
+                filename=media_filename, content_url={"not": None}
+            )
+            if not existingMedia:
+                self.logger.info(
+                    "Getting media: %s: %s: %s",
+                    message.info.source.chat,
+                    message.info.id,
+                    media_filename,
+                )
+                await self._update_media(
+                    message,
+                    is_archive,
+                    is_history,
+                    archive_data,
+                    media_filename=media_filename,
+                )
+
+    async def _update_media(
+        self,
+        message: wuc.WUMessage,
+        is_archive: bool,
+        is_history: bool,
+        archive_data: ArchiveData,
+        media_filename: T.Optional[str] = None,
+    ):
+        media_filename = media_filename or utils.media_message_filename(message)
+        if not media_filename:
+            self.logger.warn(
+                "Could not get media filename for media: %s",
+                message.content.mediaMessage,
+            )
+            return
+        mimetype = utils.media_message_mimetype(message)
+        file_extension = media_filename.rsplit(".", 1)[-1]
+        datum = {
+            "filename": media_filename,
+            "mimetype": mimetype,
+            "fileExtension": file_extension,
+            "timestamp": message.info.timestamp.ToDatetime(),
+        }
+        callback = partial(self._handle_media_content, datum=datum)
+        if is_archive:
+            mp = archive_data.MediaPath
+            if mp is not None and mp.exists():
+                with mp.open("rb") as fd:
+                    await callback(message, fd.read())
         else:
-            await self._update_message(message, is_archive, is_history, archive_data)
+            await self.download_message_media_eventually(message, callback)
 
     async def _update_message(
         self,
@@ -317,9 +379,10 @@ class DatabaseBot(BaseBot):
         is_archive: bool,
         is_history: bool,
         archive_data: ArchiveData,
+        media_filename: T.Optional[str] = None,
     ):
         message_flat = flatten_proto_message(message)
-        media_filename = utils.media_message_filename(message)
+        media_filename = media_filename or utils.media_message_filename(message)
         if message_flat.get("thumbnail"):
             thumbnail: bytes = message_flat.pop("thumbnail")
             message_flat["thumbnail_url"] = self.write_media(
@@ -339,30 +402,7 @@ class DatabaseBot(BaseBot):
                 self.logger.debug(
                     "Done updating group or community groups: %s", message.info.id
                 )
-            if media_filename:
-                self.logger.info("Getting media: %s", message.info.id)
-                message_flat["mediaFilename"] = media_filename
-                existingMedia = db["media"].count(
-                    filename=media_filename, content_url={"not": None}
-                )
-                if not existingMedia:
-                    mimetype = utils.media_message_mimetype(message)
-                    file_extension = media_filename.rsplit(".", 1)[-1]
-                    datum = {
-                        "filename": media_filename,
-                        "content": None,
-                        "mimetype": mimetype,
-                        "fileExtension": file_extension,
-                        "timestamp": message.info.timestamp.ToDatetime(),
-                    }
-                    callback = partial(self._handle_media_content, datum=datum)
-                    if is_archive:
-                        mp = archive_data.MediaPath
-                        if mp.exits():
-                            with mp.open("rb") as fd:
-                                await callback(message, fd.read())
-                    else:
-                        await self.download_message_media_eventually(message, callback)
+            message_flat["mediaFilename"] = media_filename
             db["messages"].upsert(message_flat, ["id"])
         self.logger.debug("Done updating message: %s", message.info.id)
 
@@ -396,9 +436,8 @@ class DatabaseBot(BaseBot):
     async def _handle_media_content(
         self, message: wuc.WUMessage, content: bytes, datum: dict
     ):
-        media_target: T.Optional[str]
         if content:
-            media_target = self.write_media(
+            datum["content_url"] = self.write_media(
                 content, message, datum["filename"], ["media"]
             )
             del content
@@ -406,8 +445,6 @@ class DatabaseBot(BaseBot):
             self.logger.critical(
                 "Empty media body... Writing empty media URI: %s", datum
             )
-            media_target = None
-        datum["content_url"] = media_target
         datum[RECORD_MTIME_FIELD] = datetime.now()
         self.db["media"].upsert(datum, ["filename"])
 
@@ -426,48 +463,58 @@ class DatabaseBot(BaseBot):
         if not is_archive and last_update + self.group_info_refresh_time > now:
             return
 
-        community_processing = False
+        community_info: T.List[wuc.GroupInfo] | None = None
+        group_info: wuc.GroupInfo | None = None
         if is_archive:
             if archive_data.CommunityInfo is not None:
                 community_info = archive_data.CommunityInfo
-                community_processing = True
-            elif archive_data.GroupInfo is not None:
+            if archive_data.GroupInfo is not None:
                 group_info = archive_data.GroupInfo
-            else:
+            if not (archive_data or community_info):
                 return
             now = archive_data.WUMessage.info.timestamp.ToDatetime()
             self.logger.debug("Storing archived message timestamp: %s", now)
         else:
             try:
-                group_info: wuc.GroupInfo = await self.core_client.GetGroupInfo(chat)
-                if (
-                    utils.jid_to_str(group_info.parentJID) != None
-                ):  # this group is in a community
-                    community_processing = True
+                group_info = await self.core_client.GetGroupInfo(chat)
+                if group_info is None:
+                    return
+                if utils.jid_to_str(group_info.parentJID) is not None:
                     community_info_iterator: T.AsyncIterator[
                         wuc.GroupInfo
                     ] = self.core_client.GetCommunityInfo(group_info.parentJID)
-                    community_info: T.List[wuc.GroupInfo] = await utils.aiter_to_list(
-                        community_info_iterator
-                    )
+                    community_info = await utils.aiter_to_list(community_info_iterator)
             except grpc.aio._call.AioRpcError as e:
                 if "rate-overlimit" in (e.details() or ""):
+                    self.logger.warn("Rate Overlimit for group info: %s", chat_jid)
                     return
 
-        if community_processing:
+        if community_info is not None:
             self.logger.debug("Using community info to update groups for community")
+            parentJID = next(gi.JID for gi in community_info if gi.isCommunity)
+            for gi in community_info:
+                if not gi.isCommunity and not gi.parentJID:
+                    gi.parentJID.CopyFrom(parentJID)
             for group_from_community in community_info:
+                self.logger.debug(
+                    "Inserting community group: %s",
+                    utils.jid_to_str(group_from_community.JID),
+                )
                 await self.insert_group_info(db, group_from_community, now)
-        else:
+        elif group_info is not None:
             self.logger.debug("Using group info to update group: %s", chat_jid)
             await self.insert_group_info(db, group_info, now)
+        else:
+            self.logger.critical(
+                "Both community_info and group_info are none...: %s", chat_jid
+            )
 
     async def insert_group_info(
         self, db: dataset.Database, group_info: wuc.GroupInfo, update_time: datetime
     ):
         now = datetime.now()
         chat_jid = utils.jid_to_str(group_info.JID)
-        logger = self.logger.getChild(chat_jid)
+        logger = self.logger.getChild(chat_jid or "")
         group_info_flat = flatten_proto_message(
             group_info,
             preface_keys=True,
@@ -480,30 +527,36 @@ class DatabaseBot(BaseBot):
             **self.meta,
         }
         group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
+        has_prev_group_info = bool(group_info_prev)
+
+        group_info_flat["id"] = chat_jid
+        group_info_flat["last_update"] = update_time
+
         if group_info_prev.get("provenance") is None:
             group_info_prev.update(provenance=db_provenance)
         else:
             group_info_prev["provenance"].update(db_provenance)
-
-        keys = set(group_info_prev.keys()).intersection(group_info_flat.keys())
-        keys.discard("provenance")
-
-        group_info_flat["id"] = chat_jid
-        group_info_flat["last_update"] = update_time
 
         if group_info_flat.get("provenance") is None:
             group_info_flat.update(provenance=db_provenance)
         else:
             group_info_flat["provenance"].update(db_provenance)
 
-        if group_info_prev:
-            if changed_keys := [
+        if has_prev_group_info:
+            logger.debug("Has prev group info")
+            keys = set(group_info_flat.keys())
+            [keys.discard(f) for f in ("provenance", "last_update", "record_mtime")]
+            changed_keys = [
                 k for k in keys if group_info_flat.get(k) != group_info_prev.get(k)
-            ]:
+            ]
+            if changed_keys:
                 logger.debug(
                     "Found previous out-of-date entry, updating: %s: %s",
                     chat_jid,
                     changed_keys,
+                )
+                group_info_flat["provenance"]["databasebot__changed_fields"] = ",".join(
+                    changed_keys
                 )
                 group_info_prev["n_versions"] = group_info_prev.get("n_versions") or 0
                 prev_id = group_info_prev["id"]
@@ -520,6 +573,7 @@ class DatabaseBot(BaseBot):
                 db["group_info"].insert(group_info_prev)
                 db["group_info"].upsert(group_info_flat, ["id"])
             else:
+                logger.debug("Updating group info last updated field: %s", changed_keys)
                 db["group_info"].update(
                     {
                         "id": chat_jid,
@@ -529,7 +583,8 @@ class DatabaseBot(BaseBot):
                     },
                     ["id"],
                 )
-        elif not group_info_prev:
+        else:
+            logger.debug("Inserting new group info row")
             group_info_flat["first_seen"] = update_time
             group_info_flat[RECORD_MTIME_FIELD] = now
             db["group_info"].insert(group_info_flat)
@@ -589,3 +644,79 @@ class DatabaseBot(BaseBot):
                 },
                 ["id"],
             )
+
+    def delete_groups(self, jids: T.List[str], delete_media=True):
+        jids = list(jids)
+
+        with self.db as tx:
+            self.logger.info("Clearing messages_seen table")
+            tx.query(
+                """
+                DELETE FROM messages_seen
+                WHERE id in (
+                    SELECT id
+                    FROM messages
+                    WHERE chat_jid = ANY( :jids )
+                )
+            """,
+                jids=jids,
+            )
+
+            self.logger.info("Clearing reactions table")
+            tx.query(
+                """
+                DELETE FROM reactions
+                WHERE id in (
+                    SELECT id
+                    FROM messages
+                    WHERE chat_jid = ANY( :jids )
+                )
+            """,
+                jids=jids,
+            )
+
+            self.logger.info("Clearing media table")
+            tx.query(
+                """
+                DELETE FROM media
+                WHERE filename in (
+                    SELECT filename
+                    FROM messages
+                    WHERE chat_jid = ANY( :jids ) AND filename IS NOT NULL
+                )
+            """,
+                jids=jids,
+            )
+
+            self.logger.info("Clearing group_info table")
+            tx.query(
+                """
+                DELETE FROM group_info
+                WHERE "JID" = ANY( :jids )
+            """,
+                jids=jids,
+            )
+
+            self.logger.info("Clearing group_participants table")
+            tx.query(
+                """
+                DELETE FROM group_participants
+                WHERE chat_jid = ANY( :jids )
+            """,
+                jids=jids,
+            )
+
+            self.logger.info("Clearing messages table")
+            tx.query(
+                """
+                DELETE FROM messages
+                WHERE chat_jid = ANY( :jids )
+            """,
+                jids=jids,
+            )
+
+        if delete_media:
+            for jid in jids:
+                media_path = self.media_base_path / jid
+                self.logger.info("Removing media path: %s", media_path)
+                media_path.rmtree()

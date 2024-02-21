@@ -108,31 +108,25 @@ class GetJoinedGroupsOptions(google.protobuf.message.Message):
 global___GetJoinedGroupsOptions = GetJoinedGroupsOptions
 
 @typing_extensions.final
-class GetACLAllOptions(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    def __init__(self) -> None:
-        ...
-global___GetACLAllOptions = GetACLAllOptions
-
-@typing_extensions.final
 class RegisterOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     CREDENTIALS_FIELD_NUMBER: builtins.int
     DEFAULTGROUPPERMISSION_FIELD_NUMBER: builtins.int
+    GETHISTORY_FIELD_NUMBER: builtins.int
 
     @property
     def credentials(self) -> global___WUCredentials:
         ...
     defaultGroupPermission: global___GroupPermission.ValueType
+    getHistory: builtins.bool
 
-    def __init__(self, *, credentials: global___WUCredentials | None=..., defaultGroupPermission: global___GroupPermission.ValueType=...) -> None:
+    def __init__(self, *, credentials: global___WUCredentials | None=..., defaultGroupPermission: global___GroupPermission.ValueType=..., getHistory: builtins.bool=...) -> None:
         ...
 
     def HasField(self, field_name: typing_extensions.Literal['credentials', b'credentials']) -> builtins.bool:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['credentials', b'credentials', 'defaultGroupPermission', b'defaultGroupPermission']) -> None:
+    def ClearField(self, field_name: typing_extensions.Literal['credentials', b'credentials', 'defaultGroupPermission', b'defaultGroupPermission', 'getHistory', b'getHistory']) -> None:
         ...
 global___RegisterOptions = RegisterOptions
 
@@ -316,15 +310,47 @@ class DownloadMediaOptions(google.protobuf.message.Message):
 global___DownloadMediaOptions = DownloadMediaOptions
 
 @typing_extensions.final
-class PendingHistoryOptions(google.protobuf.message.Message):
+class HistoryRequestOptions(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
-    HEARTBEATTIMEOUT_FIELD_NUMBER: builtins.int
-    heartbeatTimeout: builtins.int
+    CHAT_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
+    ISFROMME_FIELD_NUMBER: builtins.int
+    TIMESTAMP_FIELD_NUMBER: builtins.int
+    NUM_MESSAGES_FIELD_NUMBER: builtins.int
 
-    def __init__(self, *, heartbeatTimeout: builtins.int=...) -> None:
+    @property
+    def chat(self) -> global___JID:
+        ...
+    id: builtins.str
+    isFromMe: builtins.bool
+
+    @property
+    def timestamp(self) -> google.protobuf.timestamp_pb2.Timestamp:
+        ...
+    num_messages: builtins.int
+
+    def __init__(self, *, chat: global___JID | None=..., id: builtins.str=..., isFromMe: builtins.bool=..., timestamp: google.protobuf.timestamp_pb2.Timestamp | None=..., num_messages: builtins.int=...) -> None:
         ...
 
-    def ClearField(self, field_name: typing_extensions.Literal['heartbeatTimeout', b'heartbeatTimeout']) -> None:
+    def HasField(self, field_name: typing_extensions.Literal['chat', b'chat', 'timestamp', b'timestamp']) -> builtins.bool:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['chat', b'chat', 'id', b'id', 'isFromMe', b'isFromMe', 'num_messages', b'num_messages', 'timestamp', b'timestamp']) -> None:
+        ...
+global___HistoryRequestOptions = HistoryRequestOptions
+
+@typing_extensions.final
+class PendingHistoryOptions(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    MARKMESSAGESREAD_FIELD_NUMBER: builtins.int
+    HEARTBEATTIMEOUT_FIELD_NUMBER: builtins.int
+    markMessagesRead: builtins.bool
+    heartbeatTimeout: builtins.int
+
+    def __init__(self, *, markMessagesRead: builtins.bool=..., heartbeatTimeout: builtins.int=...) -> None:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['heartbeatTimeout', b'heartbeatTimeout', 'markMessagesRead', b'markMessagesRead']) -> None:
         ...
 global___PendingHistoryOptions = PendingHistoryOptions
 
