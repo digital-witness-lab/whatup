@@ -26,7 +26,7 @@ service_name = "whatupcore2"
 
 service_account = serviceaccount.Account(
     "whatupcore",
-    account_id=f"whatupcore-{get_stack()}",
+    account_id=f"whatupcore2-vm-{get_stack()}",
     description=f"Service account for {service_name}",
 )
 
