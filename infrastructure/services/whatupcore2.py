@@ -122,13 +122,6 @@ ssl_cert_pem_perm = secretmanager.SecretIamMember(
     ),
 )
 
-if is_prod_stack():
-    cpu = "2"
-    memory = "6Gi"
-else:
-    cpu = "1"
-    memory = "1Gi"
-
 log_level = "INFO"  # if is_prod_stack() else "DEBUG"
 whatupcore2_service = ContainerOnVm(
     service_name,
@@ -156,7 +149,7 @@ whatupcore2_service = ContainerOnVm(
             tty=False,
             securityContext=ContainerSecurityContext(privileged=False),
         ),
-        machine_type=SharedCoreMachineType.E2Small,
+        machine_type=SharedCoreMachineType.E2Small if is_prod_stack() else SharedCoreMachineType.E2Micro,
         restart_policy="Always",
         secret_env=[
             compute.v1.MetadataItemsItemArgs(

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="2asdjfhas234233hiusdsdff"
+RAND="siasdfoadsfjdfsdsdfdsdff"
 app_command=$1
 
 if [ -z "${app_command:-}" ]; then
@@ -46,7 +46,8 @@ case $app_command in
 
     archivebot)
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --port 443 \
+            --cert /run/secrets/ssl-cert \
+            --port 3447 \
             archivebot \
             --archive-dir "gs://${MESSAGE_ARCHIVE_BUCKET}/" \
             "kek+gs://${SESSIONS_BUCKET}/users/"
@@ -54,7 +55,8 @@ case $app_command in
 
     databasebot)
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --port 443 \
+            --cert /run/secrets/ssl-cert \
+            --port 3447 \
             databasebot \
             --database-url "${DATABASE_URL}" \
             --media-base "gs://${MEDIA_BUCKET}/" \
@@ -64,7 +66,7 @@ case $app_command in
     registerbot)
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
             --cert /run/secrets/ssl-cert \
-            --port 443 \
+            --port 3447 \
             registerbot \
             --database-url "${DATABASE_URL}" \
             --sessions-url "kek+gs://${SESSIONS_BUCKET}/users/" \
@@ -73,7 +75,8 @@ case $app_command in
 
     userservices)
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --port 443 \
+            --cert /run/secrets/ssl-cert \
+            --port 3447 \
             userservicesbot \
             --database-url "${DATABASE_URL}" \
             --sessions-url "kek+gs://${SESSIONS_BUCKET}/users/" \
@@ -87,7 +90,8 @@ case $app_command in
             exit 1
         fi
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --port 443 \
+            --cert /run/secrets/ssl-cert \
+            --port 3447 \
             onboard \
             --default-group-permission READWRITE  \
             --credentials-url "kek+gs://${SESSIONS_BUCKET}/" \
