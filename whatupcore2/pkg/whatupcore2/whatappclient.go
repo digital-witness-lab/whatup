@@ -435,7 +435,10 @@ func (wac *WhatsAppClient) getMessages(evt interface{}) {
 			return
 		}
 
+        wac.Log.Debugf("Setting newest message info: %s", wmMsg.Info.ID)
 		wac.logNewestMessageInfo(&wmMsg.Info)
+
+        wac.Log.Debugf("Checking ACL: %s", wmMsg.Info.ID)
 		aclEntry, err := wac.aclStore.GetByJID(&wmMsg.Info.Chat)
 		if err != nil {
 			wac.Log.Errorf("Could not read ACL for JID: %s: %+v", wmMsg.Info.Chat.String(), err)
@@ -445,17 +448,19 @@ func (wac *WhatsAppClient) getMessages(evt interface{}) {
 			return
 		}
 		// <HACK>
+        wac.Log.Debugf("Checking hack: %s", wmMsg.Info.ID)
 		if !wac.UNSAFEArchiveHack_ShouldProcess(wmMsg) {
 			wac.Log.Debugf("HACK: skipping message")
 			return
 		}
 		// </HACK>
-		msg, err := NewMessageFromWhatsMeow(wac, wmMsg)
+        wac.Log.Debugf("Creating internal message type: %s", wmMsg.Info.ID)
+		msg, err := NewMessageFromWhatsMeow(wac, wmMsg.UnwrapRaw())
 		if err != nil {
 			wac.Log.Errorf("Error converting message from whatsmeow: %+v", err)
 			return
 		}
-		wac.Log.Debugf("Sending message to MessageQueue: %s", msg.DebugString())
+        wac.Log.Debugf("Sending message to MessageQueue: %s: %s", wmMsg.Info.ID, msg.DebugString())
 		wac.messageQueue.SendMessage(msg)
 	}
 }
