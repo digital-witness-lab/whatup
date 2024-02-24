@@ -5,7 +5,8 @@ from artifact_registry import whatupy_image
 from job import Job, JobArgs
 from kms import sessions_encryption_key, sessions_encryption_key_uri
 from network import private_services_network, vpc
-from services.whatupcore2 import ssl_cert_pem_b64_secret, whatupcore2_service
+from services.whatupcore2 import whatupcore2_service
+from whatupcore_network import ssl_cert_pem_b64_secret
 from storage import sessions_bucket
 
 service_name = "bot-onboard"

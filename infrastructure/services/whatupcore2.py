@@ -9,7 +9,6 @@ from container_vm import (
     ContainerEnv,
     ContainerOnVm,
     ContainerOnVmArgs,
-    ContainerSecurityContext,
     SharedCoreMachineType,
 )
 from dwl_secrets import (
@@ -18,7 +17,6 @@ from dwl_secrets import (
     whatup_salt_secret,
 )
 from network import private_services_network_with_db
-from whatupcore_network import ssl_cert_pem_b64_secret  # noqa
 from whatupcore_network import (
     ssl_cert_pem_secret,
     ssl_private_key_pem_secret,
@@ -89,6 +87,7 @@ whatupcore2_service = ContainerOnVm(
     ContainerOnVmArgs(
         automatic_static_private_ip=False,
         private_address=whatupcore2_static_private_ip,
+        tcp_healthcheck_port=3447,
         container_spec=Container(
             command=None,
             args=["rpc", f"--log-level={log_level}"],
