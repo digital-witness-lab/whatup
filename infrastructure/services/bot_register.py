@@ -24,7 +24,7 @@ service_name = "bot-register"
 
 service_account = serviceaccount.Account(
     "bot-register",
-    account_id=f"whatup-bot-reg-vm-{get_stack()}",
+    account_id=f"bot-reg-vm-{get_stack()}",
     description=f"Service account for {service_name}",
 )
 
