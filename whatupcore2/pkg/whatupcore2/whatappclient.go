@@ -158,6 +158,8 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 
 	wmClient := whatsmeow.NewClient(deviceStore, log.Sub("WMC"))
 	wmClient.EnableAutoReconnect = true
+    wmClient.AutoTrustIdentity = true
+    wmClient.AutomaticMessageRerequestFromPhone = true
 	wmClient.EmitAppStateEventsOnFullSync = true
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 

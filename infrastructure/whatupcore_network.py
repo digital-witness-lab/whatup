@@ -1,18 +1,14 @@
 import base64
 
-from pulumi import get_stack
 import pulumi_gcp.compute
-from pulumi_google_native import compute
 import pulumi_tls as tls
+from pulumi import get_stack
+from pulumi_google_native import compute
 
-from network_firewall import firewall_policy
-from dwl_secrets import create_secret
 from config import location
-from network import (
-    private_services_network,
-    private_services_network_with_db,
-)
-
+from dwl_secrets import create_secret
+from network import private_services_network, private_services_network_with_db
+from network_firewall import firewall_policy
 
 whatupcore2_static_private_ip = compute.v1.Address(
     "whatupcore2-private-ip",

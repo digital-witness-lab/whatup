@@ -1,18 +1,17 @@
 from enum import Enum
 from typing import List, Optional
-from attr import dataclass, field
 
+import pulumi
 import yaml
-
+from attr import dataclass, field
 from google.cloud.compute_v1 import (
     InstanceGroupManagersClient,
     ListManagedInstancesInstanceGroupManagersRequest,
 )
-
-import pulumi
 from pulumi.resource import ResourceOptions
+from pulumi_gcp import compute as classic_gcp_compute
+from pulumi_gcp import projects
 from pulumi_google_native.compute import v1 as native_compute_v1
-from pulumi_gcp import projects, compute as classic_gcp_compute
 
 from config import project, zone
 from gcloud import get_project_number

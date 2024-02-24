@@ -1,14 +1,14 @@
 from pulumi import Output, ResourceOptions, get_stack
-from pulumi_gcp import cloudrunv2, kms, serviceaccount, storage
+from pulumi_gcp import cloudrunv2, kms, secretmanager, serviceaccount, storage
 
 from artifact_registry import whatupy_image
+from config import control_groups
 from kms import sessions_encryption_key, sessions_encryption_key_uri
 from network import private_services_network, vpc
 from service import Service, ServiceArgs
 from storage import message_archive_bucket, sessions_bucket
-from config import control_groups
 
-from .whatupcore2 import whatupcore2_service
+from .whatupcore2 import ssl_cert_pem_b64_secret, whatupcore2_service
 
 service_name = "bot-archive"
 
@@ -44,6 +44,21 @@ encryption_key_perm = kms.CryptoKeyIAMMember(
         crypto_key_id=sessions_encryption_key.id,
         member=Output.concat("serviceAccount:", service_account.email),
         role="roles/cloudkms.cryptoKeyEncrypterDecrypter",
+    ),
+)
+
+ssl_cert_pem_b64_secret_perm = secretmanager.SecretIamMember(
+    "bot-archive-ssl-cert-secret-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=ssl_cert_pem_b64_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+ssl_cert_pem_b64_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
+    secret_key_ref=cloudrunv2.ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
+        secret=ssl_cert_pem_b64_secret.name,
+        version="latest",
     ),
 )
 
@@ -97,6 +112,10 @@ whatupy = Service(
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_HOST",
                 value=whatupcore2_service.get_host(),
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="SSL_CERT_PEM_B64",
+                value_source=ssl_cert_pem_b64_source,
             ),
         ],
     ),

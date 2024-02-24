@@ -1,25 +1,19 @@
 from pulumi import Output, ResourceOptions, get_stack
-from pulumi_gcp import (
-    cloudrunv2,
-    kms,
-    secretmanager,
-    serviceaccount,
-    storage,
-)
+from pulumi_gcp import cloudrunv2, kms, secretmanager, serviceaccount, storage
 from pulumi_gcp.cloudrunv2 import (
     ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
 )  # noqa: E501
 
 from artifact_registry import whatupy_image
+from config import control_groups, primary_bot_name
 from dwl_secrets import db_url_secrets
 from jobs.db_migrations import migrations_job_complete
 from kms import sessions_encryption_key, sessions_encryption_key_uri
 from network import private_services_network_with_db, vpc
 from service import Service, ServiceArgs
 from storage import sessions_bucket, temp_bucket
-from config import primary_bot_name, control_groups
 
-from .whatupcore2 import whatupcore2_service
+from .whatupcore2 import ssl_cert_pem_b64_secret, whatupcore2_service
 
 service_name = "bot-user-services"
 
@@ -102,6 +96,21 @@ db_usr_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     )
 )
 
+ssl_cert_pem_b64_secret_perm = secretmanager.SecretIamMember(
+    "bot-us-ssl-cert-secret-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=ssl_cert_pem_b64_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+ssl_cert_pem_b64_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
+    secret_key_ref=cloudrunv2.ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
+        secret=ssl_cert_pem_b64_secret.name,
+        version="latest",
+    ),
+)
+
 bot_user_services = Service(
     service_name,
     ServiceArgs(
@@ -144,6 +153,10 @@ bot_user_services = Service(
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="WHATUPCORE2_HOST",
                 value=whatupcore2_service.get_host(),
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="SSL_CERT_PEM_B64",
+                value_source=ssl_cert_pem_b64_source,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="PRIMARY_BOT_NAME",

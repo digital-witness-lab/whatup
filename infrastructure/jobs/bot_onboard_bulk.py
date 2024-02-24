@@ -1,11 +1,11 @@
 from pulumi import Output, ResourceOptions, get_stack
-from pulumi_gcp import cloudrunv2, kms, serviceaccount, storage
+from pulumi_gcp import cloudrunv2, kms, secretmanager, serviceaccount, storage
 
 from artifact_registry import whatupy_image
 from job import Job, JobArgs
 from kms import sessions_encryption_key, sessions_encryption_key_uri
 from network import private_services_network, vpc
-from services.whatupcore2 import whatupcore2_service
+from services.whatupcore2 import ssl_cert_pem_b64_secret, whatupcore2_service
 from storage import sessions_bucket
 
 service_name = "bot-onboard"
@@ -34,6 +34,21 @@ encryption_key_perm = kms.CryptoKeyIAMMember(
     ),
 )
 
+ssl_cert_pem_b64_secret_perm = secretmanager.SecretIamMember(
+    "onboard-bot-ssl-cert-secret-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=ssl_cert_pem_b64_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+ssl_cert_pem_b64_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
+    secret_key_ref=cloudrunv2.ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
+        secret=ssl_cert_pem_b64_secret.name,
+        version="latest",
+    ),
+)
+
 bot_onboard_bulk_job = Job(
     service_name,
     JobArgs(
@@ -54,6 +69,10 @@ bot_onboard_bulk_job = Job(
             network=vpc.id, subnetwork=private_services_network.id
         ),
         envs=[
+            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                name="SSL_CERT_PEM_B64",
+                value_source=ssl_cert_pem_b64_source,
+            ),
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                 name="KEK_URI",
                 value=sessions_encryption_key_uri,
