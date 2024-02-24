@@ -3,12 +3,8 @@ from pulumi_gcp import projects, serviceaccount
 from pulumi_google_native import bigquery
 from pulumi_google_native import bigquerydatatransfer as dts
 from pulumi_google_native.bigqueryconnection.v1beta1 import (
-    CloudSqlCredentialArgs,
-    CloudSqlPropertiesArgs,
-    CloudSqlPropertiesType,
-    Connection,
-    ConnectionArgs,
-)
+    CloudSqlCredentialArgs, CloudSqlPropertiesArgs, CloudSqlPropertiesType,
+    Connection, ConnectionArgs)
 
 from config import db_configs, is_prod_stack, location, project
 from database import primary_cloud_sql_instance

@@ -2,8 +2,7 @@ from pulumi import Output, ResourceOptions, get_stack
 from pulumi_gcp import cloudrunv2, secretmanager, serviceaccount, storage
 from pulumi_gcp.cloudrunv2 import (  # noqa: E501
     JobTemplateTemplateContainerEnvValueSourceArgs,
-    JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
-)
+    JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs)
 
 from artifact_registry import whatupy_image
 from dwl_secrets import db_url_secrets
