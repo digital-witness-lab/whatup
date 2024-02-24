@@ -2,17 +2,23 @@ from pulumi import Output, ResourceOptions, get_stack, log
 from pulumi_gcp import secretmanager, serviceaccount
 from pulumi_google_native import compute
 
-import pulumi_tls as tls
 
 from artifact_registry import whatupcore2_image
-from config import is_prod_stack, location
+from whatupcore_network import (
+    ssl_cert_pem_secret,
+    ssl_cert_pem_b64_secret,  # noqa
+    ssl_private_key_pem_secret,
+    whatupcore2_static_private_ip,
+)
+from config import is_prod_stack
 from dwl_secrets import (
     db_url_secrets,
     whatup_anon_key_secret,
     whatup_salt_secret,
-    create_secret,
 )
-from network import private_services_network_with_db
+from network import (
+    private_services_network_with_db,
+)
 from container_vm import (
     ContainerOnVm,
     ContainerOnVmArgs,
@@ -57,52 +63,6 @@ anon_key_secret_manager_perm = secretmanager.SecretIamMember(
     ),
 )
 
-static_private_ip = compute.v1.Address(
-    f"{service_name}-private-ip",
-    args=compute.v1.AddressArgs(
-        region=location,
-        ip_version=compute.v1.AddressIpVersion.IPV4,
-        subnetwork=private_services_network_with_db.self_link,
-        purpose=compute.v1.AddressPurpose.GCE_ENDPOINT,
-        address_type=compute.v1.AddressAddressType.INTERNAL,
-    ),
-)
-
-ssl_private_key = tls.PrivateKey(
-    f"whatup-ssl-pk-{get_stack()}", algorithm="ED25519"
-)
-
-ssl_cert = tls.SelfSignedCert(
-    f"whatup-ssl-cert-{get_stack()}",
-    private_key_pem=ssl_private_key.private_key_pem,
-    validity_period_hours=24 * 365,  # 1 year
-    early_renewal_hours=24 * 7 * 4 * 2,  # 2 months
-    is_ca_certificate=True,
-    subject=tls.SelfSignedCertSubjectArgs(
-        country="US",
-        province="NY",
-        locality="NY",
-        organization="Digital Witness Lab",
-        organizational_unit="WhatUp",
-        common_name="whatup.digitalwitnesslab.org",
-    ),
-    allowed_uses=[
-        "any_extended",
-        "cert_signing",
-        "client_auth",
-        "server_auth",
-        "key_encipherment",
-        "ocsp_signing",
-        "crl_signing",
-        "code_signing",
-    ],
-    ip_addresses=[static_private_ip.address],
-)
-
-ssl_private_key_pem_secret = create_secret(
-    "whatup-ssl-pk-pem", ssl_private_key.private_key_pem
-)
-ssl_cert_pem_secret = create_secret("whatup-ssl-cert-pem", ssl_cert.cert_pem)
 
 ssl_private_key_pem_perm = secretmanager.SecretIamMember(
     "whatupcore-ssl-pk-perm",
@@ -127,7 +87,7 @@ whatupcore2_service = ContainerOnVm(
     service_name,
     ContainerOnVmArgs(
         automatic_static_private_ip=False,
-        private_address=static_private_ip,
+        private_address=whatupcore2_static_private_ip,
         container_spec=Container(
             command=None,
             args=["rpc", f"--log-level={log_level}"],
@@ -149,7 +109,9 @@ whatupcore2_service = ContainerOnVm(
             tty=False,
             securityContext=ContainerSecurityContext(privileged=False),
         ),
-        machine_type=SharedCoreMachineType.E2Small if is_prod_stack() else SharedCoreMachineType.E2Micro,
+        machine_type=SharedCoreMachineType.E2Small
+        if is_prod_stack()
+        else SharedCoreMachineType.E2Micro,
         restart_policy="Always",
         secret_env=[
             compute.v1.MetadataItemsItemArgs(
@@ -192,6 +154,6 @@ whatupcore2_service = ContainerOnVm(
     ),
 )
 
-whatupcore2_service.get_host_output().apply(
+whatupcore2_service.get_host().apply(
     lambda addr: log.info(f"whatupcore2 address: {addr}", whatupcore2_service)
 )

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="ssidfasodfisdadfhsdfasfhnaks"
+RAND="ssskjdfhkjsadfhdfasdfdfdfasfhnaks"
 app_command=$1
 echo "Starting whatupcore2 with command $app_command."
 
@@ -14,6 +14,11 @@ fi
 # If we are not running inside a VM,
 # it will exit silently.
 /configureVmSecrets
+if [ -e /tmp/whatup/.env ]; then
+    set -o allexport
+    source /tmp/whatup/.env 
+    set +o allexport
+fi
 
 echo "Listing /tmp/whatup..."
 ls -a /tmp/whatup
