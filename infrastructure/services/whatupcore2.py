@@ -107,11 +107,8 @@ whatupcore2_service = ContainerOnVm(
                     value="34943534473298",
                 ),
             ],
-            tty=False,
-            securityContext=ContainerSecurityContext(privileged=False),
         ),
         machine_type=machine_type,
-        restart_policy="Always",
         secret_env=[
             compute.v1.MetadataItemsItemArgs(
                 key="DATABASE_URL",

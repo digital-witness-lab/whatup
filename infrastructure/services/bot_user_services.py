@@ -142,10 +142,8 @@ bot_user_services = ContainerOnVm(
                     value=migrations_job_complete.apply(lambda b: f"{b}"),
                 ),
             ],
-            securityContext=ContainerSecurityContext(privileged=False),
         ),
         machine_type=SharedCoreMachineType.E2Micro,
-        restart_policy="Always",
         secret_env=[
             compute.v1.MetadataItemsItemArgs(
                 key="SSL_CERT_PEM",
