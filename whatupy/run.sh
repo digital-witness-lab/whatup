@@ -16,13 +16,14 @@ echo "Running app command: $app_command $DEBUG"
 # Run the VM secrets configurator.
 # If we are not running inside a VM,
 # it will exit silently.
-#/configureVmSecrets
-#if [ -e /tmp/whatup/.env ]; then
-#    set -o allexport
-#    source /tmp/whatup/.env 
-#    set +o allexport
-#fi
+/configureVmSecrets
+if [ -e /tmp/whatup/.env ]; then
+    set -o allexport
+    source /tmp/whatup/.env 
+    set +o allexport
+fi
 
+# This block is for cloud-run services/jobs
 if [ -n "${SSL_CERT_PEM_B64+set}" ]; then
     mkdir -p /run/secrets/
     echo $SSL_CERT_PEM_B64 | base64 --decode > /run/secrets/ssl-cert

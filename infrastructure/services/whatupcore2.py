@@ -79,6 +79,10 @@ ssl_cert_pem_perm = secretmanager.SecretIamMember(
     ),
 )
 
+machine_type = SharedCoreMachineType.E2Medium
+if not is_prod_stack():
+    machine_type = SharedCoreMachineType.E2Micro
+
 log_level = "INFO"  # if is_prod_stack() else "DEBUG"
 whatupcore2_service = ContainerOnVm(
     service_name,
@@ -106,9 +110,7 @@ whatupcore2_service = ContainerOnVm(
             tty=False,
             securityContext=ContainerSecurityContext(privileged=False),
         ),
-        machine_type=SharedCoreMachineType.E2Small
-        if is_prod_stack()
-        else SharedCoreMachineType.E2Micro,
+        machine_type=machine_type,
         restart_policy="Always",
         secret_env=[
             compute.v1.MetadataItemsItemArgs(

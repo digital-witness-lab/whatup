@@ -44,11 +44,11 @@ class Container(yaml.YAMLObject):
     """
 
     args: List[str]
-    command: Optional[List[str]]
     env: List[ContainerEnv]
     image: pulumi.Input[str]
     securityContext: ContainerSecurityContext
     tty: bool
+    command: Optional[List[str]] = field(default=None)
 
 
 @dataclass
