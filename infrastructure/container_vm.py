@@ -46,8 +46,10 @@ class Container(yaml.YAMLObject):
     args: List[str]
     env: List[ContainerEnv]
     image: pulumi.Input[str]
-    securityContext: ContainerSecurityContext
-    tty: bool
+    tty: bool = field(default=False)
+    securityContext: ContainerSecurityContext = field(
+        default=ContainerSecurityContext(privileged=False)
+    )
     command: Optional[List[str]] = field(default=None)
 
 
@@ -64,21 +66,23 @@ class Spec(yaml.YAMLObject):
 
 @dataclass
 class ContainerOnVmArgs:
-    # Flag indicating if you want the instance group to automatically
-    # promote any private IP to be a static one.
-    #
-    # Note: Conflicts with `private_address`.
-    automatic_static_private_ip: bool
     # The static private IP to assign to the managed instance
     # in the group.
     #
     # Note: Conflicts with `automatic_static_private_ip`.
     container_spec: Container
     machine_type: SharedCoreMachineType
-    restart_policy: str
     secret_env: List[native_compute_v1.MetadataItemsItemArgs]
     service_account_email: pulumi.Output[str]
     subnet: pulumi.Output[str]
+
+    # Flag indicating if you want the instance group to automatically
+    # promote any private IP to be a static one.
+    #
+    # Note: Conflicts with `private_address`.
+    automatic_static_private_ip: bool = field(default=False)
+
+    restart_policy: str = field(default="Always")
     tcp_healthcheck_port: Optional[int] = field(default=None)
     private_address: Optional[native_compute_v1.Address] = field(default=None)
 

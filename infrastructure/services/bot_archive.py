@@ -112,11 +112,8 @@ bot_archive = ContainerOnVm(
                     value=migrations_job_complete.apply(lambda b: f"{b}"),
                 ),
             ],
-            tty=False,
-            securityContext=ContainerSecurityContext(privileged=False),
         ),
         machine_type=machine_type,
-        restart_policy="Always",
         secret_env=[
             compute.v1.MetadataItemsItemArgs(
                 key="SSL_CERT_PEM",
