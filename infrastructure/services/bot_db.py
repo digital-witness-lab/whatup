@@ -129,7 +129,7 @@ bot_db = ContainerOnVm(
             compute.v1.MetadataItemsItemArgs(
                 key="DATABASE_URL",
                 value=Output.concat(
-                    db_url_secrets["users"].id, "/versions/latest"
+                    db_url_secrets["messages"].id, "/versions/latest"
                 ),
             ),
         ],
