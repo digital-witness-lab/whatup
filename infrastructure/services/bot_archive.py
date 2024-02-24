@@ -17,7 +17,7 @@ from container_vm import (
     SharedCoreMachineType,
 )
 
-from .whatupcore2 import ssl_cert_pem_b64_secret, whatupcore2_service
+from .whatupcore2 import ssl_cert_pem_secret, whatupcore2_service
 
 service_name = "bot-archive"
 
@@ -56,10 +56,10 @@ encryption_key_perm = kms.CryptoKeyIAMMember(
     ),
 )
 
-ssl_cert_pem_b64_secret_perm = secretmanager.SecretIamMember(
+ssl_cert_pem_secret_perm = secretmanager.SecretIamMember(
     "bot-archive-ssl-cert-secret-perm",
     secretmanager.SecretIamMemberArgs(
-        secret_id=ssl_cert_pem_b64_secret.id,
+        secret_id=ssl_cert_pem_secret.id,
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
@@ -119,9 +119,9 @@ bot_archive = ContainerOnVm(
         restart_policy="Always",
         secret_env=[
             compute.v1.MetadataItemsItemArgs(
-                key="SSL_CERT_PEM_B64",
+                key="SSL_CERT_PEM",
                 value=Output.concat(
-                    ssl_cert_pem_b64_secret.id, "/versions/latest"
+                    ssl_cert_pem_secret.id, "/versions/latest"
                 ),
             ),
         ],
