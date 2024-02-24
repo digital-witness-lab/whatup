@@ -4,19 +4,14 @@ from pulumi_google_native import compute
 
 from artifact_registry import whatupy_image
 from config import control_groups, is_prod_stack
+from container_vm import (Container, ContainerEnv, ContainerOnVm,
+                          ContainerOnVmArgs, ContainerSecurityContext,
+                          SharedCoreMachineType)
 from dwl_secrets import db_url_secrets
 from jobs.db_migrations import migrations_job_complete
 from kms import sessions_encryption_key, sessions_encryption_key_uri
 from network import private_services_network_with_db
 from storage import media_bucket, sessions_bucket
-from container_vm import (
-    Container,
-    ContainerEnv,
-    ContainerOnVm,
-    ContainerOnVmArgs,
-    ContainerSecurityContext,
-    SharedCoreMachineType,
-)
 
 from .whatupcore2 import ssl_cert_pem_secret, whatupcore2_service
 

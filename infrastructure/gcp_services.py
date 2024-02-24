@@ -1,9 +1,5 @@
-from pulumi import (
-    ResourceOptions,
-    ResourceTransformationArgs,
-    ResourceTransformationResult,
-    runtime,
-)
+from pulumi import (ResourceOptions, ResourceTransformationArgs,
+                    ResourceTransformationResult, runtime)
 from pulumi_gcp import projects
 
 enabled_services = []

@@ -6,8 +6,7 @@ import yaml
 from attr import dataclass, field
 from google.cloud.compute_v1 import (
     InstanceGroupManagersClient,
-    ListManagedInstancesInstanceGroupManagersRequest,
-)
+    ListManagedInstancesInstanceGroupManagersRequest)
 from pulumi.resource import ResourceOptions
 from pulumi_gcp import compute as classic_gcp_compute
 from pulumi_gcp import projects
