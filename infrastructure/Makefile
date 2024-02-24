@@ -20,12 +20,12 @@ auth-docker:
 	gcloud auth configure-docker $$( pulumi config get gcp:region )-docker.pkg.dev
 
 fix-test-stack:
-	pulumi stack export --stack digitalwitnesslab/test > stack.test.yaml
-	grep "reserved-private-4677207" stack.test.yaml | wc -l
-	sed -i 's/reserved-private-4677207/reserved-private-6100a84/g' stack.test.yaml 
-	grep "reserved-private-4677207" stack.test.yaml | wc -l
-	pulumi stack import --stack digitalwitnesslab/test --file stack.test.yaml 
-	rm stack.test.yaml
+	pulumi stack export --stack digitalwitnesslab/test > stack.test.json
+	grep "reserved-private-4677207" stack.test.json | wc -l
+	sed -i 's/reserved-private-4677207/reserved-private-6100a84/g' stack.test.json 
+	grep "reserved-private-4677207" stack.test.json | wc -l
+	pulumi stack import --stack digitalwitnesslab/test --file stack.test.json 
+	rm stack.test.json
 
 lint-ci:
 	pip install -r requirements.txt

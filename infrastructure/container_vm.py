@@ -107,6 +107,31 @@ class ContainerOnVm(pulumi.ComponentResource):
         self.__args = args
         self.__name = name
 
+        # Grant access to pull container image from Artifact Registry.
+        self.__artifact_registry_perm = projects.IAMMember(
+            f"{name}-artifact-reg-perm",
+            args=projects.IAMMemberArgs(
+                member=pulumi.Output.concat(
+                    "serviceAccount:", args.service_account_email
+                ),
+                role="roles/artifactregistry.reader",
+                project=project,
+            ),
+            opts=pulumi.ResourceOptions(parent=self),
+        )
+
+        self.__logging_perm = projects.IAMMember(
+            f"{name}-logging-perm",
+            args=projects.IAMMemberArgs(
+                member=pulumi.Output.concat(
+                    "serviceAccount:", args.service_account_email
+                ),
+                role="roles/logging.logWriter",
+                project=project,
+            ),
+            opts=pulumi.ResourceOptions(parent=self),
+        )
+
         self.__create_instance_template()
 
         self.__autohealing = None
@@ -245,35 +270,6 @@ class ContainerOnVm(pulumi.ComponentResource):
         args = self.__args
         name = self.__name
 
-        # Grant access to pull container image from Artifact Registry.
-        artifact_registry_perm = projects.IAMBinding(
-            f"{name}-artifact-reg-perm",
-            projects.IAMBindingArgs(
-                members=[
-                    pulumi.Output.concat(
-                        "serviceAccount:", args.service_account_email
-                    )
-                ],
-                role="roles/artifactregistry.reader",
-                project=project,
-            ),
-            opts=pulumi.ResourceOptions(parent=self),
-        )
-
-        logging_perm = projects.IAMBinding(
-            f"{name}-logging-perm",
-            projects.IAMBindingArgs(
-                members=[
-                    pulumi.Output.concat(
-                        "serviceAccount:", args.service_account_email
-                    )
-                ],
-                role="roles/logging.logWriter",
-                project=project,
-            ),
-            opts=pulumi.ResourceOptions(parent=self),
-        )
-
         # Due to an issue with the Pulumi Google Native provider,
         # we have to use the classic GCP provider to create the
         # managed instance group.
@@ -321,8 +317,8 @@ class ContainerOnVm(pulumi.ComponentResource):
                 parent=self,
                 depends_on=[
                     firewall_association,
-                    artifact_registry_perm,
-                    logging_perm,
+                    self.__artifact_registry_perm,
+                    self.__logging_perm,
                 ],
             ),
         )
