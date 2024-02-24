@@ -57,7 +57,7 @@ configure_vm_secrets_image: docker.Image = create_image(
 )
 
 configure_vm_build_args = {
-    "CONFIGURE_VM_SECRETS_REPO ": configure_vm_secrets_image.image_name
+    "CONFIGURE_VM_SECRETS_REPO": configure_vm_secrets_image.image_name
 }
 export("vm_secrets_name", configure_vm_secrets_image.image_name)
 
