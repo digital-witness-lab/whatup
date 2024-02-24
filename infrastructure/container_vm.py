@@ -366,7 +366,7 @@ class ContainerOnVm(pulumi.ComponentResource):
 
         return internal_ip_addr
 
-    def get_host_output(self) -> pulumi.Output[str]:
+    def get_host(self) -> pulumi.Output[str]:
         if self.__args.private_address:
             return self.__args.private_address.address
             # return pulumi.Output.concat(
