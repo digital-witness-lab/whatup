@@ -1,16 +1,16 @@
 from pulumi import Output, ResourceOptions, get_stack
-from pulumi_gcp import cloudrunv2, kms, serviceaccount, storage, secretmanager
+from pulumi_gcp import cloudrunv2, kms, secretmanager, serviceaccount, storage
 
 from artifact_registry import whatupy_image
+from config import control_groups, primary_bot_name
 from dwl_secrets import db_url_secrets
 from jobs.db_migrations import migrations_job_complete
 from kms import sessions_encryption_key, sessions_encryption_key_uri
 from network import private_services_network_with_db, vpc
 from service import Service, ServiceArgs
 from storage import sessions_bucket
-from config import primary_bot_name, control_groups
 
-from .whatupcore2 import whatupcore2_service, ssl_cert_pem_b64_secret
+from .whatupcore2 import ssl_cert_pem_b64_secret, whatupcore2_service
 
 service_name = "bot-register"
 
