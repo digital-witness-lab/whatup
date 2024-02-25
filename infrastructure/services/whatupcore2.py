@@ -4,14 +4,24 @@ from pulumi_google_native import compute
 
 from artifact_registry import whatupcore2_image
 from config import is_prod_stack
-from container_vm import (Container, ContainerEnv, ContainerOnVm,
-                          ContainerOnVmArgs, SharedCoreMachineType)
-from dwl_secrets import (db_url_secrets, whatup_anon_key_secret,
-                         whatup_salt_secret)
+from container_vm import (
+    Container,
+    ContainerEnv,
+    ContainerOnVm,
+    ContainerOnVmArgs,
+    SharedCoreMachineType,
+)
+from dwl_secrets import (
+    db_url_secrets,
+    whatup_anon_key_secret,
+    whatup_salt_secret,
+)
 from network import private_services_network_with_db
-from whatupcore_network import (ssl_cert_pem_secret,
-                                ssl_private_key_pem_secret,
-                                whatupcore2_static_private_ip)
+from whatupcore_network import (
+    ssl_cert_pem_secret,
+    ssl_private_key_pem_secret,
+    whatupcore2_static_private_ip,
+)
 
 service_name = "whatupcore2"
 

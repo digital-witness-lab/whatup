@@ -4,9 +4,13 @@ from pulumi_google_native import compute
 
 from artifact_registry import whatupy_image
 from config import control_groups, primary_bot_name
-from container_vm import (Container, ContainerEnv, ContainerOnVm,
-                          ContainerOnVmArgs, ContainerSecurityContext,
-                          SharedCoreMachineType)
+from container_vm import (
+    Container,
+    ContainerEnv,
+    ContainerOnVm,
+    ContainerOnVmArgs,
+    SharedCoreMachineType,
+)
 from dwl_secrets import db_url_secrets
 from jobs.db_migrations import migrations_job_complete
 from kms import sessions_encryption_key, sessions_encryption_key_uri
