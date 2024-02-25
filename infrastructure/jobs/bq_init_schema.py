@@ -2,12 +2,8 @@ from pulumi import Output, get_stack
 from pulumi_gcp import cloudrunv2, projects, serviceaccount
 
 from artifact_registry import bq_init_schema_image
-from bigquery import (
-    bigquery_sql_connection,
-    bq_dataset_id,
-    messages_tables,
-    transfers_role,
-)
+from bigquery import (bigquery_sql_connection, bq_dataset_id, messages_tables,
+                      transfers_role)
 from config import project
 from job import Job, JobArgs
 from network import private_services_network_with_db, vpc

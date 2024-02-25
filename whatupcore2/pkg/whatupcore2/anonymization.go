@@ -15,12 +15,16 @@ import (
 )
 
 var (
-	_ANON_KEY        = []byte(mustGetEnv("ANON_KEY"))
+	_ANON_KEY        []byte
 	ANON_VERSION     = "v001"
 	ANONYMIZE_FIELDS = [...]string{"FullName", "FirstName", "PushName"}
 )
 
 func AnonymizeString(user string) string {
+	if _ANON_KEY == nil {
+		_ANON_KEY = []byte(mustGetEnv("ANON_KEY"))
+	}
+
 	if user == "" {
 		return ""
 	} else if strings.HasPrefix(user, "anon.") {

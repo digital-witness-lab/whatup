@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="2asdjfhasdfdfd3hiusdsdff"
+RAND="sisdjfkashdfsdfdsdfdsdff"
 app_command=$1
 
 if [ -z "${app_command:-}" ]; then
@@ -9,14 +9,24 @@ if [ -z "${app_command:-}" ]; then
     exit 1
 fi
 
-DEBUG=
-#$( [[ "$IS_PROD" == "False" ]] && echo "--debug" || echo "" )
+DEBUG= #$( [[ "$IS_PROD" == "False" ]] && echo "--debug" || echo "" )
 echo "Running app command: $app_command $DEBUG"
 
 # Run the VM secrets configurator.
 # If we are not running inside a VM,
 # it will exit silently.
 /configureVmSecrets
+if [ -e /tmp/whatup/.env ]; then
+    set -o allexport
+    source /tmp/whatup/.env 
+    set +o allexport
+fi
+
+# This block is for cloud-run services/jobs
+if [ -n "${SSL_CERT_PEM_B64+set}" ]; then
+    mkdir -p /run/secrets/
+    echo $SSL_CERT_PEM_B64 | base64 --decode > /run/secrets/ssl-cert
+fi
 
 function positive_mod() {
     local dividend=$1
@@ -41,7 +51,8 @@ case $app_command in
 
     archivebot)
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --port 443 \
+            --cert /run/secrets/ssl-cert \
+            --port 3447 \
             archivebot \
             --archive-dir "gs://${MESSAGE_ARCHIVE_BUCKET}/" \
             "kek+gs://${SESSIONS_BUCKET}/users/"
@@ -49,7 +60,8 @@ case $app_command in
 
     databasebot)
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --port 443 \
+            --cert /run/secrets/ssl-cert \
+            --port 3447 \
             databasebot \
             --database-url "${DATABASE_URL}" \
             --media-base "gs://${MEDIA_BUCKET}/" \
@@ -58,7 +70,8 @@ case $app_command in
 
     registerbot)
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --port 443 \
+            --cert /run/secrets/ssl-cert \
+            --port 3447 \
             registerbot \
             --database-url "${DATABASE_URL}" \
             --sessions-url "kek+gs://${SESSIONS_BUCKET}/users/" \
@@ -67,7 +80,8 @@ case $app_command in
 
     userservices)
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --port 443 \
+            --cert /run/secrets/ssl-cert \
+            --port 3447 \
             userservicesbot \
             --database-url "${DATABASE_URL}" \
             --sessions-url "kek+gs://${SESSIONS_BUCKET}/users/" \
@@ -81,7 +95,8 @@ case $app_command in
             exit 1
         fi
         exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --port 443 \
+            --cert /run/secrets/ssl-cert \
+            --port 3447 \
             onboard \
             --default-group-permission READWRITE  \
             --credentials-url "kek+gs://${SESSIONS_BUCKET}/" \

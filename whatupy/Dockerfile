@@ -1,4 +1,4 @@
-ARG CONFIGURE_VM_SECRETS_REPO=configure-vm-secrets
+ARG CONFIGURE_VM_SECRETS_REPO=configure-vm-secrets:latest
 FROM $CONFIGURE_VM_SECRETS_REPO as configure-vm-secrets
 
 FROM python:3.11-slim-bullseye

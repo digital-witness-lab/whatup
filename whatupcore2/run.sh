@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="jsadhfkjsd8923uifhsdjwfhnaks"
+RAND="ssskjdfhkjsadfhdfasdfdfdfasfhnaks"
 app_command=$1
 echo "Starting whatupcore2 with command $app_command."
 
@@ -14,10 +14,19 @@ fi
 # If we are not running inside a VM,
 # it will exit silently.
 /configureVmSecrets
+if [ -e /tmp/whatup/.env ]; then
+    set -o allexport
+    source /tmp/whatup/.env 
+    set +o allexport
+fi
+
+echo "Listing /tmp/whatup..."
+ls -a /tmp/whatup
 
 # Start the application
 case $app_command in
     rpc)
+        echo "Starting whatupcore2..."
         exec /whatupcore2 $@
     ;;
 
@@ -26,6 +35,7 @@ case $app_command in
             echo "WHATUPCORE2_REMOVE_USER env var is required."
             exit 1
         fi
+        echo "Starting whatupcore2..."
         exec /whatupcore2 remove-user ${WHATUPCORE2_REMOVE_USER}
     ;;
 esac
