@@ -1,12 +1,9 @@
 from pulumi_gcp import compute
 
-from network import (
-    private_services_connect_ip_prefix,
-    private_services_connect_ip_range,
-    private_services_network,
-    private_services_network_with_db,
-    vpc,
-)
+from network import (private_services_connect_ip_prefix,
+                     private_services_connect_ip_range,
+                     private_services_network,
+                     private_services_network_with_db, vpc)
 
 firewall_policy = compute.NetworkFirewallPolicy(
     "vpc-fw-policy",
@@ -19,8 +16,31 @@ firewall_association = compute.NetworkFirewallPolicyAssociation(
     attachment_target=vpc.id,
 )
 
-private_services_network_block = (
+private_service_connect_network_block = (
     f"{private_services_connect_ip_prefix}/{private_services_connect_ip_range}"
+)
+
+compute.NetworkFirewallPolicyRule(
+    "allow-ssh",
+    compute.NetworkFirewallPolicyRuleArgs(
+        action="allow",
+        description="Allow incoming SSH connections",
+        direction="INGRESS",
+        disabled=False,
+        enable_logging=False,
+        firewall_policy=firewall_policy.name,
+        priority=998,
+        rule_name="allow-ssh",
+        match=compute.NetworkFirewallPolicyRuleMatchArgs(
+            src_ip_ranges=["0.0.0.0/0"],
+            layer4_configs=[
+                compute.NetworkFirewallPolicyRuleMatchLayer4ConfigArgs(
+                    ip_protocol="tcp", ports=["22"]
+                )
+            ],
+            dest_ip_ranges=["0.0.0.0/0"],
+        ),
+    ),
 )
 
 compute.NetworkFirewallPolicyRule(
@@ -41,7 +61,7 @@ compute.NetworkFirewallPolicyRule(
                     ip_protocol="all",
                 )
             ],
-            dest_ip_ranges=[private_services_network_block],
+            dest_ip_ranges=[private_service_connect_network_block],
         ),
     ),
 )
@@ -64,7 +84,7 @@ compute.NetworkFirewallPolicyRule(
                     ip_protocol="all",
                 )
             ],
-            dest_ip_ranges=[private_services_network_block],
+            dest_ip_ranges=[private_service_connect_network_block],
         ),
     ),
 )
@@ -113,7 +133,7 @@ compute.NetworkFirewallPolicyRule(
                     ip_protocol="all",
                 )
             ],
-            dest_ip_ranges=[private_services_network_block],
+            dest_ip_ranges=[private_service_connect_network_block],
         ),
     ),
 )

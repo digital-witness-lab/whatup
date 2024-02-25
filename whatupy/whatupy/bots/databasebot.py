@@ -327,9 +327,9 @@ class DatabaseBot(BaseBot):
                 filename=media_filename, content_url={"not": None}
             )
             if not existingMedia:
-                self.logger.info(
+                self.logger.debug(
                     "Getting media: %s: %s: %s",
-                    message.info.source.chat,
+                    utils.jid_to_str(message.info.source.chat),
                     message.info.id,
                     media_filename,
                 )
