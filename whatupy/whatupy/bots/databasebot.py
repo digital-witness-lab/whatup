@@ -210,17 +210,16 @@ class DatabaseBot(BaseBot):
             primary_increment=False,
         )
 
-        user_stats = db.create_table("user_stats")
-        user_stats.create_column("donor_jid", type=db.types.text)
-        user_stats.create_column("message_id", type=db.types.text)
-        user_stats.create_column("chat_jid", type=db.types.text)
-        user_stats.create_column("timestamp", type=db.types.datetime)
-        user_stats.create_column(RECORD_MTIME_FIELD, type=db.types.datetime)
+        donor_messages = db.create_table("donor_messages")
+        donor_messages.create_column("donor_jid", type=db.types.text)
+        donor_messages.create_column("message_id", type=db.types.text)
+        donor_messages.create_column("timestamp", type=db.types.datetime)
+        donor_messages.create_column(RECORD_MTIME_FIELD, type=db.types.datetime)
         try:
-            user_stats.create_index(["donor_jid", "message_id"])
+            donor_messages.create_index(["donor_jid", "message_id"])
         except DatasetException:
             self.logger.warn(
-                "Could not create user_stats indices because table doesn't exist yet"
+                "Could not create donor_messages indices because table doesn't exist yet"
             )
 
     def setup_command_args(self):
@@ -294,16 +293,15 @@ class DatabaseBot(BaseBot):
                 filename="group-country-codes.csv",
             )
 
-    def _ping_user_stats(self, message: wuc.WUMessage):
+    def _ping_donor_messages(self, message: wuc.WUMessage):
         donor_jid = utils.jid_to_str(message.info.source.reciever)
         datum = {
             "donor_jid": donor_jid,
-            "chat_jid": utils.jid_to_str(message.info.source.chat),
             "message_id": message.info.id,
             "timestamp": message.info.timestamp.ToDatetime(),
             RECORD_MTIME_FIELD: datetime.now(),
         }
-        self.db["user_stats"].upsert(datum, ["donor_jid", "message_id"])
+        self.db["donor_messages"].upsert(datum, ["donor_jid", "message_id"])
 
     async def on_message(
         self,
@@ -321,7 +319,7 @@ class DatabaseBot(BaseBot):
         # provenance only supports Dict[str, str]
         message.provenance.update({str(k): str(v) for k, v in self.meta.items()})
 
-        self._ping_user_stats(message)
+        self._ping_donor_messages(message)
         if not self.db["messages_seen"].count(id=msg_id):
             self.db["messages_seen"].insert({"id": msg_id, **message.provenance})
             if message.messageProperties.isReaction:
