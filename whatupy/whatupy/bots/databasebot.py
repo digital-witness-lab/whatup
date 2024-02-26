@@ -404,9 +404,6 @@ class DatabaseBot(BaseBot):
         archive_data: ArchiveData,
         media_filename: T.Optional[str] = None,
     ):
-        if message.content.ByteSize() == 0:
-            return
-
         message_flat = flatten_proto_message(message)
         media_filename = media_filename or utils.media_message_filename(message)
         if message_flat.get("thumbnail"):
