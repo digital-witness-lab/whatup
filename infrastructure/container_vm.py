@@ -29,7 +29,7 @@ cat <<EOF > /etc/docker/daemon.json
 {
     "live-restore": true,
     "log-opts": {
-        "tag": "{{.Name}}"
+        "tag": "{{.Name}}",
         "max-size": "100m"
     },
     "storage-driver": "overlay2",
@@ -227,7 +227,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                     native_compute_v1.AttachedDiskArgs(
                         auto_delete=True,
                         boot=True,
-                        disk_size_gb="10",
+                        disk_size_gb="32",
                         initialize_params=native_compute_v1.AttachedDiskInitializeParamsArgs(
                             # Use Google's Container-Optimized OS (cos),
                             # which comes with Docker pre-installed.
