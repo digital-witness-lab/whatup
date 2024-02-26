@@ -210,6 +210,19 @@ class DatabaseBot(BaseBot):
             primary_increment=False,
         )
 
+        user_stats = db.create_table("user_stats")
+        user_stats.create_column("donor_jid", type=db.types.text)
+        user_stats.create_column("message_id", type=db.types.text)
+        user_stats.create_column("chat_jid", type=db.types.text)
+        user_stats.create_column("timestamp", type=db.types.datetime)
+        user_stats.create_column(RECORD_MTIME_FIELD, type=db.types.datetime)
+        try:
+            user_stats.create_index(["donor_jid", "message_id"])
+        except DatasetException:
+            self.logger.warn(
+                "Could not create user_stats indices because table doesn't exist yet"
+            )
+
     def setup_command_args(self):
         parser = BotCommandArgs(
             prog=self.__class__.__name__,
@@ -282,7 +295,17 @@ class DatabaseBot(BaseBot):
             )
 
     def _ping_user_stats(self, message: wuc.WUMessage):
-        pass
+        if not self.jid_anon:
+            return
+        donor_jid = utils.jid_to_str(self.jid_anon)
+        datum = {
+            "donor_jid": donor_jid,
+            "chat_jid": utils.jid_to_str(message.info.source.chat),
+            "message_id": message.info.id,
+            "timestamp": message.info.timestamp.ToDatetime(),
+            RECORD_MTIME_FIELD: datetime.now(),
+        }
+        self.db["user_stats"].upsert(datum, ["donor_jid", "message_id"])
 
     async def on_message(
         self,
@@ -381,6 +404,9 @@ class DatabaseBot(BaseBot):
         archive_data: ArchiveData,
         media_filename: T.Optional[str] = None,
     ):
+        if message.content.ByteSize() == 0:
+            return
+
         message_flat = flatten_proto_message(message)
         media_filename = media_filename or utils.media_message_filename(message)
         if message_flat.get("thumbnail"):
