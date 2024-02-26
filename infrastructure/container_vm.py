@@ -23,6 +23,20 @@ install_cloud_ops_agent = """
 echo "Installing Google Cloud Ops Agent..."
 curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
 bash add-google-cloud-ops-agent-repo.sh --also-install
+
+echo "Setting docker log size"
+cat <<EOF > /etc/docker/daemon.json
+{
+    "live-restore": true,
+    "log-opts": {
+        "tag": "{{.Name}}"
+        "max-size": "100m"
+    },
+    "storage-driver": "overlay2",
+    "mtu": 1460
+}
+EOF
+systemctl restart docker
 """.strip()
 
 
