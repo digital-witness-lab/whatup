@@ -6,7 +6,8 @@ import yaml
 from attr import dataclass, field
 from google.cloud.compute_v1 import (
     InstanceGroupManagersClient,
-    ListManagedInstancesInstanceGroupManagersRequest)
+    ListManagedInstancesInstanceGroupManagersRequest,
+)
 from pulumi.resource import ResourceOptions
 from pulumi_gcp import compute as classic_gcp_compute
 from pulumi_gcp import projects
@@ -15,6 +16,14 @@ from pulumi_google_native.compute import v1 as native_compute_v1
 from config import project, zone
 from gcloud import get_project_number
 from network_firewall import firewall_association
+
+install_cloud_ops_agent = """
+#! /bin/bash
+# Install the Ops Agent
+echo "Installing Google Cloud Ops Agent..."
+curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+bash add-google-cloud-ops-agent-repo.sh --also-install
+""".strip()
 
 
 class SharedCoreMachineType(Enum):
@@ -131,6 +140,18 @@ class ContainerOnVm(pulumi.ComponentResource):
             opts=pulumi.ResourceOptions(parent=self),
         )
 
+        self.__monitoring_perm = projects.IAMMember(
+            f"{name}-monitoring-perm",
+            args=projects.IAMMemberArgs(
+                member=pulumi.Output.concat(
+                    "serviceAccount:", args.service_account_email
+                ),
+                role="roles/monitoring.metricWriter",
+                project=project,
+            ),
+            opts=pulumi.ResourceOptions(parent=self),
+        )
+
         self.__create_instance_template()
 
         self.__autohealing = None
@@ -225,9 +246,10 @@ class ContainerOnVm(pulumi.ComponentResource):
                             key="gce-container-declaration",
                             value=container_declaration,
                         ),
-                        # native_compute_v1.MetadataItemsItemArgs(
-                        #     key="startup-script", value=""
-                        # ),
+                        native_compute_v1.MetadataItemsItemArgs(
+                            key="startup-script",
+                            value=install_cloud_ops_agent,
+                        ),
                     ]
                 ),
                 scheduling=native_compute_v1.SchedulingArgs(
@@ -318,6 +340,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                     firewall_association,
                     self.__artifact_registry_perm,
                     self.__logging_perm,
+                    self.__monitoring_perm,
                 ],
             ),
         )
