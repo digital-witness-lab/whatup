@@ -17,6 +17,14 @@ from config import project, zone
 from gcloud import get_project_number
 from network_firewall import firewall_association
 
+install_cloud_ops_agent = """
+#! /bin/bash
+# Install the Ops Agent
+echo "Installing Google Cloud Ops Agent..."
+curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+bash add-google-cloud-ops-agent-repo.sh --also-install
+""".strip()
+
 
 class SharedCoreMachineType(Enum):
     E2Micro = "e2-micro"
@@ -240,13 +248,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                         ),
                         native_compute_v1.MetadataItemsItemArgs(
                             key="startup-script",
-                            value="""
-                                #! /bin/bash
-                                # Install the Ops Agent
-                                echo "Installing Google Cloud Ops Agent..."
-                                curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
-                                bash add-google-cloud-ops-agent-repo.sh --also-install
-                            """,
+                            value=install_cloud_ops_agent,
                         ),
                     ]
                 ),
