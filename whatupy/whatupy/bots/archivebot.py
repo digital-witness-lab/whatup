@@ -41,7 +41,6 @@ class ArchiveBot(BaseBot):
 
     async def on_message(self, message: wuc.WUMessage, is_history: bool, **kwargs):
         chat_id = utils.jid_to_str(message.info.source.chat)
-        reciever = utils.jid_to_str(message.info.source.reciever)
         if chat_id is None:
             self.logger.critical("Message has no chat_id")
             return
@@ -51,6 +50,7 @@ class ArchiveBot(BaseBot):
 
         message_timestamp = message.info.timestamp.ToSeconds()
         message_id = message.info.id
+        reciever = utils.jid_to_str(message.info.source.reciever)
         archive_id = f"{message_timestamp}_{message_id}_{reciever}"
         archive_filename = conversation_dir / f"{archive_id}.json"
         if archive_filename.exists():
