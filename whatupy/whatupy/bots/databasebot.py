@@ -295,9 +295,7 @@ class DatabaseBot(BaseBot):
             )
 
     def _ping_user_stats(self, message: wuc.WUMessage):
-        if not self.jid_anon:
-            return
-        donor_jid = utils.jid_to_str(self.jid_anon)
+        donor_jid = utils.jid_to_str(message.info.source.reciever)
         datum = {
             "donor_jid": donor_jid,
             "chat_jid": utils.jid_to_str(message.info.source.chat),
