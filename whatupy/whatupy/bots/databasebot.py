@@ -213,7 +213,6 @@ class DatabaseBot(BaseBot):
         donor_messages = db.create_table("donor_messages")
         donor_messages.create_column("donor_jid", type=db.types.text)
         donor_messages.create_column("message_id", type=db.types.text)
-        donor_messages.create_column("timestamp", type=db.types.datetime)
         donor_messages.create_column(RECORD_MTIME_FIELD, type=db.types.datetime)
         try:
             donor_messages.create_index(["donor_jid", "message_id"])
@@ -298,7 +297,6 @@ class DatabaseBot(BaseBot):
         datum = {
             "donor_jid": donor_jid,
             "message_id": message.info.id,
-            "timestamp": message.info.timestamp.ToDatetime(),
             RECORD_MTIME_FIELD: datetime.now(),
         }
         self.db["donor_messages"].upsert(datum, ["donor_jid", "message_id"])
