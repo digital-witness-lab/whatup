@@ -87,15 +87,23 @@ class _UserBot(BaseBot):
     def _hash_jid(jid: wuc.JID, n_bytes: int):
         return hashlib.sha1(jid.user.encode("utf8")).hexdigest()[:n_bytes]
 
-    async def group_acl_jid_lookup(self, n_bytes) -> T.Dict[str, T.Dict]:
+    async def _iter_groups(self) -> T.AsyncIterable[wuc.JoinedGroup]:
         joined_group_iter = self.core_client.GetJoinedGroups(
             wuc.GetJoinedGroupsOptions()
         )
-        lookup = {}
+        data: wuc.JoinedGroup
         async for data in joined_group_iter:
+            if data.groupInfo.isCommunity or data.groupInfo.isPartialInfo:
+                continue
             n_participants = len(data.groupInfo.participants)
             if n_participants < self.group_min_participants:
                 continue
+            yield data
+
+    async def group_acl_jid_lookup(self, n_bytes) -> T.Dict[str, T.Dict]:
+        lookup = {}
+        data: wuc.JoinedGroup
+        async for data in self._iter_groups():
             gid = self._hash_jid(data.groupInfo.JID, n_bytes)
             lookup[gid] = {
                 "jid": data.groupInfo.JID,
@@ -104,14 +112,8 @@ class _UserBot(BaseBot):
         return lookup
 
     async def group_acl_data(self, n_bytes=5):
-        joined_group_iter = self.core_client.GetJoinedGroups(
-            wuc.GetJoinedGroupsOptions()
-        )
         groups = []
-        async for data in joined_group_iter:
-            n_participants = len(data.groupInfo.participants)
-            if n_participants < self.group_min_participants:
-                continue
+        async for data in self._iter_groups():
             permission = data.acl.permission
             can_read = permission in (
                 wuc.GroupPermission.READONLY,
@@ -123,7 +125,7 @@ class _UserBot(BaseBot):
                 "topic": data.groupInfo.groupTopic.topic,
                 "can_read": can_read,
                 "gid": gid,
-                "n_participants": n_participants,
+                "n_participants": len(data.groupInfo.participants),
             }
             groups.append(item)
         groups.sort(key=lambda i: i["n_participants"], reverse=True)
