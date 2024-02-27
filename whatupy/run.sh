@@ -117,7 +117,7 @@ case $app_command in
                     databasebot-load-archive \
                     --database-url ${DATABASE_URL} \
                     --media-base "gs://${MEDIA_BUCKET}/" \
-                    '{}/*_*.json' 
+                    '{}/*.json' 
         retval=$?
         echo "Exiting run.sh with code: $retval"
         exit $retval
