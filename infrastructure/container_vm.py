@@ -17,8 +17,8 @@ from config import project, zone
 from gcloud import get_project_number
 from network_firewall import firewall_association
 
-install_cloud_ops_agent = """
-#! /bin/bash
+startup_script = """
+#!/bin/bash
 echo "Setting docker log size"
 cat <<EOF > /etc/docker/daemon.json
 {
@@ -32,6 +32,8 @@ cat <<EOF > /etc/docker/daemon.json
 }
 EOF
 systemctl restart docker
+
+nohup bash -c 'while true; do nc -l -p 6666 -c '( docker ps --format "table {{ .Image }}" --filter "state=running" | grep whatup > /dev/null  2>&1 ) && echo "PASS" || echo "FAIL"'; done'
 """.strip()
 
 
@@ -176,6 +178,18 @@ class ContainerOnVm(pulumi.ComponentResource):
                 ),
                 opts=pulumi.ResourceOptions(parent=self),
             )
+        else:
+            self.__autohealing = classic_gcp_compute.HealthCheck(
+                "autohealing",
+                check_interval_sec=5,
+                timeout_sec=5,
+                healthy_threshold=2,
+                unhealthy_threshold=10,
+                tcp_health_check=classic_gcp_compute.HealthCheckTcpHealthCheckArgs(
+                    port=6666, response="PASS"
+                ),
+                opts=pulumi.ResourceOptions(parent=self),
+            )
 
         self.__create_zonal_instance_group()
 
@@ -257,7 +271,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                         ),
                         native_compute_v1.MetadataItemsItemArgs(
                             key="startup-script",
-                            value=install_cloud_ops_agent,
+                            value=startup_script,
                         ),
                     ]
                 ),
