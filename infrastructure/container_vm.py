@@ -19,11 +19,6 @@ from network_firewall import firewall_association
 
 install_cloud_ops_agent = """
 #! /bin/bash
-# Install the Ops Agent
-echo "Installing Google Cloud Ops Agent..."
-curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
-bash add-google-cloud-ops-agent-repo.sh --also-install
-
 echo "Setting docker log size"
 cat <<EOF > /etc/docker/daemon.json
 {
