@@ -7,10 +7,10 @@ COPY --from=configure-vm-secrets /configureVmSecrets /configureVmSecrets
 
 WORKDIR /usr/src/whatupy
 
-RUN apt update && apt upgrade -y && \
+RUN --mount=type=cache,target=/var/lib/apt/lists/ \
+    apt update && apt upgrade -y && \
     apt install -y curl && \
-    apt autoremove -y && \
-    rm -rf /var/lib/apt/lists/*
+    apt autoremove -y
 
 RUN mkdir -p /usr/share/dict/ && \
     curl -o /usr/share/dict/words "https://svnweb.freebsd.org/base/head/share/dict/web2?revision=326913&view=co&pathrev=326913" && \
@@ -26,6 +26,10 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # Ensure the script is executable.
 RUN chmod +x /usr/src/whatupy/*.sh
+
+LABEL org.digitalwitnesslab.project="whatup"
+LABEL org.digitalwitnesslab.module="whatupy"
+HEALTHCHECK --interval=5s --timeout=5s --start-period=20s CMD ["true"]
 
 ARG ENVIRONMENT="dev"
 ENV ENVIRONMENT=$ENVIRONMENT

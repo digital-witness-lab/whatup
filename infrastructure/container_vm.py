@@ -17,8 +17,9 @@ from config import project, zone
 from gcloud import get_project_number
 from network_firewall import firewall_association
 
-install_cloud_ops_agent = """
-#! /bin/bash
+
+startup_script = """
+#!/bin/bash
 echo "Setting docker log size"
 cat <<EOF > /etc/docker/daemon.json
 {
@@ -32,6 +33,14 @@ cat <<EOF > /etc/docker/daemon.json
 }
 EOF
 systemctl restart docker
+
+cat > /tmp/healthcheck.sh <<EOF
+while true; do
+    nc -l -p 43417 -c 'docker ps --filter "label=org.digitalwitnesslab.project=whatup" --filter "status=running" --format "{{ .Status }}" | awk -F"[()]" "{print \$2 }"';
+done
+EOF
+chmod 400 /tmp/healthcheck.sh
+nohup bash /tmp/healthcheck.sh &
 """.strip()
 
 
@@ -166,7 +175,7 @@ class ContainerOnVm(pulumi.ComponentResource):
         self.__autohealing = None
         if args.tcp_healthcheck_port is not None:
             self.__autohealing = classic_gcp_compute.HealthCheck(
-                "autohealing",
+                f"autohealing-{self.__name}",
                 check_interval_sec=5,
                 timeout_sec=5,
                 healthy_threshold=2,
@@ -176,7 +185,18 @@ class ContainerOnVm(pulumi.ComponentResource):
                 ),
                 opts=pulumi.ResourceOptions(parent=self),
             )
-
+        else:
+            self.__autohealing = classic_gcp_compute.HealthCheck(
+                f"autohealing-{self.__name}",
+                check_interval_sec=5,
+                timeout_sec=5,
+                healthy_threshold=2,
+                unhealthy_threshold=10,
+                tcp_health_check=classic_gcp_compute.HealthCheckTcpHealthCheckArgs(
+                    port=43417, response="healthy"
+                ),
+                opts=pulumi.ResourceOptions(parent=self),
+            )
         self.__create_zonal_instance_group()
 
         super().register_outputs({})
@@ -257,7 +277,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                         ),
                         native_compute_v1.MetadataItemsItemArgs(
                             key="startup-script",
-                            value=install_cloud_ops_agent,
+                            value=startup_script,
                         ),
                     ]
                 ),
@@ -399,9 +419,6 @@ class ContainerOnVm(pulumi.ComponentResource):
     def get_host(self) -> pulumi.Output[str]:
         if self.__args.private_address:
             return self.__args.private_address.address
-            # return pulumi.Output.concat(
-            #    "https://", self.__args.private_address.address
-            # )
 
         # The self_link is only available once the instance group manager
         # resource is created, so creating a dependency on that will
@@ -410,13 +427,10 @@ class ContainerOnVm(pulumi.ComponentResource):
         # `name` property, the enclosed lambda will always
         # run and there is no way to know if the resource
         # was actually created.
-        return (
-            pulumi.Output.all(
-                self.zonal_instance_group.name,
-                self.zonal_instance_group.self_link,
-            ).apply(lambda args: self.__get_internal_ip(args[0]))
-            # .apply(lambda ip: f"https://{ip}")
-        )
+        return pulumi.Output.all(
+            self.zonal_instance_group.name,
+            self.zonal_instance_group.self_link,
+        ).apply(lambda args: self.__get_internal_ip(args[0]))
 
     def __lift_container_spec_env_vars(
         self, spec: Container, values: List[str]
