@@ -15,7 +15,7 @@ from pulumi_google_native.compute import v1 as native_compute_v1
 
 from config import project, zone
 from gcloud import get_project_number
-from network_firewall import firewall_association, firewall_policy
+from network_firewall import firewall_association
 
 
 startup_script = """
@@ -36,7 +36,7 @@ systemctl restart docker
 
 cat > /tmp/healthcheck.sh <<EOF
 while true; do
-    nc -l -p 43417 -c 'docker ps --filter "label=org.digitalwitnesslab.project=whatup" --filter "status=running" --format "{{ .Status }}" | awk -F"[()]" "{print $2 }"';
+    nc -l -p 43417 -c 'docker ps --filter "label=org.digitalwitnesslab.project=whatup" --filter "status=running" --format "{{ .Status }}" | awk -F"[()]" "{print \$2 }"';
 done
 EOF
 chmod 400 /tmp/healthcheck.sh
@@ -119,7 +119,6 @@ project_number = get_project_number(project)
 class ContainerOnVm(pulumi.ComponentResource):
     __args: ContainerOnVmArgs
     __name: str
-    __healthcheck_firewall_offset: int = 0
 
     def __init__(
         self, name: str, args: ContainerOnVmArgs, opts: ResourceOptions
@@ -176,7 +175,7 @@ class ContainerOnVm(pulumi.ComponentResource):
         self.__autohealing = None
         if args.tcp_healthcheck_port is not None:
             self.__autohealing = classic_gcp_compute.HealthCheck(
-                "autohealing",
+                f"autohealing-{self.__name}",
                 check_interval_sec=5,
                 timeout_sec=5,
                 healthy_threshold=2,
@@ -188,17 +187,16 @@ class ContainerOnVm(pulumi.ComponentResource):
             )
         else:
             self.__autohealing = classic_gcp_compute.HealthCheck(
-                "autohealing",
+                f"autohealing-{self.__name}",
                 check_interval_sec=5,
                 timeout_sec=5,
                 healthy_threshold=2,
                 unhealthy_threshold=10,
                 tcp_health_check=classic_gcp_compute.HealthCheckTcpHealthCheckArgs(
-                    port=6666, response="PASS"
+                    port=43417, response="healthy"
                 ),
                 opts=pulumi.ResourceOptions(parent=self),
             )
-
         self.__create_zonal_instance_group()
 
         super().register_outputs({})
@@ -297,7 +295,6 @@ class ContainerOnVm(pulumi.ComponentResource):
             )
         )
 
-        self.__create_healthcheck_firewall()
         # Add all the secret env vars as custom instance metadata items.
         instance_template_args.properties.metadata.items.extend(
             args.secret_env
@@ -318,31 +315,6 @@ class ContainerOnVm(pulumi.ComponentResource):
         container_declaration.apply(
             lambda cd: pulumi.log.debug(cd, self.instance_template)
         )
-
-    def __create_healthcheck_firewall(self):
-        self.healthcheck_firewall = classic_gcp_compute.NetworkFirewallPolicyRule(
-            f"allow-healthprobe-{self.__name}",
-            classic_gcp_compute.NetworkFirewallPolicyRuleArgs(
-                action="allow",
-                description=f"Allow connection to {self.__name} from GCP health probers",
-                direction="INGRESS",
-                disabled=False,
-                enable_logging=False,
-                firewall_policy=firewall_policy.name,
-                priority=11 + ContainerOnVm.__healthcheck_firewall_offset,
-                rule_name=f"allow-3447-{self.__name}-healthcheck",
-                match=classic_gcp_compute.NetworkFirewallPolicyRuleMatchArgs(
-                    layer4_configs=[
-                        classic_gcp_compute.NetworkFirewallPolicyRuleMatchLayer4ConfigArgs(
-                            ip_protocol="tcp", ports=["43417"]
-                        )
-                    ],
-                    dest_ip_ranges=[self.get_host()],
-                    src_ip_ranges=["35.191.0.0/16", "130.211.0.0/22"],
-                ),
-            ),
-        )
-        ContainerOnVm.__healthcheck_firewall_offset += 1
 
     def __create_zonal_instance_group(self):
         args = self.__args

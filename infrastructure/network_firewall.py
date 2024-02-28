@@ -1,9 +1,12 @@
 from pulumi_gcp import compute
 
-from network import (private_services_connect_ip_prefix,
-                     private_services_connect_ip_range,
-                     private_services_network,
-                     private_services_network_with_db, vpc)
+from network import (
+    private_services_connect_ip_prefix,
+    private_services_connect_ip_range,
+    private_services_network,
+    private_services_network_with_db,
+    vpc,
+)
 
 firewall_policy = compute.NetworkFirewallPolicy(
     "vpc-fw-policy",
@@ -157,6 +160,32 @@ compute.NetworkFirewallPolicyRule(
                 )
             ],
             dest_ip_ranges=["0.0.0.0/0"],
+        ),
+    ),
+)
+
+compute.NetworkFirewallPolicyRule(
+    "allow-healthprobe-43417",
+    compute.NetworkFirewallPolicyRuleArgs(
+        action="allow",
+        description="Allow connection to services from GCP health probers",
+        direction="INGRESS",
+        disabled=False,
+        enable_logging=False,
+        firewall_policy=firewall_policy.name,
+        priority=12,
+        rule_name="allow-43417-healthcheck",
+        match=compute.NetworkFirewallPolicyRuleMatchArgs(
+            layer4_configs=[
+                compute.NetworkFirewallPolicyRuleMatchLayer4ConfigArgs(
+                    ip_protocol="tcp", ports=["43417"]
+                )
+            ],
+            dest_ip_ranges=[
+                private_services_network.ip_cidr_range,
+                private_services_network_with_db.ip_cidr_range,
+            ],
+            src_ip_ranges=["35.191.0.0/16", "130.211.0.0/22"],
         ),
     ),
 )
