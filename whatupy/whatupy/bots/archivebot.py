@@ -50,7 +50,8 @@ class ArchiveBot(BaseBot):
 
         message_timestamp = message.info.timestamp.ToSeconds()
         message_id = message.info.id
-        archive_id = f"{message_timestamp}_{message_id}"
+        reciever = utils.jid_to_str(message.info.source.reciever)
+        archive_id = f"{message_timestamp}_{message_id}_{reciever}"
         archive_filename = conversation_dir / f"{archive_id}.json"
         if archive_filename.exists():
             with archive_filename.open() as fd:

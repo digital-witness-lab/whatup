@@ -140,9 +140,14 @@ func decryptDBScan(c DecryptableContainer, s scannable, dests ...any) error {
 			// When the JID was first Scan'd (types.JID.Scan), since there was
 			// no @ symbol the entire encrypted blob was put in the server
 			// attribute
-			jidPlain, errDec := c.decryptString((*d).Server)
-			jid, errParse := types.ParseJID(jidPlain)
-			err = errors.Join(errDec, errParse)
+			jidPlain, err:= c.decryptString((*d).Server)
+            if err != nil {
+                break
+            }
+			jid, err:= types.ParseJID(jidPlain)
+            if err != nil {
+                break
+            }
 			*d = &jid
 		case *types.JID:
 			// When the JID was first Scan'd (types.JID.Scan), since there was

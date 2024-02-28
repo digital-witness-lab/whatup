@@ -1,20 +1,28 @@
 from pulumi import Output, ResourceOptions, get_stack
-from pulumi_gcp import cloudrunv2, kms, serviceaccount, storage
+from pulumi_gcp import kms, secretmanager, serviceaccount, storage
+from pulumi_google_native import compute
 
 from artifact_registry import whatupy_image
+from config import control_groups, is_prod_stack
+from container_vm import (
+    Container,
+    ContainerEnv,
+    ContainerOnVm,
+    ContainerOnVmArgs,
+    SharedCoreMachineType,
+)
+from jobs.db_migrations import migrations_job_complete
 from kms import sessions_encryption_key, sessions_encryption_key_uri
-from network import private_services_network, vpc
-from service import Service, ServiceArgs
+from network import private_services_network
 from storage import message_archive_bucket, sessions_bucket
-from config import control_groups
 
-from .whatupcore2 import whatupcore2_service
+from .whatupcore2 import ssl_cert_pem_secret, whatupcore2_service
 
 service_name = "bot-archive"
 
 service_account = serviceaccount.Account(
     "bot-archive",
-    account_id=f"bot-archive-{get_stack()}",
+    account_id=f"bot-archive-vm-{get_stack()}",
     description=f"Service account for {service_name}",
 )
 
@@ -47,58 +55,74 @@ encryption_key_perm = kms.CryptoKeyIAMMember(
     ),
 )
 
-whatupy = Service(
+ssl_cert_pem_secret_perm = secretmanager.SecretIamMember(
+    "bot-archive-ssl-cert-secret-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=ssl_cert_pem_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+
+machine_type = SharedCoreMachineType.E2Medium
+if not is_prod_stack():
+    machine_type = SharedCoreMachineType.E2Micro
+
+bot_archive = ContainerOnVm(
     service_name,
-    ServiceArgs(
-        args=["/usr/src/whatupy/run.sh", "archivebot"],
-        concurrency=50,
-        container_port=None,
-        cpu="1",
-        # Route all egress traffic via the VPC network.
-        egress="ALL_TRAFFIC",
-        image=whatupy_image,
-        # We want this service to only be reachable from within
-        # our VPC network.
-        ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
-        memory="1Gi",
-        public_access=True,
-        service_account=service_account,
-        # Specifying the subnet causes CloudRun to use
-        # Direct VPC egress for outbound traffic based
-        # on the value of the `egress` property above.
-        subnet=cloudrunv2.ServiceTemplateVpcAccessNetworkInterfaceArgs(
-            network=vpc.id, subnetwork=private_services_network.id
+    ContainerOnVmArgs(
+        automatic_static_private_ip=False,
+        container_spec=Container(
+            args=["/usr/src/whatupy/run.sh", "archivebot"],
+            image=whatupy_image.repo_digest,
+            env=[
+                ContainerEnv(
+                    name="BUCKET_MNT_DIR_PREFIX",
+                    value="/usr/src/whatupy-data",
+                ),
+                ContainerEnv(
+                    name="KEK_URI",
+                    value=sessions_encryption_key_uri,
+                ),
+                ContainerEnv(
+                    name="MESSAGE_ARCHIVE_BUCKET",
+                    value=message_archive_bucket.name,
+                ),
+                ContainerEnv(
+                    name="MESSAGE_ARCHIVE_BUCKET_MNT_DIR",
+                    value="message-archive/",
+                ),
+                ContainerEnv(
+                    name="SESSIONS_BUCKET",
+                    value=sessions_bucket.name,
+                ),
+                ContainerEnv(
+                    name="WHATUPY_CONTROL_GROUPS",
+                    value=" ".join(control_groups),
+                ),
+                ContainerEnv(
+                    name="WHATUPCORE2_HOST",
+                    value=whatupcore2_service.get_host(),
+                ),
+                # Create an implicit dependency on the migrations
+                # job completing successfully.
+                ContainerEnv(
+                    name="MIGRATIONS_JOB_COMPLETE",
+                    value=migrations_job_complete.apply(lambda b: f"{b}"),
+                ),
+            ],
         ),
-        envs=[
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="BUCKET_MNT_DIR_PREFIX",
-                value="/usr/src/whatupy-data",
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="KEK_URI",
-                value=sessions_encryption_key_uri,
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="MESSAGE_ARCHIVE_BUCKET",
-                value=message_archive_bucket.name,
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="MESSAGE_ARCHIVE_BUCKET_MNT_DIR",
-                value="message-archive/",
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="SESSIONS_BUCKET",
-                value=sessions_bucket.name,
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="WHATUPY_CONTROL_GROUPS",
-                value=" ".join(control_groups),
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="WHATUPCORE2_HOST",
-                value=whatupcore2_service.get_host(),
+        machine_type=machine_type,
+        secret_env=[
+            compute.v1.MetadataItemsItemArgs(
+                key="SSL_CERT_PEM",
+                value=Output.concat(
+                    ssl_cert_pem_secret.id, "/versions/latest"
+                ),
             ),
         ],
+        service_account_email=service_account.email,
+        subnet=private_services_network.self_link,
     ),
     opts=ResourceOptions(
         depends_on=[

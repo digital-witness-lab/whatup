@@ -21,6 +21,7 @@ messages_tables = {
     "group_participants": {"pk": "id"},
     "messages": {"pk": "id"},
     "media": {"pk": "filename"},
+    "donor_messages": {"pk": "id"},
     #"phash_images": {"pk": "filename"}
 }
 

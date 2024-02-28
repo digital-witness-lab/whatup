@@ -9,19 +9,22 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 )
 
-const envFile = "/tmp/whatup/.env"
-
-var httpClient *http.Client
+var (
+	envFile    = path.Join("/", "tmp", "whatup", ".env")
+	httpClient *http.Client
+    version = "0.0.1"
+)
 
 // Run initialization on package init.
 func init() {
 	httpClient = &http.Client{
-		Timeout: 20,
+		Timeout: time.Duration(20) * time.Second,
 	}
 }
 
@@ -93,6 +96,7 @@ func isGoogleComputeEngineEnv() bool {
 			// the metadata service is not
 			// available.
 			if ty.Timeout() {
+				fmt.Println("Request to internal metadata service timed-out")
 				return false
 			}
 
@@ -105,13 +109,16 @@ func isGoogleComputeEngineEnv() bool {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
+		fmt.Println("Request to internal metadata service failed with status: " + resp.Status)
 		return false
 	}
 
+    fmt.Printf("Got response. Flavor = %s\n", resp.Header.Get("Metadata-Flavor"))
 	return resp.Header.Get("Metadata-Flavor") == "Google"
 }
 
 func main() {
+    fmt.Printf("Running configureVmSecrets version: %s\n", version)
 	ctx := context.Background()
 
 	if !isGoogleComputeEngineEnv() {
@@ -157,6 +164,7 @@ func main() {
 	f, err := os.Create(envFile)
 
 	defer func() {
+		f.Sync()
 		// Ignore file close errors.
 		f.Close()
 	}()
@@ -166,9 +174,36 @@ func main() {
 	}
 
 	for k, v := range secrets {
-		_, err := f.WriteString(fmt.Sprintf("%s=%s", k, v))
-		panic(fmt.Errorf("failed to write secret to env file: %v", err))
+        fmt.Println("Found secret:", k)
+		if strings.HasSuffix(k, "PEM") {
+			err := writeCertFile(ctx, k, v)
+			if err != nil {
+				panic(fmt.Errorf("error writing secret %s to its own file: %v", k, err))
+			}
+
+			continue
+		}
+
+		_, err := f.WriteString(fmt.Sprintf("%s=%s\n", k, v))
+		if err != nil {
+			panic(fmt.Errorf("failed to write secret to env file: %v", err))
+		}
 	}
 
-	fmt.Printf("Wrote env file %s!", envFile)
+	fmt.Printf("Wrote env file %s!\n", envFile)
+}
+
+func writeCertFile(ctx context.Context, name, value string) error {
+	p := path.Join("/", "run", "secrets")
+	os.MkdirAll(p, 0755)
+
+	fileName := "ssl-cert"
+	if strings.Contains(name, "KEY") {
+		fileName = "ssl-key"
+	}
+
+    filePath := path.Join(p, fileName)
+    fmt.Println("Writing cert file to:", filePath)
+	err := os.WriteFile(filePath, []byte(value), 0600)
+	return err
 }

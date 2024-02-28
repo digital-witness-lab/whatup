@@ -1,15 +1,11 @@
 from pulumi import Output, ResourceOptions, get_stack
 from pulumi_gcp import cloudrunv2, secretmanager, serviceaccount
-from pulumi_gcp.cloudrunv2 import (
-    JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
-)  # noqa: E501
+from pulumi_gcp.cloudrunv2 import \
+    JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs  # noqa: E501
 
 from artifact_registry import whatupcore2_image
-from dwl_secrets import (
-    db_url_secrets,
-    whatup_anon_key_secret,
-    whatup_salt_secret,
-)
+from dwl_secrets import (db_url_secrets, whatup_anon_key_secret,
+                         whatup_salt_secret)
 from job import Job, JobArgs
 from network import private_services_network_with_db, vpc
 
