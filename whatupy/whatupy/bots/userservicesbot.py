@@ -33,11 +33,17 @@ class UserState(dict):
 
     def __setitem__(self, key, item):
         super().__setitem__(key, item)
-        self.table.update({key: item, "username": self.username}, ["username"])
+        self.table.update(
+            {key: item, "record_mtime": datetime.now(), "username": self.username},
+            ["username"],
+        )
 
     def update(self, **kwargs):
         super().update(kwargs)
-        self.table.update({**kwargs, "username": self.username}, ["username"])
+        self.table.update(
+            {**kwargs, "record_mtime": datetime.now(), "username": self.username},
+            ["username"],
+        )
 
     def clear(self):
         self.table.delete(username=self.username)
