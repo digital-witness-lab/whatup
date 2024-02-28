@@ -87,26 +87,3 @@ pulumi_gcp.compute.NetworkFirewallPolicyRule(
         ),
     ),
 )
-
-pulumi_gcp.compute.NetworkFirewallPolicyRule(
-    "allow-healthprobe-whatupcore-3447",
-    pulumi_gcp.compute.NetworkFirewallPolicyRuleArgs(
-        action="allow",
-        description="Allow connection to whatupcore from GCP health probers",
-        direction="INGRESS",
-        disabled=False,
-        enable_logging=False,
-        firewall_policy=firewall_policy.name,
-        priority=11,
-        rule_name="allow-3447-whatupcore-healthcheck",
-        match=pulumi_gcp.compute.NetworkFirewallPolicyRuleMatchArgs(
-            layer4_configs=[
-                pulumi_gcp.compute.NetworkFirewallPolicyRuleMatchLayer4ConfigArgs(
-                    ip_protocol="tcp", ports=["3447"]
-                )
-            ],
-            dest_ip_ranges=[whatupcore2_static_private_ip.address],
-            src_ip_ranges=["35.191.0.0/16", "130.211.0.0/22"],
-        ),
-    ),
-)

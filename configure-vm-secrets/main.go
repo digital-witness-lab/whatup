@@ -100,9 +100,11 @@ func isGoogleComputeEngineEnv() bool {
 				return false
 			}
 
-			panic(err)
+            fmt.Printf("Error contacting metadata server: %v\n", ty.Err)
+            return false
 		default:
-			panic(err)
+            fmt.Printf("Unknown error contacting metadata server: %v\n", err)
+            return false
 		}
 	}
 

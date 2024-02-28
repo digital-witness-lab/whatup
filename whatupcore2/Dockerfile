@@ -64,4 +64,8 @@ EXPOSE 3447
 ARG ENVIRONMENT="dev"
 ENV ENVIRONMENT=$ENVIRONMENT
 
+LABEL org.digitalwitnesslab.project="whatup"
+LABEL org.digitalwitnesslab.module="whatupcore2"
+HEALTHCHECK --interval=5s --timeout=5s --start-period=20s CMD ["/bin/bash", "-c", "exec 5<>/dev/tcp/127.0.0.1/3447"]
+
 ENTRYPOINT ["/run.sh"]

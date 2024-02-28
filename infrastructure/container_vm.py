@@ -15,7 +15,8 @@ from pulumi_google_native.compute import v1 as native_compute_v1
 
 from config import project, zone
 from gcloud import get_project_number
-from network_firewall import firewall_association
+from network_firewall import firewall_association, firewall_policy
+
 
 startup_script = """
 #!/bin/bash
@@ -33,7 +34,13 @@ cat <<EOF > /etc/docker/daemon.json
 EOF
 systemctl restart docker
 
-nohup bash -c 'while true; do nc -l -p 6666 -c '( docker ps --format "table {{ .Image }}" --filter "state=running" | grep whatup > /dev/null  2>&1 ) && echo "PASS" || echo "FAIL"'; done'
+cat > /tmp/healthcheck.sh <<EOF
+while true; do
+    nc -l -p 43417 -c 'docker ps --filter "label=org.digitalwitnesslab.project=whatup" --filter "status=running" --format "{{ .Status }}" | awk -F"[()]" "{print $2 }"';
+done
+EOF
+chmod 400 /tmp/healthcheck.sh
+nohup bash /tmp/healthcheck.sh &
 """.strip()
 
 
@@ -112,6 +119,7 @@ project_number = get_project_number(project)
 class ContainerOnVm(pulumi.ComponentResource):
     __args: ContainerOnVmArgs
     __name: str
+    __healthcheck_firewall_offset: int = 0
 
     def __init__(
         self, name: str, args: ContainerOnVmArgs, opts: ResourceOptions
@@ -289,6 +297,7 @@ class ContainerOnVm(pulumi.ComponentResource):
             )
         )
 
+        self.__create_healthcheck_firewall()
         # Add all the secret env vars as custom instance metadata items.
         instance_template_args.properties.metadata.items.extend(
             args.secret_env
@@ -309,6 +318,31 @@ class ContainerOnVm(pulumi.ComponentResource):
         container_declaration.apply(
             lambda cd: pulumi.log.debug(cd, self.instance_template)
         )
+
+    def __create_healthcheck_firewall(self):
+        self.healthcheck_firewall = classic_gcp_compute.NetworkFirewallPolicyRule(
+            f"allow-healthprobe-{self.__name}",
+            classic_gcp_compute.NetworkFirewallPolicyRuleArgs(
+                action="allow",
+                description=f"Allow connection to {self.__name} from GCP health probers",
+                direction="INGRESS",
+                disabled=False,
+                enable_logging=False,
+                firewall_policy=firewall_policy.name,
+                priority=11 + ContainerOnVm.__healthcheck_firewall_offset,
+                rule_name=f"allow-3447-{self.__name}-healthcheck",
+                match=classic_gcp_compute.NetworkFirewallPolicyRuleMatchArgs(
+                    layer4_configs=[
+                        classic_gcp_compute.NetworkFirewallPolicyRuleMatchLayer4ConfigArgs(
+                            ip_protocol="tcp", ports=["43417"]
+                        )
+                    ],
+                    dest_ip_ranges=[self.get_host()],
+                    src_ip_ranges=["35.191.0.0/16", "130.211.0.0/22"],
+                ),
+            ),
+        )
+        ContainerOnVm.__healthcheck_firewall_offset += 1
 
     def __create_zonal_instance_group(self):
         args = self.__args
@@ -413,9 +447,6 @@ class ContainerOnVm(pulumi.ComponentResource):
     def get_host(self) -> pulumi.Output[str]:
         if self.__args.private_address:
             return self.__args.private_address.address
-            # return pulumi.Output.concat(
-            #    "https://", self.__args.private_address.address
-            # )
 
         # The self_link is only available once the instance group manager
         # resource is created, so creating a dependency on that will
@@ -424,13 +455,10 @@ class ContainerOnVm(pulumi.ComponentResource):
         # `name` property, the enclosed lambda will always
         # run and there is no way to know if the resource
         # was actually created.
-        return (
-            pulumi.Output.all(
-                self.zonal_instance_group.name,
-                self.zonal_instance_group.self_link,
-            ).apply(lambda args: self.__get_internal_ip(args[0]))
-            # .apply(lambda ip: f"https://{ip}")
-        )
+        return pulumi.Output.all(
+            self.zonal_instance_group.name,
+            self.zonal_instance_group.self_link,
+        ).apply(lambda args: self.__get_internal_ip(args[0]))
 
     def __lift_container_spec_env_vars(
         self, spec: Container, values: List[str]

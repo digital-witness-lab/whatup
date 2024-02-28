@@ -20,9 +20,6 @@ if [ -e /tmp/whatup/.env ]; then
     set +o allexport
 fi
 
-echo "Listing /tmp/whatup..."
-ls -a /tmp/whatup
-
 # Start the application
 case $app_command in
     rpc)
