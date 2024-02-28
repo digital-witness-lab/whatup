@@ -16,5 +16,8 @@ test-whatupcore2:
 test-encsqlstore:
 	ANON_KEY="asdf" go test -v ./pkg/encsqlstore
 
+update-whatsmeow:
+	go get -u go.mau.fi/whatsmeow
+
 clean:
 	rm -rf ./whatupcore2

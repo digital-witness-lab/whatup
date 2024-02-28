@@ -1,7 +1,7 @@
 from typing import Optional
-from pulumi import export
+
 import pulumi_docker as docker
-from pulumi import Output, get_stack
+from pulumi import Output, export, get_stack
 from pulumi_gcp import artifactregistry
 
 from config import location, project
@@ -57,8 +57,9 @@ configure_vm_secrets_image: docker.Image = create_image(
 )
 
 configure_vm_build_args = {
-    "CONFIGURE_VM_SECRETS_REPO ": configure_vm_secrets_image.image_name
+    "CONFIGURE_VM_SECRETS_REPO": configure_vm_secrets_image.image_name
 }
+export("vm_secrets_name", configure_vm_secrets_image.image_name)
 
 whatupy_image: docker.Image = create_image(
     "whatupy", "../whatupy/", build_args=configure_vm_build_args

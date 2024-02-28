@@ -445,7 +445,6 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
 		communityInfo.Participants = mergeGroupParticipants(communityInfo.Participants, communityParticipants)
 	}
 	communityInfoProto := GroupInfoToProto(communityInfo, session.Client.Store)
-	communityInfoProto.IsCommunity = true
 	if err := server.Send(AnonymizeInterface(session.Client.anonLookup, communityInfoProto)); err != nil {
 		s.log.Errorf("Could not send message to client: %v", err)
 		return nil

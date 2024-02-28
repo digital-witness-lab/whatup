@@ -149,6 +149,7 @@ func GroupInfoToProto(gi *types.GroupInfo, device *store.Device) *pb.GroupInfo {
 		DisappearingTimer: gi.GroupEphemeral.DisappearingTimer,
 
 		IsCommunityDefaultGroup: gi.IsAnnounce,
+        IsCommunity:             gi.IsParent,
 
 		ParticipantVersionId: gi.ParticipantVersionID,
 		Participants:         participants,
