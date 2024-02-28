@@ -26,7 +26,7 @@ table_transfers = {
         "media": {"pk": "filename"},
         "donor_messages": {"pk": "id"},
     },
-    "users": {"registered_users": {"pk": "id"}},
+    "users": {"user_registration_meta": {"pk": "jid"}},
 }
 
 
