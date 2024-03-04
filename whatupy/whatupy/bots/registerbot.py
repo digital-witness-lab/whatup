@@ -35,6 +35,12 @@ class RegisterBot(BaseBot):
             primary_type=db.types.text,
             primary_increment=False,
         )
+        db.create_table(
+            "user_registration_meta",
+            primary_id="jid",
+            primary_type=db.types.text,
+            primary_increment=False,
+        )
 
     def setup_command_args(self):
         parser = BotCommandArgs(
@@ -189,6 +195,19 @@ class RegisterBot(BaseBot):
             },
             ["username"],
         )
+        if not is_demo:
+            self.db["user_registration_meta"].upsert(
+                {
+                    "jid": utils.jid_to_str(connection_status.JIDAnon),
+                    "username": username,
+                    "is_bot": is_bot,
+                    "control_group": utils.jid_to_str(user_params["control_group"]),
+                    "provenance": meta,
+                    "timestamp": datetime.now(),
+                    "record_mtime": datetime.now(),
+                },
+                ["id"],
+            )
 
         logger.info(f"{username}: Saving credentials")
         credential = Credential(username=username, passphrase=passphrase, meta=meta)

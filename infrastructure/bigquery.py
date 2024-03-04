@@ -1,3 +1,5 @@
+import typing as T
+
 from pulumi import Output, ResourceOptions, get_stack
 from pulumi_gcp import projects, serviceaccount
 from pulumi_google_native import bigquery
@@ -15,13 +17,16 @@ from database import primary_cloud_sql_instance
 from gcloud import get_project_number
 
 bq_dataset_id = f"messages_{get_stack().replace('-', '_')}"
-messages_tables = {
-    "reactions": {"pk": "id"},
-    "group_info": {"pk": "id"},
-    "group_participants": {"pk": "id"},
-    "messages": {"pk": "id"},
-    "media": {"pk": "filename"},
-    "donor_messages": {"pk": "id"},
+table_transfers = {
+    "messages": {
+        "reactions": {"pk": "id"},
+        "group_info": {"pk": "id"},
+        "group_participants": {"pk": "id"},
+        "messages": {"pk": "id"},
+        "media": {"pk": "filename"},
+        "donor_messages": {"pk": "id"},
+    },
+    "users": {"user_registration_meta": {"pk": "jid"}},
 }
 
 
@@ -59,8 +64,10 @@ messages_dataset = bigquery.v2.Dataset(
 )
 
 
-create_sql_connection(db_configs["users"])
-bigquery_sql_connection = create_sql_connection(db_configs["messages"])
+sql_connections: T.Dict[str, Connection] = {
+    "users": create_sql_connection(db_configs["users"]),
+    "messages": create_sql_connection(db_configs["messages"]),
+}
 
 # Grant access to the service account automatically created
 # by GCP when the above connection resource is created in
@@ -81,7 +88,7 @@ bq_cloudsql_perm = projects.IAMMember(
     project=project,
     role="roles/cloudsql.client",
     opts=ResourceOptions(
-        depends_on=[bigquery_sql_connection],
+        depends_on=list(sql_connections.values()),
     ),
 )
 
@@ -135,7 +142,7 @@ bq_transfers_perm = projects.IAMMember(
     project=project,
     role=Output.concat("roles/").concat(transfers_role.name),
     opts=ResourceOptions(
-        depends_on=[bigquery_sql_connection],
+        depends_on=list(sql_connections.values()),
     ),
 )
 
@@ -146,61 +153,62 @@ bq_transfers_perm = projects.IAMMember(
 #
 # https://cloud.google.com/bigquery/docs/scheduling-queries
 
-for table, table_meta in messages_tables.items():
-    messages_dataset_table = bigquery.v2.Table(
-        f"{table}-{get_stack()}_tbl".replace("_", "-"),
-        dataset_id=bq_dataset_id,
-        project=project,
-        table_reference=bigquery.v2.TableReferenceArgs(
-            dataset_id=bq_dataset_id, project=project, table_id=table
-        ),
-        opts=ResourceOptions(depends_on=[messages_dataset]),
-    )
-    query = Output.all(
-        dataset_id=bq_dataset_id,
-        table_name=table,
-        table_pk=table_meta.get("pk", "id"),
-        conn_name=bigquery_sql_connection.name,
-    ).apply(
-        lambda args: f"""
-    MERGE INTO
-        {args["dataset_id"]}.{args["table_name"]} AS bq
-    USING
-        (
-            SELECT *
-            FROM EXTERNAL_QUERY(
-                "{args['conn_name']}",
-                "SELECT * FROM {args['table_name']};"
-            )
-        ) AS pg
-    ON
-        bq.{args["table_pk"]} = pg.{args["table_pk"]} AND bq.record_mtime = pg.record_mtime
-    WHEN NOT MATCHED BY SOURCE
-    THEN
-        DELETE
-    WHEN NOT MATCHED BY TARGET
-    THEN
-        INSERT ROW;""".strip()
-    )
+for database, tables_spec in table_transfers.items():
+    for table, table_meta in tables_spec.items():
+        bq_table = bigquery.v2.Table(
+            f"{table}-{get_stack()}_tbl".replace("_", "-"),
+            dataset_id=bq_dataset_id,
+            project=project,
+            table_reference=bigquery.v2.TableReferenceArgs(
+                dataset_id=bq_dataset_id, project=project, table_id=table
+            ),
+            opts=ResourceOptions(depends_on=[messages_dataset]),
+        )
+        query = Output.all(
+            dataset_id=bq_dataset_id,
+            table_name=table,
+            table_pk=table_meta.get("pk", "id"),
+            conn_name=sql_connections[database].name,
+        ).apply(
+            lambda args: f"""
+        MERGE INTO
+            {args["dataset_id"]}.{args["table_name"]} AS bq
+        USING
+            (
+                SELECT *
+                FROM EXTERNAL_QUERY(
+                    "{args['conn_name']}",
+                    "SELECT * FROM {args['table_name']};"
+                )
+            ) AS pg
+        ON
+            bq.{args["table_pk"]} = pg.{args["table_pk"]} AND bq.record_mtime = pg.record_mtime
+        WHEN NOT MATCHED BY SOURCE
+        THEN
+            DELETE
+        WHEN NOT MATCHED BY TARGET
+        THEN
+            INSERT ROW;""".strip()
+        )
 
-    dts.v1.TransferConfig(
-        f"msg-{table}-{get_stack()}-trans",
-        dts.v1.TransferConfigArgs(
-            destination_dataset_id=bq_dataset_id,
-            display_name=f"Copy messages.{table} data",
-            data_source_id="scheduled_query",
-            params={
-                "query": query,
-            },
-            schedule="every 6 hours" if is_prod_stack() else None,
-            service_account_name=data_transfers_service_account.email,
-        ),
-        opts=ResourceOptions(
-            depends_on=[
-                bigquery_sql_connection,
-                bq_cloudsql_perm,
-                bq_transfers_perm,
-                messages_dataset_table,
-            ]
-        ),
-    )
+        dts.v1.TransferConfig(
+            f"msg-{table}-{get_stack()}-trans",
+            dts.v1.TransferConfigArgs(
+                destination_dataset_id=bq_dataset_id,
+                display_name=f"Copy messages.{table} data",
+                data_source_id="scheduled_query",
+                params={
+                    "query": query,
+                },
+                schedule="every 6 hours" if is_prod_stack() else None,
+                service_account_name=data_transfers_service_account.email,
+            ),
+            opts=ResourceOptions(
+                depends_on=[
+                    sql_connections[database],
+                    bq_cloudsql_perm,
+                    bq_transfers_perm,
+                    bq_table,
+                ]
+            ),
+        )
