@@ -1,5 +1,4 @@
 import asyncio
-import hashlib
 import json
 import logging
 import typing as T
@@ -16,126 +15,10 @@ from ..device_manager import DeviceManager
 from ..protos import whatupcore_pb2 as wuc
 from ..protos import whatsappweb_pb2 as waw
 from .basebot import BaseBot, TypeLanguages
-from . import static
+from .lib import UserBot, GroupRefreshTask
+from . import static, BotCommandArgs
 
 logger = logging.getLogger(__name__)
-
-
-class UserState(dict):
-    def connect(self, username, table):
-        self.username = username
-        self.table = table
-        self.data = {}
-        self.sync()
-
-    def sync(self):
-        super().update(self.table.find_one(username=self.username))
-
-    def __setitem__(self, key, item):
-        super().__setitem__(key, item)
-        self.table.update(
-            {key: item, "record_mtime": datetime.now(), "username": self.username},
-            ["username"],
-        )
-
-    def update(self, **kwargs):
-        super().update(kwargs)
-        self.table.update(
-            {**kwargs, "record_mtime": datetime.now(), "username": self.username},
-            ["username"],
-        )
-
-    def clear(self):
-        self.table.delete(username=self.username)
-        super().clear()
-
-
-class _UserBot(BaseBot):
-    def __init__(
-        self,
-        host,
-        port,
-        cert,
-        services_bot,
-        db,
-        group_min_participants: int = 6,
-        **kwargs,
-    ):
-        self.services_bot: UserServicesBot = services_bot
-        self.active_workflow: T.Optional[T.Callable] = None
-        self.unregistering_timer: T.Optional[asyncio.TimerHandle] = None
-        self.db = db
-        self.state: UserState = UserState()
-
-        self.group_min_participants = group_min_participants
-        super().__init__(
-            host,
-            port,
-            cert,
-            mark_messages_read=False,
-            read_messages=False,
-            read_historical_messages=False,
-        )
-
-    async def login(self, *args, **kwargs):
-        await super().login(*args, **kwargs)
-        self.state.connect(self.username, self.db["registered_users"])
-        if self.state.get("is_bot"):
-            self.mark_messages_read = True
-            self.read_historical_messages = True
-            self.read_messages = True
-        return self
-
-    async def post_start(self):
-        await self.services_bot.new_device(self)
-
-    @staticmethod
-    def _hash_jid(jid: wuc.JID, n_bytes: int):
-        return hashlib.sha1(jid.user.encode("utf8")).hexdigest()[:n_bytes]
-
-    async def _iter_groups(self) -> T.AsyncIterable[wuc.JoinedGroup]:
-        joined_group_iter = self.core_client.GetJoinedGroups(
-            wuc.GetJoinedGroupsOptions()
-        )
-        data: wuc.JoinedGroup
-        async for data in joined_group_iter:
-            if data.groupInfo.isCommunity or data.groupInfo.isPartialInfo:
-                continue
-            n_participants = len(data.groupInfo.participants)
-            if n_participants < self.group_min_participants:
-                continue
-            yield data
-
-    async def group_acl_jid_lookup(self, n_bytes) -> T.Dict[str, T.Dict]:
-        lookup = {}
-        data: wuc.JoinedGroup
-        async for data in self._iter_groups():
-            gid = self._hash_jid(data.groupInfo.JID, n_bytes)
-            lookup[gid] = {
-                "jid": data.groupInfo.JID,
-                "name": data.groupInfo.groupName.name,
-            }
-        return lookup
-
-    async def group_acl_data(self, n_bytes=5):
-        groups = []
-        async for data in self._iter_groups():
-            permission = data.acl.permission
-            can_read = permission in (
-                wuc.GroupPermission.READONLY,
-                wuc.GroupPermission.READWRITE,
-            )
-            gid = self._hash_jid(data.groupInfo.JID, n_bytes)
-            item = {
-                "name": data.groupInfo.groupName.name,
-                "topic": data.groupInfo.groupTopic.topic,
-                "can_read": can_read,
-                "gid": gid,
-                "n_participants": len(data.groupInfo.participants),
-            }
-            groups.append(item)
-        groups.sort(key=lambda i: i["n_participants"], reverse=True)
-        return groups
 
 
 class UserServicesBot(BaseBot):
@@ -147,21 +30,24 @@ class UserServicesBot(BaseBot):
         *args,
         **kwargs,
     ):
+        kwargs["read_messages"] = True
+        kwargs["read_historical_messages"] = False
+        kwargs["mark_messages_read"] = True
         super().__init__(*args, **kwargs)
 
         self.public_path = public_path
         self.db: dataset.Database = dataset.connect(
             database_url,
         )
-        self.users: T.Dict[str, _UserBot] = {}
+        self.users: T.Dict[str, UserBot] = {}
 
         group_min_participants = 6
         if not self.is_prod():
             group_min_participants = 0
 
         bot_factory = partial(
-            _UserBot,
-            services_bot=self,
+            UserBot,
+            connect_callback=self.new_device,
             logger=self.logger,
             db=self.db,
             group_min_participants=group_min_participants,
@@ -172,6 +58,135 @@ class UserServicesBot(BaseBot):
             bot_factory=bot_factory,
             credential_managers=[credentials_manager],
         )
+
+        self.group_refresh_tasks = set()
+
+    def setup_command_args(self):
+        parser = BotCommandArgs(
+            prog=self.__class__.__name__,
+            description="Bot for user services",
+        )
+        sub_parser = parser.add_subparsers(dest="command")
+        sub_parser.add_parser("status", description="Get current user services status")
+
+        list_users = sub_parser.add_parser("list-users", description="Lists current users")
+        list_users.add_argument(
+            "--no-bots",
+            action="store_true",
+            help="Exclude bots",
+            default=False,
+        )
+        list_users.add_argument(
+            "--no-demo",
+            action="store_true",
+            help="Exclude demo accounts",
+            default=False,
+        )
+
+        group_refresh = sub_parser.add_parser(
+            "group-refresh", description="Refresh the history of a user or group"
+        )
+        group_refresh.add_argument(
+            "--username",
+            action="append",
+            help="User to refresh",
+            default=None,
+        )
+        group_refresh.add_argument(
+            "--jid",
+            action="append",
+            help="JID to refresh",
+            default=None,
+        )
+        return parser
+
+    async def on_control(self, message):
+        params = await self.parse_command(message)
+        self.logger.info("Got command: %s", params)
+        if params is None:
+            return
+        elif params.command == "status":
+            await self._on_status(message, params)
+        elif params.command == "group-refresh":
+            await self._on_group_refresh(message, params)
+        elif params.command == "list-users":
+            await self._on_list_users(message, params)
+
+    async def _on_list_users(self, message, params):
+        users = list(self.users.values())
+        if params.no_demo:
+            users = {user for user in users if not user.state.get("is_demo")}
+        if params.no_bots:
+            users = {user for user in users if not user.state.get("is_bot")}
+        users_str = "- " + "\n- ".join(user.username or "[unknown]" for user in users)
+        return await self.send_text_message(
+            message.info.source.sender, f"Registered users:\n{users_str}"
+        )
+
+    async def _on_group_refresh(self, message, params):
+        refresh_task = GroupRefreshTask()
+        sender = message.info.source.sender
+        if params.username and not params.jid:
+            n_added = 0
+            for username in params.username:
+                try:
+                    user = next(user for user in self.users.values() if user.username == username)
+                    await refresh_task.add_user(user)
+                    n_added += 1
+                except StopIteration:
+                    await self.send_text_message(
+                        sender, f"Could not find user: {username}"
+                    )
+            if not n_added:
+                return
+        elif params.jid:
+            if params.username:
+                users = [
+                    user
+                    for user in self.users.values()
+                    if user.username in set(params.username)
+                ]
+            else:
+                users = list(self.users.values())
+            groups = set(jid for jid in params.jid)
+            jids_found, jids_missing = await refresh_task.add_groups(users, groups)
+            if jids_missing:
+                await self.send_text_message(
+                    sender,
+                    f"Could not a valid user connected to group: {', '.join(jids_missing)}",
+                )
+                if not jids_found:
+                    return await self.send_text_message(sender, "Aborting")
+                else:
+                    await self.send_text_message(
+                        sender,
+                        f"Continuing for JIDs: {' '.join(jids_found)}",
+                    )
+        else:
+            return self.send_text_message(sender, "Must send username, jids or both")
+        task = await refresh_task.start()
+        self.group_refresh_tasks.add(refresh_task)
+        task.add_done_callback(lambda t: self.group_refresh_tasks.discard(refresh_task))
+        await self.send_text_message(message.info.source.sender, str(refresh_task.status))
+
+    async def _on_status(self, message, params):
+        n_devices = len(self.users)
+        n_active_bots = sum(1 for u in self.users.values() if u.state.get("is_bot"))
+        n_active_demo = sum(1 for u in self.users.values() if u.state.get("is_demo"))
+        n_active_users = sum(
+            1
+            for u in self.users.values()
+            if not (u.state.get("is_demo") or u.state.get("is_bot"))
+        )
+        refresh_status = "\n".join(str(gr.status) for gr in self.group_refresh_tasks)
+        status = f"""
+Number of active users: {n_active_users}
+Number of bots: {n_active_bots}
+Number of demo accounts: {n_active_demo}
+Total devices: {n_devices}
+{refresh_status}
+        """.strip()
+        await self.send_text_message(message.info.source.sender, status)
 
     async def post_start(self):
         self.connection_status = await self.core_client.GetConnectionStatus(
@@ -226,7 +241,9 @@ class UserServicesBot(BaseBot):
                 ulog.debug("Unrecognized command: %s", text)
                 await self.help_text(user)
 
-    async def new_device(self, user: _UserBot):
+    async def new_device(self, user: UserBot):
+        if not user.jid_anon:
+            return
         user_jid_str = utils.jid_to_str(user.jid_anon)
         if not user_jid_str:
             return
@@ -234,13 +251,13 @@ class UserServicesBot(BaseBot):
         if not user.state.get("finalize_registration", False):
             await self.onboard_user(user)
 
-    async def onboard_bot(self, user: _UserBot):
+    async def onboard_bot(self, user: UserBot):
         if not user.state.get("finalize_registration"):
             user.state.update(finalize_registration=True, lang="en")
             await self.send_template_user(user, "onboard_bot_welcome", lang="en")
         await self.help_text(user)
 
-    async def onboard_user(self, user: _UserBot):
+    async def onboard_user(self, user: UserBot):
         user.active_workflow = None
         if user.state.get("is_bot"):
             return await self.onboard_bot(user)
@@ -253,13 +270,13 @@ class UserServicesBot(BaseBot):
         else:
             await self.help_text(user)
 
-    def reset_onboarding(self, user: _UserBot):
+    def reset_onboarding(self, user: UserBot):
         user.active_workflow = None
         if user.unregistering_timer is not None:
             user.unregistering_timer.cancel()
         user.state.update(onboard_acl=False, finalize_registration=False, lang=None)
 
-    async def acl_workflow_finalize(self, user: _UserBot, text: str):
+    async def acl_workflow_finalize(self, user: UserBot, text: str):
         try:
             body = text[len("setacl-") :]
             lang, base = body.split("-", 1)
@@ -309,15 +326,15 @@ class UserServicesBot(BaseBot):
         user.state["onboard_acl"] = True
         await self.onboard_user(user)
 
-    async def finish_registration(self, user: _UserBot):
+    async def finish_registration(self, user: UserBot):
         await self.send_template_user(user, "finish_registration")
         user.state["finalize_registration"] = True
         await self.onboard_user(user)
 
-    async def help_text(self, user: _UserBot):
+    async def help_text(self, user: UserBot):
         await self.send_template_user(user, "help_text")
 
-    async def acl_workflow(self, user: _UserBot):
+    async def acl_workflow(self, user: UserBot):
         n_bytes = 3
         groups_data = await user.group_acl_data(n_bytes=n_bytes)
         skip_intro = int(user.state.get("onboard_acl") or False)
@@ -381,19 +398,19 @@ class UserServicesBot(BaseBot):
         filepath.write_bytes(content)
         return utils.gspath_to_self_signed_url(filepath, ttl=ttl)
 
-    async def unregister_workflow(self, user: _UserBot):
+    async def unregister_workflow(self, user: UserBot):
         await self.send_template_user(user, "unregister_workflow")
         user.unregistering_timer = asyncio.get_event_loop().call_later(
             60, asyncio.create_task, self.unregister_workflow_cancel(user)
         )
         user.active_workflow = self.unregister_workflow_continue
 
-    async def unregister_workflow_cancel(self, user: _UserBot):
+    async def unregister_workflow_cancel(self, user: UserBot):
         user.active_workflow = None
         await self.send_template_user(user, "unregister_timeout")
         await self.help_text(user)
 
-    async def unregister_workflow_continue(self, user: _UserBot, text: str):
+    async def unregister_workflow_continue(self, user: UserBot, text: str):
         user.active_workflow = None
         if user.unregistering_timer is not None:
             user.unregistering_timer.cancel()
@@ -410,7 +427,7 @@ class UserServicesBot(BaseBot):
             return await self.onboard_user(user)
         return await self.unregister_workflow_finalize(user)
 
-    async def unregister_workflow_finalize(self, user: _UserBot):
+    async def unregister_workflow_finalize(self, user: UserBot):
         await self.send_template_user(
             user, "unregister_final_message", anon_user=user.jid_anon.user
         )
@@ -442,11 +459,11 @@ class UserServicesBot(BaseBot):
             user.jid, template, lang, context_info=context_info, **kwargs
         )
 
-    async def langselect_workflow_start(self, user: _UserBot):
+    async def langselect_workflow_start(self, user: UserBot):
         await self.send_template_user(user, "langselect_start", lang="all")
         user.active_workflow = self.langselect_workflow_finalize
 
-    async def langselect_workflow_finalize(self, user: _UserBot, text: str):
+    async def langselect_workflow_finalize(self, user: UserBot, text: str):
         if text == "1":
             lang = "en"
         elif text == "2":
