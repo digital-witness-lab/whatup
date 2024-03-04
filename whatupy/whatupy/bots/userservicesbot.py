@@ -27,7 +27,7 @@ class UserServicesBot(BaseBot):
         credentials_manager: CredentialsManager,
         database_url: str,
         public_path: CloudPath,
-        demo_lifespan: timedelta = timedelta(hours=1),
+        demo_lifespan: timedelta = timedelta(minutes=30),
         *args,
         **kwargs,
     ):
@@ -120,9 +120,16 @@ class UserServicesBot(BaseBot):
             users = {user for user in users if not user.state.get("is_demo")}
         if params.no_bots:
             users = {user for user in users if not user.state.get("is_bot")}
-        users_str = "- " + "\n- ".join(user.username or "[unknown]" for user in users)
+        messages = []
+        for user in users:
+            messages.append(f"- {user.username}")
+            if not user.state.get('is_bot'):
+                messages.append(f"\t- sharing {user.state.get('n_groups', 'unk')} groups")
+            if user.jid_anon:
+                messages.append(f"\t- {utils.jid_to_str(user.jid_anon)}")
+        user_listing = "\n".join(messages)
         return await self.send_text_message(
-            message.info.source.sender, f"Registered users:\n{users_str}"
+            message.info.source.sender, f"Registered users:\n{user_listing}"
         )
 
     async def _on_group_refresh(self, message, params):
@@ -175,6 +182,7 @@ class UserServicesBot(BaseBot):
         n_devices = len(self.users)
         n_active_bots = sum(1 for u in self.users.values() if u.state.get("is_bot"))
         n_active_demo = sum(1 for u in self.users.values() if u.state.get("is_demo"))
+        n_groups_shared = sum(u.state.get("n_groups", 0) for u in self.users.values())
         n_active_users = sum(
             1
             for u in self.users.values()
@@ -182,7 +190,7 @@ class UserServicesBot(BaseBot):
         )
         refresh_status = "\n".join(str(gr.status) for gr in self.group_refresh_tasks)
         status = f"""
-Number of active users: {n_active_users}
+Number of active users: {n_active_users} (sharing {n_groups_shared} groups)
 Number of bots: {n_active_bots}
 Number of demo accounts: {n_active_demo}
 Total devices: {n_devices}
@@ -252,16 +260,43 @@ Total devices: {n_devices}
         self.users[user_jid_str] = user
         if not user.state.get("finalize_registration", False):
             await self.onboard_user(user)
-        if user.state.get("is_bot"):
-            timestamp = user.state.get("timestamp") or datetime.min
-            unregister_at = timestamp + self.demo_lifespan
-            asyncio.get_running_loop().call_at(unregister_at.timestamp(), partial(self.unregister_demo, user))
-        
+        if user.state.get("is_demo"):
+            asyncio.create_task(self.unregister_demo(user))
+
     async def unregister_demo(self, user: UserBot):
-        if not user.username:
+        try:
+            timestamp = datetime.fromisoformat(user.state["provenance"]["registerbot__timestamp"])
+        except (KeyError, TypeError):
+            timestamp = datetime.min
+        now = datetime.now()
+        unregister_in_seconds = (now - (timestamp + self.demo_lifespan)).total_seconds()
+        if unregister_in_seconds > 0:
+            self.logger.info(
+                "Waiting to unregister demo account: %s: %s: %s",
+                timestamp,
+                now,
+                unregister_in_seconds,
+            )
+            await asyncio.sleep(unregister_in_seconds)
+        if not user.jid_anon:
+            return
+        jid_anon = utils.jid_to_str(user.jid_anon)
+        if user.username is None or not jid_anon or not self.users.get(jid_anon):
+            self.logger.info("User seems to already be unregistered. Not unregistering demo account")
             return
         await self.send_template_user(user, "unregister_demo")
+        await self.unregister_user(user)
+
+    async def unregister_user(self, user: UserBot):
+        if user.username is None or user.jid_anon is None:
+            return
+        self.logger.info("Unregistering account: %s", user.username)
+        jid_anon = utils.jid_to_str(user.jid_anon)
         await self.device_manager.unregister(user.username)
+        user.state.clear()
+        if jid_anon:
+            self.users.pop(jid_anon, None)
+        user.stop()
 
     async def onboard_bot(self, user: UserBot):
         if not user.state.get("finalize_registration"):
@@ -336,6 +371,7 @@ Total devices: {n_devices}
                 user, "acl_workflow_finalize_ignore", group_list=group_list
             )
         user.state["onboard_acl"] = True
+        user.state["n_groups"] = len(summary.get(True, []))
         await self.onboard_user(user)
 
     async def finish_registration(self, user: UserBot):
@@ -443,12 +479,7 @@ Total devices: {n_devices}
         await self.send_template_user(
             user, "unregister_final_message", anon_user=user.jid_anon.user
         )
-        jid = utils.jid_to_str(user.jid_anon)
-        if jid:
-            self.users.pop(jid)
-        if user.username:
-            await self.device_manager.unregister(user.username)
-        user.state.clear()
+        await self.unregister_user(user)
 
     async def send_template_user(
         self,

@@ -5,6 +5,7 @@ import typing as T
 from . import UserState
 from ..basebot import BaseBot
 from ...protos import whatupcore_pb2 as wuc
+from ... import utils
 
 
 class UserBot(BaseBot):
@@ -46,6 +47,12 @@ class UserBot(BaseBot):
             self.mark_messages_read = True
             self.read_historical_messages = True
             self.read_messages = True
+        else:
+            # TODO: this is for migration purposes. REMOVE THE FOLLOWING LINE
+            self.state["n_groups"] = len(
+                await utils.aiter_to_list(self.iter_readable_groups())
+            )
+            # END TODO
         return self
 
     async def post_start(self):
