@@ -27,6 +27,7 @@ class UserServicesBot(BaseBot):
         credentials_manager: CredentialsManager,
         database_url: str,
         public_path: CloudPath,
+        demo_lifespan: timedelta = timedelta(hours=1),
         *args,
         **kwargs,
     ):
@@ -40,6 +41,7 @@ class UserServicesBot(BaseBot):
             database_url,
         )
         self.users: T.Dict[str, UserBot] = {}
+        self.demo_lifespan = demo_lifespan
 
         group_min_participants = 6
         if not self.is_prod():
@@ -250,6 +252,16 @@ Total devices: {n_devices}
         self.users[user_jid_str] = user
         if not user.state.get("finalize_registration", False):
             await self.onboard_user(user)
+        if user.state.get("is_bot"):
+            timestamp = user.state.get("timestamp") or datetime.min
+            unregister_at = timestamp + self.demo_lifespan
+            asyncio.get_running_loop().call_at(unregister_at.timestamp(), partial(self.unregister_demo, user))
+        
+    async def unregister_demo(self, user: UserBot):
+        if not user.username:
+            return
+        await self.send_template_user(user, "unregister_demo")
+        await self.device_manager.unregister(user.username)
 
     async def onboard_bot(self, user: UserBot):
         if not user.state.get("finalize_registration"):
