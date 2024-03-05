@@ -132,6 +132,7 @@ def query_group_country_codes(db):
 
 class DatabaseBot(BaseBot):
     __version__ = "2.1.0"
+    __db_cache: T.Dict[str, dataset.Database] = {}
 
     def __init__(
         self,
@@ -146,8 +147,15 @@ class DatabaseBot(BaseBot):
         super().__init__(*args, **kwargs)
         self.media_base_path: AnyPath = media_base_path
         self.group_info_refresh_time = group_info_refresh_time
-        self.db: dataset.Database = dataset.connect(database_url)
+        self.db: dataset.Database = DatabaseBot.__db_connect(database_url)
         self.init_database(self.db)
+
+    @classmethod
+    def __db_connect(cls, database_url) -> dataset.Database:
+        url_hash = utils.short_hash(database_url, N=None)
+        if url_hash not in cls.__db_cache:
+            cls.__db_cache[url_hash] = dataset.connect(database_url)
+        return cls.__db_cache[url_hash]
 
     def init_database(self, db):
         group_info = db.create_table(

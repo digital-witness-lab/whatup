@@ -238,7 +238,7 @@ def random_words(n_words=3) -> T.List[str]:
     return words
 
 
-def short_hash(item: str, N=5) -> str:
+def short_hash(item: str, N: T.Optional[int] = 5) -> str:
     h = hashlib.new("sha256", item.encode("utf8"))
     return h.hexdigest()[:N]
 
