@@ -113,9 +113,11 @@ class UserServicesBot(BaseBot):
             default=20,
         )
         group_refresh.add_argument(
-            "job-name",
+            "job_name",
+            metavar="job-name",
             type=str,
             help="Name of the job for tracking",
+            nargs='?',
             default=None,
         )
         return parser
@@ -195,7 +197,7 @@ class UserServicesBot(BaseBot):
         n_devices = len(self.users)
         n_active_bots = sum(1 for u in self.users.values() if u.state.get("is_bot"))
         n_active_demo = sum(1 for u in self.users.values() if u.state.get("is_demo"))
-        n_groups_shared = sum(u.state.get("n_groups", 0) for u in self.users.values())
+        n_groups_shared = sum(u.state.get("n_groups") or 0 for u in self.users.values())
         n_active_users = sum(
             1
             for u in self.users.values()
@@ -270,6 +272,7 @@ Total devices: {n_devices}
         user_jid_str = utils.jid_to_str(user.jid_anon)
         if not user_jid_str:
             return
+        self.logger.info("User services handling user: %s", user.username)
         self.users[user_jid_str] = user
         if not user.state.get("finalize_registration", False):
             await self.onboard_user(user)
