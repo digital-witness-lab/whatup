@@ -183,7 +183,7 @@ services:
       - db
     environment:
       - WHATUPY_CERT=/run/secrets/ssl-cert
-      - WHATUPY_CONTROL_GROUPS=XXXXX@g.us  # no one
+      - WHATUPY_CONTROL_GROUPS=120363182117068328@g.us # test-dev2
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
     secrets:
       - postgres-messages-passwd
