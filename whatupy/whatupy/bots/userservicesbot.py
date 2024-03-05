@@ -84,6 +84,12 @@ class UserServicesBot(BaseBot):
             help="Exclude demo accounts",
             default=False,
         )
+        list_users.add_argument(
+            "--search",
+            type=str,
+            help="substring username must contain",
+            default=None,
+        )
 
         group_refresh = sub_parser.add_parser(
             "group-refresh", description="Refresh the history of a user or group"
@@ -98,6 +104,18 @@ class UserServicesBot(BaseBot):
             "--jid",
             action="append",
             help="JID to refresh",
+            default=None,
+        )
+        group_refresh.add_argument(
+            "--timeout",
+            type=int,
+            help="Time between each task in seconds",
+            default=20,
+        )
+        group_refresh.add_argument(
+            "job-name",
+            type=str,
+            help="Name of the job for tracking",
             default=None,
         )
         return parser
@@ -117,23 +135,18 @@ class UserServicesBot(BaseBot):
     async def _on_list_users(self, message, params):
         users = list(self.users.values())
         if params.no_demo:
-            users = {user for user in users if not user.state.get("is_demo")}
+            users = [user for user in users if not user.state.get("is_demo")]
         if params.no_bots:
-            users = {user for user in users if not user.state.get("is_bot")}
-        messages = []
-        for user in users:
-            messages.append(f"- {user.username}")
-            if not user.state.get('is_bot'):
-                messages.append(f"\t- sharing {user.state.get('n_groups', 'unk')} groups")
-            if user.jid_anon:
-                messages.append(f"\t- {utils.jid_to_str(user.jid_anon)}")
-        user_listing = "\n".join(messages)
+            users = [user for user in users if not user.state.get("is_bot")]
+        if params.search:
+            users = [user for user in users if params.search in user.username]
+        user_listing = "\n".join(user.status_listing() for user in users)
         return await self.send_text_message(
             message.info.source.sender, f"Registered users:\n{user_listing}"
         )
 
     async def _on_group_refresh(self, message, params):
-        refresh_task = GroupRefreshTask()
+        refresh_task = GroupRefreshTask(name=params.job_name, timeout=params.timeout)
         sender = message.info.source.sender
         if params.username and not params.jid:
             n_added = 0
@@ -296,7 +309,6 @@ Total devices: {n_devices}
         user.state.clear()
         if jid_anon:
             self.users.pop(jid_anon, None)
-        user.stop()
 
     async def onboard_bot(self, user: UserBot):
         if not user.state.get("finalize_registration"):

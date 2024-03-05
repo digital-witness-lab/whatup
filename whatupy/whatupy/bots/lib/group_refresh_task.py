@@ -10,31 +10,35 @@ from ...protos import whatupcore_pb2 as wuc
 
 @dataclass
 class GroupRefreshStatus:
+    name: T.Optional[str] = field(default=None)
     tasks_total: int = field(default=0)
     tasks_done: int = field(default=0)
     start_time: T.Optional[datetime] = field(default=None)
     end_time: T.Optional[datetime] = field(default=None)
 
     def __str__(self):
+        status = ""
+        if self.name:
+            status = f"{status}{self.name}: "
         if not self.start_time:
-            return f"Unstarted group refresh. {self.tasks_total} tasks"
+            return f"{status}Unstarted group refresh. {self.tasks_total} tasks"
         tasks_left = self.tasks_total - self.tasks_done
         now = datetime.now()
-        status = f"Refreshing {self.tasks_done}/{self.tasks_total} groups. Started at {self.start_time}."
+        status = f"{status}Refreshing {self.tasks_done}/{self.tasks_total} groups. Started at {self.start_time}. "
         try:
             eta: timedelta = (now - self.start_time) / self.tasks_done * tasks_left
-            return f"{status} Finished in {eta} ({(now + eta).isoformat()})."
+            return f"{status}Finished in {eta} ({(now + eta).isoformat()}). "
         except ZeroDivisionError:
-            return f"{status} Unknown ETA."
+            return f"{status}Unknown ETA. "
 
 
 class GroupRefreshTask:
-    def __init__(self, timeout=20):
+    def __init__(self, name=None, timeout=20):
         self.running = False
         self.tasks: T.Set[T.Tuple[UserBot, str]] = set()
         self.timeout = timeout
         self.task: T.Optional[asyncio.Task] = None
-        self.status: GroupRefreshStatus = GroupRefreshStatus()
+        self.status: GroupRefreshStatus = GroupRefreshStatus(name=name)
 
     async def start(self):
         self.status.start_time = datetime.now()

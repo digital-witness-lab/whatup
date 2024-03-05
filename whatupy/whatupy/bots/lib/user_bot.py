@@ -1,11 +1,56 @@
 import asyncio
 import hashlib
 import typing as T
+from datetime import datetime, timedelta
+from dataclasses import dataclass, field
+
+from rbloom import Bloom
 
 from . import UserState
 from ..basebot import BaseBot
 from ...protos import whatupcore_pb2 as wuc
 from ... import utils
+
+
+@dataclass
+class UserStatus:
+    timestamp: datetime = field(default=datetime.min)
+    interval: timedelta = field(default=timedelta(hours=1))
+    groups: Bloom = field(default_factory=lambda: Bloom(1_000, 0.01))
+    messages_history: Bloom = field(default_factory=lambda: Bloom(1_000, 0.01))
+    messages: Bloom = field(default_factory=lambda: Bloom(1_000, 0.01))
+
+    def add_message(self, message: wuc.WUMessage, is_history: bool):
+        self.maybe_reset()
+        if is_history:
+            self.messages_history.add(message.info.id)
+        else:
+            self.messages.add(message.info.id)
+        self.groups.add(message.info.source.chat.user)
+
+    def __bool__(self):
+        return self.timestamp != datetime.min
+
+    def maybe_reset(self):
+        now = datetime.now()
+        if self.timestamp is None or self.timestamp + self.interval < now:
+            self.reset()
+
+    def reset(self):
+        self.timestamp = datetime.now()
+        self.groups.clear()
+        self.messages_history.clear()
+        self.messages.clear()
+
+    def __str__(self):
+        self.maybe_reset()
+        return (
+            f"Since {self.timestamp.isoformat(timespec='minutes')}: "
+            "Approximately "
+            f"{self.groups.approx_items:0.1f} groups, "
+            f"{self.messages_history.approx_items:0.1f} historical messages, "
+            f"{self.messages.approx_items:0.1f} messages"
+        )
 
 
 class UserBot(BaseBot):
@@ -14,16 +59,19 @@ class UserBot(BaseBot):
         host,
         port,
         cert,
-        connect_callback: T.Callable[[T.Self], None],
+        connect_callback: T.Callable[[T.Self], T.Awaitable[None]],
         db,
         group_min_participants: int = 6,
         **kwargs,
     ):
-        self.connect_callback: T.Callable[[T.Self], None] = connect_callback
+        self.connect_callback: T.Callable[
+            [T.Self], T.Awaitable[None]
+        ] = connect_callback
         self.active_workflow: T.Optional[T.Callable] = None
         self.unregistering_timer: T.Optional[asyncio.TimerHandle] = None
         self.db = db
         self.state: UserState = UserState()
+        self.status: UserStatus = UserStatus()
 
         self.group_min_participants = group_min_participants
         super().__init__(
@@ -39,6 +87,21 @@ class UserBot(BaseBot):
         if not self.username:
             raise TypeError
         return hash(self.username)
+
+    def status_listing(self) -> str:
+        name_line = f"- {self.username}"
+        if self.state.get("is_bot"):
+            name_line += " bot"
+        if self.state.get("is_demo"):
+            name_line += " demo"
+        messages = [name_line]
+        if not self.state.get("is_bot"):
+            messages.append(f"\t- sharing {self.state.get('n_groups', 'unk')} groups")
+        if self.status:
+            messages.append(f"\t- {str(self.status)}")
+        if self.jid_anon:
+            messages.append(f"\t- {utils.jid_to_str(self.jid_anon)}")
+        return "\n".join(messages)
 
     async def login(self, *args, **kwargs):
         await super().login(*args, **kwargs)
@@ -57,6 +120,9 @@ class UserBot(BaseBot):
 
     async def post_start(self):
         await self.connect_callback(self)
+
+    async def on_message(self, message, *_, is_history=False, **__):
+        self.status.add_message(message, is_history=is_history)
 
     @staticmethod
     def _hash_jid(jid: wuc.JID, n_bytes: int):
