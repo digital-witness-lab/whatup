@@ -184,7 +184,8 @@ class RegisterBot(BaseBot):
         }
 
         logger.info(f"{username}: Pinging users database")
-        self.db["registered_users"].upsert(
+        self.db["registered_users"].delete(username=username)
+        self.db["registered_users"].insert(
             {
                 "username": username,
                 "is_bot": is_bot,
@@ -192,13 +193,15 @@ class RegisterBot(BaseBot):
                 "jid_anon": utils.jid_to_str(connection_status.JIDAnon),
                 "control_group": utils.jid_to_str(user_params["control_group"]),
                 "provenance": meta,
-            },
-            ["username"],
+            }
         )
         if not is_demo:
-            self.db["user_registration_meta"].upsert(
+            logger.info(f"{username}: pinging user meta")
+            jid = utils.jid_to_str(connection_status.JIDAnon)
+            self.db["user_registration_meta"].delete(jid=jid)
+            self.db["user_registration_meta"].insert(
                 {
-                    "jid": utils.jid_to_str(connection_status.JIDAnon),
+                    "jid": jid,
                     "username": username,
                     "is_bot": is_bot,
                     "control_group": utils.jid_to_str(user_params["control_group"]),
@@ -206,7 +209,6 @@ class RegisterBot(BaseBot):
                     "timestamp": datetime.now(),
                     "record_mtime": datetime.now(),
                 },
-                ["id"],
             )
 
         logger.info(f"{username}: Saving credentials")
