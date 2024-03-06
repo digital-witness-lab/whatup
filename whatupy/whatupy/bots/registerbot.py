@@ -192,6 +192,7 @@ class RegisterBot(BaseBot):
                 "is_demo": is_demo,
                 "jid_anon": utils.jid_to_str(connection_status.JIDAnon),
                 "control_group": utils.jid_to_str(user_params["control_group"]),
+                "timestamp": datetime.now(),
                 "provenance": meta,
             }
         )
