@@ -11,5 +11,6 @@ qrcode==7.4.2
 setuptools==67.8.0
 SQLAlchemy==1.4.49
 tink[gcpkms]==1.9.0
+rbloom==1.5.0
 
 psycopg2-binary==2.9.9

@@ -35,6 +35,12 @@ class RegisterBot(BaseBot):
             primary_type=db.types.text,
             primary_increment=False,
         )
+        db.create_table(
+            "user_registration_meta",
+            primary_id="jid",
+            primary_type=db.types.text,
+            primary_increment=False,
+        )
 
     def setup_command_args(self):
         parser = BotCommandArgs(
@@ -178,17 +184,33 @@ class RegisterBot(BaseBot):
         }
 
         logger.info(f"{username}: Pinging users database")
-        self.db["registered_users"].upsert(
+        self.db["registered_users"].delete(username=username)
+        self.db["registered_users"].insert(
             {
                 "username": username,
                 "is_bot": is_bot,
                 "is_demo": is_demo,
                 "jid_anon": utils.jid_to_str(connection_status.JIDAnon),
                 "control_group": utils.jid_to_str(user_params["control_group"]),
+                "timestamp": datetime.now(),
                 "provenance": meta,
-            },
-            ["username"],
+            }
         )
+        if not is_demo:
+            logger.info(f"{username}: pinging user meta")
+            jid = utils.jid_to_str(connection_status.JIDAnon)
+            self.db["user_registration_meta"].delete(jid=jid)
+            self.db["user_registration_meta"].insert(
+                {
+                    "jid": jid,
+                    "username": username,
+                    "is_bot": is_bot,
+                    "control_group": utils.jid_to_str(user_params["control_group"]),
+                    "provenance": meta,
+                    "timestamp": datetime.now(),
+                    "record_mtime": datetime.now(),
+                },
+            )
 
         logger.info(f"{username}: Saving credentials")
         credential = Credential(username=username, passphrase=passphrase, meta=meta)

@@ -18,7 +18,6 @@ const (
 var (
 	ErrSessionManagerInvalidState = status.Error(codes.Internal, "Invalid SessionManager state")
 	ErrInvalidPassphrase          = status.Error(codes.Unauthenticated, "Could not authenticate")
-	sessionCreationLock           = NewMutexMap()
 )
 
 type SessionManager struct {
@@ -27,7 +26,8 @@ type SessionManager struct {
 	secretKey           []byte
 	dbUri               string
 
-	log waLog.Logger
+	log         waLog.Logger
+	sessionLock *MutexMap
 
 	ctxC ContextWithCancel
 }
@@ -39,6 +39,7 @@ func NewSessionManager(secretKey []byte, dbUri string, log waLog.Logger) *Sessio
 		secretKey:           secretKey,
 		dbUri:               dbUri,
 		log:                 log,
+		sessionLock:         NewMutexMap(log.Sub("LOCK")),
 	}
 }
 
@@ -80,7 +81,7 @@ func (sm *SessionManager) pruneSessions() {
 }
 
 func (sm *SessionManager) AddLogin(username string, passphrase string) (*Session, error) {
-	lock := sessionCreationLock.Lock(username)
+	lock := sm.sessionLock.Lock(username)
 	defer lock.Unlock()
 
 	session, err := sm.GetSessionLogin(username, passphrase)
@@ -101,7 +102,7 @@ func (sm *SessionManager) AddLogin(username string, passphrase string) (*Session
 }
 
 func (sm *SessionManager) AddRegistration(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions) (*Session, *RegistrationState, error) {
-	lock := sessionCreationLock.Lock(username)
+	lock := sm.sessionLock.Lock(username)
 	defer lock.Unlock()
 
 	session, err := sm.GetSessionLogin(username, passphrase)

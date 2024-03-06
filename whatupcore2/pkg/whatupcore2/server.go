@@ -59,7 +59,7 @@ func StartRPC(port uint32, dbUri string, logLevel string) error {
 		return err
 	}
 
-	sessionManager := NewSessionManager(JWT_SECRET, dbUri, Log.Sub("SessionManager"))
+	sessionManager := NewSessionManager(JWT_SECRET, dbUri, Log.Sub("SM"))
 	sessionManager.Start()
 	defer sessionManager.Close()
 	authCheck := createAuthCheck(sessionManager, JWT_SECRET)

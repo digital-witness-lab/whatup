@@ -291,13 +291,13 @@ class BaseBot:
             if is_control:
                 message_age = now - message.info.timestamp.ToDatetime()
                 if skip_control:
-                    self.logger.info(
+                    self.logger.debug(
                         "Skipping control message: %s: %s",
                         utils.jid_to_str(jid_from),
                         message.info.id,
                     )
                 elif message_age > timedelta(seconds=60):
-                    self.logger.info(
+                    self.logger.debug(
                         "Skipping control message because it's >1min old: %s: %s: %s",
                         utils.jid_to_str(jid_from),
                         message.info.id,

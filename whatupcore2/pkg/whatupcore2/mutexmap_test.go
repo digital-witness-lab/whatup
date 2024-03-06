@@ -7,13 +7,15 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
 func TestM(t *testing.T) {
 
 	r := rand.New(rand.NewSource(42))
 
-	m := NewMutexMap()
+	m := NewMutexMap(waLog.Noop)
 	_ = m
 
 	keyCount := 20
@@ -73,7 +75,7 @@ func TestM(t *testing.T) {
 
 func BenchmarkM(b *testing.B) {
 
-	m := NewMutexMap()
+	m := NewMutexMap(waLog.Noop)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
