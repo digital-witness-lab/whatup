@@ -26,8 +26,8 @@ type SessionManager struct {
 	secretKey           []byte
 	dbUri               string
 
-	log waLog.Logger
-    sessionLock *MutexMap
+	log         waLog.Logger
+	sessionLock *MutexMap
 
 	ctxC ContextWithCancel
 }
@@ -39,7 +39,7 @@ func NewSessionManager(secretKey []byte, dbUri string, log waLog.Logger) *Sessio
 		secretKey:           secretKey,
 		dbUri:               dbUri,
 		log:                 log,
-        sessionLock:         NewMutexMap(log.Sub("LOCK")),
+		sessionLock:         NewMutexMap(log.Sub("LOCK")),
 	}
 }
 

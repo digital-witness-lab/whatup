@@ -33,7 +33,7 @@ const (
 var (
 	ErrInvalidMediaMessage   = errors.New("Invalid MediaMessage")
 	ErrDownloadRetryCanceled = errors.New("Download Retry canceled")
-    ErrNoChatHistory         = errors.New("Could not find any chat history")
+	ErrNoChatHistory         = errors.New("Could not find any chat history")
 	appNameSuffix            = os.Getenv("APP_NAME_SUFFIX")
 )
 var _DeviceContainer *encsqlstore.EncContainer
@@ -113,7 +113,7 @@ type WhatsAppClient struct {
 	historyHandler    uint32
 	messageHandler    uint32
 	archiveHandler    uint32
-    groupInfoCache *expirable.LRU[string, *types.GroupInfo]
+	groupInfoCache    *expirable.LRU[string, *types.GroupInfo]
 
 	anonLookup *AnonLookup
 }
@@ -154,8 +154,8 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 
 	wmClient := whatsmeow.NewClient(deviceStore, log.Sub("WMC"))
 	wmClient.EnableAutoReconnect = true
-    wmClient.AutoTrustIdentity = true
-    wmClient.AutomaticMessageRerequestFromPhone = true
+	wmClient.AutoTrustIdentity = true
+	wmClient.AutomaticMessageRerequestFromPhone = true
 	wmClient.EmitAppStateEventsOnFullSync = true
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 
@@ -179,7 +179,7 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 		messageQueue:           messageQueue,
 		historyRequestContexts: make(map[string]ContextWithCancel),
 		shouldRequestHistory:   make(map[string]bool),
-        groupInfoCache: expirable.NewLRU[string, *types.GroupInfo](128, nil, time.Minute),
+		groupInfoCache:         expirable.NewLRU[string, *types.GroupInfo](128, nil, time.Minute),
 	}
 	go func() {
 		<-ctx.Done()
@@ -276,7 +276,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions 
 	wac.Log.Debugf("Starting QR Code loop")
 	go func(state *RegistrationState) {
 		for {
-            err, success := wac.qrCodeLoop(ctx, state)
+			err, success := wac.qrCodeLoop(ctx, state)
 			wac.Log.Infof("LoginOrRegister qrCodeLoop. qrErr = %w, qrSuccess = %v", err, success)
 
 			// we stop the registration flow if either:
@@ -285,7 +285,7 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions 
 			//
 			// NOTE: we could just use WaitForConnection but we also check
 			//       success and IsLoggedIn to be explicit
-			if !success || (success && wac.WaitForConnection(2 * CONNECT_TIMEOUT) && wac.IsLoggedIn()) {
+			if !success || (success && wac.WaitForConnection(2*CONNECT_TIMEOUT) && wac.IsLoggedIn()) {
 				state.Success = wac.IsLoggedIn()
 				state.Completed = true
 				wac.Log.Infof("LoginOrRegister flow complete. success = %v, completed = %v", state.Success, state.Completed)
@@ -304,14 +304,14 @@ func (wac *WhatsAppClient) LoginOrRegister(ctx context.Context, registerOptions 
 
 func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationState) (error, bool) {
 	wac.Log.Debugf("Connecting to WhatsApp from qrCodeLoop() to check login status")
-    if ! wac.IsConnected() {
-	    err := wac.Connect()
-	    if err != nil {
-	    	state.Errors <- err
-            wac.Log.Warnf("qrCodeLoop error on first connect")
-	    	return err, false
-	    }
-    }
+	if !wac.IsConnected() {
+		err := wac.Connect()
+		if err != nil {
+			state.Errors <- err
+			wac.Log.Warnf("qrCodeLoop error on first connect")
+			return err, false
+		}
+	}
 	wac.WaitForConnection(CONNECT_TIMEOUT)
 	if wac.IsLoggedIn() {
 		return nil, true
@@ -321,14 +321,14 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 	wac.Disconnect()
 	inQrChan, _ := wac.GetQRChannel(context.Background())
 	wac.Log.Debugf("Connecting to WhatsApp from qrCodeLoop() to start registration")
-    err := wac.Connect()
+	err := wac.Connect()
 	if err != nil {
-        // we don't signal an error here because if it was a real connection
-        // error we would have triggered it on the first connect above. chances
-        // are we are re-using a websocket and running this function again will
-        // yield a success
+		// we don't signal an error here because if it was a real connection
+		// error we would have triggered it on the first connect above. chances
+		// are we are re-using a websocket and running this function again will
+		// yield a success
 		//state.Errors <- err
-        wac.Log.Warnf("qrCodeLoop error on second connect")
+		wac.Log.Warnf("qrCodeLoop error on second connect")
 		return err, false
 	}
 	for {
@@ -341,7 +341,7 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 				return nil, true
 			} else {
 				wac.Log.Debugf("Unknown event: %v", evt.Event)
-                err := fmt.Errorf("Unknown event during login: %v: %s", evt.Code, evt.Event)
+				err := fmt.Errorf("Unknown event during login: %v: %s", evt.Code, evt.Event)
 				state.Errors <- err
 				return err, false
 			}
@@ -424,17 +424,17 @@ func (wac *WhatsAppClient) getMessages(evt interface{}) {
 	wac.Log.Debugf("GetMessages handler got something: %T", evt)
 	switch wmMsg := evt.(type) {
 	case *events.Message:
-        if wmMsg.Info.Category == "peer" {
-            return
-        }
+		if wmMsg.Info.Category == "peer" {
+			return
+		}
 		if !MessageHasContent(wmMsg) {
 			return
 		}
 
-        wac.Log.Debugf("Setting newest message info: %s", wmMsg.Info.ID)
+		wac.Log.Debugf("Setting newest message info: %s", wmMsg.Info.ID)
 		wac.logNewestMessageInfo(&wmMsg.Info)
 
-        wac.Log.Debugf("Checking ACL: %s", wmMsg.Info.ID)
+		wac.Log.Debugf("Checking ACL: %s", wmMsg.Info.ID)
 		aclEntry, err := wac.aclStore.GetByJID(&wmMsg.Info.Chat)
 		if err != nil {
 			wac.Log.Errorf("Could not read ACL for JID: %s: %+v", wmMsg.Info.Chat.String(), err)
@@ -444,19 +444,19 @@ func (wac *WhatsAppClient) getMessages(evt interface{}) {
 			return
 		}
 		// <HACK>
-        wac.Log.Debugf("Checking hack: %s", wmMsg.Info.ID)
+		wac.Log.Debugf("Checking hack: %s", wmMsg.Info.ID)
 		if !wac.UNSAFEArchiveHack_ShouldProcess(wmMsg) {
 			wac.Log.Debugf("HACK: skipping message")
 			return
 		}
 		// </HACK>
-        wac.Log.Debugf("Creating internal message type: %s", wmMsg.Info.ID)
+		wac.Log.Debugf("Creating internal message type: %s", wmMsg.Info.ID)
 		msg, err := NewMessageFromWhatsMeow(wac, wmMsg.UnwrapRaw())
 		if err != nil {
 			wac.Log.Errorf("Error converting message from whatsmeow: %+v", err)
 			return
 		}
-        wac.Log.Debugf("Sending message to MessageQueue: %s: %s", wmMsg.Info.ID, msg.DebugString())
+		wac.Log.Debugf("Sending message to MessageQueue: %s: %s", wmMsg.Info.ID, msg.DebugString())
 		wac.messageQueue.SendMessage(msg)
 	}
 }
@@ -552,8 +552,8 @@ func (wac *WhatsAppClient) RequestHistory(chat types.JID) error {
 		wac.Log.Errorf("Could not get newest chat message: %s: %+v", chat.String(), err)
 		return err
 	} else if msgInfo == nil {
-        return ErrNoChatHistory         
-    }
+		return ErrNoChatHistory
+	}
 
 	wac.requestHistoryMsgInfoRetry(msgInfo)
 	return nil
@@ -677,8 +677,8 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 				}
 				// TODO: FIX: the following line may be the reason we are
 				// getting 403's on historical media downloads
-                wac.Log.Debugf("OLD direct path: %s", directPathValues[0].String())
-                wac.Log.Debugf("NEW direct path: %s", *retryData.DirectPath)
+				wac.Log.Debugf("OLD direct path: %s", directPathValues[0].String())
+				wac.Log.Debugf("NEW direct path: %s", *retryData.DirectPath)
 				directPathValues[0].SetString(*retryData.DirectPath)
 				body, retryError = wac.DownloadAnyRetry(ctxRetry.Context, msg, msgInfo)
 				ctxRetry.Cancel()
@@ -695,9 +695,9 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 	if retryError != nil {
 		wac.Log.Errorf("Error in retry handler: %v", retryError)
 	}
-    if len(body) > 0 {
-        wac.Log.Debugf("Media Retry got body of length: %d", len(body))
-    }
+	if len(body) > 0 {
+		wac.Log.Debugf("Media Retry got body of length: %d", len(body))
+	}
 	return body, retryError
 }
 
@@ -715,13 +715,13 @@ func (wac *WhatsAppClient) logNewestMessageInfo(msgInfo *types.MessageInfo) {
 }
 
 func (wac *WhatsAppClient) GetGroupInfo(jid types.JID) (*types.GroupInfo, error) {
-    chatJID := jid.ToNonAD().String()
-    if groupInfo, ok := wac.groupInfoCache.Get(chatJID); ok {
-        return groupInfo, nil
-    }
-    groupInfo, err := wac.Client.GetGroupInfo(jid)
-    if err == nil {
-        wac.groupInfoCache.Add(chatJID, groupInfo)
-    }
-    return groupInfo, err
+	chatJID := jid.ToNonAD().String()
+	if groupInfo, ok := wac.groupInfoCache.Get(chatJID); ok {
+		return groupInfo, nil
+	}
+	groupInfo, err := wac.Client.GetGroupInfo(jid)
+	if err == nil {
+		wac.groupInfoCache.Add(chatJID, groupInfo)
+	}
+	return groupInfo, err
 }
