@@ -34,7 +34,6 @@ var (
 	ErrInvalidMediaMessage   = errors.New("Invalid MediaMessage")
 	ErrDownloadRetryCanceled = errors.New("Download Retry canceled")
     ErrNoChatHistory         = errors.New("Could not find any chat history")
-	clientCreationLock       = NewMutexMap()
 	appNameSuffix            = os.Getenv("APP_NAME_SUFFIX")
 )
 var _DeviceContainer *encsqlstore.EncContainer
@@ -120,9 +119,6 @@ type WhatsAppClient struct {
 }
 
 func NewWhatsAppClient(ctx context.Context, username string, passphrase string, dbUri string, getHistory bool, log waLog.Logger) (*WhatsAppClient, error) {
-	lock := clientCreationLock.Lock(username)
-	defer lock.Unlock()
-
 	appName := strings.TrimSpace(fmt.Sprintf("WA by DWL %s", appNameSuffix))
 	store.SetOSInfo(appName, WhatUpCoreVersionInts)
 	store.DeviceProps.RequireFullSync = proto.Bool(getHistory)
