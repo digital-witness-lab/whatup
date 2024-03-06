@@ -228,11 +228,11 @@ Total devices: {n_devices}
         is_archive=False,
         **kwargs,
     ):
-        if is_history or is_archive:
+        if is_history or is_archive or message.info.source.isFromMe:
             return
 
         now = datetime.now()
-        if now - message.info.timestamp.ToDatetime() > timedelta(minutes=5):
+        if now - message.info.timestamp.ToDatetime() > timedelta(minutes=1):
             return
 
         sender = utils.jid_to_str(message.info.source.sender)
@@ -244,6 +244,9 @@ Total devices: {n_devices}
         ulog = self.logger.getChild(user.username)
 
         text = message.content.text.lower().strip()
+        if not text:
+            return
+
         if text == "restart_onboarding":
             self.reset_onboarding(user)
             return await self.onboard_user(user)
@@ -280,12 +283,9 @@ Total devices: {n_devices}
             asyncio.create_task(self.unregister_demo(user))
 
     async def unregister_demo(self, user: UserBot):
-        try:
-            timestamp = datetime.fromisoformat(user.state["provenance"]["registerbot__timestamp"])
-        except (KeyError, TypeError):
-            timestamp = datetime.min
+        timestamp = user.state.get("timestamp") or datetime.min
         now = datetime.now()
-        unregister_in_seconds = (now - (timestamp + self.demo_lifespan)).total_seconds()
+        unregister_in_seconds = (timestamp + self.demo_lifespan - now).total_seconds()
         if unregister_in_seconds > 0:
             self.logger.info(
                 "Waiting to unregister demo account: %s: %s: %s",
@@ -352,7 +352,8 @@ Total devices: {n_devices}
         except Exception:
             self.logger.exception("Could not decode ACL response: %s", text)
             await self.send_template_user(user, "acl_workflow_error_code")
-            return await self.acl_workflow(user)
+            user.active_workflow = None
+            return await self.onboard_user(user)
 
         user.state["lang"] = lang
         group_info_lookup = await user.group_acl_jid_lookup(n_bytes=n_bytes)
