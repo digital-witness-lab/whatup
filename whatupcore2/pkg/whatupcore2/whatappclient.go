@@ -253,10 +253,12 @@ func (wac *WhatsAppClient) Login(timeout time.Duration) error {
 	wac.Log.Debugf("Connecting to WhatsApp from Login()")
 	err := wac.Client.Connect()
 	if err != nil {
+        wac.Client.Disconnect()
 		return err
 	}
 
 	if !wac.Client.WaitForConnection(timeout) {
+        wac.Client.Disconnect()
 		return whatsmeow.ErrNotLoggedIn
 	}
 	return nil
