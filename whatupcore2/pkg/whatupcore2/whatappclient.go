@@ -680,7 +680,7 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 			if retry.MessageID == msgInfo.ID {
 				retryData, err := whatsmeow.DecryptMediaRetryNotification(retry, mediaKey)
 				if err != nil || retryData.GetResult() != waProto.MediaRetryNotification_SUCCESS {
-					wac.Log.Errorf("Could not download media through a retry notification: %v", err)
+                    wac.Log.Errorf("Could not download media through a retry notification: %v: %s", err, retryData.GetResult().String())
 					retryError = err
 					ctxRetry.Cancel()
                     return
