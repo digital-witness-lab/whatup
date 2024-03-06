@@ -59,6 +59,7 @@ func NewSessionLogin(username string, passphrase string, secretKey []byte, dbUri
 	}
 
 	if err = session.Login(username, passphrase, dbUri); err != nil {
+		log.Errorf("Could not login... closing session: %+v", err)
 		return nil, err
 	}
 	return session, nil
@@ -89,12 +90,15 @@ func (session *Session) ToProto() *pb.SessionToken {
 }
 
 func (session *Session) Login(username string, passphrase string, dbUri string) error {
+	session.log.Infof("Creating new login for user: %s", username)
 	client, err := NewWhatsAppClient(session.ctxC, username, passphrase, dbUri, false, session.log.Sub("WAC"))
 	if err != nil {
+		client.Close()
 		return err
 	}
 
-	if err := client.Login(5 * time.Second); err != nil {
+	if err := client.Login(20 * time.Second); err != nil {
+		client.Close()
 		return err
 	}
 	session.Client = client
