@@ -13,7 +13,7 @@ type MutexMap struct {
 	ml sync.Mutex              // lock for entry map
 	ma map[interface{}]*mentry // entry map
 
-    log waLog.Logger
+	log waLog.Logger
 }
 
 type mentry struct {
@@ -30,14 +30,14 @@ type Unlocker interface {
 
 // New returns an initalized MutexMap.
 func NewMutexMap(log waLog.Logger) *MutexMap {
-    return &MutexMap{ma: make(map[interface{}]*mentry), log: log,}
+	return &MutexMap{ma: make(map[interface{}]*mentry), log: log}
 }
 
 // Lock acquires a lock corresponding to this key.
 // This method will never return nil and Unlock() must be called
 // to release the lock when done.
 func (m *MutexMap) Lock(key interface{}) Unlocker {
-    m.log.Infof("Locking key: %s", key)
+	m.log.Infof("Locking key: %s", key)
 	// read or create entry for this key atomically
 	m.ml.Lock()
 	e, ok := m.ma[key]
@@ -57,7 +57,7 @@ func (m *MutexMap) Lock(key interface{}) Unlocker {
 // Unlock releases the lock for this entry.
 func (me *mentry) Unlock() {
 	m := me.m
-    m.log.Infof("Unlocking key: %s", me.key)
+	m.log.Infof("Unlocking key: %s", me.key)
 
 	// decrement and if needed remove entry atomically
 	m.ml.Lock()

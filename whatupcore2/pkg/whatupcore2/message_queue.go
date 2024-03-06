@@ -59,12 +59,12 @@ func (mc *MessageClient) MessageChan() (chan *QueueMessage, error) {
 				mc.log.Debugf("done by context")
 				mc.Close()
 				return
-            case alert := <-mc.newMessageAlert:
-                if alert == false {
-				    mc.log.Debugf("newMessageAlert channel is closed. Closing context and exiting")
-                    mc.Close()
-                    return
-                }
+			case alert := <-mc.newMessageAlert:
+				if alert == false {
+					mc.log.Debugf("newMessageAlert channel is closed. Closing context and exiting")
+					mc.Close()
+					return
+				}
 				mc.log.Debugf("saw new message alert")
 				ok := mc.depleteQueueToChan(msgChan)
 				if !ok {

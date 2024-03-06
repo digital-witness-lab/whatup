@@ -27,25 +27,25 @@ type ACLEntry struct {
 }
 
 type CachedACLLookup struct {
-    data map[string]*ACLEntry
-    store *ACLStore
+	data  map[string]*ACLEntry
+	store *ACLStore
 }
 
 func NewCachedACLLookup(store *ACLStore) *CachedACLLookup {
-    return &CachedACLLookup{
-        data: make(map[string]*ACLEntry),
-        store: store,
-    }
+	return &CachedACLLookup{
+		data:  make(map[string]*ACLEntry),
+		store: store,
+	}
 }
 
 func (cacl *CachedACLLookup) GetByJID(jid *types.JID) (*ACLEntry, bool) {
-    anonJID := cacl.store.jidToHash(jid)
-    entry, found := cacl.data[anonJID]
-    return entry, found
+	anonJID := cacl.store.jidToHash(jid)
+	entry, found := cacl.data[anonJID]
+	return entry, found
 }
 
 func (cacl *CachedACLLookup) Add(acle *ACLEntry) {
-    cacl.data[acle.JID] = acle
+	cacl.data[acle.JID] = acle
 }
 
 func NewACLEntryFromProto(groupACL *pb.GroupACL) *ACLEntry {
@@ -204,7 +204,7 @@ func (acls *ACLStore) SetDefault(permission *pb.GroupPermission) error {
 }
 
 func (acls *ACLStore) jidToHash(jid *types.JID) string {
-    return AnonymizeString(jid.ToNonAD().String() + acls.username)
+	return AnonymizeString(jid.ToNonAD().String() + acls.username)
 }
 
 func (acls *ACLStore) SetByJID(jid *types.JID, permission *pb.GroupPermission) error {
@@ -245,7 +245,7 @@ func (acls *ACLStore) setByString(jidStr string, permission *pb.GroupPermission)
 }
 
 func (acls *ACLStore) CachedLookup() (*CachedACLLookup, error) {
-    cachedLookup := NewCachedACLLookup(acls)
+	cachedLookup := NewCachedACLLookup(acls)
 	query, err := acls.db.Query(`
         SELECT
             JID, permission, updatedAt
@@ -262,7 +262,7 @@ func (acls *ACLStore) CachedLookup() (*CachedACLLookup, error) {
 		if err := query.Scan(&row.JID, &row.Permission, &row.UpdatedAt); err != nil {
 			return nil, err
 		}
-        cachedLookup.Add(row)
+		cachedLookup.Add(row)
 	}
 	return cachedLookup, nil
 }
