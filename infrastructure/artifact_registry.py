@@ -71,3 +71,7 @@ migrations_image: docker.Image = create_image("migrations", "../migrations/")
 bq_init_schema_image: docker.Image = create_image(
     "bq-init-schema", "../bq-init-schema/"
 )
+
+hash_gen_image: docker.Image = create_image(
+    "hash-gen", "../hash-gen/"
+)

@@ -123,17 +123,6 @@ case $app_command in
         exit $retval
     ;;
 
-    hash-gen)
-        # what is this first part? filling in as if we have the same setup for hash gen right now
-        if [ -z "${HASH_GEN:-}" ]; then
-                echo "HASH_GEN env var is required."
-                exit 1
-        fi
-        exec whatupy $DEBUG \
-            hash-gen \
-                    --bucket-dir ${DATABASE_URL}
-    ;;
-
     delete-groups)
         if [ -z "${WHATUPY_DELETE_GROUPS:-}" ]; then
             echo "WHATUPY_DELETE_GROUPS env var is required."

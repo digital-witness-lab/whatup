@@ -11,7 +11,7 @@ import os
 from google.cloud import bigquery
 import google.auth
 
-bucket_dir = "whatup-deploy.messages_test" # can use this in run command 
+database_url = "whatup-deploy.messages_test" # can use this in run command 
 
 # Process local or cloud image files or directories
 @click.command()
@@ -19,11 +19,11 @@ bucket_dir = "whatup-deploy.messages_test" # can use this in run command
 @click.option(
     "--file-or-dir", type=click.Path(path_type=AnyPath)) # use this argument to process an unprocessed specific local or cloud directory or image.
 def hash_images(database_url, file_or_dir):
-    client = bigquery.Client(project="whatup-deploy")
+    client = bigquery.Client()
     table_id = "{}.phash_images".format(database_url)
     creds = google.auth.default()[0] # I have to manually access creds just for CloudPathLib's GSClient instantiation (https://cloudpathlib.drivendata.org/v0.6/authentication/)
     
-    gs_client = GSClient(credentials=creds, project="whatup-deploy")
+    gs_client = GSClient(credentials=creds)
     gs_client.set_as_default_client()
     schema = [
         bigquery.SchemaField("filename", "STRING", mode="REQUIRED"),
