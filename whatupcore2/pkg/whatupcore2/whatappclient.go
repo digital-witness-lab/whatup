@@ -638,7 +638,7 @@ func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Me
 	wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
 
 	data, err := wac.Client.DownloadAny(msg)
-	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith403) {
+	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) {
 		return wac.RetryDownload(ctx, msg, msgInfo)
 	} else if err != nil {
 		wac.Log.Errorf("Error trying to download message: %v", err)
@@ -683,6 +683,7 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 					wac.Log.Errorf("Could not download media through a retry notification: %v", err)
 					retryError = err
 					ctxRetry.Cancel()
+                    return
 				}
 				// TODO: FIX: the following line may be the reason we are
 				// getting 403's on historical media downloads
