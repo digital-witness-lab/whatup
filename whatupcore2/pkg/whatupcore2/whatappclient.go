@@ -31,6 +31,7 @@ const (
 )
 
 var (
+	ErrLoginTimeout          = errors.New("Timeout while logging in")
 	ErrInvalidMediaMessage   = errors.New("Invalid MediaMessage")
 	ErrDownloadRetryCanceled = errors.New("Download Retry canceled")
 	ErrNoChatHistory         = errors.New("Could not find any chat history")
@@ -253,14 +254,20 @@ func (wac *WhatsAppClient) Login(timeout time.Duration) error {
 	wac.Log.Debugf("Connecting to WhatsApp from Login()")
 	err := wac.Client.Connect()
 	if err != nil {
-        wac.Client.Disconnect()
+		wac.Client.Disconnect()
 		return err
 	}
 
 	if !wac.Client.WaitForConnection(timeout) {
-        wac.Client.Disconnect()
+		wac.Client.Disconnect()
+		return ErrLoginTimeout
+	}
+
+	if !wac.IsLoggedIn() {
+		wac.Client.Disconnect()
 		return whatsmeow.ErrNotLoggedIn
 	}
+
 	return nil
 }
 
