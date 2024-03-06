@@ -29,7 +29,6 @@ transfers_perm = projects.IAMMember(
     role=Output.concat("roles/").concat(transfers_role.name),
 )
 
-
 for database, tables_spec in table_transfers.items():
     bq_init_schema_job = Job(
         f"{job_name}-{database}",
