@@ -73,8 +73,8 @@ func (msg *Message) GetExtendedMessage() interface{} {
 	switch {
 	case m.GetImageMessage() != nil:
 		return m.GetImageMessage()
-    case m.GetPtvMessage() != nil:
-        return m.GetPtvMessage()
+	case m.GetPtvMessage() != nil:
+		return m.GetPtvMessage()
 	case m.GetVideoMessage() != nil:
 		return m.GetVideoMessage()
 	case m.GetAudioMessage() != nil:

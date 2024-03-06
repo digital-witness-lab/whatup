@@ -130,37 +130,37 @@ func TestMutliUser(t *testing.T) {
 func TestCache(t *testing.T) {
 	acl := createACL("user1")
 
-    JIDs := []types.JID{
-	    types.NewJID("jid1", types.GroupServer),
-	    types.NewJID("jid2", types.GroupServer),
-	    types.NewJID("asdf-jid3", types.GroupServer),
-	    types.NewJID("asdf-jid3", types.GroupServer),
-    }
+	JIDs := []types.JID{
+		types.NewJID("jid1", types.GroupServer),
+		types.NewJID("jid2", types.GroupServer),
+		types.NewJID("asdf-jid3", types.GroupServer),
+		types.NewJID("asdf-jid3", types.GroupServer),
+	}
 
 	permission := pb.GroupPermission(1)
 
-    for _, jid := range JIDs {
-	    acl.SetByJID(&jid, &permission)
-    }
+	for _, jid := range JIDs {
+		acl.SetByJID(&jid, &permission)
+	}
 
-    cache, err := acl.CachedLookup()
-    if err != nil {
-        t.Fatal(err)
-    }
+	cache, err := acl.CachedLookup()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-    for _, jid := range JIDs {
-        entry, found := cache.GetByJID(&jid)
-        if !found {
-            t.Fatalf("Should have found cached ACL value: %s", jid.String())
-        }
-        if entry.Permission != 1 {
-            t.Fatalf("Incorrect permission found in cache: %d != %d", entry.Permission, 1)
-        }
-    }
+	for _, jid := range JIDs {
+		entry, found := cache.GetByJID(&jid)
+		if !found {
+			t.Fatalf("Should have found cached ACL value: %s", jid.String())
+		}
+		if entry.Permission != 1 {
+			t.Fatalf("Incorrect permission found in cache: %d != %d", entry.Permission, 1)
+		}
+	}
 
-    unkJID := types.NewJID("sdfjaoifhasifhsadkjfs", types.DefaultUserServer)
-    _, found := cache.GetByJID(&unkJID)
-    if found {
-        t.Fatalf("Should not have found unknown JID: %s", unkJID.String())
-    }
+	unkJID := types.NewJID("sdfjaoifhasifhsadkjfs", types.DefaultUserServer)
+	_, found := cache.GetByJID(&unkJID)
+	if found {
+		t.Fatalf("Should not have found unknown JID: %s", unkJID.String())
+	}
 }
