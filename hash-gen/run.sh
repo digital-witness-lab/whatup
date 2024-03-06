@@ -2,4 +2,4 @@
 set -eo pipefail
 
 exec hash-gen \
-    --bucket-dir ${DATABASE_URL}
+    --database-url ${DATABASE_URL}
