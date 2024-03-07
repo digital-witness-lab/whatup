@@ -20,7 +20,7 @@ database_url = "whatup-deploy.messages_test" # can use this in run command
     "--file-or-dir", type=click.Path(path_type=AnyPath)) # use this argument to process an unprocessed specific local or cloud directory or image.
 def hash_images(database_url, file_or_dir):
     client = bigquery.Client()
-    table_id = "{}.phash_images".format(database_url)
+    table_id = f"{database_url}.phash_images"
     creds = google.auth.default()[0] # I have to manually access creds just for CloudPathLib's GSClient instantiation (https://cloudpathlib.drivendata.org/v0.6/authentication/)
     
     gs_client = GSClient(credentials=creds)
@@ -41,23 +41,29 @@ def hash_images(database_url, file_or_dir):
         else:
             images_to_process.append(file_or_dir)
 
-        QUERY = ('SELECT filename FROM `{}`').format(table_id)
+        QUERY = (f'SELECT filename FROM `{table_id}`')
         query_job = client.query(QUERY) 
         rows = query_job.result()  
         existing_hashes = {row[0] for row in list(rows)}
 
     else: # the preferable method
-        QUERY = ('SELECT content_url FROM (SELECT * FROM `{}.media` WHERE REGEXP_CONTAINS(mimetype, \'image/*\')) as a LEFT JOIN `{}.phash_images` as b ON a.filename = b.filename WHERE b.filename IS NULL and content_url IS NOT NULL').format(database_url,database_url)
+        QUERY = (f'SELECT content_url FROM (SELECT * FROM `{database_url}.media` WHERE REGEXP_CONTAINS(mimetype, \'image/*\')) as a LEFT JOIN `{table_id}` as b ON a.filename = b.filename WHERE b.filename IS NULL and content_url IS NOT NULL')
         query_job = client.query(QUERY) 
         rows = query_job.result()  
         images_to_process = [AnyPath(row[0]) for row in list(rows)]
 
     i = 0
     new_entries = []
+
+    with file.open('rb') as fd:
+        with Image.open(fd) as image:
+            hash = str(imagehash.phash(image))
     for file in images_to_process:
         if not file.is_file() or file.name.startswith('.') or file.name in existing_hashes: continue
         try:
-            hash = str(imagehash.phash(Image.open(file.open("rb"))))
+            with file.open('rb') as fd:
+                with Image.open(fd) as image:
+                    hash = str(imagehash.phash(image))
             byte_hash = bytes.fromhex(hash)
              
             new_entries.append({"filename": file.name, "phash": byte_hash})
@@ -68,8 +74,8 @@ def hash_images(database_url, file_or_dir):
     #     errors = client.insert_rows(table_id, new_entries, schema)
     #     if errors == []: 
     #         i += len(new_entries)
-    #         print("Added {} new rows".format(len(new_entries)))
-    #     else: print("Encountered errors while inserting rows: {}".format(errors))
+    #         print(f"Added {len(new_entries)} new rows")
+    #     else: print(f"Encountered errors while inserting rows: {errors}")
 
     print(i)
 
