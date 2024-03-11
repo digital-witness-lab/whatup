@@ -54,18 +54,23 @@ class ArchiveBot(BaseBot):
         archive_id = f"{message_timestamp}_{message_id}_{reciever}"
         archive_filename = conversation_dir / f"{archive_id}.json"
         if archive_filename.exists():
-            with archive_filename.open() as fd:
-                data = json.load(fd)
-            if version.parse(
-                data["provenance"]["archivebot__version"]
-            ) >= version.parse(self.__version__):
-                self.logger.debug(
-                    "Message already archived.. skipping: %s", archive_filename
-                )
-                return
-            else:
-                self.logger.debug(
-                    "Re-processing message because of new archive version"
+            try:
+                with archive_filename.open() as fd:
+                    data = json.load(fd)
+                if version.parse(
+                    data["provenance"]["archivebot__version"]
+                ) >= version.parse(self.__version__):
+                    self.logger.debug(
+                        "Message already archived.. skipping: %s", archive_filename
+                    )
+                    return
+                else:
+                    self.logger.debug(
+                        "Re-processing message because of new archive version"
+                    )
+            except Exception as e:
+                self.logger.critical(
+                    "Could not load previous archive... re-writing: %s", e
                 )
         self.logger.debug("Archiving message to: %s", archive_id)
 
