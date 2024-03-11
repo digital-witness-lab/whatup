@@ -46,7 +46,6 @@ function filter-by-job() {
     exit 0
 }
 export -f filter-by-job
-export CLOUPATHLIB_FILE_CACHE_MODE="cloudpath_object"
 
 case $app_command in
 
