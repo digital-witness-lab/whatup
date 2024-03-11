@@ -260,7 +260,7 @@ func (wac *WhatsAppClient) Login(timeout time.Duration) error {
 
 	if !wac.Client.WaitForConnection(timeout) {
 		wac.Client.Disconnect()
-		return ErrLoginTimeout
+		return whatsmeow.ErrNotLoggedIn
 	}
 
 	if !wac.IsLoggedIn() {
