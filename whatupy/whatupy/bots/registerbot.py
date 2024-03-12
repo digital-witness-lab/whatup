@@ -29,12 +29,14 @@ class RegisterBot(BaseBot):
         self.init_database(self.db)
 
     def init_database(self, db):
-        db.create_table(
+        ru = db.create_table(
             "registered_users",
             primary_id="username",
             primary_type=db.types.text,
             primary_increment=False,
         )
+        ru.create_column("timestamp", type=db.types.datetime)
+
         db.create_table(
             "user_registration_meta",
             primary_id="jid",
@@ -183,34 +185,35 @@ class RegisterBot(BaseBot):
             ),
         }
 
-        logger.info(f"{username}: Pinging users database")
-        self.db["registered_users"].delete(username=username)
-        self.db["registered_users"].insert(
-            {
-                "username": username,
-                "is_bot": is_bot,
-                "is_demo": is_demo,
-                "jid_anon": utils.jid_to_str(connection_status.JIDAnon),
-                "control_group": utils.jid_to_str(user_params["control_group"]),
-                "timestamp": datetime.now(),
-                "provenance": meta,
-            }
-        )
-        if not is_demo:
-            logger.info(f"{username}: pinging user meta")
-            jid = utils.jid_to_str(connection_status.JIDAnon)
-            self.db["user_registration_meta"].delete(jid=jid)
-            self.db["user_registration_meta"].insert(
+        with self.db as db:
+            logger.info(f"{username}: Pinging users database")
+            db["registered_users"].delete(username=username)
+            db["registered_users"].insert(
                 {
-                    "jid": jid,
                     "username": username,
                     "is_bot": is_bot,
+                    "is_demo": is_demo,
+                    "jid_anon": utils.jid_to_str(connection_status.JIDAnon),
                     "control_group": utils.jid_to_str(user_params["control_group"]),
-                    "provenance": meta,
                     "timestamp": datetime.now(),
-                    "record_mtime": datetime.now(),
-                },
+                    "provenance": meta,
+                }
             )
+            if not is_demo:
+                logger.info(f"{username}: pinging user meta")
+                jid = utils.jid_to_str(connection_status.JIDAnon)
+                db["user_registration_meta"].delete(jid=jid)
+                db["user_registration_meta"].insert(
+                    {
+                        "jid": jid,
+                        "username": username,
+                        "is_bot": is_bot,
+                        "control_group": utils.jid_to_str(user_params["control_group"]),
+                        "provenance": meta,
+                        "timestamp": datetime.now(),
+                        "record_mtime": datetime.now(),
+                    },
+                )
 
         logger.info(f"{username}: Saving credentials")
         credential = Credential(username=username, passphrase=passphrase, meta=meta)

@@ -107,6 +107,12 @@ class UserServicesBot(BaseBot):
             default=None,
         )
         group_refresh.add_argument(
+            "--all",
+            action="store_true",
+            help="Refresh all users and groups",
+            default=False,
+        )
+        group_refresh.add_argument(
             "--timeout",
             type=int,
             help="Time between each task in seconds",
@@ -150,7 +156,19 @@ class UserServicesBot(BaseBot):
     async def _on_group_refresh(self, message, params):
         refresh_task = GroupRefreshTask(name=params.job_name, timeout=params.timeout)
         sender = message.info.source.sender
-        if params.username and not params.jid:
+        if params.all:
+            n_added = 0
+            for user in self.users.values():
+                try:
+                    await refresh_task.add_user(user)
+                    n_added += 1
+                except Exception as e:
+                    await self.send_text_message(
+                        sender, f"Could not add user: {user.username}: {e}"
+                    )
+            if not n_added:
+                return
+        elif params.username and not params.jid:
             n_added = 0
             for username in params.username:
                 try:
@@ -187,7 +205,7 @@ class UserServicesBot(BaseBot):
                         f"Continuing for JIDs: {' '.join(jids_found)}",
                     )
         else:
-            return self.send_text_message(sender, "Must send username, jids or both")
+            return self.send_text_message(sender, "Must send --username, --jids or both or --all")
         task = await refresh_task.start()
         self.group_refresh_tasks.add(refresh_task)
         task.add_done_callback(lambda t: self.group_refresh_tasks.discard(refresh_task))
