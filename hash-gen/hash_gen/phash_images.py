@@ -99,8 +99,6 @@ def hash_images(dataset_id, hash_table, media_table, images, directories):
                 REGEXP_CONTAINS(media_table.mimetype, 'image/*') AND
                 content_url IS NOT NULL
             """
-        print("query:")
-        print(query)
         query_job = client.query(query)
         rows = query_job.result()
         tasks.extend(ImageTask(row[0], AnyPath(row[1])) for row in rows)
