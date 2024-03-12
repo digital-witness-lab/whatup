@@ -157,8 +157,17 @@ class UserServicesBot(BaseBot):
         refresh_task = GroupRefreshTask(name=params.job_name, timeout=params.timeout)
         sender = message.info.source.sender
         if params.all:
+            n_added = 0
             for user in self.users.values():
-                await refresh_task.add_user(user)
+                try:
+                    await refresh_task.add_user(user)
+                    n_added += 1
+                except Exception as e:
+                    await self.send_text_message(
+                        sender, f"Could not add user: {user.username}: {e}"
+                    )
+            if not n_added:
+                return
         elif params.username and not params.jid:
             n_added = 0
             for username in params.username:
