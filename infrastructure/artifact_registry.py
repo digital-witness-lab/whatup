@@ -67,11 +67,9 @@ whatupy_image: docker.Image = create_image(
 whatupcore2_image: docker.Image = create_image(
     "whatupcore2", "../whatupcore2/", build_args=configure_vm_build_args
 )
+
 migrations_image: docker.Image = create_image("migrations", "../migrations/")
 bq_init_schema_image: docker.Image = create_image(
     "bq-init-schema", "../bq-init-schema/"
 )
-
-hash_gen_image: docker.Image = create_image(
-    "hash-gen", "../hash-gen/"
-)
+hash_gen_image: docker.Image = create_image("hash-gen", "../hash-gen/")
