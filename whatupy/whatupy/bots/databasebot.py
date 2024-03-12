@@ -393,8 +393,8 @@ class DatabaseBot(BaseBot):
         if is_archive:
             mp = archive_data.MediaPath
             if mp is not None and mp.exists():
-                with mp.open("rb") as fd:
-                    await callback(message, fd.read())
+                content = mp.read_bytes()
+                await callback(message, content)
         else:
             await self.download_message_media_eventually(message, callback)
 
@@ -454,8 +454,7 @@ class DatabaseBot(BaseBot):
         prefixes = [jid, *(path_prefixes or [])]
         filepath = self.media_url(prefixes, filename)
         filepath.parent.mkdir(exist_ok=True, parents=True)
-        with filepath.open("wb+") as fd:
-            fd.write(content)
+        filepath.write_bytes(content)
         return str(filepath)
 
     async def _handle_media_content(

@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 import asyncio
+import random
 import typing as T
 from datetime import datetime, timedelta
 
@@ -80,10 +81,12 @@ class GroupRefreshTask:
     async def process_tasks(self):
         while True:
             try:
-                user, group_str = self.tasks.pop()
+                task = random.choice(tuple(self.tasks))
+                self.tasks.discard(task)
+                user, group_str = task
             except IndexError:
                 break
-            user.logger.info("Re-requesting history for group: %s", group_str)
+            user.logger.info("Re-requesting history for group: %s: %s", user, group_str)
             await user.core_client.RequestChatHistory(
                 wuc.HistoryRequestOptions(chat=utils.str_to_jid(group_str))
             )

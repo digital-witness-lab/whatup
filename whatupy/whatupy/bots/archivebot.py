@@ -54,18 +54,22 @@ class ArchiveBot(BaseBot):
         archive_id = f"{message_timestamp}_{message_id}_{reciever}"
         archive_filename = conversation_dir / f"{archive_id}.json"
         if archive_filename.exists():
-            with archive_filename.open() as fd:
-                data = json.load(fd)
-            if version.parse(
-                data["provenance"]["archivebot__version"]
-            ) >= version.parse(self.__version__):
-                self.logger.debug(
-                    "Message already archived.. skipping: %s", archive_filename
-                )
-                return
-            else:
-                self.logger.debug(
-                    "Re-processing message because of new archive version"
+            try:
+                data = json.loads(archive_filename.read_text())
+                if version.parse(
+                    data["provenance"]["archivebot__version"]
+                ) >= version.parse(self.__version__):
+                    self.logger.debug(
+                        "Message already archived.. skipping: %s", archive_filename
+                    )
+                    return
+                else:
+                    self.logger.debug(
+                        "Re-processing message because of new archive version"
+                    )
+            except Exception as e:
+                self.logger.critical(
+                    f"Could not load previous archive... re-writing: %s", e
                 )
         self.logger.debug("Archiving message to: %s", archive_id)
 
@@ -121,8 +125,9 @@ class ArchiveBot(BaseBot):
                                     "archivebot__communityInfoRefreshTime"
                                 ] = str(refresh_dt)
                             self.logger.debug("Got metadata for community: %s", chat_id)
-                            with meta_community_path.open("w+") as fd:
-                                fd.write(utils.protobuf_to_json_list(community_info))
+                            meta_community_path.write_text(
+                                utils.protobuf_to_json_list(community_info)
+                            )
                             message.provenance["archivebot__communityInfoPath"] = str(
                                 meta_community_path.relative_to(archive_filename.parent)
                             )
@@ -135,8 +140,7 @@ class ArchiveBot(BaseBot):
                         refresh_dt
                     )
                     self.logger.debug("Got metadata for group: %s", chat_id)
-                    with meta_group_path.open("w+") as fd:
-                        fd.write(utils.protobuf_to_json(group_info))
+                    meta_group_path.write_text(utils.protobuf_to_json(group_info))
                     message.provenance["archivebot__groupInfoPath"] = str(
                         meta_group_path.relative_to(archive_filename.parent)
                     )
@@ -160,8 +164,8 @@ class ArchiveBot(BaseBot):
                 await self.download_message_media_eventually(message, callback)
 
         message_dict = utils.protobuf_to_dict(message)
-        with archive_filename.open("w+") as fd:
-            json.dump(message_dict, fd, cls=utils.WhatUpyJSONEncoder)
+        jsons = json.dumps(message_dict, cls=utils.WhatUpyJSONEncoder)
+        archive_filename.write_text(jsons)
 
     async def _handle_media_content(
         self,
@@ -176,5 +180,4 @@ class ArchiveBot(BaseBot):
             )
             return
         self.logger.debug("Found media. Saving to %s", media_filename)
-        with media_path.open("wb+") as fd:
-            fd.write(media_bytes)
+        media_path.write_bytes(media_bytes)
