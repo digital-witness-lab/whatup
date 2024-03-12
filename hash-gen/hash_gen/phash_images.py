@@ -56,6 +56,7 @@ def process_images(tasks: T.Sequence[ImageTask]):
 @click.option("--dir", "directories", type=click.Path(path_type=AnyPath), multiple=True)
 def hash_images(database_id, hash_table, media_table, images, directories):
     client = bigquery.Client()
+
     hash_table_id = f"{database_id}.{hash_table}"
     tasks = []
 
@@ -89,6 +90,7 @@ def hash_images(database_id, hash_table, media_table, images, directories):
                 content_url IS NOT NULL
             """
         except NotFound:
+            client.create_table(bigquery.Table(hash_table_id, schema=BIGQUERY_SCHEMA))
             query = f"""
             SELECT
                 media_table.filename, media_table.content_url
@@ -97,6 +99,8 @@ def hash_images(database_id, hash_table, media_table, images, directories):
                 REGEXP_CONTAINS(media_table.mimetype, 'image/*') AND
                 content_url IS NOT NULL
             """
+        print("query:")
+        print(query)
         query_job = client.query(query)
         rows = query_job.result()
         tasks.extend(ImageTask(row[0], AnyPath(row[1])) for row in rows)
@@ -104,7 +108,7 @@ def hash_images(database_id, hash_table, media_table, images, directories):
     entries = process_images(tasks)
     i = 0
     for entries_batch in batched(entries, 1_000):
-        errors = client.insert_rows(hash_table_id, entries_batch, BIGQUERY_SCHEMA)
+        errors = client.insert_rows(hash_table_id, entries_batch)
         if not errors:
             i += len(entries_batch)
             print(f"Added {len(entries_batch)} new rows")
