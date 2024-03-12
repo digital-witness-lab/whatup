@@ -2,7 +2,8 @@ from pulumi import Output, ResourceOptions, get_stack
 from pulumi_gcp import cloudrunv2, secretmanager, serviceaccount
 from pulumi_gcp.cloudrunv2 import (  # noqa: E501
     JobTemplateTemplateContainerEnvValueSourceArgs,
-    JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs)
+    JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
+)
 
 from artifact_registry import migrations_image
 from database import db_configs, primary_cloud_sql_instance

@@ -5,20 +5,20 @@ import pulumi
 import gcp_services
 from bigquery import sql_connections
 from jobs import (
-    bot_db_load_archive, 
-    bot_onboard_bulk, 
+    bot_db_load_archive,
+    bot_onboard_bulk,
     bq_init_schema,
-    db_delete_groups, 
-    db_migrations, 
+    db_delete_groups,
+    db_migrations,
     whatupcore_remove_user,
-    hash_gen
+    hash_gen,
 )
 from services import (
-    bot_archive, 
-    bot_db, 
-    bot_register, 
+    bot_archive,
+    bot_db,
+    bot_register,
     bot_user_services,
-    whatupcore2
+    whatupcore2,
 )
 
 # pulumi.export("bigquery_connection_id", bigquery_sql_connection.connection_id)
