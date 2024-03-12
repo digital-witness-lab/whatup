@@ -55,7 +55,11 @@ hash_gen_job = Job(
         ),
         envs=[
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                name="DATABASE_URL",
+                name="PROJECT_ID",
+                value=project,
+            ),
+            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                name="DATASET_ID",
                 value=bq_dataset_id,
             ),
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
