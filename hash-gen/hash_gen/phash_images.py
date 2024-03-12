@@ -49,15 +49,15 @@ def process_images(tasks: T.Sequence[ImageTask]):
 
 # Process local or cloud image files or directories
 @click.command()
-@click.option("--database-id", type=str)
+@click.option("--dataset-id", type=str)
 @click.option("--hash-table", type=str, default="phash_images")
 @click.option("--media-table", type=str, default="media")
 @click.option("--image", "images", type=click.Path(path_type=AnyPath), multiple=True)
 @click.option("--dir", "directories", type=click.Path(path_type=AnyPath), multiple=True)
-def hash_images(database_id, hash_table, media_table, images, directories):
+def hash_images(dataset_id, hash_table, media_table, images, directories):
     client = bigquery.Client()
 
-    hash_table_id = f"{database_id}.{hash_table}"
+    hash_table_id = f"{dataset_id}.{hash_table}"
     tasks = []
 
     if images:
@@ -73,7 +73,7 @@ def hash_images(database_id, hash_table, media_table, images, directories):
             )
 
     if media_table:
-        media_table_id = f"{database_id}.{media_table}"
+        media_table_id = f"{dataset_id}.{media_table}"
         try:
             client.get_table(
                 hash_table_id
@@ -108,7 +108,7 @@ def hash_images(database_id, hash_table, media_table, images, directories):
     entries = process_images(tasks)
     i = 0
     for entries_batch in batched(entries, 1_000):
-        errors = client.insert_rows(hash_table_id, entries_batch)
+        errors = client.insert_rows(hash_table_id, entries_batch, BIGQUERY_SCHEMA)
         if not errors:
             i += len(entries_batch)
             print(f"Added {len(entries_batch)} new rows")
