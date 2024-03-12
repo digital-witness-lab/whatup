@@ -19,7 +19,7 @@ service_account = serviceaccount.Account(
 )
 
 transfers_perm = projects.IAMMember(
-    "bq-init-transfers-perm",
+    "hash-gen-transfers-perm",
     member=Output.concat("serviceAccount:", service_account.email),
     project=project,
     role=Output.concat("roles/").concat(transfers_role.name),

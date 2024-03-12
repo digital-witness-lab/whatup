@@ -1,83 +1,105 @@
 from PIL import Image
+from pathlib import Path
+from itertools import islice
+from dataclasses import dataclass
+import typing as T
+
 import imagehash
-import json
-from cloudpathlib import CloudPath, AnyPath
-from google.cloud import storage
-from cloudpathlib import GSClient
 import click
-import os
-#import dataset
-#from sqlalchemy import types
 from google.cloud import bigquery
-import google.auth
+from cloudpathlib import AnyPath, CloudPath
 
-database_url = "whatup-deploy.messages_test" # can use this in run command 
 
-# Process local or cloud image files or directories
-@click.command()
-@click.option("--database-url", type=str) # use this to process all unprocessed images in a particular bucket
-@click.option(
-    "--file-or-dir", type=click.Path(path_type=AnyPath)) # use this argument to process an unprocessed specific local or cloud directory or image.
-def hash_images(database_url, file_or_dir):
-    client = bigquery.Client()
-    table_id = f"{database_url}.phash_images"
-    creds = google.auth.default()[0] # I have to manually access creds just for CloudPathLib's GSClient instantiation (https://cloudpathlib.drivendata.org/v0.6/authentication/)
-    
-    gs_client = GSClient(credentials=creds)
-    gs_client.set_as_default_client()
-    schema = [
-        bigquery.SchemaField("filename", "STRING", mode="REQUIRED"),
-        bigquery.SchemaField("phash", "BYTES", mode="REQUIRED"),
-    ]
+BIGQUERY_SCHEMA = [
+    bigquery.SchemaField("filename", "STRING", mode="REQUIRED"),
+    bigquery.SchemaField("phash", "BYTES", mode="REQUIRED"),
+]
 
-    existing_hashes = {}
 
-    if file_or_dir: 
-        file_or_dir = AnyPath(file_or_dir)
-        images_to_process = []
-        if file_or_dir.is_dir():
-            images_to_process = list(AnyPath(file_or_dir.rglob("*/media/*"))) 
-            #images_to_process = list(AnyPath(file_or_dir.rglob("media/*")))  # use this if directly pointing to one media directory
-        else:
-            images_to_process.append(file_or_dir)
+@dataclass
+class ImageTask:
+    filename: str
+    path: CloudPath | Path
 
-        QUERY = (f'SELECT filename FROM `{table_id}`')
-        query_job = client.query(QUERY) 
-        rows = query_job.result()  
-        existing_hashes = {row[0] for row in list(rows)}
+    def __str__(self):
+        return f"<ImageTask {self.filename}@{self.path}>"
 
-    else: # the preferable method
-        QUERY = (f'SELECT content_url FROM (SELECT * FROM `{database_url}.media` WHERE REGEXP_CONTAINS(mimetype, \'image/*\')) as a LEFT JOIN `{table_id}` as b ON a.filename = b.filename WHERE b.filename IS NULL and content_url IS NOT NULL')
-        query_job = client.query(QUERY) 
-        rows = query_job.result()  
-        images_to_process = [AnyPath(row[0]) for row in list(rows)]
 
-    i = 0
-    new_entries = []
+def batched(iterable, n):
+    # batched('ABCDEFG', 3) --> ABC DEF G
+    if n < 1:
+        raise ValueError("n must be at least one")
+    it = iter(iterable)
+    while batch := tuple(islice(it, n)):
+        yield batch
 
-    with file.open('rb') as fd:
-        with Image.open(fd) as image:
-            hash = str(imagehash.phash(image))
-    for file in images_to_process:
-        if not file.is_file() or file.name.startswith('.') or file.name in existing_hashes: continue
+
+def process_images(tasks: T.Sequence[ImageTask]):
+    for task in tasks:
         try:
-            with file.open('rb') as fd:
+            with task.path.open("rb") as fd:
                 with Image.open(fd) as image:
                     hash = str(imagehash.phash(image))
             byte_hash = bytes.fromhex(hash)
-             
-            new_entries.append({"filename": file.name, "phash": byte_hash})
-        except:
-            print("Skipping a non-image file.")
-        
-    # if len(new_entries) > 0:
-    #     errors = client.insert_rows(table_id, new_entries, schema)
-    #     if errors == []: 
-    #         i += len(new_entries)
-    #         print(f"Added {len(new_entries)} new rows")
-    #     else: print(f"Encountered errors while inserting rows: {errors}")
+            yield {"filename": task.filename, "phash": byte_hash}
+        except Exception as e:
+            print(f"Skipping a non-image file: {task}: {e}")
 
-    print(i)
 
-if __name__ == '__main__':
+# Process local or cloud image files or directories
+@click.command()
+@click.option("--database-id", type=str)
+@click.option("--hash-table", type=str, default="phash_images")
+@click.option("--media-table", type=str, default="media")
+@click.option("--image", "images", type=click.Path(path_type=AnyPath), multiple=True)
+@click.option("--dir", "directories", type=click.Path(path_type=AnyPath), multiple=True)
+def hash_images(database_id, hash_table, media_table, images, directories):
+    client = bigquery.Client()
+    hash_table_id = f"{database_id}.{hash_table}"
+    tasks = []
+
+    if images:
+        for image in images:
+            tasks.append(ImageTask(image.name, image))
+
+    if directories:
+        for directory in directories:
+            tasks.extend(
+                ImageTask(image.name, image)
+                for image in directory.rglob("*/media/*")
+                if image.is_file()
+            )
+
+    if media_table:
+        media_table_id = f"{database_id}.{media_table}"
+        QUERY = f"""
+        SELECT
+            media.filename, media.content_url
+        FROM (
+            SELECT *
+            FROM `{media_table_id}`
+            WHERE REGEXP_CONTAINS(mimetype, 'image/*')
+        ) as media
+        LEFT JOIN `{hash_table_id}` as hash
+            ON media.filename = hash.filename
+        WHERE
+            hash.filename IS NULL AND  -- this selects items not in the hash table
+            content_url IS NOT NULL
+        """
+        query_job = client.query(QUERY)
+        rows = query_job.result()
+        tasks.extend(ImageTask(row[0], AnyPath(row[1])) for row in rows)
+
+    entries = process_images(tasks)
+    i = 0
+    for entries_batch in batched(entries, 1_000):
+        errors = client.insert_rows(hash_table_id, entries_batch, BIGQUERY_SCHEMA)
+        if not errors:
+            i += len(entries_batch)
+            print(f"Added {len(entries_batch)} new rows")
+        else:
+            print(f"Encountered errors while inserting rows: {errors}")
+
+
+if __name__ == "__main__":
     hash_images()
