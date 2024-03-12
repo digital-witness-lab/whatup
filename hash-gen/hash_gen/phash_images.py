@@ -7,6 +7,7 @@ import typing as T
 import imagehash
 import click
 from google.cloud import bigquery
+from google.cloud.exceptions import NotFound
 from cloudpathlib import AnyPath, CloudPath
 
 
@@ -72,21 +73,31 @@ def hash_images(database_id, hash_table, media_table, images, directories):
 
     if media_table:
         media_table_id = f"{database_id}.{media_table}"
-        QUERY = f"""
-        SELECT
-            media.filename, media.content_url
-        FROM (
-            SELECT *
-            FROM `{media_table_id}`
-            WHERE REGEXP_CONTAINS(mimetype, 'image/*')
-        ) as media
-        LEFT JOIN `{hash_table_id}` as hash
-            ON media.filename = hash.filename
-        WHERE
-            hash.filename IS NULL AND  -- this selects items not in the hash table
-            content_url IS NOT NULL
-        """
-        query_job = client.query(QUERY)
+        try:
+            client.get_table(
+                hash_table_id
+            )  # will raise NotFound if hash table doesn't exist
+            query = f"""
+            SELECT
+                media_table.filename, media_table.content_url
+            FROM `{media_table_id}` as media_table
+            LEFT JOIN `{hash_table_id}` as hash_table
+                ON media_table.filename = hash_table.filename
+            WHERE
+                REGEXP_CONTAINS(media_table.mimetype, 'image/*') AND
+                hash_table.filename IS NULL AND  -- this selects items not in the hash table
+                content_url IS NOT NULL
+            """
+        except NotFound:
+            query = f"""
+            SELECT
+                media_table.filename, media_table.content_url
+            FROM `{media_table_id}` as media_table
+            WHERE
+                REGEXP_CONTAINS(media_table.mimetype, 'image/*') AND
+                content_url IS NOT NULL
+            """
+        query_job = client.query(query)
         rows = query_job.result()
         tasks.extend(ImageTask(row[0], AnyPath(row[1])) for row in rows)
 
