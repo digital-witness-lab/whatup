@@ -47,14 +47,49 @@ def process_images(tasks: T.Sequence[ImageTask]):
             print(f"Skipping a non-image file: {task}: {e}")
 
 
+def filter_task_path(path: CloudPath | Path, job_idx: int, job_count: int) -> bool:
+    return job_count <= 1 or hash(path.name) % job_count == job_idx
+
+
+def process_tasks(tasks, client, hash_table_id):
+    entries = process_images(tasks)
+    i = 0
+    for entries_batch in batched(entries, 1_000):
+        errors = client.insert_rows(hash_table_id, entries_batch, BIGQUERY_SCHEMA)
+        if not errors:
+            i += len(entries_batch)
+            print(f"Added {len(entries_batch)} new rows")
+        else:
+            print(f"Encountered errors while inserting rows: {errors}")
+
+
 # Process local or cloud image files or directories
 @click.command()
 @click.option("--dataset-id", type=str)
-@click.option("--hash-table", type=str, default="phash_images")
-@click.option("--media-table", type=str, default="media")
+@click.option(
+    "--hash-table",
+    type=str,
+    default="phash_images",
+    help="Bigquery table name where to output image hashes",
+)
+@click.option(
+    "--media-table",
+    type=str,
+    default="media",
+    help="Table name of existing media data to read from",
+)
 @click.option("--image", "images", type=click.Path(path_type=AnyPath), multiple=True)
 @click.option("--dir", "directories", type=click.Path(path_type=AnyPath), multiple=True)
-def hash_images(dataset_id, hash_table, media_table, images, directories):
+@click.option("--job-idx", type=int, help="If running in parallel, which job is this")
+@click.option(
+    "--job-count",
+    type=int,
+    default=0,
+    help="If running in parallel, how many jobs are being run",
+)
+def hash_images(
+    dataset_id, hash_table, media_table, images, directories, job_idx, job_count
+):
     client = bigquery.Client()
 
     hash_table_id = f"{dataset_id}.{hash_table}"
@@ -62,14 +97,15 @@ def hash_images(dataset_id, hash_table, media_table, images, directories):
 
     if images:
         for image in images:
-            tasks.append(ImageTask(image.name, image))
+            if filter_task_path(image, job_idx, job_count):
+                tasks.append(ImageTask(image.name, image))
 
     if directories:
         for directory in directories:
             tasks.extend(
                 ImageTask(image.name, image)
                 for image in directory.rglob("*/media/*")
-                if image.is_file()
+                if image.is_file() and filter_task_path(image, job_idx, job_count)
             )
 
     if media_table:
@@ -99,19 +135,16 @@ def hash_images(dataset_id, hash_table, media_table, images, directories):
                 REGEXP_CONTAINS(media_table.mimetype, 'image/*') AND
                 content_url IS NOT NULL
             """
+        if job_count:
+            query = f"""
+            {query} AND
+            MOD(FARM_FINGERPRINT(media_table.filename), {job_count}) = {job_idx}
+            """
         query_job = client.query(query)
         rows = query_job.result()
         tasks.extend(ImageTask(row[0], AnyPath(row[1])) for row in rows)
 
-    entries = process_images(tasks)
-    i = 0
-    for entries_batch in batched(entries, 1_000):
-        errors = client.insert_rows(hash_table_id, entries_batch, BIGQUERY_SCHEMA)
-        if not errors:
-            i += len(entries_batch)
-            print(f"Added {len(entries_batch)} new rows")
-        else:
-            print(f"Encountered errors while inserting rows: {errors}")
+    process_tasks(tasks, client, hash_table_id)
 
 
 if __name__ == "__main__":
