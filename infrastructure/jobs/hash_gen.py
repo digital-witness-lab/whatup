@@ -45,7 +45,7 @@ hash_gen_job = Job(
         # We want this service to only be reachable from within
         # our VPC network.
         ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
-        memory="2Gi",
+        memory="1Gi",
         service_account=service_account,
         # Specifying the subnet causes CloudRun to use
         # Direct VPC egress for outbound traffic based
