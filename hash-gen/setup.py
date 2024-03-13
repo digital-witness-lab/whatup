@@ -31,7 +31,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "hash-gen = hash_gen.phash_images:hash_images",
+            "hash-gen = hash_gen.cli:cli",
         ],
     },
 )
