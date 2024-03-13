@@ -52,8 +52,8 @@ def filter_task_path(path: CloudPath | Path, job_idx: int, job_count: int) -> bo
 
 
 def process_tasks(tasks, client, hash_table_id):
-    entries = process_images(tasks)
     i = 0
+    entries = process_images(tasks)
     for entries_batch in batched(entries, 1_000):
         errors = client.insert_rows(hash_table_id, entries_batch, BIGQUERY_SCHEMA)
         if not errors:
@@ -144,6 +144,7 @@ def hash_images(
         rows = query_job.result()
         tasks.extend(ImageTask(row[0], AnyPath(row[1])) for row in rows)
 
+    print(f"Found {len(tasks)} tasks to work on")
     process_tasks(tasks, client, hash_table_id)
 
 
