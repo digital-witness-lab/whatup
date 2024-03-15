@@ -2,6 +2,7 @@ from PIL import Image
 from pathlib import Path
 from itertools import islice
 from dataclasses import dataclass
+from multiprocessing import Pool
 import gc
 import typing as T
 
@@ -41,33 +42,33 @@ def hash_image(image_path: CloudPath | Path) -> bytes:
     return bytes.fromhex(image_hash)
 
 
-def process_images(tasks: T.Sequence[ImageTask]) -> T.List[dict]:
-    result = []
-    for task in tasks:
-        try:
-            byte_hash = hash_image(task.path)
-            result.append({"filename": task.filename, "phash": byte_hash})
-        except Exception as e:
-            print(f"Skipping a non-image file: {task}: {e}")
-        except KeyboardInterrupt:
-            print("Ending image processing from KeyboardInterrupt")
-            break
-    return result
+def process_image(task: ImageTask) -> T.Optional[dict]:
+    try:
+        byte_hash = hash_image(task.path)
+        return {"filename": task.filename, "phash": byte_hash}
+    except Exception as e:
+        print(f"Skipping a non-image file: {task}: {e}")
+    except KeyboardInterrupt:
+        print("Ending image processing from KeyboardInterrupt")
+    return None
 
 
 def filter_task_path(path: CloudPath | Path, job_idx: int, job_count: int) -> bool:
     return job_count <= 1 or hash(path.name) % job_count == job_idx
 
 
-def process_tasks(tasks, client, hash_table_id):
+def process_tasks(tasks, client, hash_table_id, n_processes=None):
     i = 0
-    for task_batch in batched(tasks, 500):
-        bigquery_entries = process_images(task_batch)
-        errors = client.insert_rows(hash_table_id, bigquery_entries, BIGQUERY_SCHEMA)
-        if not errors:
-            i += len(bigquery_entries)
-            print(f"Added {len(bigquery_entries)} total new rows")
-        else:
-            print(f"Encountered errors while inserting rows: {errors}")
-        del bigquery_entries
-        gc.collect()
+    with Pool(n_processes) as pool:
+        results = pool.imap_unordered(process_image, tasks, chunksize=64)
+        for bigquery_entries in batched(filter(None, results), 500):
+            errors = client.insert_rows(
+                hash_table_id, bigquery_entries, BIGQUERY_SCHEMA
+            )
+            if not errors:
+                i += len(bigquery_entries)
+                print(f"Added {len(bigquery_entries)} total new rows")
+            else:
+                print(f"Encountered errors while inserting rows: {errors}")
+            del bigquery_entries
+            gc.collect()
