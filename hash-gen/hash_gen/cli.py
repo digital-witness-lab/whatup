@@ -1,4 +1,5 @@
 import base64
+import os
 
 import click
 from cloudpathlib import AnyPath
@@ -47,8 +48,21 @@ def cli():
     default=0,
     help="If running in parallel, how many jobs are being run",
 )
+@click.option(
+    "--n-processes",
+    type=int,
+    default=(os.cpu_count() or 1) * 2,
+    help="If running in parallel, how many jobs are being run",
+)
 def bulk_to_bigquery(
-    dataset_id, hash_table, media_table, images, directories, job_idx, job_count
+    dataset_id,
+    hash_table,
+    media_table,
+    images,
+    directories,
+    job_idx,
+    job_count,
+    n_processes,
 ):
     client = bigquery.Client()
     hash_table_id = f"{dataset_id}.{hash_table}"
@@ -104,7 +118,7 @@ def bulk_to_bigquery(
         tasks.extend(ImageTask(row[0], AnyPath(row[1])) for row in rows)
 
     print(f"Found {len(tasks)} tasks to work on")
-    process_tasks(tasks, client, hash_table_id)
+    process_tasks(tasks, client, hash_table_id, n_processes=n_processes)
 
 
 @cli.command("query-image")
