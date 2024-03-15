@@ -77,7 +77,7 @@ def bulk_to_bigquery(
         for directory in directories:
             tasks.extend(
                 ImageTask(image.name, image)
-                for image in directory.rglob("*/media/*")
+                for image in directory.rglob("*")
                 if image.is_file() and filter_task_path(image, job_idx, job_count)
             )
 
