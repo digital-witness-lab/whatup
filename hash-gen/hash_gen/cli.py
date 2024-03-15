@@ -22,7 +22,7 @@ def cli():
 
 
 # Process local or cloud image files or directories
-@cli.command()
+@cli.command("bulk_to_bigquery")
 @click.option("--dataset-id", type=str)
 @click.option(
     "--hash-table",
@@ -38,7 +38,9 @@ def cli():
 )
 @click.option("--image", "images", type=click.Path(path_type=AnyPath), multiple=True)
 @click.option("--dir", "directories", type=click.Path(path_type=AnyPath), multiple=True)
-@click.option("--job-idx", type=int, help="If running in parallel, which job is this")
+@click.option(
+    "--job-idx", default=0, type=int, help="If running in parallel, which job is this"
+)
 @click.option(
     "--job-count",
     type=int,
@@ -105,7 +107,7 @@ def bulk_to_bigquery(
     process_tasks(tasks, client, hash_table_id)
 
 
-@cli.command()
+@cli.command("query_image")
 @click.option("--dataset-id", type=str)
 @click.option(
     "--hash-table",
