@@ -40,13 +40,18 @@ def hash_image(image_path: CloudPath | Path) -> bytes:
     return bytes.fromhex(image_hash)
 
 
-def process_images(tasks: T.Sequence[ImageTask]):
+def process_images(tasks: T.Sequence[ImageTask]) -> T.List[dict]:
+    result = []
     for task in tasks:
         try:
             byte_hash = hash_image(task.path)
-            yield {"filename": task.filename, "phash": byte_hash}
+            result.append({"filename": task.filename, "phash": byte_hash})
         except Exception as e:
             print(f"Skipping a non-image file: {task}: {e}")
+        except KeyboardInterrupt:
+            print("Ending image processing from KeyboardInterrupt")
+            break
+    return result
 
 
 def filter_task_path(path: CloudPath | Path, job_idx: int, job_count: int) -> bool:
@@ -55,11 +60,12 @@ def filter_task_path(path: CloudPath | Path, job_idx: int, job_count: int) -> bo
 
 def process_tasks(tasks, client, hash_table_id):
     i = 0
-    entries = process_images(tasks)
-    for entries_batch in batched(entries, 1_000):
-        errors = client.insert_rows(hash_table_id, entries_batch, BIGQUERY_SCHEMA)
+    for task_batch in batched(tasks, 1_000):
+        bigquery_entries = process_images(task_batch)
+        errors = client.insert_rows(hash_table_id, bigquery_entries, BIGQUERY_SCHEMA)
         if not errors:
-            i += len(entries_batch)
-            print(f"Added {len(entries_batch)} new rows")
+            i += len(bigquery_entries)
+            print(f"Added {len(bigquery_entries)} new rows")
         else:
             print(f"Encountered errors while inserting rows: {errors}")
+        del bigquery_entries

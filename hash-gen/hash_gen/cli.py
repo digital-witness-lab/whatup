@@ -22,7 +22,7 @@ def cli():
 
 
 # Process local or cloud image files or directories
-@cli.command("bulk_to_bigquery")
+@cli.command("bulk-to-bigquery")
 @click.option("--dataset-id", type=str)
 @click.option(
     "--hash-table",
@@ -107,7 +107,7 @@ def bulk_to_bigquery(
     process_tasks(tasks, client, hash_table_id)
 
 
-@cli.command("query_image")
+@cli.command("query-image")
 @click.option("--dataset-id", type=str)
 @click.option(
     "--hash-table",
