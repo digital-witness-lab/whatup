@@ -2,6 +2,7 @@ from PIL import Image
 from pathlib import Path
 from itertools import islice
 from dataclasses import dataclass
+import gc
 import typing as T
 
 import imagehash
@@ -60,12 +61,13 @@ def filter_task_path(path: CloudPath | Path, job_idx: int, job_count: int) -> bo
 
 def process_tasks(tasks, client, hash_table_id):
     i = 0
-    for task_batch in batched(tasks, 1_000):
+    for task_batch in batched(tasks, 500):
         bigquery_entries = process_images(task_batch)
         errors = client.insert_rows(hash_table_id, bigquery_entries, BIGQUERY_SCHEMA)
         if not errors:
             i += len(bigquery_entries)
-            print(f"Added {len(bigquery_entries)} new rows")
+            print(f"Added {len(bigquery_entries)} total new rows")
         else:
             print(f"Encountered errors while inserting rows: {errors}")
         del bigquery_entries
+        gc.collect()
