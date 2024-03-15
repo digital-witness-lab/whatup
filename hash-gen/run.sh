@@ -6,7 +6,7 @@ export CLOUDPATHLIB_FILE_CACHE_MODE="close_file"
 JOB_COUNT=${CLOUD_RUN_TASK_COUNT:=1}
 JOB_IDX=${CLOUD_RUN_TASK_INDEX:=0}
 
-exec hash-gen bulk_to_bigquery \
+exec hash-gen bulk-to-bigquery \
     --hash-table phash_images \
     --media-table media \
     --dataset-id ${PROJECT_ID}.${DATASET_ID} \
