@@ -108,14 +108,14 @@ def bulk_to_bigquery(
                 REGEXP_CONTAINS(media_table.mimetype, 'image/*') AND
                 content_url IS NOT NULL
             """
-        if job_count:
+        if job_count > 1:
             query = f"""
             {query} AND
             MOD(FARM_FINGERPRINT(media_table.filename), {job_count}) = {job_idx}
             """
         query_job = client.query(query)
         rows = query_job.result()
-        tasks.extend(ImageTask(row[0], AnyPath(row[1])) for row in rows)
+        tasks.extend(ImageTask(row[0], row[1]) for row in rows)
 
     print(f"Found {len(tasks)} tasks to work on")
     process_tasks(tasks, client, hash_table_id, n_processes=n_processes)

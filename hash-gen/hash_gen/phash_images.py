@@ -3,11 +3,10 @@ from pathlib import Path
 from itertools import islice
 from dataclasses import dataclass
 from multiprocessing import Pool
-import gc
 import typing as T
 
 import imagehash
-from cloudpathlib import CloudPath
+from cloudpathlib import CloudPath, AnyPath
 from google.cloud import bigquery
 
 
@@ -20,10 +19,13 @@ BIGQUERY_SCHEMA = [
 @dataclass
 class ImageTask:
     filename: str
-    path: CloudPath | Path
+    path: CloudPath | Path | str
 
     def __str__(self):
         return f"<ImageTask {self.filename}@{self.path}>"
+
+    def any_path(self):
+        return AnyPath(self.path)
 
 
 def batched(iterable, n):
@@ -44,7 +46,7 @@ def hash_image(image_path: CloudPath | Path) -> bytes:
 
 def process_image(task: ImageTask) -> T.Optional[dict]:
     try:
-        byte_hash = hash_image(task.path)
+        byte_hash = hash_image(task.any_path())
         return {"filename": task.filename, "phash": byte_hash}
     except Exception as e:
         print(f"Skipping a non-image file: {task}: {e}")
@@ -60,8 +62,10 @@ def filter_task_path(path: CloudPath | Path, job_idx: int, job_count: int) -> bo
 def process_tasks(tasks, client, hash_table_id, n_processes=None):
     i = 0
     with Pool(n_processes) as pool:
-        results = pool.imap_unordered(process_image, tasks, chunksize=64)
-        for bigquery_entries in batched(filter(None, results), 500):
+        for tasks_chunk in batched(tasks, 64):
+            bigquery_entries = list(
+                filter(None, pool.imap(process_image, tasks_chunk, chunksize=16))
+            )
             errors = client.insert_rows(
                 hash_table_id, bigquery_entries, BIGQUERY_SCHEMA
             )
@@ -70,5 +74,3 @@ def process_tasks(tasks, client, hash_table_id, n_processes=None):
                 print(f"Added {len(bigquery_entries)} total new rows")
             else:
                 print(f"Encountered errors while inserting rows: {errors}")
-            del bigquery_entries
-            gc.collect()
