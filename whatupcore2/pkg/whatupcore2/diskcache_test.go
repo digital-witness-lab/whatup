@@ -32,9 +32,9 @@ func TestDiskCacheLifecycle(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to retrieve item from cache: %v", err)
 	}
-    if retrievedValue == nil {
+	if retrievedValue == nil {
 		t.Errorf("Could not find value in cache")
-    } else if string(retrievedValue) != string(value) {
+	} else if string(retrievedValue) != string(value) {
 		t.Errorf("Retrieved value does not match added value: got %v, want %v", string(retrievedValue), string(value))
 	}
 
@@ -42,7 +42,7 @@ func TestDiskCacheLifecycle(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Try to retrieve the expired item
-    dc.freeExpired()
+	dc.freeExpired()
 	retrievedValue, err = dc.Get(key)
 	if err != nil {
 		t.Errorf("Failed to retrieve item from cache after expiration: %v", err)
@@ -63,11 +63,11 @@ func TestDiskCacheOrder(t *testing.T) {
 	}
 	defer dc.Close()
 
-    dc.Add("key1", []byte("234asdf"))
-    time.Sleep(500 * time.Millisecond)
-    dc.Add("key2", []byte("sadfsd"))
+	dc.Add("key1", []byte("234asdf"))
+	time.Sleep(500 * time.Millisecond)
+	dc.Add("key2", []byte("sadfsd"))
 
-    if dc.elements[0].key != "key2" {
-        t.Fatalf("Elements is out of order. Older elements should be last")
-    }
+	if dc.elements[0].key != "key2" {
+		t.Fatalf("Elements is out of order. Older elements should be last")
+	}
 }
