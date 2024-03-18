@@ -23,7 +23,7 @@ type MessageClient struct {
 	position *list.Element
 	queue    *MessageQueue
 
-	valid    bool
+	valid bool
 
 	newMessageAlert chan *QueueMessage
 	ctxC            ContextWithCancel
@@ -52,10 +52,10 @@ func (mc *MessageClient) MessageChan() (chan *QueueMessage, error) {
 	msgChan := make(chan *QueueMessage, 128)
 	go func() {
 		defer func() { mc.newMessageAlert = nil }()
-        // first we deplete any queued messages to the channel
-        mc.depleteQueueToChan(msgChan)
+		// first we deplete any queued messages to the channel
+		mc.depleteQueueToChan(msgChan)
 
-        // now we stream new messages directly to the client
+		// now we stream new messages directly to the client
 		for {
 			mc.log.Debugf("waiting for new message or done")
 			select {
@@ -64,7 +64,7 @@ func (mc *MessageClient) MessageChan() (chan *QueueMessage, error) {
 				mc.Close()
 				return
 			case msg := <-mc.newMessageAlert:
-                msgChan <- msg
+				msgChan <- msg
 			}
 		}
 	}()
@@ -81,8 +81,8 @@ func (mc *MessageClient) depleteQueueToChan(msgChan chan *QueueMessage) bool {
 			mc.log.Debugf("depletion found nil message")
 			return ok
 		} else if mc.ctxC.HasCanceled {
-            return false
-        }
+			return false
+		}
 		mc.log.Debugf("depleting queue saw message: %s: %s", msg.addedAt, msg.message.DebugString())
 		msgChan <- msg
 	}

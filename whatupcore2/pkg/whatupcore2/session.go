@@ -97,7 +97,7 @@ func (session *Session) Login(username string, passphrase string, dbUri string) 
 		return err
 	}
 
-	if err := client.Login(2*time.Minute); err != nil {
+	if err := client.Login(2 * time.Minute); err != nil {
 		client.Close()
 		return err
 	}

@@ -115,9 +115,9 @@ type WhatsAppClient struct {
 	messageHandler    uint32
 	archiveHandler    uint32
 
-	groupInfoCache    *expirable.LRU[string, *types.GroupInfo]
-    mediaCache *DiskCache
-    mediaMutexMap *MutexMap
+	groupInfoCache *expirable.LRU[string, *types.GroupInfo]
+	mediaCache     *DiskCache
+	mediaMutexMap  *MutexMap
 
 	anonLookup *AnonLookup
 }
@@ -171,11 +171,11 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	messageQueue.Start()
 
 	aclStore := NewACLStore(db, username, log.Sub("ACL"))
-    mediaCache, err :=  NewDiskCacheTempdir(ctxC, time.Minute * 10, 32e6, time.Minute, log.Sub("mediaCache"))
-    if err != nil {
-        return nil, err
-    }
-    mediaMutexMap := NewMutexMap(log.Sub("mediaMutex"))
+	mediaCache, err := NewDiskCacheTempdir(ctxC, time.Minute*10, 32e6, time.Minute, log.Sub("mediaCache"))
+	if err != nil {
+		return nil, err
+	}
+	mediaMutexMap := NewMutexMap(log.Sub("mediaMutex"))
 
 	client := &WhatsAppClient{
 		Client: wmClient,
@@ -190,8 +190,8 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 		historyRequestContexts: make(map[string]ContextWithCancel),
 		shouldRequestHistory:   make(map[string]bool),
 		groupInfoCache:         expirable.NewLRU[string, *types.GroupInfo](128, nil, time.Minute),
-        mediaCache:  mediaCache,
-        mediaMutexMap: mediaMutexMap,
+		mediaCache:             mediaCache,
+		mediaMutexMap:          mediaMutexMap,
 	}
 	go func() {
 		<-ctx.Done()
@@ -646,14 +646,14 @@ func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Dur
 }
 
 func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
-    lock := wac.mediaMutexMap.Lock(msgInfo.ID)
-    defer lock.Unlock()
+	lock := wac.mediaMutexMap.Lock(msgInfo.ID)
+	defer lock.Unlock()
 
-    data, err := wac.mediaCache.Get(msgInfo.ID)
-    if data != nil {
-        wac.Log.Debugf("Found cached version of image in DownloadAnyRetry: %v", msgInfo.ID)
-        return data, nil
-    }
+	data, err := wac.mediaCache.Get(msgInfo.ID)
+	if data != nil {
+		wac.Log.Debugf("Found cached version of image in DownloadAnyRetry: %v", msgInfo.ID)
+		return data, nil
+	}
 	wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
 
 	data, err = wac.Client.DownloadAny(msg)
@@ -662,21 +662,21 @@ func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Me
 	} else if err != nil {
 		wac.Log.Errorf("Error trying to download message: %v", err)
 	}
-    if len(data) > 0 {
-        wac.mediaCache.Add(msgInfo.ID, data)
-    }
+	if len(data) > 0 {
+		wac.mediaCache.Add(msgInfo.ID, data)
+	}
 	return data, err
 }
 
 func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
-    lock := wac.mediaMutexMap.Lock(msgInfo.ID)
-    defer lock.Unlock()
+	lock := wac.mediaMutexMap.Lock(msgInfo.ID)
+	defer lock.Unlock()
 
-    data, err := wac.mediaCache.Get(msgInfo.ID)
-    if data != nil {
-        wac.Log.Debugf("Found cached version of image in RetryDownload: %v", msgInfo.ID)
-        return data, nil
-    }
+	data, err := wac.mediaCache.Get(msgInfo.ID)
+	if data != nil {
+		wac.Log.Debugf("Found cached version of image in RetryDownload: %v", msgInfo.ID)
+		return data, nil
+	}
 	mediaKeyCandidates := valuesFilterZero(findFieldName(msg, "MediaKey"))
 	if len(mediaKeyCandidates) == 0 {
 		wac.Log.Errorf("Could not find MediaKey: %+v", msg)
@@ -710,10 +710,10 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 			if retry.MessageID == msgInfo.ID {
 				retryData, err := whatsmeow.DecryptMediaRetryNotification(retry, mediaKey)
 				if err != nil || retryData.GetResult() != waProto.MediaRetryNotification_SUCCESS {
-                    wac.Log.Errorf("Could not download media through a retry notification: %v: %s", err, retryData.GetResult().String())
+					wac.Log.Errorf("Could not download media through a retry notification: %v: %s", err, retryData.GetResult().String())
 					retryError = err
 					ctxRetry.Cancel()
-                    return
+					return
 				}
 				// TODO: FIX: the following line may be the reason we are
 				// getting 403's on historical media downloads
@@ -737,8 +737,8 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 	}
 	if len(body) > 0 {
 		wac.Log.Debugf("Media Retry got body of length: %d", len(body))
-        wac.mediaCache.Add(msgInfo.ID, body)
-    }
+		wac.mediaCache.Add(msgInfo.ID, body)
+	}
 	return body, retryError
 }
 
