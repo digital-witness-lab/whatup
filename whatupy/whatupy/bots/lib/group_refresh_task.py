@@ -87,9 +87,14 @@ class GroupRefreshTask:
             except IndexError:
                 break
             user.logger.info("Re-requesting history for group: %s: %s", user, group_str)
-            await user.core_client.RequestChatHistory(
-                wuc.HistoryRequestOptions(chat=utils.str_to_jid(group_str))
-            )
+            try:
+                await user.core_client.RequestChatHistory(
+                    wuc.HistoryRequestOptions(chat=utils.str_to_jid(group_str))
+                )
+            except Exception as e:
+                user.logger.exception(
+                    "Could not re-request history: %s: %s", group_str, e
+                )
             self.status.tasks_done += 1
             if not self.tasks:
                 break
