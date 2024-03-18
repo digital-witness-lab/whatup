@@ -47,6 +47,8 @@ function filter-by-job() {
 }
 export -f filter-by-job
 
+export CLOUDPATHLIB_FILE_CACHE_MODE="close_file"
+
 case $app_command in
 
     archivebot)
