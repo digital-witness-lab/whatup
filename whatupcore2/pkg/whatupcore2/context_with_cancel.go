@@ -23,5 +23,5 @@ func (c ContextWithCancel) Cancel() {
 }
 
 func (c ContextWithCancel) IsZero() bool {
-	return c.Cancel == nil
+	return c.cancel == nil
 }
