@@ -13,6 +13,7 @@ import (
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
+	"github.com/digital-witness-lab/whatup/whatupcore2/pkg/diskcache"
 	"github.com/digital-witness-lab/whatup/whatupcore2/pkg/encsqlstore"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
@@ -114,7 +115,9 @@ type WhatsAppClient struct {
 	historyHandler    uint32
 	messageHandler    uint32
 	archiveHandler    uint32
+
 	groupInfoCache    *expirable.LRU[string, *types.GroupInfo]
+    mediaCache diskcache.DiskCache
 
 	anonLookup *AnonLookup
 }
