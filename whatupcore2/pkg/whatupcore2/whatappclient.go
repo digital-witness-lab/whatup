@@ -117,6 +117,7 @@ type WhatsAppClient struct {
 
 	groupInfoCache    *expirable.LRU[string, *types.GroupInfo]
     mediaCache *DiskCache
+    mediaMutexMap *MutexMap
 
 	anonLookup *AnonLookup
 }
@@ -174,6 +175,7 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
     if err != nil {
         return nil, err
     }
+    mediaMutexMap := NewMutexMap(log.Sub("mediaMutex"))
 
 	client := &WhatsAppClient{
 		Client: wmClient,
@@ -189,6 +191,7 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 		shouldRequestHistory:   make(map[string]bool),
 		groupInfoCache:         expirable.NewLRU[string, *types.GroupInfo](128, nil, time.Minute),
         mediaCache:  mediaCache,
+        mediaMutexMap: mediaMutexMap,
 	}
 	go func() {
 		<-ctx.Done()
@@ -643,8 +646,12 @@ func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Dur
 }
 
 func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
+    lock := wac.mediaMutexMap.Lock(msgInfo.ID)
+    defer lock.Unlock()
+
     data, err := wac.mediaCache.Get(msgInfo.ID)
     if data != nil {
+        wac.Log.Debugf("Found cached version of image in DownloadAnyRetry: %v", msgInfo.ID)
         return data, nil
     }
 	wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
@@ -662,6 +669,14 @@ func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Me
 }
 
 func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
+    lock := wac.mediaMutexMap.Lock(msgInfo.ID)
+    defer lock.Unlock()
+
+    data, err := wac.mediaCache.Get(msgInfo.ID)
+    if data != nil {
+        wac.Log.Debugf("Found cached version of image in RetryDownload: %v", msgInfo.ID)
+        return data, nil
+    }
 	mediaKeyCandidates := valuesFilterZero(findFieldName(msg, "MediaKey"))
 	if len(mediaKeyCandidates) == 0 {
 		wac.Log.Errorf("Could not find MediaKey: %+v", msg)
@@ -672,7 +687,7 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 		wac.Log.Errorf("Could not convert MediaKey: %+v: %+v", msg, mediaKeyCandidates)
 		return nil, ErrInvalidMediaMessage
 	}
-	err := wac.Client.SendMediaRetryReceipt(msgInfo, mediaKey)
+	err = wac.Client.SendMediaRetryReceipt(msgInfo, mediaKey)
 	if err != nil {
 		wac.Log.Errorf("Could not send media retry: %+v", err)
 		return nil, err
