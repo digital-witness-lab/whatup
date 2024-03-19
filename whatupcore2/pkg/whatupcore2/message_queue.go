@@ -53,17 +53,19 @@ func (mc *MessageClient) MessageChan() (chan *QueueMessage, error) {
 	go func() {
 		defer func() { mc.newMessageAlert = nil }()
 		// first we deplete any queued messages to the channel
+		mc.log.Debugf("Depleting historical messages to channel")
 		mc.depleteQueueToChan(msgChan)
 
 		// now we stream new messages directly to the client
 		for {
-			mc.log.Debugf("waiting for new message or done")
+			mc.log.Debugf("Waiting for new messages")
 			select {
 			case <-mc.ctxC.Done():
 				mc.log.Debugf("done by context")
 				mc.Close()
 				return
 			case msg := <-mc.newMessageAlert:
+				mc.log.Debugf("Sending new message to channel")
 				msgChan <- msg
 			}
 		}

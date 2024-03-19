@@ -227,19 +227,32 @@ func (wac *WhatsAppClient) IsClosed() bool {
 func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
 	switch evt.(type) {
 	case *events.Connected:
-		wac.Log.Infof("User connected. Setting state.")
-		err := wac.SendPresence(types.PresenceAvailable)
-		if err != nil {
-			wac.Log.Errorf("Could not send presence: %+v", err)
-		}
-		wac.SetForceActiveDeliveryReceipts(false)
+		wac.Log.Infof("User connected.")
 		wac.encSQLStore = encsqlstore.NewEncSQLStore(wac.encContainer, *wac.Client.Store.ID)
 		wac.anonLookup.makeReady()
+		go wac.presenceTwiddler()
 	case *events.LoggedOut:
 		wac.Log.Warnf("User has logged out on their device")
 		wac.Unregister()
 		wac.encSQLStore = nil
 		wac.Close()
+	}
+}
+
+func (wac *WhatsAppClient) presenceTwiddler() {
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	for {
+		wac.Log.Infof("Twiddling client presence")
+		wac.SendPresence(types.PresenceAvailable)
+		time.Sleep(5 * time.Second)
+		wac.SendPresence(types.PresenceUnavailable)
+		select {
+		case <-wac.ctxC.Done():
+			return
+		case <-ticker.C:
+			continue
+		}
 	}
 }
 
