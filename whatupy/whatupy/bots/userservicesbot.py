@@ -2,8 +2,8 @@ import asyncio
 import json
 import logging
 import typing as T
-from datetime import timedelta, datetime
 from collections import defaultdict
+from datetime import datetime, timedelta
 from functools import partial
 
 import dataset
@@ -12,11 +12,11 @@ from cloudpathlib import CloudPath
 from .. import utils
 from ..credentials_manager import CredentialsManager
 from ..device_manager import DeviceManager
-from ..protos import whatupcore_pb2 as wuc
 from ..protos import whatsappweb_pb2 as waw
+from ..protos import whatupcore_pb2 as wuc
+from . import BotCommandArgs, static
 from .basebot import BaseBot, TypeLanguages
-from .lib import UserBot, GroupRefreshTask
-from . import static, BotCommandArgs
+from .lib import GroupRefreshTask, UserBot
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,9 @@ class UserServicesBot(BaseBot):
         sub_parser = parser.add_subparsers(dest="command")
         sub_parser.add_parser("status", description="Get current user services status")
 
-        list_users = sub_parser.add_parser("list-users", description="Lists current users")
+        list_users = sub_parser.add_parser(
+            "list-users", description="Lists current users"
+        )
         list_users.add_argument(
             "--no-bots",
             action="store_true",
@@ -123,7 +125,7 @@ class UserServicesBot(BaseBot):
             metavar="job-name",
             type=str,
             help="Name of the job for tracking",
-            nargs='?',
+            nargs="?",
             default=None,
         )
         return parser
@@ -172,7 +174,11 @@ class UserServicesBot(BaseBot):
             n_added = 0
             for username in params.username:
                 try:
-                    user = next(user for user in self.users.values() if user.username == username)
+                    user = next(
+                        user
+                        for user in self.users.values()
+                        if user.username == username
+                    )
                     await refresh_task.add_user(user)
                     n_added += 1
                 except StopIteration:
@@ -205,11 +211,15 @@ class UserServicesBot(BaseBot):
                         f"Continuing for JIDs: {' '.join(jids_found)}",
                     )
         else:
-            return self.send_text_message(sender, "Must send --username, --jids or both or --all")
+            return self.send_text_message(
+                sender, "Must send --username, --jids or both or --all"
+            )
         task = await refresh_task.start()
         self.group_refresh_tasks.add(refresh_task)
         task.add_done_callback(lambda t: self.group_refresh_tasks.discard(refresh_task))
-        await self.send_text_message(message.info.source.sender, str(refresh_task.status))
+        await self.send_text_message(
+            message.info.source.sender, str(refresh_task.status)
+        )
 
     async def _on_status(self, message, params):
         n_devices = len(self.users)
@@ -316,7 +326,9 @@ Total devices: {n_devices}
             return
         jid_anon = utils.jid_to_str(user.jid_anon)
         if user.username is None or not jid_anon or not self.users.get(jid_anon):
-            self.logger.info("User seems to already be unregistered. Not unregistering demo account")
+            self.logger.info(
+                "User seems to already be unregistered. Not unregistering demo account"
+            )
             return
         await self.send_template_user(user, "unregister_demo")
         await self.unregister_user(user)

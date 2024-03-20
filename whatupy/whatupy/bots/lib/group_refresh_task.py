@@ -1,12 +1,12 @@
-from dataclasses import dataclass, field
 import asyncio
 import random
 import typing as T
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from . import UserBot
 from ... import utils
 from ...protos import whatupcore_pb2 as wuc
+from . import UserBot
 
 
 @dataclass

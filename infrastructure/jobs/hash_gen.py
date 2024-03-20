@@ -1,14 +1,12 @@
 from pulumi import Output, get_stack
-from pulumi_gcp import cloudrunv2, serviceaccount, storage, projects
+from pulumi_gcp import cloudrunv2, projects, serviceaccount, storage
+
 from artifact_registry import hash_gen_image
-from bigquery import (
-    transfers_role,
-    bq_dataset_id,
-)
+from bigquery import bq_dataset_id, transfers_role
+from config import project
 from job import Job, JobArgs
 from network import private_services_network_with_db, vpc
 from storage import media_bucket
-from config import project
 
 service_name = "hash-gen"
 
