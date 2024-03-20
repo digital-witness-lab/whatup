@@ -66,11 +66,12 @@ def process_tasks(tasks, client, hash_table_id, n_processes=None):
             bigquery_entries = list(
                 filter(None, pool.imap(process_image, tasks_chunk, chunksize=16))
             )
-            errors = client.insert_rows(
-                hash_table_id, bigquery_entries, BIGQUERY_SCHEMA
-            )
-            if not errors:
-                i += len(bigquery_entries)
-                print(f"Added {len(bigquery_entries)} total new rows")
-            else:
-                print(f"Encountered errors while inserting rows: {errors}")
+            if bigquery_entries:
+                errors = client.insert_rows(
+                    hash_table_id, bigquery_entries, BIGQUERY_SCHEMA
+                )
+                if not errors:
+                    i += len(bigquery_entries)
+                    print(f"Added {len(bigquery_entries)} total new rows")
+                else:
+                    print(f"Encountered errors while inserting rows: {errors}")

@@ -22,9 +22,10 @@ type QueueMessage struct {
 type MessageClient struct {
 	position *list.Element
 	queue    *MessageQueue
-	valid    bool
 
-	newMessageAlert chan bool
+	valid bool
+
+	newMessageAlert chan *QueueMessage
 	ctxC            ContextWithCancel
 	log             waLog.Logger
 }
@@ -47,31 +48,25 @@ func (mc *MessageClient) MessageChan() (chan *QueueMessage, error) {
 		return nil, errors.New("Can only have one message chan per client")
 	}
 	mc.log.Debugf("creating channel")
-	mc.newMessageAlert = make(chan bool, 128)
-	msgChan := make(chan *QueueMessage)
+	mc.newMessageAlert = make(chan *QueueMessage, 128)
+	msgChan := make(chan *QueueMessage, 128)
 	go func() {
 		defer func() { mc.newMessageAlert = nil }()
-		mc.newMessageAlert <- true
+		// first we deplete any queued messages to the channel
+		mc.log.Debugf("Depleting historical messages to channel")
+		mc.depleteQueueToChan(msgChan)
+
+		// now we stream new messages directly to the client
 		for {
-			mc.log.Debugf("waiting for new message or done")
+			mc.log.Debugf("Waiting for new messages")
 			select {
 			case <-mc.ctxC.Done():
 				mc.log.Debugf("done by context")
 				mc.Close()
 				return
-			case alert := <-mc.newMessageAlert:
-				if alert == false {
-					mc.log.Debugf("newMessageAlert channel is closed. Closing context and exiting")
-					mc.Close()
-					return
-				}
-				mc.log.Debugf("saw new message alert")
-				ok := mc.depleteQueueToChan(msgChan)
-				if !ok {
-					mc.log.Debugf("!ok from deplete")
-					mc.Close()
-					return
-				}
+			case msg := <-mc.newMessageAlert:
+				mc.log.Debugf("Sending new message to channel")
+				msgChan <- msg
 			}
 		}
 	}()
@@ -87,6 +82,8 @@ func (mc *MessageClient) depleteQueueToChan(msgChan chan *QueueMessage) bool {
 		} else if msg == nil {
 			mc.log.Debugf("depletion found nil message")
 			return ok
+		} else if mc.ctxC.HasCanceled {
+			return false
 		}
 		mc.log.Debugf("depleting queue saw message: %s: %s", msg.addedAt, msg.message.DebugString())
 		msgChan <- msg
@@ -278,7 +275,7 @@ func (mq *MessageQueue) SendMessageTimestamp(msg *Message, now time.Time) {
 	for _, client := range mq.clients {
 		if client.newMessageAlert != nil {
 			client.log.Debugf("Queue notifying client of message")
-			client.newMessageAlert <- true
+			client.newMessageAlert <- newElement
 		}
 	}
 	mq.PruneMessages()

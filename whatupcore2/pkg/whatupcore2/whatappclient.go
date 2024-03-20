@@ -114,7 +114,10 @@ type WhatsAppClient struct {
 	historyHandler    uint32
 	messageHandler    uint32
 	archiveHandler    uint32
-	groupInfoCache    *expirable.LRU[string, *types.GroupInfo]
+
+	groupInfoCache *expirable.LRU[string, *types.GroupInfo]
+	mediaCache     *DiskCache
+	mediaMutexMap  *MutexMap
 
 	anonLookup *AnonLookup
 }
@@ -168,6 +171,12 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	messageQueue.Start()
 
 	aclStore := NewACLStore(db, username, log.Sub("ACL"))
+	mediaCache, err := NewDiskCacheTempdir(ctxC, time.Minute*10, 32e6, time.Minute, log.Sub("mediaCache"))
+	if err != nil {
+		return nil, err
+	}
+	mediaMutexMap := NewMutexMap(log.Sub("mediaMutex"))
+
 	client := &WhatsAppClient{
 		Client: wmClient,
 
@@ -181,6 +190,8 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 		historyRequestContexts: make(map[string]ContextWithCancel),
 		shouldRequestHistory:   make(map[string]bool),
 		groupInfoCache:         expirable.NewLRU[string, *types.GroupInfo](128, nil, time.Minute),
+		mediaCache:             mediaCache,
+		mediaMutexMap:          mediaMutexMap,
 	}
 	go func() {
 		<-ctx.Done()
@@ -216,19 +227,32 @@ func (wac *WhatsAppClient) IsClosed() bool {
 func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
 	switch evt.(type) {
 	case *events.Connected:
-		wac.Log.Infof("User connected. Setting state.")
-		err := wac.SendPresence(types.PresenceAvailable)
-		if err != nil {
-			wac.Log.Errorf("Could not send presence: %+v", err)
-		}
-		wac.SetForceActiveDeliveryReceipts(false)
+		wac.Log.Infof("User connected.")
 		wac.encSQLStore = encsqlstore.NewEncSQLStore(wac.encContainer, *wac.Client.Store.ID)
 		wac.anonLookup.makeReady()
+		go wac.presenceTwiddler()
 	case *events.LoggedOut:
 		wac.Log.Warnf("User has logged out on their device")
 		wac.Unregister()
 		wac.encSQLStore = nil
 		wac.Close()
+	}
+}
+
+func (wac *WhatsAppClient) presenceTwiddler() {
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	for {
+		wac.Log.Infof("Twiddling client presence")
+		wac.SendPresence(types.PresenceAvailable)
+		time.Sleep(5 * time.Second)
+		wac.SendPresence(types.PresenceUnavailable)
+		select {
+		case <-wac.ctxC.Done():
+			return
+		case <-ticker.C:
+			continue
+		}
 	}
 }
 
@@ -635,18 +659,37 @@ func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Dur
 }
 
 func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
+	lock := wac.mediaMutexMap.Lock(msgInfo.ID)
+	defer lock.Unlock()
+
+	data, err := wac.mediaCache.Get(msgInfo.ID)
+	if data != nil {
+		wac.Log.Debugf("Found cached version of image in DownloadAnyRetry: %v", msgInfo.ID)
+		return data, nil
+	}
 	wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
 
-	data, err := wac.Client.DownloadAny(msg)
+	data, err = wac.Client.DownloadAny(msg)
 	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith403) {
 		return wac.RetryDownload(ctx, msg, msgInfo)
 	} else if err != nil {
 		wac.Log.Errorf("Error trying to download message: %v", err)
 	}
+	if len(data) > 0 {
+		wac.mediaCache.Add(msgInfo.ID, data)
+	}
 	return data, err
 }
 
 func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
+	lock := wac.mediaMutexMap.Lock(msgInfo.ID)
+	defer lock.Unlock()
+
+	data, err := wac.mediaCache.Get(msgInfo.ID)
+	if data != nil {
+		wac.Log.Debugf("Found cached version of image in RetryDownload: %v", msgInfo.ID)
+		return data, nil
+	}
 	mediaKeyCandidates := valuesFilterZero(findFieldName(msg, "MediaKey"))
 	if len(mediaKeyCandidates) == 0 {
 		wac.Log.Errorf("Could not find MediaKey: %+v", msg)
@@ -657,7 +700,7 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 		wac.Log.Errorf("Could not convert MediaKey: %+v: %+v", msg, mediaKeyCandidates)
 		return nil, ErrInvalidMediaMessage
 	}
-	err := wac.Client.SendMediaRetryReceipt(msgInfo, mediaKey)
+	err = wac.Client.SendMediaRetryReceipt(msgInfo, mediaKey)
 	if err != nil {
 		wac.Log.Errorf("Could not send media retry: %+v", err)
 		return nil, err
@@ -680,10 +723,10 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 			if retry.MessageID == msgInfo.ID {
 				retryData, err := whatsmeow.DecryptMediaRetryNotification(retry, mediaKey)
 				if err != nil || retryData.GetResult() != waProto.MediaRetryNotification_SUCCESS {
-                    wac.Log.Errorf("Could not download media through a retry notification: %v: %s", err, retryData.GetResult().String())
+					wac.Log.Errorf("Could not download media through a retry notification: %v: %s", err, retryData.GetResult().String())
 					retryError = err
 					ctxRetry.Cancel()
-                    return
+					return
 				}
 				// TODO: FIX: the following line may be the reason we are
 				// getting 403's on historical media downloads
@@ -707,6 +750,7 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 	}
 	if len(body) > 0 {
 		wac.Log.Debugf("Media Retry got body of length: %d", len(body))
+		wac.mediaCache.Add(msgInfo.ID, body)
 	}
 	return body, retryError
 }
