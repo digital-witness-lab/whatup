@@ -248,23 +248,6 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		heartbeatTicker.Stop()
 	}
 
-	go func() {
-		for {
-			select {
-			case <-heartbeatTicker.C:
-				msg := &pb.MessageStream{
-					Timestamp:   timestamppb.New(time.Now()),
-					IsHeartbeat: true,
-				}
-				if err := server.Send(msg); err != nil {
-					s.log.Errorf("Could not send message to client: %v", err)
-					ctxC.Cancel()
-				}
-			case <-ctxC.Done():
-				session.log.Debugf("Client connection closed")
-			}
-		}
-	}()
 
 	for {
 		select {
@@ -274,6 +257,15 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		case <-session.ctxC.Done():
 			session.log.Debugf("Session closed... disconnecting")
 			return nil
+		case <-heartbeatTicker.C:
+			msg := &pb.MessageStream{
+				Timestamp:   timestamppb.New(time.Now()),
+				IsHeartbeat: true,
+			}
+			if err := server.Send(msg); err != nil {
+				s.log.Errorf("Could not send message to client: %v", err)
+				ctxC.Cancel()
+			}
 		case qElem := <-msgChan:
 			msg := qElem.message
 			if !lastMessageTimestamp.IsZero() {
