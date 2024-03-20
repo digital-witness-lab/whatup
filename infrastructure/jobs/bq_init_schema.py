@@ -3,8 +3,8 @@ from pulumi_gcp import cloudrunv2, projects, serviceaccount
 
 from artifact_registry import bq_init_schema_image
 from bigquery import (
-    sql_connections,
     bq_dataset_id,
+    sql_connections,
     table_transfers,
     transfers_role,
 )

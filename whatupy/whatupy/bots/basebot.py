@@ -1,8 +1,8 @@
-import os
 import argparse
 import asyncio
 import enum
 import logging
+import os
 import random
 import shlex
 import typing as T
@@ -16,12 +16,12 @@ from cloudpathlib import AnyPath
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from .. import utils
-from .static import format_lang_template
 from ..connection import create_whatupcore_clients
 from ..credentials_manager.credential import Credential
 from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
 from ..protos.whatupcore_pb2_grpc import WhatUpCoreStub
+from .static import format_lang_template
 
 logger = logging.getLogger(__name__)
 PinningEntry = namedtuple("PinningEntry", "bot_id expiration_time".split(" "))
@@ -521,7 +521,10 @@ class BaseBot:
                 )
 
     async def _process_archive_file(
-            self, filename, group_infos: T.Dict[str, wuc.GroupInfo], community_infos: T.Dict[str, T.List[wuc.GroupInfo]]
+        self,
+        filename,
+        group_infos: T.Dict[str, wuc.GroupInfo],
+        community_infos: T.Dict[str, T.List[wuc.GroupInfo]],
     ):
         self.logger.debug("Loading archive file: %s", filename)
         filename_path = AnyPath(filename)

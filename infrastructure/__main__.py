@@ -10,8 +10,8 @@ from jobs import (
     bq_init_schema,
     db_delete_groups,
     db_migrations,
-    whatupcore_remove_user,
     hash_gen,
+    whatupcore_remove_user,
 )
 from services import (
     bot_archive,

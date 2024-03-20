@@ -1,9 +1,8 @@
-from pathlib import Path
 import string
 import typing as T
+from pathlib import Path
 
 import yaml
-
 
 static_dir = Path(__file__).parent.absolute()
 template_dir = Path(__file__).parent.absolute() / "templates/"

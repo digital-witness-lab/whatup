@@ -248,7 +248,6 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		heartbeatTicker.Stop()
 	}
 
-
 	for {
 		select {
 		case <-ctxC.Done():
