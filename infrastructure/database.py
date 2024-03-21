@@ -6,6 +6,18 @@ from pulumi_gcp import sql
 from config import db_configs, db_root_password, is_prod_stack, location
 from network import private_ip_address_range, private_vpc_connection, vpc
 
+database_descriptions = {
+    "messages": {
+        "reactions": {"pk": "id"},
+        "group_info": {"pk": "id"},
+        "group_participants": {"pk": "id"},
+        "messages": {"pk": "id"},
+        "media": {"pk": "filename"},
+        "donor_messages": {"pk": "id"},
+    },
+    "users": {"user_registration_meta": {"pk": "jid"}},
+}
+
 retention_settings = (
     sql.DatabaseInstanceSettingsBackupConfigurationBackupRetentionSettingsArgs(
         retention_unit="COUNT",
