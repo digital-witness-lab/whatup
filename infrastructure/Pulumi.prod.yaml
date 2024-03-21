@@ -5,7 +5,7 @@ config:
   google-native:project: whatup-prod
   google-native:region: us-central1
   google-native:zone: us-central1-a
-  whatup:createOnboardBulkJob: "true"
+  whatup:databaseRegion: US
   whatup:databases:
     - name: messages
       nameShort: msg

@@ -5,9 +5,9 @@ from artifact_registry import bq_init_schema_image
 from bigquery import (
     bq_dataset_id,
     sql_connections,
-    table_transfers,
     transfers_role,
 )
+from database import database_descriptions
 from config import project
 from job import Job, JobArgs
 from network import private_services_network_with_db, vpc
@@ -29,7 +29,7 @@ transfers_perm = projects.IAMMember(
     role=Output.concat("roles/").concat(transfers_role.name),
 )
 
-for database, tables_spec in table_transfers.items():
+for database, tables_spec in database_descriptions.items():
     bq_init_schema_job = Job(
         f"{job_name}-{database}",
         JobArgs(
