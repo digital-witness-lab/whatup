@@ -11,7 +11,7 @@ from pulumi_google_native.bigqueryconnection.v1beta1 import (
     ConnectionArgs,
 )
 
-from config import db_configs, location, db_region, project
+from config import db_configs, location, bq_dataset_region, project
 from database import primary_cloud_sql_instance
 from gcloud import get_project_number
 
@@ -46,16 +46,18 @@ messages_dataset = bigquery.v2.Dataset(
             dataset_id=bq_dataset_id,
         ),
         description="BigQuery dataset for the messages DB.",
-        location=db_region,
+        location=bq_dataset_region,
         friendly_name=f"messages_{get_stack()}",
     ),
 )
 
 
 sql_connections: T.Dict[str, Connection] = {
-    "users": create_sql_connection(db_configs["users"], db_region, location),
+    "users": create_sql_connection(
+        db_configs["users"], bq_dataset_region, location
+    ),
     "messages": create_sql_connection(
-        db_configs["messages"], db_region, location
+        db_configs["messages"], bq_dataset_region, location
     ),
 }
 

@@ -26,7 +26,7 @@ db_configs: Dict[str, DatabaseConfig] = {
     for data in config.require_object("databases")
 }
 
-db_region = config.require("databaseRegion")
+bq_dataset_region = config.require("bqDatasetRegion")
 db_root_password = config.require_secret("dbRootPassword")
 whatup_salt = config.require_secret("whatupSalt")
 whatup_anon_key = config.require_secret("whatupAnonKey")

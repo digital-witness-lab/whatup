@@ -1,24 +1,16 @@
 import json
 
-from pulumi import Output
-from pulumi_gcp import cloudrunv2, projects, serviceaccount, bigquery
+from pulumi_gcp import projects, bigquery
 from pulumi import Output, ResourceOptions, get_stack
-from pulumi_google_native.bigqueryconnection.v1beta1 import (
-    CloudSqlCredentialArgs,
-    CloudSqlPropertiesArgs,
-    CloudSqlPropertiesType,
-    Connection,
-    ConnectionArgs,
-)
 from pulumi_google_native import bigquerydatatransfer as dts
 
-from config import db_region, project, is_prod_stack
+from config import bq_dataset_region, project, is_prod_stack
 from bigquery import bq_dataset_id, transfers_role
 
 
 translate_connection = bigquery.Connection(
     f"con-trans-msg-en-{get_stack()}",
-    location=db_region,
+    location=bq_dataset_region,
     connection_id=f"con-trans-msg-en-{get_stack()}",
     cloud_resource=bigquery.ConnectionCloudResourceArgs(),
     description="Connection to vertex AI for translation of messages",  # noqa: E501
@@ -134,38 +126,42 @@ query = Output.all(
     conn_name=translate_connection.name,
 ).apply(
     lambda args: f"""
-CREATE OR REPLACE MODEL
-`{args['dataset_id']}.translation_model`
-REMOTE WITH CONNECTION `{args['conn_name']}`
-OPTIONS (remote_service_type = 'cloud_ai_translate_v3');
-
-MERGE INTO `{args['dataset_id']}.{args['results_table']}` as me
-USING (
-  SELECT
-    FARM_FINGERPRINT(text_content) AS text_hash,
-    STRING(ml_translate_result.translations[0].detected_language_code) AS lang_orig,
-    text_content AS text_orig,
-    STRING(ml_translate_result.translations[0].translated_text) AS text_translate,
-    ml_translate_status as status,
-    current_datetime() AS timestamp
-  FROM ML.TRANSLATE(
-    MODEL `{args['dataset_id']}.translation_model`,
-    (
-      SELECT DISTINCT
-        text AS text_content
-      FROM `{args['dataset_id']}.messages`
-      WHERE FARM_FINGERPRINT(text) NOT IN (SELECT text_hash FROM `{args['dataset_id']}.{args['results_table']}`)
-    ),
-    STRUCT('translate_text' AS translate_mode, 'en' AS target_language_code))
-  WHERE ml_translate_status != ''
-) as trans
-ON trans.text_hash = me.text_hash AND trans.status != ''
-WHEN NOT MATCHED BY SOURCE
-THEN
-    DELETE
-WHEN NOT MATCHED BY TARGET
-THEN
-    INSERT ROW;
+    CREATE OR REPLACE MODEL
+    `{args['dataset_id']}.translation_model`
+    REMOTE WITH CONNECTION `{args['conn_name']}`
+    OPTIONS (remote_service_type = 'cloud_ai_translate_v3');
+    
+    MERGE INTO `{args['dataset_id']}.{args['results_table']}` as me
+    USING (
+      SELECT
+        FARM_FINGERPRINT(text_content) AS text_hash,
+        STRING(ml_translate_result.translations[0].detected_language_code) AS lang_orig,
+        text_content AS text_orig,
+        STRING(ml_translate_result.translations[0].translated_text) AS text_translate,
+        ml_translate_status as status,
+        current_datetime() AS timestamp
+      FROM ML.TRANSLATE(
+        MODEL `{args['dataset_id']}.translation_model`,
+        (
+          SELECT DISTINCT
+            text AS text_content
+          FROM `{args['dataset_id']}.messages`
+          WHERE FARM_FINGERPRINT(text) NOT IN (SELECT text_hash FROM `{args['dataset_id']}.{args['results_table']}`)
+            LIMIT 20
+        ),
+        STRUCT('translate_text' AS translate_mode, 'en' AS target_language_code))
+    ) as trans
+    ON trans.text_hash = me.text_hash
+    WHEN NOT MATCHED BY TARGET
+    THEN
+        INSERT ROW;
+    WHEN MATCHED BY TARGET AND trans.status = ''
+    THEN
+        UPDATE SET
+            me.lang_orig = trans.lang_orig,
+            me.text_translate = trans.text_translate,
+            me.status = trans.status,
+            me.timestamp = trans.timestamp
 """.strip()
 )
 
@@ -173,7 +169,7 @@ translate_bigquery_task = dts.v1.TransferConfig(
     f"msg-translate-{get_stack()}-trans",
     dts.v1.TransferConfigArgs(
         destination_dataset_id=bq_dataset_id,
-        location=db_region,
+        location=bq_dataset_region,
         display_name="Translate messages from messages table",
         data_source_id="scheduled_query",
         params={
