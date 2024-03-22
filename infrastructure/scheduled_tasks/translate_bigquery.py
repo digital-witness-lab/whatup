@@ -144,7 +144,7 @@ query = Output.all(
             `{args['dataset_id']}.messages` AS m
           LEFT JOIN `{args['dataset_id']}.{args['results_table']}` AS me
             ON FARM_FINGERPRINT(m.text) = me.text_hash
-          WHERE me.text_hash IS NULL
+          WHERE me.text_hash IS NULL AND FARM_FINGERPRINT(m.text) IS NOT NULL
           { 'LIMIT 20' if not is_prod_stack() else ''}
         ),
         STRUCT('translate_text' AS translate_mode, 'en' AS target_language_code))
@@ -174,7 +174,11 @@ translate_bigquery_task = dts.v1.TransferConfig(
         params={
             "query": query,
         },
-        schedule="every 3 hours" if is_prod_stack() else None,
+        # Run every 3 hours, starting at 00h30... essentially waiting for the
+        # postgres transfers to finish
+        schedule="every 3 hours syncronized 00:30 to 00:29"
+        if is_prod_stack()
+        else None,
         service_account_name=data_transfers_service_account.email,
     ),
     opts=ResourceOptions(
