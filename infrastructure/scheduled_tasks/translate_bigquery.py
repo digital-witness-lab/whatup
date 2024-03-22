@@ -174,7 +174,7 @@ translate_bigquery_task = dts.v1.TransferConfig(
         params={
             "query": query,
         },
-        schedule="every 6 hours" if is_prod_stack() else None,
+        schedule="every 3 hours" if is_prod_stack() else None,
         service_account_name=data_transfers_service_account.email,
     ),
     opts=ResourceOptions(
