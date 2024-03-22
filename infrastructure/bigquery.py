@@ -11,7 +11,7 @@ from pulumi_google_native.bigqueryconnection.v1beta1 import (
     ConnectionArgs,
 )
 
-from config import db_configs, location, bq_dataset_region, project
+from config import db_configs, bq_dataset_region, project
 from database import primary_cloud_sql_instance
 from gcloud import get_project_number
 
