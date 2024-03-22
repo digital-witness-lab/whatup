@@ -20,5 +20,9 @@ from services import (
     bot_user_services,
     whatupcore2,
 )
+from scheduled_tasks import (
+    translate_bigquery,
+    cloudsql_bigquery_transfer,
+)
 
 # pulumi.export("bigquery_connection_id", bigquery_sql_connection.connection_id)

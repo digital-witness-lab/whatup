@@ -15,6 +15,7 @@ for service in [
     "bigqueryconnection.googleapis.com",
     "bigquerydatatransfer.googleapis.com",
     "cloudresourcemanager.googleapis.com",
+    "translate.googleapis.com",
     "compute.googleapis.com",
     "container.googleapis.com",
     "iam.googleapis.com",
