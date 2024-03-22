@@ -1,5 +1,4 @@
 from pulumi import Output, ResourceOptions, get_stack
-from pulumi_gcp import projects, serviceaccount
 from pulumi_google_native import bigquery
 from pulumi_google_native import bigquerydatatransfer as dts
 
