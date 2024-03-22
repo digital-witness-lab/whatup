@@ -5,7 +5,10 @@ from pulumi import Output, ResourceOptions, get_stack
 from pulumi_google_native import bigquerydatatransfer as dts
 
 from config import bq_dataset_region, project, is_prod_stack
-from bigquery import bq_dataset_id, transfers_role
+from bigquery import (
+    bq_dataset_id,
+    data_transfers_service_account,
+)
 
 
 translate_connection = bigquery.Connection(
@@ -50,14 +53,6 @@ translate_dts_perm = projects.IAMMember(
     project=project,
     role=Output.concat("roles/").concat(translate_dts_role.name),
 )
-
-transfers_perm = projects.IAMMember(
-    "con-trans-msg-en-tr",
-    member=Output.concat("serviceAccount:", service_account_email),
-    project=project,
-    role=Output.concat("roles/").concat(transfers_role.name),
-)
-
 
 service_usage_consumer = projects.IAMMember(
     "con-trans-msg-en-suc",
@@ -130,7 +125,7 @@ query = Output.all(
     `{args['dataset_id']}.translation_model`
     REMOTE WITH CONNECTION `{args['conn_name']}`
     OPTIONS (remote_service_type = 'cloud_ai_translate_v3');
-    
+
     MERGE INTO `{args['dataset_id']}.{args['results_table']}` as me
     USING (
       SELECT
@@ -143,32 +138,36 @@ query = Output.all(
       FROM ML.TRANSLATE(
         MODEL `{args['dataset_id']}.translation_model`,
         (
-          SELECT DISTINCT
-            text AS text_content
-          FROM `{args['dataset_id']}.messages`
-          WHERE FARM_FINGERPRINT(text) NOT IN (SELECT text_hash FROM `{args['dataset_id']}.{args['results_table']}`)
-            LIMIT 20
+          SELECT
+            DISTINCT m.text AS text_content
+          FROM
+            `{args['dataset_id']}.messages` AS m
+          LEFT JOIN `{args['dataset_id']}.{args['results_table']}` AS me
+            ON FARM_FINGERPRINT(m.text) = me.text_hash
+          WHERE me.text_hash IS NULL
+          { 'LIMIT 20' if not is_prod_stack() else ''}
         ),
         STRUCT('translate_text' AS translate_mode, 'en' AS target_language_code))
     ) as trans
     ON trans.text_hash = me.text_hash
     WHEN NOT MATCHED BY TARGET
     THEN
-        INSERT ROW;
-    WHEN MATCHED BY TARGET AND trans.status = ''
+        INSERT ROW
+    WHEN MATCHED AND trans.status = ''
     THEN
         UPDATE SET
             me.lang_orig = trans.lang_orig,
             me.text_translate = trans.text_translate,
             me.status = trans.status,
             me.timestamp = trans.timestamp
+    ;
 """.strip()
 )
 
 translate_bigquery_task = dts.v1.TransferConfig(
     f"msg-translate-{get_stack()}-trans",
     dts.v1.TransferConfigArgs(
-        destination_dataset_id=bq_dataset_id,
+        # destination_dataset_id=bq_dataset_id,
         location=bq_dataset_region,
         display_name="Translate messages from messages table",
         data_source_id="scheduled_query",
@@ -176,14 +175,13 @@ translate_bigquery_task = dts.v1.TransferConfig(
             "query": query,
         },
         schedule="every 6 hours" if is_prod_stack() else None,
-        service_account_name=service_account_email,
+        service_account_name=data_transfers_service_account.email,
     ),
     opts=ResourceOptions(
         depends_on=[
             translate_connection,
             results_table,
             translate_dts_role,
-            transfers_perm,
         ]
     ),
 )

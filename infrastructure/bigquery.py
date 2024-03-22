@@ -1,7 +1,7 @@
 import typing as T
 
-from pulumi import get_stack
-from pulumi_gcp import projects
+from pulumi import get_stack, Output, ResourceOptions
+from pulumi_gcp import projects, serviceaccount
 from pulumi_google_native import bigquery
 from pulumi_google_native.bigqueryconnection.v1beta1 import (
     CloudSqlCredentialArgs,
@@ -18,14 +18,14 @@ from gcloud import get_project_number
 bq_dataset_id = f"messages_{get_stack().replace('-', '_')}"
 
 
-def create_sql_connection(db_config, bq_region, sql_region) -> Connection:
+def create_sql_connection(db_config, bq_region) -> Connection:
     connection_credential = CloudSqlCredentialArgs(
         username=db_config.name, password=db_config.password
     )
     return Connection(
         f"bg-to-sql-{db_config.name_short}",
         args=ConnectionArgs(
-            location=sql_region,
+            location=bq_region,
             connection_id=f"{db_config.name}_{get_stack()}",
             friendly_name=f"{db_config.name}_{get_stack()}",
             description="Connection resource for running federated queries in BigQuery.",  # noqa: E501
@@ -53,11 +53,9 @@ messages_dataset = bigquery.v2.Dataset(
 
 
 sql_connections: T.Dict[str, Connection] = {
-    "users": create_sql_connection(
-        db_configs["users"], bq_dataset_region, location
-    ),
+    "users": create_sql_connection(db_configs["users"], bq_dataset_region),
     "messages": create_sql_connection(
-        db_configs["messages"], bq_dataset_region, location
+        db_configs["messages"], bq_dataset_region
     ),
 }
 
@@ -98,8 +96,47 @@ transfers_role = projects.IAMCustomRole(
             "bigquery.tables.list",
             "bigquery.tables.update",
             "bigquery.tables.updateData",
+            "bigquery.models.create",
+            "bigquery.models.getData",
+            "bigquery.models.updateData",
+            "bigquery.models.updateMetadata",
         ],
         title="BigQuery Transfers Role",
         stage="GA",
+    ),
+)
+
+data_transfers_service_account = serviceaccount.Account(
+    "bq-datatransfers-sa",
+    serviceaccount.AccountArgs(
+        account_id=f"bq-datatransfers-sa-{get_stack()}",
+        description="Service account used by Big Query Data Transfers",
+    ),
+)
+
+# Grant the custom role to the custom service account.
+# https://cloud.google.com/bigquery/docs/enable-transfer-service#grant_bigqueryadmin_access
+bq_transfers_perm = projects.IAMMember(
+    "bq-transfers-perm",
+    member=Output.concat(
+        "serviceAccount:", data_transfers_service_account.email
+    ),
+    project=project,
+    role=Output.concat("roles/").concat(transfers_role.name),
+    opts=ResourceOptions(
+        depends_on=list(sql_connections.values()),
+    ),
+)
+
+
+bq_cloudsql_perm = projects.IAMMember(
+    "bq-cloudsql-perm",
+    member=Output.concat(
+        "serviceAccount:", default_bq_connection_service_account_email
+    ),
+    project=project,
+    role="roles/cloudsql.client",
+    opts=ResourceOptions(
+        depends_on=list(sql_connections.values()),
     ),
 )
