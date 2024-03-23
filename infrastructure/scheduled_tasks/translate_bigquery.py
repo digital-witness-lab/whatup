@@ -171,6 +171,7 @@ translate_bigquery_task = dts.v1.TransferConfig(
     f"msg-translate-{get_stack()}-trans",
     dts.v1.TransferConfigArgs(
         # destination_dataset_id=bq_dataset_id,
+        disabled=True,
         location=bq_dataset_region,
         display_name="Translate messages from messages table",
         data_source_id="scheduled_query",
