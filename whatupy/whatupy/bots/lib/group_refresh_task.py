@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from ... import utils
 from ...protos import whatupcore_pb2 as wuc
-from . import UserBot
+from .user_bot import UserBot
 
 
 @dataclass

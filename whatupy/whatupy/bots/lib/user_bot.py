@@ -9,7 +9,7 @@ from rbloom import Bloom
 from ... import utils
 from ...protos import whatupcore_pb2 as wuc
 from ..basebot import BaseBot
-from . import UserState
+from .user_state import UserState
 
 
 @dataclass
