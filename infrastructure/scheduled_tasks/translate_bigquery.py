@@ -144,10 +144,14 @@ query = Output.all(
             `{args['dataset_id']}.messages` AS m
           LEFT JOIN `{args['dataset_id']}.{args['results_table']}` AS me
             ON FARM_FINGERPRINT(m.text) = me.text_hash
-          WHERE 
-            (me.text_hash IS NULL AND FARM_FINGERPRINT(m.text) IS NOT NULL)
-            OR 
-            (me.status != '')
+          WHERE
+            (
+                -- we haven't translated this text before 
+                (me.text_hash IS NULL AND FARM_FINGERPRINT(m.text) IS NOT NULL)
+                OR
+                -- the last translation didn't succeed
+                (me.status != '')
+            ) AND length(me.text) < 30720 -- api limitation
           { 'LIMIT 20' if not is_prod_stack() else ''}
         ),
         STRUCT('translate_text' AS translate_mode, 'en' AS target_language_code))
