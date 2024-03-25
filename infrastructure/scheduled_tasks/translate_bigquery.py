@@ -115,10 +115,24 @@ results_table = bigquery.Table(
     ),
 )
 
+if is_prod_stack():
+    query_suffix = Output.all(dataset_id=bq_dataset_id).apply(
+        lambda args: f"""
+    AND m.chat_jid IN (
+        SELECT
+            JID
+        FROM `{args['dataset_id']}.labels.group_labels`
+        WHERE label = "dwl-rule:translate"
+    """
+    )
+else:
+    query_suffix = "LIMIT 20"
+
 query = Output.all(
     dataset_id=bq_dataset_id,
     results_table=results_table.table_id,
     conn_name=translate_connection.name,
+    query_suffix=query_suffix,
 ).apply(
     lambda args: f"""
     CREATE OR REPLACE MODEL
@@ -144,11 +158,8 @@ query = Output.all(
             `{args['dataset_id']}.messages` AS m
           LEFT JOIN `{args['dataset_id']}.{args['results_table']}` AS me
             ON FARM_FINGERPRINT(m.text) = me.text_hash
-          LEFT JOIN `whatup-prod.labels.group_labels` AS gl
-            ON gl.JID = m.chat_jid
           WHERE
             m.text IS NOT NULL
-            AND gl.label = 'dwl-rule:translate'
             AND (
                 -- we haven't translated this text before
                 (me.text_hash IS NULL AND FARM_FINGERPRINT(m.text) IS NOT NULL)
@@ -157,7 +168,7 @@ query = Output.all(
                 (me.status != '')
             )
             AND length(me.text) < 30720 -- api limitation
-          { 'LIMIT 20' if not is_prod_stack() else ''}
+          {args['query_suffix']}
         ),
         STRUCT('translate_text' AS translate_mode, 'en' AS target_language_code))
     ) as trans
