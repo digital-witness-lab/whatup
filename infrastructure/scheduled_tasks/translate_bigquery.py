@@ -116,15 +116,13 @@ results_table = bigquery.Table(
 )
 
 if is_prod_stack():
-    query_suffix = Output.all(dataset_id=bq_dataset_id).apply(
-        lambda args: f"""
+    query_suffix = """
     AND m.chat_jid IN (
         SELECT
             JID
-        FROM `{args['dataset_id']}.labels.group_labels`
+        FROM `labels.group_labels`
         WHERE label = "dwl-rule:translate"
     """
-    )
 else:
     query_suffix = "LIMIT 20"
 
@@ -167,7 +165,7 @@ query = Output.all(
                 -- the last translation didn't succeed
                 (me.status != '')
             )
-            AND length(me.text) < 30720 -- api limitation
+            AND length(m.text) < 30720 -- api limitation
           {args['query_suffix']}
         ),
         STRUCT('translate_text' AS translate_mode, 'en' AS target_language_code))
