@@ -146,7 +146,7 @@ query = Output.all(
             ON FARM_FINGERPRINT(m.text) = me.text_hash
           WHERE
             (
-                -- we haven't translated this text before 
+                -- we haven't translated this text before
                 (me.text_hash IS NULL AND FARM_FINGERPRINT(m.text) IS NOT NULL)
                 OR
                 -- the last translation didn't succeed
