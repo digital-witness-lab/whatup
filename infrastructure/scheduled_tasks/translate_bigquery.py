@@ -122,6 +122,7 @@ if is_prod_stack():
             JID
         FROM `labels.group_labels`
         WHERE label = "dwl-rule:translate"
+    )
     """
 else:
     query_suffix = "LIMIT 20"
