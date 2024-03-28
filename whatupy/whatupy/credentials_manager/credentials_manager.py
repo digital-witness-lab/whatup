@@ -41,8 +41,8 @@ class CredentialsManager:
     def unregister(self, username):
         raise NotImplementedError
 
-    def read_credential(self, locator: Any, **kwargs) -> Credential:
+    def read_credential(self, locator: Any) -> Credential:
         raise NotImplementedError
 
-    def write_credential(self, credential: Credential, **kwargs):
+    def write_credential(self, credential: Credential):
         raise NotImplementedError

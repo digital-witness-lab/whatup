@@ -3,7 +3,7 @@ import glob
 import json
 import typing as T
 
-from cloudpathlib import AnyPath
+from cloudpathlib import CloudPath, AnyPath
 
 from .credentials_manager import (
     Credential,
@@ -30,6 +30,7 @@ class CredentialsManagerCloudPath(CredentialsManager):
         should_loop = False
         credentials = []
         path = self.path
+        self._clear_cache()
         if path.is_file():
             credentials.append(path)
         elif path.is_dir():
@@ -40,10 +41,12 @@ class CredentialsManagerCloudPath(CredentialsManager):
             credentials.extend(path / filename for filename in glob.glob(str(path)))
         return should_loop, credentials
 
-    def read_credential(self, path: AnyPath) -> Credential:
+    def read_credential(self, locator: AnyPath) -> Credential:
+        path = locator
         self.logger.debug("Reading credentials: %s", str(path))
         try:
-            credential = json.load(path.open())
+            with path.open() as fd:
+                credential = json.load(fd)
         except json.decoder.JSONDecodeError as e:
             raise IncompleteCredentialsException(
                 f"Could not parse credentials: {path}"
@@ -103,3 +106,8 @@ class CredentialsManagerCloudPath(CredentialsManager):
             self.logger.critical(
                 "Could not remove credentials file: %s: %s", credential_file, e
             )
+        self._clear_cache()
+
+    def _clear_cache(self):
+        if isinstance(self.path, CloudPath):
+            self.path.clear_cache()
