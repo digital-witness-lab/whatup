@@ -55,17 +55,20 @@ def create_image(
 configure_vm_secrets_image: docker.Image = create_image(
     "configure-vm-secrets", "../configure-vm-secrets/"
 )
+log_cleaner_image: docker.Image = create_image(
+    "log-cleaner", "../log-cleaner/"
+)
 
-configure_vm_build_args = {
-    "CONFIGURE_VM_SECRETS_REPO": configure_vm_secrets_image.image_name
+build_args = {
+    "CONFIGURE_VM_SECRETS_REPO": configure_vm_secrets_image.repo_digest,
+    "LOG_CLEANER_REPO": log_cleaner_image.repo_digest,
 }
-export("vm_secrets_name", configure_vm_secrets_image.image_name)
 
 whatupy_image: docker.Image = create_image(
-    "whatupy", "../whatupy/", build_args=configure_vm_build_args
+    "whatupy", "../whatupy/", build_args=build_args
 )
 whatupcore2_image: docker.Image = create_image(
-    "whatupcore2", "../whatupcore2/", build_args=configure_vm_build_args
+    "whatupcore2", "../whatupcore2/", build_args=build_args
 )
 
 migrations_image: docker.Image = create_image("migrations", "../migrations/")

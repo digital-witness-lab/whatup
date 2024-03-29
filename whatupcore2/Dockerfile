@@ -1,5 +1,8 @@
 ARG CONFIGURE_VM_SECRETS_REPO=configure-vm-secrets:latest
+ARG LOG_CLEANER_REPO=log-cleaner:latest
+
 FROM $CONFIGURE_VM_SECRETS_REPO as configure-vm-secrets
+FROM $LOG_CLEANER_REPO as log-cleaner
 
 FROM golang:1.20-bullseye AS whatupcore2
 
@@ -56,8 +59,9 @@ COPY --from=whatupcore2 /bin/ls /bin/ls
 COPY --from=whatupcore2 /build/whatupcore2 /whatupcore2
 COPY --from=whatupcore2 /build/run.sh /run.sh
 
-ARG CONFIGURE_VM_SECRETS_REPO=configure-vm-secrets
+# Copy internal utility programs
 COPY --from=configure-vm-secrets /configureVmSecrets /configureVmSecrets
+COPY --from=log-cleaner /log-cleaner /log-cleaner
 
 EXPOSE 3447
 

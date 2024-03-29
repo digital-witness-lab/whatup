@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="asdjfhasdfksdsdf342fsdfdsadffdsdff"
+RAND="aiksdfjaskdfhaksjdfhaskdjfdffdsdff"
 app_command=$1
+WHATUPY_CMD="/log-cleaner whatupy"
 
 if [ -z "${app_command:-}" ]; then
     echo "App command is required as an argument."
@@ -52,7 +53,7 @@ export CLOUDPATHLIB_FILE_CACHE_MODE="close_file"
 case $app_command in
 
     archivebot)
-        exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
+        exec ${WHATUPY_CMD} $DEBUG --host "${WHATUPCORE2_HOST}" \
             --cert /run/secrets/ssl-cert \
             --port 3447 \
             archivebot \
@@ -61,7 +62,7 @@ case $app_command in
     ;;
 
     databasebot)
-        exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
+        exec ${WHATUPY_CMD} $DEBUG --host "${WHATUPCORE2_HOST}" \
             --cert /run/secrets/ssl-cert \
             --port 3447 \
             databasebot \
@@ -71,7 +72,7 @@ case $app_command in
     ;;
 
     registerbot)
-        exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
+        exec ${WHATUPY_CMD} $DEBUG --host "${WHATUPCORE2_HOST}" \
             --cert /run/secrets/ssl-cert \
             --port 3447 \
             registerbot \
@@ -81,7 +82,7 @@ case $app_command in
     ;;
 
     userservices)
-        exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
+        exec ${WHATUPY_CMD} $DEBUG --host "${WHATUPCORE2_HOST}" \
             --cert /run/secrets/ssl-cert \
             --port 3447 \
             userservicesbot \
@@ -96,7 +97,7 @@ case $app_command in
             echo "WHATUPY_ONBOARD_BOT_NAME env var is required."
             exit 1
         fi
-        exec whatupy $DEBUG --host "${WHATUPCORE2_HOST}" \
+        exec ${WHATUPY_CMD} $DEBUG --host "${WHATUPCORE2_HOST}" \
             --cert /run/secrets/ssl-cert \
             --port 3447 \
             onboard \
@@ -110,7 +111,7 @@ case $app_command in
         idx=${CLOUD_RUN_TASK_INDEX:=0}
         echo "Loading archive: Job $idx out of $n_jobs"
 
-        whatupy gs-ls "gs://${MESSAGE_ARCHIVE_BUCKET}/" | \
+        ${WHATUPY_CMD} gs-ls "gs://${MESSAGE_ARCHIVE_BUCKET}/" | \
             egrep ${ARCHIVE_FILTER} | \
             filter-by-job $idx $n_jobs | \
             tee /dev/stderr | \
@@ -130,7 +131,7 @@ case $app_command in
             echo "WHATUPY_DELETE_GROUPS env var is required."
             exit 1
         fi
-        exec whatupy $DEBUG \
+        exec ${WHATUPY_CMD} $DEBUG \
             databasebot-delete-groups \
                     --database-url ${DATABASE_URL} \
                     --media-base "gs://${MEDIA_BUCKET}/" \
