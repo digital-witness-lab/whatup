@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="iaxasdjfasdfasdffasdfdfdfasfhnaks"
+RAND="iadfhaskdfhasd923u4wsfdsfasdasdfdfdfasfhnaks"
 app_command=$1
 echo "Starting whatupcore2 with command $app_command."
 
@@ -24,7 +24,7 @@ fi
 case $app_command in
     rpc)
         echo "Starting whatupcore2..."
-        exec /whatupcore2 $@
+        exec /log-cleaner /whatupcore2 $@
     ;;
 
     remove-user)
@@ -33,6 +33,6 @@ case $app_command in
             exit 1
         fi
         echo "Starting whatupcore2..."
-        exec /whatupcore2 remove-user ${WHATUPCORE2_REMOVE_USER}
+        exec /log-cleaner /whatupcore2 remove-user ${WHATUPCORE2_REMOVE_USER}
     ;;
 esac

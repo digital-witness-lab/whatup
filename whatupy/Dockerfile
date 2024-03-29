@@ -1,9 +1,10 @@
 ARG CONFIGURE_VM_SECRETS_REPO=configure-vm-secrets:latest
+ARG LOG_CLEANER_REPO=log-cleaner:latest
+
 FROM $CONFIGURE_VM_SECRETS_REPO as configure-vm-secrets
+FROM $LOG_CLEANER_REPO as log-cleaner
 
 FROM python:3.11-slim-bullseye
-
-COPY --from=configure-vm-secrets /configureVmSecrets /configureVmSecrets
 
 WORKDIR /usr/src/whatupy
 
@@ -26,6 +27,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # Ensure the script is executable.
 RUN chmod +x /usr/src/whatupy/*.sh
+
+COPY --from=configure-vm-secrets /configureVmSecrets /configureVmSecrets
+COPY --from=log-cleaner /log-cleaner /log-cleaner
 
 ARG ENVIRONMENT="dev"
 ENV ENVIRONMENT=$ENVIRONMENT
