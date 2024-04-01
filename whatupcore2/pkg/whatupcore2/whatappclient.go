@@ -659,6 +659,7 @@ func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Dur
 }
 
 func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
+    rateLimit(wac.mediaMutexMap, "downloadAndRetry", 2 * time.Second)
 	lock := wac.mediaMutexMap.Lock(msgInfo.ID)
 	defer lock.Unlock()
 
@@ -682,8 +683,9 @@ func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Me
 }
 
 func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
+    rateLimit(wac.mediaMutexMap, "retryDownload", 2 * time.Second)
 	lock := wac.mediaMutexMap.Lock(msgInfo.ID)
-	defer lock.Unlock()
+    defer lock.Unlock()
 
 	data, err := wac.mediaCache.Get(msgInfo.ID)
 	if data != nil {

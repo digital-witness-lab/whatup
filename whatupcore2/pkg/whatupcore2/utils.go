@@ -4,11 +4,22 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"time"
 
 	"github.com/nyaruka/phonenumbers"
 	"go.mau.fi/whatsmeow/types"
 	"golang.org/x/exp/constraints"
 )
+
+
+func rateLimit(ml *MutexMap, key string, duration time.Duration) Unlocker {
+    locker := ml.Lock(key)
+    go func() {
+        time.Sleep(duration)
+        locker.Unlock()
+    }()
+    return locker
+}
 
 func mergeGroupParticipants(participants []types.GroupParticipant, jids []types.JID) []types.GroupParticipant {
 	participantsFull := make([]types.GroupParticipant, len(participants))
