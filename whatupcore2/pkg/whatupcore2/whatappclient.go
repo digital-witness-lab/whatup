@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/appstate"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/types"
@@ -231,11 +232,32 @@ func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
 		wac.encSQLStore = encsqlstore.NewEncSQLStore(wac.encContainer, *wac.Client.Store.ID)
 		wac.anonLookup.makeReady()
 		go wac.presenceTwiddler()
+        go wac.stateReFetcher()
 	case *events.LoggedOut:
 		wac.Log.Warnf("User has logged out on their device")
 		wac.Unregister()
 		wac.encSQLStore = nil
 		wac.Close()
+	}
+}
+
+func (wac *WhatsAppClient) stateReFetcher() {
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-wac.ctxC.Done():
+			return
+		case <-ticker.C:
+		    wac.Log.Infof("Re-fetching WhatsApp state")
+            names := []appstate.WAPatchName{appstate.WAPatchRegular, appstate.WAPatchRegularHigh, appstate.WAPatchRegularLow, appstate.WAPatchCriticalUnblockLow, appstate.WAPatchCriticalBlock}
+            for _, name := range names {
+                err := wac.FetchAppState(name, true, false)
+                if err != nil {
+				    wac.Log.Errorf("Failed to sync app state: %v", err)
+			    }
+            }
+		}
 	}
 }
 
