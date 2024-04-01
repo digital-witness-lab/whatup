@@ -659,7 +659,6 @@ func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Dur
 }
 
 func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
-    rateLimit(wac.mediaMutexMap, "downloadAndRetry", 2 * time.Second)
 	lock := wac.mediaMutexMap.Lock(msgInfo.ID)
 	defer lock.Unlock()
 
@@ -668,8 +667,9 @@ func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Me
 		wac.Log.Debugf("Found cached version of image in DownloadAnyRetry: %v", msgInfo.ID)
 		return data, nil
 	}
-	wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
+    rateLimit(wac.mediaMutexMap, "download", 2 * time.Second)
 
+	wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
 	data, err = wac.Client.DownloadAny(msg)
 	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith403) {
 		return wac.RetryDownload(ctx, msg, msgInfo)
@@ -683,7 +683,6 @@ func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Me
 }
 
 func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
-    rateLimit(wac.mediaMutexMap, "retryDownload", 2 * time.Second)
 	lock := wac.mediaMutexMap.Lock(msgInfo.ID)
     defer lock.Unlock()
 
@@ -692,6 +691,8 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 		wac.Log.Debugf("Found cached version of image in RetryDownload: %v", msgInfo.ID)
 		return data, nil
 	}
+    rateLimit(wac.mediaMutexMap, "download", 2 * time.Second)
+
 	mediaKeyCandidates := valuesFilterZero(findFieldName(msg, "MediaKey"))
 	if len(mediaKeyCandidates) == 0 {
 		wac.Log.Errorf("Could not find MediaKey: %+v", msg)
