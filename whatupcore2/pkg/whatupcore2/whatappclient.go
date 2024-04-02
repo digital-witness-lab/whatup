@@ -250,12 +250,13 @@ func (wac *WhatsAppClient) stateReFetcher() {
 		case <-wac.ctxC.Done():
 			return
 		case <-ticker.C:
-		    wac.Log.Infof("Re-fetching WhatsApp state")
+		    wac.Log.Infof("Refetching WhatsApp state")
             names := []appstate.WAPatchName{appstate.WAPatchRegular, appstate.WAPatchRegularHigh, appstate.WAPatchRegularLow, appstate.WAPatchCriticalUnblockLow, appstate.WAPatchCriticalBlock}
             for _, name := range names {
+                wac.Log.Debugf("Refetching WhatsApp state: %s", name)
                 err := wac.FetchAppState(name, true, false)
                 if err != nil {
-				    wac.Log.Errorf("Failed to sync app state: %v", err)
+				    wac.Log.Errorf("Failed to refetch WhatsApp state: %v", err)
 			    }
             }
 		}
