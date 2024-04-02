@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-
 	"github.com/lib/pq"
 	"go.mau.fi/whatsmeow/types"
 )
@@ -159,12 +158,14 @@ func decryptDBScan(c DecryptableContainer, s scannable, dests ...any) error {
 			jid, errParse := types.ParseJID(jidPlain)
 			err = errors.Join(errDec, errParse)
 			*d = jid
+		case *int:
+			continue
 		case *uint32:
 			continue
 		case *bool:
 			continue
-        case *uuid.NullUUID:
-            continue
+		case *uuid.NullUUID:
+			continue
 		default:
 			c.Log().Debugf("Could not decrypt Scan field: %T: %+v", d, d)
 		}
