@@ -172,7 +172,8 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	messageQueue.Start()
 
 	aclStore := NewACLStore(db, username, log.Sub("ACL"))
-	mediaCache, err := NewDiskCacheTempdir(ctxC, time.Minute*10, 32e6, time.Minute, log.Sub("mediaCache"))
+    // 64 MB cache
+	mediaCache, err := NewDiskCacheTempdir(ctxC, time.Minute*10, 64 * 1024 * 1024, time.Minute, log.Sub("mediaCache"))
 	if err != nil {
 		return nil, err
 	}

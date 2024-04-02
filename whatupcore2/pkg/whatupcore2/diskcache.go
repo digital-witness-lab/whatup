@@ -68,7 +68,7 @@ func NewDiskCacheTempdir(ctx context.Context, expireTime time.Duration, maxSize 
 	go func() {
 		<-dc.Context.Done()
 		log.Warnf("Temporary disk cache closing... removing contents")
-		//os.RemoveAll(dc.Path)
+        os.RemoveAll(dc.Path)
 	}()
 	return dc, nil
 }
