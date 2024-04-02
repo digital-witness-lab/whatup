@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"go.mau.fi/whatsmeow/types"
 	waLog "go.mau.fi/whatsmeow/util/log"
@@ -20,6 +21,7 @@ func str2hexstr(str string) string {
 }
 
 var (
+	UUID, err       = uuid.NewRandom()
 	log             = waLog.Stdout("dbhelper_test", "DEBUG", true)
 	ErrNotEncrypted = errors.New("Cipher text does not represent an encrypted blob")
 	TestPlaintext   = []any{
@@ -33,6 +35,7 @@ var (
 		string("1234567890:99"),
 		sql.NullString{String: "teststring", Valid: true},
 		pq.ByteaArray([][]byte{[]byte("test1"), []byte("test2")}),
+		UUID,
 	}
 	TestCipher = []any{
 		true,
@@ -45,6 +48,7 @@ var (
 		str2hexstr("enc#(1234567890)") + ":99",
 		sql.NullString{String: str2hexstr("enc#(teststring)"), Valid: true},
 		pq.ByteaArray([][]byte{[]byte("enc#(test1)"), []byte("enc#(test2)")}),
+		UUID,
 	}
 	DecryptRegex = regexp.MustCompile(`^enc#\((.+)\)$`)
 )
