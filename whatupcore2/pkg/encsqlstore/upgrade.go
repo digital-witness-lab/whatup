@@ -307,6 +307,6 @@ func upgradeV6(tx *sql.Tx, container *EncContainer) error {
 }
 
 func upgradeV7(tx *sql.Tx, container *EncContainer) error {
-	_, err := tx.Exec("ALTER TABLE whatsmeow_device ADD COLUMN facebook_uuid uuid")
+	_, err := tx.Exec("ALTER TABLE whatsmeow_enc_device ADD COLUMN facebook_uuid uuid")
 	return err
 }

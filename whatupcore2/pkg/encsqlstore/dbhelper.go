@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/lib/pq"
 	"go.mau.fi/whatsmeow/types"
 )
@@ -161,6 +163,8 @@ func decryptDBScan(c DecryptableContainer, s scannable, dests ...any) error {
 			continue
 		case *bool:
 			continue
+        case *uuid.NullUUID:
+            continue
 		default:
 			c.Log().Debugf("Could not decrypt Scan field: %T: %+v", d, d)
 		}
