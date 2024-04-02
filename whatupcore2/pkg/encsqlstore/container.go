@@ -19,6 +19,7 @@ import (
 	mathRand "math/rand"
 	"os"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/scrypt"
 
 	"go.mau.fi/util/random"
@@ -252,7 +253,7 @@ const getAllDevicesQuery = `
 SELECT jid, registration_id, noise_key, identity_key,
        signed_pre_key, signed_pre_key_id, signed_pre_key_sig,
        adv_key, adv_details, adv_account_sig, adv_account_sig_key, adv_device_sig,
-       platform, business_name, push_name
+       platform, business_name, push_name, facebook_uuid
 FROM whatsmeow_enc_device
 `
 const getDeviceQuery = getAllDevicesQuery + " WHERE jid=$1"
@@ -265,12 +266,13 @@ func (c *EncContainer) scanDevice(row scannable) (*store.Device, error) {
 	device.SignedPreKey = &keys.PreKey{}
 	var noisePriv, identityPriv, preKeyPriv, preKeySig []byte
 	var account waProto.ADVSignedDeviceIdentity
+	var fbUUID uuid.NullUUID
 
 	err := decryptDBScan(c, row,
 		&device.ID, &device.RegistrationID, &noisePriv, &identityPriv,
 		&preKeyPriv, &device.SignedPreKey.KeyID, &preKeySig,
 		&device.AdvSecretKey, &account.Details, &account.AccountSignature, &account.AccountSignatureKey, &account.DeviceSignature,
-		&device.Platform, &device.BusinessName, &device.PushName)
+		&device.Platform, &device.BusinessName, &device.PushName, &fbUUID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan session: %w", err)
 	} else if len(noisePriv) != 32 || len(identityPriv) != 32 || len(preKeyPriv) != 32 || len(preKeySig) != 64 {
@@ -283,6 +285,7 @@ func (c *EncContainer) scanDevice(row scannable) (*store.Device, error) {
 	device.SignedPreKey.KeyPair = *keys.NewKeyPairFromPrivateKey(*(*[32]byte)(preKeyPriv))
 	device.SignedPreKey.Signature = (*[64]byte)(preKeySig)
 	device.Account = &account
+	device.FacebookUUID = fbUUID.UUID
 
 	innerStore := NewEncSQLStore(c, *device.ID)
 	device.Identities = innerStore
@@ -327,8 +330,8 @@ const (
 		INSERT INTO whatsmeow_enc_device (jid, username, registration_id, noise_key, identity_key,
 									  signed_pre_key, signed_pre_key_id, signed_pre_key_sig,
 									  adv_key, adv_details, adv_account_sig, adv_account_sig_key, adv_device_sig,
-									  platform, business_name, push_name)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+									  platform, business_name, push_name, facebook_uuid)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 		ON CONFLICT (jid) DO UPDATE
 		    SET platform=excluded.platform, business_name=excluded.business_name, push_name=excluded.push_name
 	`
@@ -359,6 +362,14 @@ func (c *EncContainer) NewDevice() *store.Device {
 // ErrDeviceIDMustBeSet is the error returned by PutDevice if you try to save a device before knowing its JID.
 var ErrDeviceIDMustBeSet = errors.New("device JID must be known before accessing database")
 
+// Close will close the container's database
+func (c *EncContainer) Close() error {
+	if c != nil && c.db != nil {
+		return c.db.Close()
+	}
+	return nil
+}
+
 // PutDevice stores the given device in this database. This should be called through Device.Save()
 // (which usually doesn't need to be called manually, as the library does that automatically when relevant).
 func (c *EncContainer) PutDevice(device *store.Device) error {
@@ -387,6 +398,7 @@ func (c *EncContainer) PutDevice(device *store.Device) error {
 		device.Platform,
 		device.BusinessName,
 		device.PushName,
+		uuid.NullUUID{UUID: device.FacebookUUID, Valid: device.FacebookUUID != uuid.Nil},
 	)
 
 	if !device.Initialized {
