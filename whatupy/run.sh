@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="asdkfh2i34ou23i8sdfsdfsdsadffdsdff"
+RAND="aisdfuasodfiasdf342fsdfdsadffdsdff"
 app_command=$1
 
 if [ -z "${app_command:-}" ]; then
