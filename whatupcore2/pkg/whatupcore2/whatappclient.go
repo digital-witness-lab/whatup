@@ -242,7 +242,8 @@ func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
 }
 
 func (wac *WhatsAppClient) stateReFetcher() {
-	ticker := time.NewTicker(24 * time.Hour)
+	//ticker := time.NewTicker(24 * time.Hour)
+	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 	for {
 		select {
