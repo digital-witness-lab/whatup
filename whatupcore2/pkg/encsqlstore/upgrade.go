@@ -17,7 +17,7 @@ type upgradeFunc func(*sql.Tx, *EncContainer) error
 //
 // This may be of use if you want to manage the database fully manually, but in most cases you
 // should just call EncContainer.Upgrade to let the library handle everything.
-var Upgrades = [...]upgradeFunc{upgradeV1, upgradeV2, upgradeV3, upgradeV4, upgradeV5, upgradeV6}
+var Upgrades = [...]upgradeFunc{upgradeV1, upgradeV2, upgradeV3, upgradeV4, upgradeV5, upgradeV6, upgradeV7}
 
 func (c *EncContainer) getVersion() (int, error) {
 	_, err := c.db.Exec("CREATE TABLE IF NOT EXISTS whatsmeow_enc_version (version INTEGER)")
@@ -44,6 +44,15 @@ func (c *EncContainer) setVersion(tx *sql.Tx, version int) error {
 
 // Upgrade upgrades the database from the current to the latest version available.
 func (c *EncContainer) Upgrade() error {
+	if c.dialect == "sqlite" {
+		var foreignKeysEnabled bool
+		err := c.db.QueryRow("PRAGMA foreign_keys").Scan(&foreignKeysEnabled)
+		if err != nil {
+			return fmt.Errorf("failed to check if foreign keys are enabled: %w", err)
+		} else if !foreignKeysEnabled {
+			return fmt.Errorf("foreign keys are not enabled")
+		}
+	}
 	version, err := c.getVersion()
 	if err != nil {
 		return err
@@ -279,15 +288,6 @@ func upgradeV4(tx *sql.Tx, container *EncContainer) error {
 }
 
 func upgradeV5(tx *sql.Tx, container *EncContainer) error {
-	if container.dialect == "sqlite" {
-		var foreignKeysEnabled bool
-		err := tx.QueryRow("PRAGMA foreign_keys").Scan(&foreignKeysEnabled)
-		if err != nil {
-			return fmt.Errorf("failed to check if foreign keys are enabled: %w", err)
-		} else if !foreignKeysEnabled {
-			return fmt.Errorf("foreign keys are not enabled")
-		}
-	}
 	_, err := tx.Exec("UPDATE whatsmeow_enc_device SET jid=REPLACE(jid, '.0', '')")
 	return err
 }
@@ -303,5 +303,10 @@ func upgradeV6(tx *sql.Tx, container *EncContainer) error {
 		PRIMARY KEY (our_jid, chat_jid),
 		FOREIGN KEY (our_jid) REFERENCES whatsmeow_enc_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
 	)`)
+	return err
+}
+
+func upgradeV7(tx *sql.Tx, container *EncContainer) error {
+	_, err := tx.Exec("ALTER TABLE whatsmeow_device ADD COLUMN facebook_uuid uuid")
 	return err
 }
