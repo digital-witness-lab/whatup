@@ -232,7 +232,7 @@ func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
 		wac.encSQLStore = encsqlstore.NewEncSQLStore(wac.encContainer, *wac.Client.Store.ID)
 		wac.anonLookup.makeReady()
 		go wac.presenceTwiddler()
-        go wac.stateReFetcher()
+		go wac.stateReFetcher()
 	case *events.LoggedOut:
 		wac.Log.Warnf("User has logged out on their device")
 		wac.Unregister()
@@ -242,22 +242,22 @@ func (wac *WhatsAppClient) connectionEvents(evt interface{}) {
 }
 
 func (wac *WhatsAppClient) stateReFetcher() {
-    ticker := time.NewTicker(24 * time.Hour)
+	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-wac.ctxC.Done():
 			return
 		case <-ticker.C:
-		    wac.Log.Infof("Refetching WhatsApp state")
-            names := []appstate.WAPatchName{appstate.WAPatchRegular, appstate.WAPatchRegularHigh, appstate.WAPatchRegularLow, appstate.WAPatchCriticalUnblockLow, appstate.WAPatchCriticalBlock}
-            for _, name := range names {
-                wac.Log.Debugf("Refetching WhatsApp state: %s", name)
-                err := wac.FetchAppState(name, true, false)
-                if err != nil {
-				    wac.Log.Errorf("Failed to refetch WhatsApp state: %v", err)
-			    }
-            }
+			wac.Log.Infof("Refetching WhatsApp state")
+			names := []appstate.WAPatchName{appstate.WAPatchRegular, appstate.WAPatchRegularHigh, appstate.WAPatchRegularLow, appstate.WAPatchCriticalUnblockLow, appstate.WAPatchCriticalBlock}
+			for _, name := range names {
+				wac.Log.Debugf("Refetching WhatsApp state: %s", name)
+				err := wac.FetchAppState(name, true, false)
+				if err != nil {
+					wac.Log.Errorf("Failed to refetch WhatsApp state: %v", err)
+				}
+			}
 		}
 	}
 }
