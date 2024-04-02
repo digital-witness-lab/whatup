@@ -667,7 +667,7 @@ func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Me
 		wac.Log.Debugf("Found cached version of image in DownloadAnyRetry: %v", msgInfo.ID)
 		return data, nil
 	}
-    rateLimit(wac.mediaMutexMap, "download", 2 * time.Second)
+	rateLimit(wac.mediaMutexMap, "download", 2*time.Second)
 
 	wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
 	data, err = wac.Client.DownloadAny(msg)
@@ -684,14 +684,14 @@ func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Me
 
 func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
 	lock := wac.mediaMutexMap.Lock(msgInfo.ID)
-    defer lock.Unlock()
+	defer lock.Unlock()
 
 	data, err := wac.mediaCache.Get(msgInfo.ID)
 	if data != nil {
 		wac.Log.Debugf("Found cached version of image in RetryDownload: %v", msgInfo.ID)
 		return data, nil
 	}
-    rateLimit(wac.mediaMutexMap, "download", 2 * time.Second)
+	rateLimit(wac.mediaMutexMap, "download", 2*time.Second)
 
 	mediaKeyCandidates := valuesFilterZero(findFieldName(msg, "MediaKey"))
 	if len(mediaKeyCandidates) == 0 {

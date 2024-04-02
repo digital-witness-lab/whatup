@@ -11,14 +11,13 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
-
 func rateLimit(ml *MutexMap, key string, duration time.Duration) Unlocker {
-    locker := ml.Lock(key)
-    go func() {
-        time.Sleep(duration)
-        locker.Unlock()
-    }()
-    return locker
+	locker := ml.Lock(key)
+	go func() {
+		time.Sleep(duration)
+		locker.Unlock()
+	}()
+	return locker
 }
 
 func mergeGroupParticipants(participants []types.GroupParticipant, jids []types.JID) []types.GroupParticipant {
