@@ -31,3 +31,6 @@ fix-test-stack:
 lint-ci:
 	pip install -r requirements.txt
 	flake8 .
+
+cloudlogs:
+	gcloud alpha logging tail --buffer-window=10 --format=json 'resource.type="gce_instance"' | jq --stream -r 'select(length == 2 and .[0][-1] == "message") | .[1]' | egrep .
