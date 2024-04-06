@@ -48,6 +48,8 @@ function filter-by-job() {
 }
 export -f filter-by-job
 
+# SERIOUSLY??? CLOUDPATHLIB HAS A TYPO IN THIS ENVVAR?!?!?
+export CLOUPATHLIB_FILE_CACHE_MODE="close_file"
 export CLOUDPATHLIB_FILE_CACHE_MODE="close_file"
 
 case $app_command in
@@ -136,6 +138,12 @@ case $app_command in
                     --database-url ${DATABASE_URL} \
                     --media-base "gs://${MEDIA_BUCKET}/" \
                     "${WHATUPY_DELETE_GROUPS}"
+    ;;
+
+    debugbot)
+        exit 1
+        exec ${WHATUPY_CMD} $DEBUG --host "whatup" --cert /run/secrets/ssl-cert debugbot --host 0.0.0.0 --port 6666 /usr/src/whatupy-data/sessions/gertrude.json
+
     ;;
 
     *)
