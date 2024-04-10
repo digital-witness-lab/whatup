@@ -124,8 +124,5 @@ func main() {
 	}
 	stdoutPipe.Close()
 	stderrPipe.Close()
-
-	// Wait for any pending stream writes to finish
-	fmt.Printf("log-cleaner: Waiting for WG to finish\n")
 	wg.Wait()
 }

@@ -64,12 +64,13 @@ if load_archive_vm:
             automatic_static_private_ip=False,
             machine_type=machine_type,
             is_spot=True,
+            restart_policy="OnFailure",
             container_spec=Container(
                 args=["/usr/src/whatupy/run.sh", "load-archive"],
                 image=whatupy_image.repo_digest,
                 env=[
                     ContainerEnv(name="ARCHIVE_FILTER", value="."),
-                    ContainerEnv(name="NUM_TASKS", value=num_tasks),
+                    ContainerEnv(name="NUM_TASKS", value=str(num_tasks)),
                     ContainerEnv(
                         name="MESSAGE_ARCHIVE_BUCKET",
                         value=message_archive_bucket.name,
