@@ -180,7 +180,7 @@ class DatabaseBot(BaseBot):
         group_participants = db.create_table("group_participants")
         try:
             group_participants.create_index(["chat_jid"])
-            group_participants.create_index(["JID", "chat_jid"])
+            group_participants.create_index(["chat_jid", "JID"])
         except DatasetException:
             self.logger.warn(
                 "Could not create group_participants indices because table doesn't exist yet"
@@ -555,12 +555,17 @@ class DatabaseBot(BaseBot):
         has_prev_group_info = bool(group_info_prev)
 
         group_participants = [flatten_proto_message(p) for p in group_info.participants]
+        participant_jids = list(p['JID'] for p in group_participants)
+        group_participants_prev = db["group_participants"].find(chat_jid=chat_jid, JID={'in': participant_jids})
+        group_participants_prev_lookup = {gp['JID']: gp for gp in group_participants_prev}
         for participant in group_participants:
-            if group_first_seen := group_info_prev.get("first_seen"):
-                participant["first_seen"] = group_first_seen
+            pjid = participant['JID']
+            if participant_prev := group_participants_prev_lookup.get(pjid):
+                participant["first_seen"] = min(participant_prev.get('first_seen', datetime.max), update_time)
+                participant["last_seen"] = max(participant_prev.get('last_seen', datetime.min), update_time)
             else:
                 participant["first_seen"] = update_time
-            participant["last_seen"] = update_time
+                participant["last_seen"] = update_time
             participant["chat_jid"] = chat_jid
             participant[RECORD_MTIME_FIELD] = now
 
