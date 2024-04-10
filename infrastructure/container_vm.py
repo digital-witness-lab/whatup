@@ -101,6 +101,8 @@ class ContainerOnVmArgs:
     # Note: Conflicts with `private_address`.
     automatic_static_private_ip: bool = field(default=False)
 
+    # restart_policy can be one of "Always", "Never", "OnFailure"
+    # https://github.com/GoogleCloudPlatform/konlet/blob/a0e73/gce-containers-startup/types/api.go#L23-L27
     restart_policy: str = field(default="Always")
     tcp_healthcheck_port: Optional[int] = field(default=None)
     private_address: Optional[native_compute_v1.Address] = field(default=None)

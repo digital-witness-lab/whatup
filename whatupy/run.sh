@@ -119,7 +119,7 @@ case $app_command in
             filter-by-job $idx $n_jobs | \
             tee /dev/stderr | \
             xargs -P ${num_tasks} -I{} \
-                whatupy $DEBUG \
+                ${WHATUPY_CMD} $DEBUG \
                     databasebot-load-archive \
                     --database-url ${DATABASE_URL} \
                     --media-base "gs://${MEDIA_BUCKET}/" \

@@ -20,7 +20,7 @@ config:
       passwordKey: usrPassword
   whatup:dbRootPassword:
     secure: AAABADVUvMSQDJbmM1efOsI9/xM0BDBF8zU9/11FbNH2ErKOZ9/FdZjAEG0tJtcjW4IeWkJE6/d1PIgY/BmisAUd4m1NWgMQ3mcfJMwPjnSEnb1vPjubiH5BmlOEPi2L
-  whatup:load_archive_vm: "false"
+  whatup:load_archive_vm: "true"
   whatup:msgPassword:
     secure: AAABADidjer3HeL9MDtQF7uJ/cCA0T0aLaKA4Scm1DLzScD5s5oJhXR3fF+TurCdwU69uOUV08u1VzAbZABQcsH5UkBAY77Bm/G8PNxLxbTa6lLszF1+0fpRrPy0YzrK
   whatup:primary_bot_name: flo
