@@ -53,7 +53,7 @@ if load_archive_vm:
     )
 
     machine_type = SharedCoreMachineType.E2Small
-    num_tasks = 2
+    num_tasks = 4
     if is_prod_stack():
         machine_type = SharedCoreMachineType.E2HighMem8
         num_tasks = 16
@@ -69,7 +69,7 @@ if load_archive_vm:
                 image=whatupy_image.repo_digest,
                 env=[
                     ContainerEnv(name="ARCHIVE_FILTER", value="."),
-                    ContainerEnv(name="NUM_TASKS", value="6"),
+                    ContainerEnv(name="NUM_TASKS", value=num_tasks),
                     ContainerEnv(
                         name="MESSAGE_ARCHIVE_BUCKET",
                         value=message_archive_bucket.name,

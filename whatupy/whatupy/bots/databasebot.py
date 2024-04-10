@@ -529,7 +529,7 @@ class DatabaseBot(BaseBot):
         elif group_info is not None:
             self.logger.debug("Using group info to update group: %s", chat_jid)
             await self.insert_group_info(db, group_info, now)
-        else:
+        elif not is_archive:
             self.logger.critical(
                 "Both community_info and group_info are none...: %s", chat_jid
             )
