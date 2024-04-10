@@ -39,6 +39,7 @@ class SharedCoreMachineType(Enum):
     E2Micro = "e2-micro"
     E2Small = "e2-small"
     E2Medium = "e2-medium"
+    E2HighMem8 = "e2-highmem-8"
 
 
 @dataclass
@@ -93,6 +94,7 @@ class ContainerOnVmArgs:
     service_account_email: pulumi.Output[str]
     subnet: pulumi.Output[str]
 
+    is_spot: bool = field(default=False)
     # Flag indicating if you want the instance group to automatically
     # promote any private IP to be a static one.
     #
@@ -189,6 +191,11 @@ class ContainerOnVm(pulumi.ComponentResource):
             args.container_spec, args.restart_policy
         )
 
+        provisioning_model = (
+            native_compute_v1.SchedulingProvisioningModel.SPOT
+            if args.is_spot
+            else native_compute_v1.SchedulingProvisioningModel.STANDARD
+        )
         instance_template_args = native_compute_v1.InstanceTemplateArgs(
             properties=native_compute_v1.InstancePropertiesArgs(
                 can_ip_forward=False,
@@ -262,7 +269,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                     ]
                 ),
                 scheduling=native_compute_v1.SchedulingArgs(
-                    provisioning_model=native_compute_v1.SchedulingProvisioningModel.STANDARD,
+                    provisioning_model=provisioning_model,
                 ),
                 service_accounts=[
                     native_compute_v1.ServiceAccountArgs(
