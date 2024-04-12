@@ -95,6 +95,7 @@ class ContainerOnVmArgs:
     subnet: pulumi.Output[str]
 
     is_spot: bool = field(default=False)
+    n_instances: int = field(default=1)
     # Flag indicating if you want the instance group to automatically
     # promote any private IP to be a static one.
     #
@@ -317,6 +318,10 @@ class ContainerOnVm(pulumi.ComponentResource):
         #
         # Note: A PR was opened to fix the issue in the provider
         # but there is no timeline on when it would be merged.
+        assert args.n_instances in (
+            0,
+            1,
+        ), "More than 1 instance is not currently supported"
         self.zonal_instance_group = classic_gcp_compute.InstanceGroupManager(
             f"{name}-instance-group",
             base_instance_name=name,
@@ -326,7 +331,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                 )
             ],
             zone=zone,
-            target_size=1,
+            target_size=args.n_instances,
             auto_healing_policies=(
                 classic_gcp_compute.InstanceGroupManagerAutoHealingPoliciesArgs(
                     initial_delay_sec=30,
