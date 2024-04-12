@@ -16,7 +16,7 @@ from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
 from . import BotCommandArgs, static, MediaType
 from .basebot import BaseBot, TypeLanguages
-from .lib import GroupRefreshJob, UserBot, UserJob, UserGroupJob
+from .lib import GroupRefreshJob, GroupInviteListJob, UserBot, UserJob, UserGroupJob
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ class UserServicesBot(BaseBot):
                     mimetype="text/csv",
                     filename=f"group-invites.csv",
                 )
-            await self._on_user_group_job(message, params, GroupRefreshJob, job_kwargs={'response_callback': response})
+            await self._on_user_group_job(message, params, GroupInviteListJob, job_kwargs={'response_callback': response})
         elif params.command == "group-refresh":
             await self._on_user_group_job(message, params, GroupRefreshJob)
         elif params.command == "list-users":
