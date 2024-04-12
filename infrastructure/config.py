@@ -35,7 +35,7 @@ primary_bot_name = str(config.require("primary_bot_name"))
 temp_bucket_ttl_days = config.require_int("temp_bucket_ttl_days")
 control_groups = config.require_object("control_groups")
 
-load_archive_vm = config.get_bool("load_archive_vm", False)
+load_archive_job = config.get_bool("loadArchiveJob", False)
 
 # Import the provider's configuration settings.
 gcp_config = pulumi.Config("gcp")

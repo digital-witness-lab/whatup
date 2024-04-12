@@ -483,7 +483,6 @@ class DatabaseBot(BaseBot):
     ):
         chat_jid = utils.jid_to_str(chat)
         now = datetime.now()
-        group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
 
         community_info: T.List[wuc.GroupInfo] | None = None
         group_info: wuc.GroupInfo | None = None
@@ -496,7 +495,10 @@ class DatabaseBot(BaseBot):
                 return
             now = archive_data.WUMessage.info.timestamp.ToDatetime()
             self.logger.debug("Storing archived message timestamp: %s", now)
-        else:
+
+        group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
+
+        if not is_archive:
             last_update: datetime = group_info_prev.get("last_update", datetime.min)
             if not is_archive and last_update + self.group_info_refresh_time > now:
                 return
@@ -525,17 +527,17 @@ class DatabaseBot(BaseBot):
                     "Inserting community group: %s",
                     utils.jid_to_str(group_from_community.JID),
                 )
-                await self.insert_group_info(db, group_from_community, now)
+                await self._insert_group_info(db, group_from_community, now, group_info_prev=group_info_prev)
         elif group_info is not None:
             self.logger.debug("Using group info to update group: %s", chat_jid)
-            await self.insert_group_info(db, group_info, now)
+            await self._insert_group_info(db, group_info, now, group_info_prev=group_info_prev)
         elif not is_archive:
             self.logger.critical(
                 "Both community_info and group_info are none...: %s", chat_jid
             )
 
-    async def insert_group_info(
-        self, db: dataset.Database, group_info: wuc.GroupInfo, update_time: datetime
+    async def _insert_group_info(
+            self, db: dataset.Database, group_info: wuc.GroupInfo, update_time: datetime, group_info_prev=None
     ):
         now = datetime.now()
         chat_jid = utils.jid_to_str(group_info.JID)
@@ -551,7 +553,7 @@ class DatabaseBot(BaseBot):
             "databasebot__version": self.__version__,
             **self.meta,
         }
-        group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
+        group_info_prev = group_info_prev or db["group_info"].find_one(id=chat_jid) or {}
         has_prev_group_info = bool(group_info_prev)
 
         group_participants = [flatten_proto_message(p) for p in group_info.participants]
