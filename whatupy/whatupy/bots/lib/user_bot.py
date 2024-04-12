@@ -64,9 +64,9 @@ class UserBot(BaseBot):
         group_min_participants: int = 6,
         **kwargs,
     ):
-        self.connect_callback: T.Callable[
-            [T.Self], T.Awaitable[None]
-        ] = connect_callback
+        self.connect_callback: T.Callable[[T.Self], T.Awaitable[None]] = (
+            connect_callback
+        )
         self.active_workflow: T.Optional[T.Callable] = None
         self.unregistering_timer: T.Optional[asyncio.TimerHandle] = None
         self.db = db
@@ -127,6 +127,11 @@ class UserBot(BaseBot):
     @staticmethod
     def _hash_jid(jid: wuc.JID, n_bytes: int):
         return hashlib.sha1(jid.user.encode("utf8")).hexdigest()[:n_bytes]
+
+    async def iter_readwrite_groups(self) -> T.AsyncIterable[wuc.JoinedGroup]:
+        async for group in self.iter_groups():
+            if group.acl.permission == wuc.GroupPermission.READWRITE:
+                yield group
 
     async def iter_readable_groups(self) -> T.AsyncIterable[wuc.JoinedGroup]:
         async for group in self.iter_groups():
