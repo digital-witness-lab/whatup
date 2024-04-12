@@ -11,12 +11,15 @@ class GroupRefreshJob(UserGroupJob):
         self.status.tasks_total += 1
         jid_str = utils.jid_to_str(group)
         if jid_str:
-            self.add_task(user, jid_str)
+            self.add_task(user, jid_str=jid_str)
 
     async def add_user(self, user: UserBot):
         group: wuc.JoinedGroup
+        groups = set()
         async for group in user.iter_readable_groups():
             await self.add_jid(user, group.groupInfo.JID)
+            groups.add(utils.jid_to_str(group.groupInfo.JID))
+        return groups, set()
 
     async def add_groups(self, users: T.List[UserBot], groups: T.Set[str]):
         groups_found = set()
@@ -33,7 +36,9 @@ class GroupRefreshJob(UserGroupJob):
                 break
         return groups_found, groups
 
-    async def process_task(self, user, jid_str):
+    async def process_task(self, task):
+        user = task.user
+        jid_str = task.params["jid_str"]
         user.logger.info("Re-requesting history for group: %s: %s", user, jid_str)
         await user.core_client.RequestChatHistory(
             wuc.HistoryRequestOptions(chat=utils.str_to_jid(jid_str))

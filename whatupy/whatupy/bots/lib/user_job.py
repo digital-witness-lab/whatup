@@ -35,14 +35,13 @@ class UserJobStatus:
 @dataclass
 class UserTask:
     user: UserBot
-    task_args: T.Tuple[T.Any] = field(default=tuple())
-    task_kwargs: T.Dict[str, T.Any] = field(default_factory=dict)
+    params: T.Dict[str, T.Any] = field(default_factory=dict)
 
     def __str__(self):
-        return f"<UserTask {self.user.username}:{self.task_args},{self.task_kwargs}>"
+        return f"<UserTask {self.user.username}:{self.params}>"
 
     def __hash__(self):
-        return hash((self.user,) + self.task_args + tuple(self.task_kwargs.items()))
+        return hash((self.user,) + tuple(self.params.items()))
 
 
 class UserJob:
@@ -66,8 +65,8 @@ class UserJob:
             return
         self.task.cancel()
 
-    def add_task(self, user: UserBot, *args, **kwargs):
-        task = UserTask(user, args, kwargs)
+    def add_task(self, user: UserBot, **kwargs):
+        task = UserTask(user, kwargs)
         self.tasks.add(task)
 
     async def run_job(self):
@@ -91,7 +90,7 @@ class UserJob:
         await self.on_complete(results)
         return self.stop()
 
-    async def process_task(self, task: UserTask, *args, **kwargs):
+    async def process_task(self, task: UserTask) -> T.Any:
         raise NotImplementedError()
 
     async def on_complete(self, results: T.List):

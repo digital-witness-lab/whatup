@@ -40,17 +40,22 @@ class GroupInviteListJob(UserGroupJob):
                 break
         return groups_found, groups
 
-    async def process_task(self, user, jid_str):
+    async def process_task(self, task):
+        user = task.user
+        jid_str = task.params["jid_str"]
         user.logger.info("Re-requesting history for group: %s: %s", user, jid_str)
         try:
-            invite = await user.core_client.GetGroupInvite(
-                wuc.HistoryRequestOptions(chat=utils.str_to_jid(jid_str))
+            invite: wuc.InviteCode = await user.core_client.GetGroupInvite(
+                utils.str_to_jid(jid_str)
             )
-            invite_link = invite.inviteLink
+            invite_link = invite.link
             error = None
         except Exception as e:
             invite_link = None
-            error = str(e)
+            if hasattr(e, "details"):
+                error = e.details
+            else:
+                error = str(e)
         return {"jid": jid_str, "invite": invite_link, "error": error}
 
     async def on_complete(self, results):
