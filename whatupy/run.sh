@@ -111,14 +111,15 @@ case $app_command in
     load-archive)
         n_jobs=${CLOUD_RUN_TASK_COUNT:=1}
         idx=${CLOUD_RUN_TASK_INDEX:=0}
+        num_tasks=${NUM_TASKS:=2}
         echo "Loading archive: Job $idx out of $n_jobs"
 
         ${WHATUPY_CMD} gs-ls "gs://${MESSAGE_ARCHIVE_BUCKET}/" | \
-            egrep ${ARCHIVE_FILTER} | \
+            egrep "${ARCHIVE_FILTER:=.}" | \
             filter-by-job $idx $n_jobs | \
             tee /dev/stderr | \
-            xargs -P 2 -I{} \
-                whatupy $DEBUG \
+            xargs -P ${num_tasks} -I{} \
+                ${WHATUPY_CMD} $DEBUG \
                     databasebot-load-archive \
                     --database-url ${DATABASE_URL} \
                     --media-base "gs://${MEDIA_BUCKET}/" \

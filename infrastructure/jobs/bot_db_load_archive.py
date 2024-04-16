@@ -1,16 +1,20 @@
 from pulumi import Output, ResourceOptions, get_stack
-from pulumi_gcp import cloudrunv2, secretmanager, serviceaccount, storage
-from pulumi_gcp.cloudrunv2 import (  # noqa: E501
-    JobTemplateTemplateContainerEnvValueSourceArgs,
-    JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
+from pulumi_gcp import secretmanager, serviceaccount, storage
+from container_vm import (
+    Container,
+    ContainerEnv,
+    ContainerOnVm,
+    ContainerOnVmArgs,
+    SharedCoreMachineType,
 )
+from pulumi_google_native import compute
 
 from artifact_registry import whatupy_image
 from dwl_secrets import db_url_secrets
-from job import Job, JobArgs
 from jobs.db_migrations import migrations_job_complete
-from network import private_services_network_with_db, vpc
+from network import private_services_network_with_db
 from storage import media_bucket, message_archive_bucket
+from config import is_prod_stack, load_archive_job
 
 service_name = "bot-db-load-archive"
 
@@ -47,60 +51,57 @@ secret_manager_perm = secretmanager.SecretIamMember(
     ),
 )
 
-db_url_secret_source = JobTemplateTemplateContainerEnvValueSourceArgs(
-    secret_key_ref=JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-        secret=db_url_secrets["messages"].name,
-        version="latest",
-    )
-)
+machine_type = SharedCoreMachineType.E2Small
+num_tasks = 4
+if is_prod_stack():
+    machine_type = SharedCoreMachineType.E2HighMem8
+    num_tasks = 16
 
-db_migrations_job = Job(
+db_migrations_vm = ContainerOnVm(
     service_name,
-    JobArgs(
-        args=["/usr/src/whatupy/run.sh", "load-archive"],
-        cpu="2",
-        task_count=10,
-        # Route all egress traffic via the VPC network.
-        egress="ALL_TRAFFIC",
-        image=whatupy_image,
-        # We want this service to only be reachable from within
-        # our VPC network.
-        ingress="INGRESS_TRAFFIC_INTERNAL_ONLY",
-        memory="6Gi",
-        service_account=service_account,
-        # Specifying the subnet causes CloudRun to use
-        # Direct VPC egress for outbound traffic based
-        # on the value of the `egress` property above.
-        subnet=cloudrunv2.JobTemplateTemplateVpcAccessNetworkInterfaceArgs(
-            network=vpc.id, subnetwork=private_services_network_with_db.id
+    ContainerOnVmArgs(
+        automatic_static_private_ip=False,
+        machine_type=machine_type,
+        is_spot=True,
+        n_instances=int(load_archive_job),
+        restart_policy="OnFailure",
+        container_spec=Container(
+            args=["/usr/src/whatupy/run.sh", "load-archive"],
+            image=whatupy_image.repo_digest,
+            env=[
+                ContainerEnv(name="ARCHIVE_FILTER", value="."),
+                ContainerEnv(name="NUM_TASKS", value=str(num_tasks)),
+                ContainerEnv(
+                    name="MESSAGE_ARCHIVE_BUCKET",
+                    value=message_archive_bucket.name,
+                ),
+                ContainerEnv(
+                    name="MEDIA_BUCKET",
+                    value=media_bucket.name,
+                ),
+                # Create an implicit dependency on the migrations
+                # job completing successfully.
+                ContainerEnv(
+                    name="MIGRATIONS_JOB_COMPLETE",
+                    value=migrations_job_complete.apply(lambda b: f"{b}"),
+                ),
+            ],
         ),
-        envs=[
-            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                name="DATABASE_URL",
-                value_source=db_url_secret_source,
-            ),
-            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                name="MESSAGE_ARCHIVE_BUCKET",
-                value=message_archive_bucket.name,
-            ),
-            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                name="MEDIA_BUCKET",
-                value=media_bucket.name,
-            ),
-            # Create an implicit dependency on the migrations
-            # job completing successfully.
-            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                name="MIGRATIONS_JOB_COMPLETE",
-                value=migrations_job_complete.apply(lambda b: f"{b}"),
+        secret_env=[
+            compute.v1.MetadataItemsItemArgs(
+                key="DATABASE_URL",
+                value=Output.concat(
+                    db_url_secrets["messages"].id, "/versions/latest"
+                ),
             ),
         ],
-        timeout="3600s",
+        service_account_email=service_account.email,
+        subnet=private_services_network_with_db.self_link,
     ),
     opts=ResourceOptions(
         depends_on=[
             message_archive_bucket_perm,
             media_bucket_perm,
-            secret_manager_perm,
         ]
     ),
 )

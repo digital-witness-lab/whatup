@@ -39,6 +39,7 @@ class SharedCoreMachineType(Enum):
     E2Micro = "e2-micro"
     E2Small = "e2-small"
     E2Medium = "e2-medium"
+    E2HighMem8 = "e2-highmem-8"
 
 
 @dataclass
@@ -93,12 +94,16 @@ class ContainerOnVmArgs:
     service_account_email: pulumi.Output[str]
     subnet: pulumi.Output[str]
 
+    is_spot: bool = field(default=False)
+    n_instances: int = field(default=1)
     # Flag indicating if you want the instance group to automatically
     # promote any private IP to be a static one.
     #
     # Note: Conflicts with `private_address`.
     automatic_static_private_ip: bool = field(default=False)
 
+    # restart_policy can be one of "Always", "Never", "OnFailure"
+    # https://github.com/GoogleCloudPlatform/konlet/blob/a0e73/gce-containers-startup/types/api.go#L23-L27
     restart_policy: str = field(default="Always")
     tcp_healthcheck_port: Optional[int] = field(default=None)
     private_address: Optional[native_compute_v1.Address] = field(default=None)
@@ -189,6 +194,11 @@ class ContainerOnVm(pulumi.ComponentResource):
             args.container_spec, args.restart_policy
         )
 
+        provisioning_model = (
+            native_compute_v1.SchedulingProvisioningModel.SPOT
+            if args.is_spot
+            else native_compute_v1.SchedulingProvisioningModel.STANDARD
+        )
         instance_template_args = native_compute_v1.InstanceTemplateArgs(
             properties=native_compute_v1.InstancePropertiesArgs(
                 can_ip_forward=False,
@@ -262,7 +272,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                     ]
                 ),
                 scheduling=native_compute_v1.SchedulingArgs(
-                    provisioning_model=native_compute_v1.SchedulingProvisioningModel.STANDARD,
+                    provisioning_model=provisioning_model,
                 ),
                 service_accounts=[
                     native_compute_v1.ServiceAccountArgs(
@@ -308,6 +318,10 @@ class ContainerOnVm(pulumi.ComponentResource):
         #
         # Note: A PR was opened to fix the issue in the provider
         # but there is no timeline on when it would be merged.
+        assert args.n_instances in (
+            0,
+            1,
+        ), "More than 1 instance is not currently supported"
         self.zonal_instance_group = classic_gcp_compute.InstanceGroupManager(
             f"{name}-instance-group",
             base_instance_name=name,
@@ -317,7 +331,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                 )
             ],
             zone=zone,
-            target_size=1,
+            target_size=args.n_instances,
             auto_healing_policies=(
                 classic_gcp_compute.InstanceGroupManagerAutoHealingPoliciesArgs(
                     initial_delay_sec=30,
