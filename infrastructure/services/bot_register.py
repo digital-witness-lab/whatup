@@ -117,6 +117,10 @@ bot_register = ContainerOnVm(
                     name="MIGRATIONS_JOB_COMPLETE",
                     value=migrations_job_complete.apply(lambda b: f"{b}"),
                 ),
+                ContainerEnv(
+                    name="RAND_STRING",  # change rand string to force deploy
+                    value="34932948073298",
+                ),
             ],
         ),
         machine_type=SharedCoreMachineType.E2Micro,
