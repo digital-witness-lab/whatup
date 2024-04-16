@@ -34,7 +34,7 @@ sessions_bucket_perm = storage.BucketIAMMember(
     storage.BucketIAMMemberArgs(
         bucket=sessions_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
-        role="roles/storage.objectViewer",
+        role="roles/storage.objectAdmin",
     ),
 )
 
