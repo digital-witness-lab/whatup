@@ -25,6 +25,23 @@ type WhatUpCoreServer struct {
 	pb.UnimplementedWhatUpCoreServer
 }
 
+func CanReadWriteJID(session *Session, jid *types.JID) (bool, error) {
+	aclEntry, err := session.Client.aclStore.GetByJID(jid)
+	if err != nil {
+		session.log.Errorf("Could not read ACL for JID: %+v", err)
+		return false, status.Errorf(codes.Internal, "Could not read ACL: %+v", err)
+	}
+	if !aclEntry.CanRead() {
+		session.log.Debugf("Denying request because we don't have read permissions in group")
+		return false, status.Error(codes.PermissionDenied, "No read permissions to group")
+	}
+	if !aclEntry.CanWrite() {
+		session.log.Debugf("Denying request because we don't have write permissions in group")
+		return false, status.Error(codes.PermissionDenied, "No read permissions to group")
+	}
+	return true, nil
+}
+
 func CanWriteJID(session *Session, jid *types.JID) (bool, error) {
 	aclEntry, err := session.Client.aclStore.GetByJID(jid)
 	if err != nil {
@@ -416,6 +433,26 @@ func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.
 		return nil, status.Errorf(codes.Unknown, "%v", err)
 	}
 	groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
+	return AnonymizeInterface(session.Client.anonLookup, groupInfoProto), nil
+}
+
+func (s *WhatUpCoreServer) GetGroupInvite(ctx context.Context, pJID *pb.JID) (*pb.InviteCode, error) {
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+	pJID = DeAnonymizeInterface(session.Client.anonLookup, pJID)
+
+	JID := ProtoToJID(pJID)
+	if _, err := CanReadWriteJID(session, &JID); err != nil {
+		return nil, err
+	}
+
+	inviteLink, err := session.Client.GetGroupInviteLink(JID, false)
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, "%v", err)
+	}
+	groupInfoProto := &pb.InviteCode{Link: inviteLink}
 	return AnonymizeInterface(session.Client.anonLookup, groupInfoProto), nil
 }
 

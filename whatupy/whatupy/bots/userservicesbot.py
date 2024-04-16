@@ -14,9 +14,9 @@ from ..credentials_manager import CredentialsManager
 from ..device_manager import DeviceManager
 from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
-from . import BotCommandArgs, static
+from . import BotCommandArgs, static, MediaType
 from .basebot import BaseBot, TypeLanguages
-from .lib import GroupRefreshTask, UserBot
+from .lib import GroupRefreshJob, GroupInviteListJob, UserBot, UserJob, UserGroupJob
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class UserServicesBot(BaseBot):
             credential_managers=[credentials_manager],
         )
 
-        self.group_refresh_tasks = set()
+        self.user_jobs: T.Set[UserJob] = set()
 
     def setup_command_args(self):
         parser = BotCommandArgs(
@@ -93,41 +93,13 @@ class UserServicesBot(BaseBot):
             default=None,
         )
 
-        group_refresh = sub_parser.add_parser(
+        UserGroupJob.create_command(sub_parser,
             "group-refresh", description="Refresh the history of a user or group"
         )
-        group_refresh.add_argument(
-            "--username",
-            action="append",
-            help="User to refresh",
-            default=None,
+        UserGroupJob.create_command(sub_parser,
+            "group-invites", description="Get group invite links"
         )
-        group_refresh.add_argument(
-            "--jid",
-            action="append",
-            help="JID to refresh",
-            default=None,
-        )
-        group_refresh.add_argument(
-            "--all",
-            action="store_true",
-            help="Refresh all users and groups",
-            default=False,
-        )
-        group_refresh.add_argument(
-            "--timeout",
-            type=int,
-            help="Time between each task in seconds",
-            default=20,
-        )
-        group_refresh.add_argument(
-            "job_name",
-            metavar="job-name",
-            type=str,
-            help="Name of the job for tracking",
-            nargs="?",
-            default=None,
-        )
+
         return parser
 
     async def on_control(self, message):
@@ -137,8 +109,19 @@ class UserServicesBot(BaseBot):
             return
         elif params.command == "status":
             await self._on_status(message, params)
+        elif params.command == "group-invites":
+            async def response(content):
+                await self.send_media_message(
+                    message.info.source.sender,
+                    MediaType.MediaDocument,
+                    content=content,
+                    caption=f"Group invites from request: {params.job_name}",
+                    mimetype="text/csv",
+                    filename=f"group-invites.csv",
+                )
+            await self._on_user_group_job(message, params, GroupInviteListJob, job_kwargs={'response_callback': response})
         elif params.command == "group-refresh":
-            await self._on_group_refresh(message, params)
+            await self._on_user_group_job(message, params, GroupRefreshJob)
         elif params.command == "list-users":
             await self._on_list_users(message, params)
 
@@ -155,14 +138,14 @@ class UserServicesBot(BaseBot):
             message.info.source.sender, f"Registered users:\n{user_listing}"
         )
 
-    async def _on_group_refresh(self, message, params):
-        refresh_task = GroupRefreshTask(name=params.job_name, timeout=params.timeout)
+    async def _on_user_group_job(self, message, params, job_type: T.Type[UserGroupJob], job_kwargs=None):
+        user_job = job_type(name=params.job_name, timeout=params.timeout, **(job_kwargs or {}))
         sender = message.info.source.sender
         if params.all:
             n_added = 0
             for user in self.users.values():
                 try:
-                    await refresh_task.add_user(user)
+                    await user_job.add_user(user)
                     n_added += 1
                 except Exception as e:
                     await self.send_text_message(
@@ -179,7 +162,7 @@ class UserServicesBot(BaseBot):
                         for user in self.users.values()
                         if user.username == username
                     )
-                    await refresh_task.add_user(user)
+                    await user_job.add_user(user)
                     n_added += 1
                 except StopIteration:
                     await self.send_text_message(
@@ -197,7 +180,7 @@ class UserServicesBot(BaseBot):
             else:
                 users = list(self.users.values())
             groups = set(jid for jid in params.jid)
-            jids_found, jids_missing = await refresh_task.add_groups(users, groups)
+            jids_found, jids_missing = await user_job.add_groups(users, groups)
             if jids_missing:
                 await self.send_text_message(
                     sender,
@@ -214,11 +197,11 @@ class UserServicesBot(BaseBot):
             return self.send_text_message(
                 sender, "Must send --username, --jids or both or --all"
             )
-        task = await refresh_task.start()
-        self.group_refresh_tasks.add(refresh_task)
-        task.add_done_callback(lambda t: self.group_refresh_tasks.discard(refresh_task))
+        task = await user_job.start()
+        self.user_jobs.add(user_job)
+        task.add_done_callback(lambda t: self.user_jobs.discard(user_job))
         await self.send_text_message(
-            message.info.source.sender, str(refresh_task.status)
+            message.info.source.sender, str(user_job.status)
         )
 
     async def _on_status(self, message, params):
@@ -231,7 +214,7 @@ class UserServicesBot(BaseBot):
             for u in self.users.values()
             if not (u.state.get("is_demo") or u.state.get("is_bot"))
         )
-        refresh_status = "\n".join(str(gr.status) for gr in self.group_refresh_tasks)
+        refresh_status = "\n".join(str(uj.status) for uj in self.user_jobs)
         status = f"""
 Number of active users: {n_active_users} (sharing {n_groups_shared} groups)
 Number of bots: {n_active_bots}
