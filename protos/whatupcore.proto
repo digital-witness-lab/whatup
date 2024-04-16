@@ -23,6 +23,7 @@ service WhatUpCore {
     rpc GetJoinedGroups(GetJoinedGroupsOptions) returns (stream JoinedGroup) {}
     rpc GetGroupInfo(JID) returns (GroupInfo) {}
     rpc GetCommunityInfo(JID) returns (stream GroupInfo) {}
+    rpc GetGroupInvite(JID) returns (InviteCode) {}
     rpc GetGroupInfoInvite(InviteCode) returns (GroupInfo) {}
     rpc JoinGroup(InviteCode) returns (GroupInfo) {}
 

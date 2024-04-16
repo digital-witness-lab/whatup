@@ -214,6 +214,7 @@ type WhatUpCoreClient interface {
 	GetJoinedGroups(ctx context.Context, in *GetJoinedGroupsOptions, opts ...grpc.CallOption) (WhatUpCore_GetJoinedGroupsClient, error)
 	GetGroupInfo(ctx context.Context, in *JID, opts ...grpc.CallOption) (*GroupInfo, error)
 	GetCommunityInfo(ctx context.Context, in *JID, opts ...grpc.CallOption) (WhatUpCore_GetCommunityInfoClient, error)
+	GetGroupInvite(ctx context.Context, in *JID, opts ...grpc.CallOption) (*InviteCode, error)
 	GetGroupInfoInvite(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error)
 	JoinGroup(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error)
 	GetMessages(ctx context.Context, in *MessagesOptions, opts ...grpc.CallOption) (WhatUpCore_GetMessagesClient, error)
@@ -332,6 +333,15 @@ func (x *whatUpCoreGetCommunityInfoClient) Recv() (*GroupInfo, error) {
 		return nil, err
 	}
 	return m, nil
+}
+
+func (c *whatUpCoreClient) GetGroupInvite(ctx context.Context, in *JID, opts ...grpc.CallOption) (*InviteCode, error) {
+	out := new(InviteCode)
+	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/GetGroupInvite", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *whatUpCoreClient) GetGroupInfoInvite(ctx context.Context, in *InviteCode, opts ...grpc.CallOption) (*GroupInfo, error) {
@@ -471,6 +481,7 @@ type WhatUpCoreServer interface {
 	GetJoinedGroups(*GetJoinedGroupsOptions, WhatUpCore_GetJoinedGroupsServer) error
 	GetGroupInfo(context.Context, *JID) (*GroupInfo, error)
 	GetCommunityInfo(*JID, WhatUpCore_GetCommunityInfoServer) error
+	GetGroupInvite(context.Context, *JID) (*InviteCode, error)
 	GetGroupInfoInvite(context.Context, *InviteCode) (*GroupInfo, error)
 	JoinGroup(context.Context, *InviteCode) (*GroupInfo, error)
 	GetMessages(*MessagesOptions, WhatUpCore_GetMessagesServer) error
@@ -505,6 +516,9 @@ func (UnimplementedWhatUpCoreServer) GetGroupInfo(context.Context, *JID) (*Group
 }
 func (UnimplementedWhatUpCoreServer) GetCommunityInfo(*JID, WhatUpCore_GetCommunityInfoServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetCommunityInfo not implemented")
+}
+func (UnimplementedWhatUpCoreServer) GetGroupInvite(context.Context, *JID) (*InviteCode, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroupInvite not implemented")
 }
 func (UnimplementedWhatUpCoreServer) GetGroupInfoInvite(context.Context, *InviteCode) (*GroupInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroupInfoInvite not implemented")
@@ -658,6 +672,24 @@ type whatUpCoreGetCommunityInfoServer struct {
 
 func (x *whatUpCoreGetCommunityInfoServer) Send(m *GroupInfo) error {
 	return x.ServerStream.SendMsg(m)
+}
+
+func _WhatUpCore_GetGroupInvite_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JID)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WhatUpCoreServer).GetGroupInvite(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.WhatUpCore/GetGroupInvite",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WhatUpCoreServer).GetGroupInvite(ctx, req.(*JID))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _WhatUpCore_GetGroupInfoInvite_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -850,6 +882,10 @@ var WhatUpCore_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetGroupInfo",
 			Handler:    _WhatUpCore_GetGroupInfo_Handler,
+		},
+		{
+			MethodName: "GetGroupInvite",
+			Handler:    _WhatUpCore_GetGroupInvite_Handler,
 		},
 		{
 			MethodName: "GetGroupInfoInvite",
