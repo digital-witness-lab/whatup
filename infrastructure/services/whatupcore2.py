@@ -103,7 +103,7 @@ whatupcore2_service = ContainerOnVm(
                 ),
                 ContainerEnv(
                     name="RAND_STRING",  # change rand string to force deploy
-                    value="34943534473298",
+                    value="34932948073298",
                 ),
             ],
         ),
