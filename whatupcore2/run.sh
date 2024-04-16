@@ -18,6 +18,8 @@ if [ -e /tmp/whatup/.env ]; then
     set -o allexport
     source /tmp/whatup/.env 
     set +o allexport
+
+    iptables -A INPUT -p tcp --dport 3447 -j ACCEPT
 fi
 
 # Start the application
