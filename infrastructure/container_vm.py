@@ -17,7 +17,7 @@ from config import project, zone
 from gcloud import get_project_number
 from network_firewall import firewall_association
 
-startup_script = """
+install_cloud_ops_agent = """
 #! /bin/bash
 echo "Setting docker log size"
 cat <<EOF > /etc/docker/daemon.json
@@ -267,7 +267,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                         ),
                         native_compute_v1.MetadataItemsItemArgs(
                             key="startup-script",
-                            value=startup_script,
+                            value=install_cloud_ops_agent,
                         ),
                     ]
                 ),
