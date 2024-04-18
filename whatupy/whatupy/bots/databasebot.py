@@ -607,9 +607,10 @@ class DatabaseBot(BaseBot):
                 group_info_flat["provenance"]["databasebot__changed_fields"] = ",".join(
                     changed_keys
                 )
-                group_info_prev["n_versions"] = group_info_prev.get("n_versions") or 0
+                n_versions = db["group_info"].count(JID=chat_jid)
+                group_info_prev["n_versions"] = n_versions
                 prev_id = group_info_prev["id"]
-                N = group_info_flat["n_versions"] = group_info_prev["n_versions"] + 1
+                N = group_info_flat["n_versions"] = n_versions + 1
                 id_ = group_info_prev["id"] = f"{chat_jid}-{N:06d}"
                 group_info_prev["last_update"] = update_time
                 group_info_flat["previous_version_id"] = id_
