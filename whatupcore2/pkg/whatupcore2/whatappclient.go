@@ -719,7 +719,7 @@ func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Me
 
 	wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
 	data, err = wac.Client.DownloadAny(msg)
-	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith403) {
+	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith403) {
 		return wac.RetryDownload(ctx, msg, msgInfo)
 	} else if err != nil {
 		wac.Log.Errorf("Error trying to download message: %v", err)
