@@ -620,7 +620,7 @@ class DatabaseBot(BaseBot):
                 N = group_info_flat["n_versions"] = n_versions + 1
 
                 n = N
-                while db["group_info"].count(id=f"{chat_jid}-{n:06d}" ) > 0
+                while db["group_info"].count(id=f"{chat_jid}-{n:06d}") > 0:
                     n += 1
                 id_ = f"{chat_jid}-{n:06d}"
                 group_info_prev["id"] = id_
