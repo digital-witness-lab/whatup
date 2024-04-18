@@ -370,10 +370,9 @@ class DatabaseBot(BaseBot):
             self.logger.debug(
                 "Updating group or community groups: %s", message.info.id
             )
-            with self.db as db:
-                await self._update_group_or_community(
-                    db, message.info.source.chat, is_archive, archive_data,
-                )
+            await self._update_group_or_community(
+                message.info.source.chat, is_archive, archive_data,
+            )
             self.logger.debug(
                 "Done updating group or community groups: %s", message.info.id
             )
@@ -476,7 +475,6 @@ class DatabaseBot(BaseBot):
 
     async def _update_group_or_community(
         self,
-        db: dataset.Database,
         chat: wuc.JID,
         is_archive: bool,
         archive_data: ArchiveData,
@@ -496,7 +494,7 @@ class DatabaseBot(BaseBot):
             now = archive_data.WUMessage.info.timestamp.ToDatetime()
             self.logger.debug("Storing archived message timestamp: %s", now)
 
-        group_info_prev = db["group_info"].find_one(id=chat_jid) or {}
+        group_info_prev = self.db["group_info"].find_one(id=chat_jid) or {}
 
         if not is_archive:
             last_update: datetime = group_info_prev.get("last_update", datetime.min)
@@ -527,10 +525,12 @@ class DatabaseBot(BaseBot):
                     "Inserting community group: %s",
                     utils.jid_to_str(group_from_community.JID),
                 )
-                await self._insert_group_info(db, group_from_community, now, group_info_prev=group_info_prev)
+                with self.db as db:
+                    await self._insert_group_info(db, group_from_community, now, group_info_prev=group_info_prev)
         elif group_info is not None:
             self.logger.debug("Using group info to update group: %s", chat_jid)
-            await self._insert_group_info(db, group_info, now, group_info_prev=group_info_prev)
+            with self.db as db:
+                await self._insert_group_info(db, group_info, now, group_info_prev=group_info_prev)
         elif not is_archive:
             self.logger.critical(
                 "Both community_info and group_info are none...: %s", chat_jid
