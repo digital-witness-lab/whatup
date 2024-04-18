@@ -113,12 +113,12 @@ class ArchiveBot(BaseBot):
                             group_info.parentJID,
                         )
                         try:
-                            community_info_iterator: T.AsyncIterator[
-                                wuc.GroupInfo
-                            ] = self.core_client.GetCommunityInfo(group_info.parentJID)
-                            community_info: T.List[
-                                wuc.GroupInfo
-                            ] = await utils.aiter_to_list(community_info_iterator)
+                            community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = (
+                                self.core_client.GetCommunityInfo(group_info.parentJID)
+                            )
+                            community_info: T.List[wuc.GroupInfo] = (
+                                await utils.aiter_to_list(community_info_iterator)
+                            )
                             for community_group in community_info:
                                 community_group.provenance.update(provenance)
                                 community_group.provenance[
@@ -171,10 +171,13 @@ class ArchiveBot(BaseBot):
         self,
         message: wuc.WUMessage,
         media_bytes: bytes,
+        error: Exception | None,
         media_path: Path,
         media_filename: str,
     ):
-        if not media_bytes:
+        if error is not None:
+            return
+        elif not media_bytes:
             self.logger.critical(
                 "Empty media body... skipping writing to archive: %s", media_filename
             )
