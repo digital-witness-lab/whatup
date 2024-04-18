@@ -211,6 +211,10 @@ class DatabaseBot(BaseBot):
             "content_url",
             type=db.types.string,
         )
+        media.create_column(
+            "error",
+            type=db.types.string,
+        )
         db.create_table(
             "messages_seen",
             primary_id="id",
@@ -361,7 +365,6 @@ class DatabaseBot(BaseBot):
                 await self._update_media(
                     message,
                     is_archive,
-                    is_history,
                     archive_data,
                     media_filename=media_filename,
                 )
@@ -381,7 +384,6 @@ class DatabaseBot(BaseBot):
         self,
         message: wuc.WUMessage,
         is_archive: bool,
-        is_history: bool,
         archive_data: ArchiveData,
         media_filename: T.Optional[str] = None,
     ):
@@ -405,7 +407,9 @@ class DatabaseBot(BaseBot):
             mp = archive_data.MediaPath
             if mp is not None and mp.exists():
                 content = mp.read_bytes()
-                await callback(message, content)
+                await callback(message, content, None)
+            else:
+                await callback(message, bytes(), Exception("No media in archive"))
         else:
             await self.download_message_media_eventually(message, callback)
 
@@ -459,7 +463,7 @@ class DatabaseBot(BaseBot):
         return str(filepath)
 
     async def _handle_media_content(
-        self, message: wuc.WUMessage, content: bytes, datum: dict
+        self, message: wuc.WUMessage, content: bytes, error: Exception | None, datum: dict
     ):
         if content:
             datum["content_url"] = self.write_media(
@@ -470,6 +474,9 @@ class DatabaseBot(BaseBot):
             self.logger.critical(
                 "Empty media body... Writing empty media URI: %s", datum
             )
+        datum["error"] = None
+        if error:
+            datum["error"] = str(error)
         datum[RECORD_MTIME_FIELD] = datetime.now()
         self.db["media"].upsert(datum, ["filename"])
 
@@ -611,7 +618,13 @@ class DatabaseBot(BaseBot):
                 group_info_prev["n_versions"] = n_versions
                 prev_id = group_info_prev["id"]
                 N = group_info_flat["n_versions"] = n_versions + 1
-                id_ = group_info_prev["id"] = f"{chat_jid}-{N:06d}"
+
+                n = N
+                while db["group_info"].count(id=f"{chat_jid}-{n:06d}" ) > 0
+                    n += 1
+                id_ = f"{chat_jid}-{n:06d}"
+                group_info_prev["id"] = id_
+
                 group_info_prev["last_update"] = update_time
                 group_info_flat["previous_version_id"] = id_
                 if group_first_seen := group_info_prev.get("first_seen"):

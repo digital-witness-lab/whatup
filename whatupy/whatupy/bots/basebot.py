@@ -34,7 +34,7 @@ COMMAND_PINNING: T.Dict[bytes, PinningEntry] = {}
 BOT_REGISTRY = defaultdict(dict)
 CONTROL_CACHE = deque(maxlen=1028)
 
-DownloadMediaCallback = T.Callable[[wuc.WUMessage, bytes], T.Awaitable[None]]
+DownloadMediaCallback = T.Callable[[wuc.WUMessage, bytes, Exception | None], T.Awaitable[None]]
 MediaType = enum.Enum("MediaType", wuc.SendMessageMedia.MediaType.items())
 TypeLanguages = T.Literal["hi"] | T.Literal["en"]
 
@@ -394,6 +394,7 @@ class BaseBot:
                 self.download_queue.qsize(),
             )
             content: bytes = b""
+            error = None
             try:
                 content = await self.download_message_media(message)
                 self.logger.debug(
@@ -401,7 +402,7 @@ class BaseBot:
                     message.info.id,
                     len(content),
                 )
-            except Exception:
+            except Exception as e:
                 self.logger.exception(
                     "Could not download media content. Retries = %d: %s",
                     tries,
@@ -410,8 +411,9 @@ class BaseBot:
                 asyncio.create_task(
                     self.download_message_media_eventually(message, callback, tries + 1)
                 )
+                error = e
             try:
-                await callback(message, content)
+                await callback(message, content, error=error)
             except Exception:
                 self.logger.exception(
                     "Exception calling download_media_message_eventually callback: %s",
