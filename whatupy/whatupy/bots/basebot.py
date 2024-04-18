@@ -409,7 +409,7 @@ class BaseBot:
                     message.info.id,
                 )
                 asyncio.create_task(
-                    self.download_message_media_eventually(message, callback, tries + 1)
+                    self.download_message_media_eventually(message, callback, tries + 1, error=e)
                 )
                 error = e
             try:
@@ -427,13 +427,14 @@ class BaseBot:
         message: wuc.WUMessage,
         callback: DownloadMediaCallback,
         retries: int = 0,
+        error: Exception | None = None
     ):
         if retries > 5:
             self.logger.info(
                 "Out of retries... running callback with empty bytes: %s",
                 message.info.id,
             )
-            return await callback(message, b"")
+            return await callback(message, b"", error or Exception("Ran out of retries trying to get media"))
         elif retries > 0:
             t = min(2**retries, 60 * 60)
             self.logger.info(
