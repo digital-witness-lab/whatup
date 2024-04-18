@@ -18,7 +18,7 @@ config:
       passwordKey: usrPassword
   whatup:dbRootPassword:
     secure: AAABAFv5380VKtGKsITAlanHzAjVOci131oKQuXaBeMKjjMjcus/2GOnETe9CqKmgKepFb8jIZ6IXkPuAxzHsDugI2epgcevxpU/7/WcHOdf6zO9PxMR+iV8N43uKnmLc4FY0VhG4V7J6RVGejPwJN5Um1Aq0y4LsndbOsUmxPAhbRHzScK7Zc9TcTYHF+uMdDunFa/q6L0FOligDP4Ckw==
-  whatup:loadArchiveJob: "true"
+  whatup:loadArchiveJob: "false"
   whatup:msgPassword:
     secure: AAABAPft8aaBuey6IpzgenxXImjFxNmYYOckUp+a9XrXmlLU13C4H6ajxAdKJ7JMFg1UOYvLWWESI7iWpGBc6pCRb/Cg6/aGbqyNi5iY+aqYlPaiyYEvolFyuMP77H1a4/83ict2ooffR95bDlaHdpo98pjweIUb7sbwu1E0ojk5JOvGycahMxszFY/3zbvgipiXsvkKjoXl4fKXJageUw==
   whatup:primary_bot_name: erica

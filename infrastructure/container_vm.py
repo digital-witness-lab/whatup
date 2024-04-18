@@ -17,7 +17,7 @@ from config import project, zone
 from gcloud import get_project_number
 from network_firewall import firewall_association
 
-install_cloud_ops_agent = """
+startup_script = """
 #! /bin/bash
 echo "Setting docker log size"
 cat <<EOF > /etc/docker/daemon.json
@@ -241,7 +241,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                             #
                             # The version number scheme is defined at:
                             # https://cloud.google.com/container-optimized-os/docs/concepts/versioning
-                            source_image="projects/cos-cloud/global/images/family/cos-stable"
+                            source_image="projects/cos-cloud/global/images/family/cos-109-lts"
                         ),
                     ),
                 ],
@@ -267,7 +267,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                         ),
                         native_compute_v1.MetadataItemsItemArgs(
                             key="startup-script",
-                            value=install_cloud_ops_agent,
+                            value=startup_script,
                         ),
                     ]
                 ),
