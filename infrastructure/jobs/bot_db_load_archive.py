@@ -56,6 +56,7 @@ num_tasks = 4
 if is_prod_stack():
     machine_type = SharedCoreMachineType.E2HighMem8
     num_tasks = 16
+n_instances = 1 if load_archive_job else 0
 
 db_migrations_vm = ContainerOnVm(
     service_name,
@@ -63,7 +64,7 @@ db_migrations_vm = ContainerOnVm(
         automatic_static_private_ip=False,
         machine_type=machine_type,
         is_spot=True,
-        n_instances=int(load_archive_job),
+        n_instances=n_instances,
         restart_policy="OnFailure",
         container_spec=Container(
             args=["/usr/src/whatupy/run.sh", "load-archive"],

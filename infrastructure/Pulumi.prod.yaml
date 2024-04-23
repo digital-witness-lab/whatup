@@ -6,6 +6,15 @@ config:
   google-native:region: us-central1
   google-native:zone: us-central1-a
   whatup:bqDatasetRegion: US
+  whatup:machineTypes:
+    - serviceName: whatupcore2
+      type: E2Medium
+    - serviceName: bot-db
+      type:E2Medium
+    - serviceName: bot-archive
+      type: E2Medium
+    - serviceName: null
+      type: E2Micro
   whatup:databases:
     - name: messages
       nameShort: msg

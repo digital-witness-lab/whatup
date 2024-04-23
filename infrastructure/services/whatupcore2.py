@@ -9,7 +9,6 @@ from container_vm import (
     ContainerEnv,
     ContainerOnVm,
     ContainerOnVmArgs,
-    SharedCoreMachineType,
 )
 from dwl_secrets import (
     db_url_secrets,
@@ -77,10 +76,6 @@ ssl_cert_pem_perm = secretmanager.SecretIamMember(
     ),
 )
 
-machine_type = SharedCoreMachineType.E2Medium
-if not is_prod_stack():
-    machine_type = SharedCoreMachineType.E2Small
-
 log_level = "INFO" if is_prod_stack() else "DEBUG"
 whatupcore2_service = ContainerOnVm(
     service_name,
@@ -107,7 +102,6 @@ whatupcore2_service = ContainerOnVm(
                 ),
             ],
         ),
-        machine_type=machine_type,
         secret_env=[
             compute.v1.MetadataItemsItemArgs(
                 key="DATABASE_URL",

@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import List, Optional
 
 import pulumi
@@ -13,7 +12,7 @@ from pulumi_gcp import compute as classic_gcp_compute
 from pulumi_gcp import projects
 from pulumi_google_native.compute import v1 as native_compute_v1
 
-from config import project, zone
+from config import project, zone, SharedCoreMachineType, machine_types
 from gcloud import get_project_number
 from network_firewall import firewall_association
 
@@ -33,13 +32,6 @@ cat <<EOF > /etc/docker/daemon.json
 EOF
 systemctl restart docker
 """.strip()
-
-
-class SharedCoreMachineType(Enum):
-    E2Micro = "e2-micro"
-    E2Small = "e2-small"
-    E2Medium = "e2-medium"
-    E2HighMem8 = "e2-highmem-8"
 
 
 @dataclass
@@ -89,11 +81,11 @@ class ContainerOnVmArgs:
     #
     # Note: Conflicts with `automatic_static_private_ip`.
     container_spec: Container
-    machine_type: SharedCoreMachineType
     secret_env: List[native_compute_v1.MetadataItemsItemArgs]
     service_account_email: pulumi.Output[str]
     subnet: pulumi.Output[str]
 
+    machine_type: SharedCoreMachineType | None = field(default=None)
     is_spot: bool = field(default=False)
     n_instances: int = field(default=1)
     # Flag indicating if you want the instance group to automatically
@@ -125,6 +117,9 @@ class ContainerOnVm(pulumi.ComponentResource):
             raise Exception(
                 "Cannot configure both automatic static private IP AND pass in a static private IP."
             )
+
+        if args.machine_type is None:
+            args.machine_type = machine_types[name]
 
         self.__args = args
         self.__name = name

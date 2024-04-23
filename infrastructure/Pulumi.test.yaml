@@ -8,6 +8,11 @@ config:
   whatup:bqDatasetRegion: EU
   whatup:control_groups:
     - c+c-stage@g.us # c+c-stage
+  whatup:machineTypes:
+    - serviceName: whatupcore2
+      type: E2Small
+    - serviceName: null
+      type: E2Micro
   whatup:databases:
     - name: messages
       nameShort: msg
