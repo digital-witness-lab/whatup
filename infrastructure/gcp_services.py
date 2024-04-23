@@ -28,6 +28,8 @@ for service in [
     "servicenetworking.googleapis.com",
     "sqladmin.googleapis.com",
     "storage.googleapis.com",
+    # google groups
+    "cloudidentity.googleapis.com",
 ]:
     enabled_services.append(
         projects.Service(service, disable_on_destroy=False, service=service)

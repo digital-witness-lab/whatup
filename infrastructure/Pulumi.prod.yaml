@@ -2,9 +2,11 @@ config:
   gcp:project: whatup-prod
   gcp:region: us-central1
   gcp:zone: us-central1-a
+  gcp:customerId: C03cp9frk
   google-native:project: whatup-prod
   google-native:region: us-central1
   google-native:zone: us-central1-a
+  whatup:customerId: C03cp9frk
   whatup:bqDatasetRegion: US
   whatup:machineTypes:
     - serviceName: whatupcore2

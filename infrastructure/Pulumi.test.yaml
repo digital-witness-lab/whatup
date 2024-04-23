@@ -5,6 +5,7 @@ config:
   google-native:project: whatup-deploy
   google-native:region: europe-west3
   google-native:zone: europe-west3
+  whatup:customerId: C03cp9frk
   whatup:bqDatasetRegion: EU
   whatup:control_groups:
     - c+c-stage@g.us # c+c-stage
