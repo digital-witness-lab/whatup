@@ -1,7 +1,16 @@
+from enum import Enum
 from dataclasses import dataclass
+from collections import defaultdict
 from typing import Dict, Self
 
 import pulumi
+
+
+class SharedCoreMachineType(Enum):
+    E2Micro = "e2-micro"
+    E2Small = "e2-small"
+    E2Medium = "e2-medium"
+    E2HighMem8 = "e2-highmem-8"
 
 
 @dataclass
@@ -25,6 +34,13 @@ db_configs: Dict[str, DatabaseConfig] = {
     data["name"]: DatabaseConfig.from_config(config, data)
     for data in config.require_object("databases")
 }
+machine_types: Dict[str | None, SharedCoreMachineType] = {
+    data["serviceName"]: SharedCoreMachineType[data["type"]]
+    for data in config.require_object("machineTypes")
+}
+if None in machine_types:
+    default_type = machine_types.pop(None)
+    machine_types = defaultdict(lambda: default_type, **machine_types)
 
 bq_dataset_region = config.require("bqDatasetRegion")
 db_root_password = config.require_secret("dbRootPassword")
