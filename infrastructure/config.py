@@ -58,6 +58,7 @@ gcp_config = pulumi.Config("gcp")
 location = gcp_config.require("region")
 project = gcp_config.require("project")
 zone = gcp_config.require("zone")
+customer_id = config.require("customerId")
 
 
 def is_prod_stack() -> bool:
