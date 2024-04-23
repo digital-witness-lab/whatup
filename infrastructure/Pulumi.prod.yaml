@@ -10,7 +10,7 @@ config:
     - serviceName: whatupcore2
       type: E2Medium
     - serviceName: bot-db
-      type:E2Medium
+      type: E2Medium
     - serviceName: bot-archive
       type: E2Medium
     - serviceName: null
