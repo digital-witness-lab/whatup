@@ -25,6 +25,4 @@ from scheduled_tasks import (
     cloudsql_bigquery_transfer,
 )
 
-import org_permissions
-
 # pulumi.export("bigquery_connection_id", bigquery_sql_connection.connection_id)

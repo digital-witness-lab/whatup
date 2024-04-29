@@ -5,7 +5,6 @@ config:
   google-native:project: whatup-deploy
   google-native:region: europe-west3
   google-native:zone: europe-west3
-  whatup:customerId: C03cp9frk
   whatup:bqDatasetRegion: EU
   whatup:control_groups:
     - 120363159470639781@g.us # coolest friends dev

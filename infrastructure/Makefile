@@ -19,7 +19,6 @@ auth:
 	gcloud auth login
 	gcloud auth application-default login
 	gcloud config set project $$( pulumi config get gcp:project )
-	gcloud auth application-default set-quota-project $$( pulumi config get gcp:project )
 	make auth-docker
 
 auth-docker:
