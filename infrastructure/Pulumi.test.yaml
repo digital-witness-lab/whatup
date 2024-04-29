@@ -8,6 +8,7 @@ config:
   whatup:bqDatasetRegion: EU
   whatup:control_groups:
     - 120363159470639781@g.us # coolest friends dev
+  whatup:isProd: false
   whatup:machineTypes:
     - serviceName: whatupcore2
       type: E2Small

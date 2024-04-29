@@ -41,6 +41,7 @@ config:
   whatup:control_groups:
     - 120363293503899527@g.us # Carter / Announcements
     - 120363292026589689@g.us # Carter / South Africa
+  whatup:isProd: true
   whatup:primary_bot_name: heather
   whatup:loadArchiveJob: false
   whatup:translationEnabled: false
