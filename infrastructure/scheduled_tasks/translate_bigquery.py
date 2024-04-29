@@ -144,7 +144,7 @@ if translation_enabled:
         `{args['dataset_id']}.translation_model`
         REMOTE WITH CONNECTION `{args['conn_name']}`
         OPTIONS (remote_service_type = 'cloud_ai_translate_v3');
-    
+
         MERGE INTO `{args['dataset_id']}.{args['results_table']}` as me
         USING (
           SELECT
