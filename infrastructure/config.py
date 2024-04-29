@@ -52,6 +52,7 @@ temp_bucket_ttl_days = config.require_int("temp_bucket_ttl_days")
 control_groups = config.require_object("control_groups")
 
 load_archive_job = config.get_bool("loadArchiveJob", False)
+translation_enabled = config.get_bool("translationEnabled", False)
 
 # Import the provider's configuration settings.
 gcp_config = pulumi.Config("gcp")
