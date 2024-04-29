@@ -8,6 +8,7 @@ config:
   whatup:bqDatasetRegion: EU
   whatup:control_groups:
     - c+c-stage@g.us # c+c-stage
+  whatup:isProd: false
   whatup:machineTypes:
     - serviceName: whatupcore2
       type: E2Small

@@ -41,6 +41,7 @@ config:
   whatup:control_groups:
     - pilot6@g.us # pilot6
     - pilot5@g.us # pilot5
+  whatup:isProd: true
   whatup:primary_bot_name: heather
   whatup:loadArchiveJob: false
   whatup:translationEnabled: false

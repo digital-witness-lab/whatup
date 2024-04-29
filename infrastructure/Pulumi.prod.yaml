@@ -6,6 +6,7 @@ config:
   google-native:region: us-central1
   google-native:zone: us-central1-a
   whatup:bqDatasetRegion: US
+  whatup:isProd: true
   whatup:machineTypes:
     - serviceName: whatupcore2
       type: E2Medium
