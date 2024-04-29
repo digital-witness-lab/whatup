@@ -1,8 +1,8 @@
 .PHONY: auth auth-test auth-prod lint-ci
 
-auth-carter-prod:
+auth-carter:
 	pulumi org set-default mynameisfiber
-	pulumi stack select mynameisfiber/carter-prod
+	pulumi stack select mynameisfiber/carter
 	make auth
 
 auth-test:
