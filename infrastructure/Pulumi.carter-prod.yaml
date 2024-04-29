@@ -5,7 +5,6 @@ config:
   google-native:project: whatup-prod
   google-native:region: us-central1
   google-native:zone: us-central1-a
-  whatup:customerId: C03cp9frk
   whatup:bqDatasetRegion: US
   whatup:control_groups:
     - c+c-prod@g.us
