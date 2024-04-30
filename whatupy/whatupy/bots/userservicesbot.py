@@ -50,6 +50,7 @@ class UserServicesBot(BaseBot):
         bot_factory = partial(
             UserBot,
             connect_callback=self.new_device,
+            disconnect_callback=self.dead_device,
             logger=self.logger,
             db=self.db,
             group_min_participants=group_min_participants,
@@ -279,6 +280,15 @@ Total devices: {n_devices}
             case _:
                 ulog.debug("Unrecognized command: %s", text)
                 await self.help_text(user)
+
+    async def dead_device(self, user: UserBot):
+        if not user.jid_anon:
+            return
+        user_jid_str = utils.jid_to_str(user.jid_anon)
+        if not user_jid_str:
+            return
+        self.logger.info("Removing user from user list: %s", user.username)
+        self.users.pop(user_jid_str, None)
 
     async def new_device(self, user: UserBot):
         if not user.jid_anon:
