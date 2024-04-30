@@ -281,7 +281,7 @@ Total devices: {n_devices}
                 ulog.debug("Unrecognized command: %s", text)
                 await self.help_text(user)
 
-    async def dead_device(self, user: UserBot):
+    def dead_device(self, user: UserBot):
         if not user.jid_anon:
             return
         user_jid_str = utils.jid_to_str(user.jid_anon)
