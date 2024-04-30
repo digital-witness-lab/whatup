@@ -122,6 +122,9 @@ class UserBot(BaseBot):
 
     async def post_start(self):
         await self.connect_callback(self)
+        while True:
+            await self.core_client.GetConnectionStatus(wuc.ConnectionStatusOptions())
+            await asyncio.sleep(60)
 
     def stop(self):
         self.disconnect_callback(self)
