@@ -71,7 +71,7 @@ class DeviceManager:
             bot = await bot.login(credential)
         except InvalidCredentialsException as e:
             if self.unregister_invalid_credentials:
-                self.logger.exception(
+                self.logger.critical(
                     "Invalid credentials for user... unregistering: %s", username
                 )
                 await self.unregister(username)
