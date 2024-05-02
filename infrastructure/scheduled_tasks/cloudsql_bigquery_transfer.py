@@ -69,7 +69,6 @@ for database, tables_spec in database_descriptions.items():
         dts.v1.TransferConfig(
             f"msg-{table}-{get_stack()}-trans",
             dts.v1.TransferConfigArgs(
-                destination_dataset_id=bq_dataset_id,
                 location=bq_dataset_region,
                 display_name=f"Copy messages.{table} data",
                 data_source_id="scheduled_query",
