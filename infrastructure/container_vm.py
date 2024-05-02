@@ -12,7 +12,13 @@ from pulumi_gcp import compute as classic_gcp_compute
 from pulumi_gcp import projects
 from pulumi_google_native.compute import v1 as native_compute_v1
 
-from config import project, zone, SharedCoreMachineType, machine_types
+from config import (
+    project,
+    zone,
+    SharedCoreMachineType,
+    machine_types,
+    is_prod_stack,
+)
 from gcloud import get_project_number
 from network_firewall import firewall_association
 
@@ -123,6 +129,12 @@ class ContainerOnVm(pulumi.ComponentResource):
 
         self.__args = args
         self.__name = name
+
+        self.__args.container_spec.env.append(
+            ContainerEnv(
+                name="IS_PROD", value="True" if is_prod_stack() else "False"
+            )
+        )
 
         # Grant access to pull container image from Artifact Registry.
         self.__artifact_registry_perm = projects.IAMMember(
