@@ -40,7 +40,6 @@ class UserServicesBot(BaseBot):
         self.db: dataset.Database = dataset.connect(
             database_url,
         )
-        self.users: T.Dict[str, UserBot] = {}
         self.demo_lifespan = demo_lifespan
 
         group_min_participants = 6
@@ -62,6 +61,16 @@ class UserServicesBot(BaseBot):
         )
 
         self.user_jobs: T.Set[UserJob] = set()
+
+    def list_users(self) -> T.List[UserBot]:
+        return [device.bot for device in self.device_manager.devices.values()]
+
+    def lookup_user(self, jid: wuc.JID) -> UserBot | None:
+        for device in self.device_manager.devices.values():
+            j = device.bot.jid_anon
+            if j is not None and j.user == jid.user and j.server == jid.server:
+                return device.bot
+        return None
 
     def setup_command_args(self):
         parser = BotCommandArgs(
@@ -126,7 +135,7 @@ class UserServicesBot(BaseBot):
             await self._on_list_users(message, params)
 
     async def _on_list_users(self, message, params):
-        users = list(self.users.values())
+        users = self.list_users()
         if params.no_demo:
             users = [user for user in users if not user.state.get("is_demo")]
         if params.no_bots:
@@ -141,9 +150,10 @@ class UserServicesBot(BaseBot):
     async def _on_user_group_job(self, message, params, job_type: T.Type[UserGroupJob], job_kwargs=None):
         user_job = job_type(name=params.job_name, timeout=params.timeout, **(job_kwargs or {}))
         sender = message.info.source.sender
+        users = self.list_users()
         if params.all:
             n_added = 0
-            for user in self.users.values():
+            for user in users:
                 try:
                     await user_job.add_user(user)
                     n_added += 1
@@ -159,7 +169,7 @@ class UserServicesBot(BaseBot):
                 try:
                     user = next(
                         user
-                        for user in self.users.values()
+                        for user in users
                         if user.username == username
                     )
                     await user_job.add_user(user)
@@ -172,15 +182,15 @@ class UserServicesBot(BaseBot):
                 return
         elif params.jid:
             if params.username:
-                users = [
+                target_users = [
                     user
-                    for user in self.users.values()
+                    for user in users
                     if user.username in set(params.username)
                 ]
             else:
-                users = list(self.users.values())
+                target_users = users
             groups = set(jid for jid in params.jid)
-            jids_found, jids_missing = await user_job.add_groups(users, groups)
+            jids_found, jids_missing = await user_job.add_groups(target_users, groups)
             if jids_missing:
                 await self.send_text_message(
                     sender,
@@ -205,13 +215,14 @@ class UserServicesBot(BaseBot):
         )
 
     async def _on_status(self, message, params):
-        n_devices = len(self.users)
-        n_active_bots = sum(1 for u in self.users.values() if u.state.get("is_bot"))
-        n_active_demo = sum(1 for u in self.users.values() if u.state.get("is_demo"))
-        n_groups_shared = sum(u.state.get("n_groups") or 0 for u in self.users.values())
+        users = self.list_users()
+        n_devices = len(users)
+        n_active_bots = sum(1 for u in users if u.state.get("is_bot"))
+        n_active_demo = sum(1 for u in users if u.state.get("is_demo"))
+        n_groups_shared = sum(u.state.get("n_groups") or 0 for u in users)
         n_active_users = sum(
             1
-            for u in self.users.values()
+            for u in users
             if not (u.state.get("is_demo") or u.state.get("is_bot"))
         )
         refresh_status = "\n".join(str(uj.status) for uj in self.user_jobs)
@@ -246,10 +257,7 @@ Total devices: {n_devices}
         if now - message.info.timestamp.ToDatetime() > timedelta(minutes=1):
             return
 
-        sender = utils.jid_to_str(message.info.source.sender)
-        if not sender:
-            return
-        user = self.users.get(sender)
+        user = self.lookup_user(message.info.source.sender)
         if user is None or user.username is None:
             return
         ulog = self.logger.getChild(user.username)
@@ -287,7 +295,6 @@ Total devices: {n_devices}
         if not user_jid_str:
             return
         self.logger.info("User services handling user: %s", user.username)
-        self.users[user_jid_str] = user
         if not user.state.get("finalize_registration", False):
             await self.onboard_user(user)
         if user.state.get("is_demo"):
@@ -307,8 +314,7 @@ Total devices: {n_devices}
             await asyncio.sleep(unregister_in_seconds)
         if not user.jid_anon:
             return
-        jid_anon = utils.jid_to_str(user.jid_anon)
-        if user.username is None or not jid_anon or not self.users.get(jid_anon):
+        if user.username is None or user.username not in self.device_manager.devices:
             self.logger.info(
                 "User seems to already be unregistered. Not unregistering demo account"
             )
@@ -320,11 +326,8 @@ Total devices: {n_devices}
         if user.username is None or user.jid_anon is None:
             return
         self.logger.info("Unregistering account: %s", user.username)
-        jid_anon = utils.jid_to_str(user.jid_anon)
         await self.device_manager.unregister(user.username)
         user.state.clear()
-        if jid_anon:
-            self.users.pop(jid_anon, None)
 
     async def onboard_bot(self, user: UserBot):
         if not user.state.get("finalize_registration"):
