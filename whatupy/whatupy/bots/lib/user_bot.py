@@ -59,9 +59,9 @@ class UserBot(BaseBot):
         host,
         port,
         cert,
-        connect_callback: T.Callable[[T.Self], T.Awaitable[None]],
-        disconnect_callback: None | T.Callable[[T.Self], None],
         db,
+        connect_callback: T.Callable[[T.Self], T.Awaitable[None]],
+        disconnect_callback: None | T.Callable[[T.Self], None] = None,
         group_min_participants: int = 6,
         **kwargs,
     ):
