@@ -39,7 +39,7 @@ for database, tables_spec in database_descriptions.items():
             lambda args: f"""
         -- first delete any rows with duplicate primary key (they'll get re-filled in in the merge)
         DELETE FROM {args["dataset_id"]}.{args["table_name"]}
-        WHERE PRIMARY_KEY IN (
+        WHERE {args["table_pk"]} IN (
           SELECT {args["table_pk"]}
           FROM {args["dataset_id"]}.{args["table_name"]}
           GROUP BY {args["table_pk"]}
