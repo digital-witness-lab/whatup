@@ -192,7 +192,7 @@ services:
       - ./data/sessions/beatrice.json:/usr/src/whatupy-data/beatrice.json:ro
       - ./data/sessions/registered-users/:/usr/src/whatupy-data/sessions/
       - ./data/public/:/data-public/
-    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert userservicesbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --public-path=/data-public/ --sessions-url  /usr/src/whatupy-data/sessions/ /usr/src/whatupy-data/beatrice.json"
+    command: sh -c "whatupy --debug --host whatup --cert /run/secrets/ssl-cert userservicesbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --public-path=/data-public/ --sessions-url  /usr/src/whatupy-data/sessions/ /usr/src/whatupy-data/beatrice.json"
 
   bot-user-archive:
     build: ./whatupy/
