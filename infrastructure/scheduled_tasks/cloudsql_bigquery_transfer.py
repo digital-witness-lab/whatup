@@ -37,6 +37,15 @@ for database, tables_spec in database_descriptions.items():
             conn_name=sql_connections[database].name,
         ).apply(
             lambda args: f"""
+        -- first delete any rows with duplicate primary key (they'll get re-filled in in the merge)
+        DELETE FROM {args["dataset_id"]}.{args["table_name"]}
+        WHERE PRIMARY_KEY IN (
+          SELECT {args["table_pk"]}
+          FROM {args["dataset_id"]}.{args["table_name"]}
+          GROUP BY {args["table_pk"]}
+          HAVING COUNT(*) > 1
+        );
+        -- merge missing data from postgres DB back into bigquery
         MERGE INTO
             {args["dataset_id"]}.{args["table_name"]} AS bq
         USING
@@ -68,9 +77,9 @@ for database, tables_spec in database_descriptions.items():
                     "query": query,
                 },
                 # run every 3 hours, starting at midnight
-                schedule="every 3 hours synchronized"
-                if is_prod_stack()
-                else None,
+                schedule=(
+                    "every 3 hours synchronized" if is_prod_stack() else None
+                ),
                 service_account_name=data_transfers_service_account.email,
             ),
             opts=ResourceOptions(
