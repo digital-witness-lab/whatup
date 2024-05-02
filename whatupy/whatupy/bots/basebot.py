@@ -43,6 +43,10 @@ class InvalidCredentialsException(Exception):
     pass
 
 
+class NotLoggedInException(Exception):
+    pass
+
+
 class StreamMissedHeartbeat(TimeoutError):
     pass
 
@@ -84,7 +88,8 @@ class BaseBot:
         control_groups: T.List[wuc.JID] = [],
         archive_files: T.Optional[str] = None,
         connect: bool = True,
-        stream_heartbeat_timeout=10,
+        stream_heartbeat_timeout: int = 10,
+        healthcheck_timeout: int = 60,
         logger=logger,
         **kwargs,
     ):
@@ -105,6 +110,7 @@ class BaseBot:
         self.read_historical_messages = read_historical_messages
         self.archive_files = archive_files
         self.stream_heartbeat_timeout = stream_heartbeat_timeout
+        self.healthcheck_timeout = healthcheck_timeout
 
         self.download_queue = asyncio.Queue()
         if connect:
@@ -164,6 +170,7 @@ class BaseBot:
                     tg.create_task(self.listen_messages())
                 if self.read_historical_messages:
                     tg.create_task(self.listen_historical_messages())
+                tg.create_task(self._connection_healthcheck())
                 tg.create_task(self.post_start())
                 tg.create_task(self._throw_on_unlock(self._stop_on_event))
         except grpc.aio._call.AioRpcError:
@@ -171,6 +178,17 @@ class BaseBot:
         except Exception:
             self.logger.exception("Exception in main run loop of bot")
         self.stop()
+
+    async def _connection_healthcheck(self):
+        while True:
+            # sleep healthcheck_timeout +/- rand(10%)
+            await asyncio.sleep(self.healthcheck_timeout * (1 + 0.1 * random.uniform(-1, 1)))
+            conn: wuc.ConnectionStatus = await self.core_client.GetConnectionStatus(
+                wuc.ConnectionStatusOptions()
+            )
+            if not conn.isLoggedIn:
+                raise NotLoggedInException
+            self.logger.info("Bot still alive")
 
     async def _throw_on_unlock(self, cond: asyncio.Event):
         await cond.wait()
