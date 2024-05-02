@@ -60,7 +60,7 @@ class UserBot(BaseBot):
         port,
         cert,
         connect_callback: T.Callable[[T.Self], T.Awaitable[None]],
-        disconnect_callback: T.Callable[[T.Self], None],
+        disconnect_callback: None | T.Callable[[T.Self], None],
         db,
         group_min_participants: int = 6,
         **kwargs,
@@ -68,7 +68,9 @@ class UserBot(BaseBot):
         self.connect_callback: T.Callable[[T.Self], T.Awaitable[None]] = (
             connect_callback
         )
-        self.disconnect_callback: T.Callable[[T.Self], None] = disconnect_callback
+        self.disconnect_callback: None | T.Callable[[T.Self], None] = (
+            disconnect_callback
+        )
         self.active_workflow: T.Optional[T.Callable] = None
         self.unregistering_timer: T.Optional[asyncio.TimerHandle] = None
         self.db = db
@@ -124,7 +126,8 @@ class UserBot(BaseBot):
         await self.connect_callback(self)
 
     def stop(self):
-        self.disconnect_callback(self)
+        if self.disconnect_callback is not None:
+            self.disconnect_callback(self)
         return super().stop()
 
     async def on_message(self, message, *_, is_history=False, **__):
