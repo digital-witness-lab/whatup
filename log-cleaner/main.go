@@ -14,7 +14,7 @@ import (
 
 var (
 	VERSION            = "v0.1.3"
-	STREAM_BUFFER_SIZE = 5 * 1024 * 1024 // 1MB in bytes
+	STREAM_BUFFER_SIZE = 5 * 1024 * 1024 // 5MB in bytes
 	CLEANERS           = []CleanerFunc{
 		phoneNumberCleaner(),
 		notifyAttribCleaner(),
