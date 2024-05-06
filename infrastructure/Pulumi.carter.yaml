@@ -1,0 +1,47 @@
+config:
+  gcp:project: whatup-carter
+  gcp:region: us-central1
+  gcp:zone: us-central1-a
+  google-native:project: whatup-carter
+  google-native:region: us-central1
+  google-native:zone: us-central1-a
+  whatup:bqDatasetRegion: US
+  whatup:databases:
+    - name: messages
+      nameShort: msg
+      passwordKey: msgPassword
+    - name: whatupcore
+      nameShort: wuc
+      passwordKey: wucPassword
+    - name: users
+      nameShort: usr
+      passwordKey: usrPassword
+  whatup:dbRootPassword:
+    secure: AAABANgKVfuEhJSkVrh7yt4KX6/Cr5i5udTyF3ceP8t0i0012+WfZE2ZAOK4yMXzbAww415qxfoQW5bdiPaM1abMuOOEwm1RDf0SElD08R9N5E70evFtbZ/NIx4RirKFvsVDa8Q+kvkja65hm2NcUTO4TyfMNYpHfhShnQdS+jJ+5nytvv6p38d5f39nB+RiRI+47pq6eFcNFnDry5htNw==
+  whatup:msgPassword:
+    secure: AAABAKfrD/12malL0Q0nCRA3CQhjJ/iG/bf66DtnFqZ+5Q7yKVHMMe5AGxD4qJrWV92sFgA0UMpFLRX0XCP6RrlFBDNd/cOQwfUQ/TL5V+XJASjWvJ5yaJLbUSl5CK6daMcAjXcwFRE7cPXWHtuW++ELA7OT/sR0isM6ICQlmxo6Jal0FiZXarhII4F7ga46L14Lv+d7tHaarfKPwMBJ6w==
+  whatup:temp_bucket_ttl_days: "1"
+  whatup:usrPassword:
+    secure: AAABAFwzSkaX2+g8V881/VjdN+LWMIjEK1gdE9D+qW/Amcv9yt4kNUdtkYjSbodJ0tLZR58RxwnXTFhq0AZtWqHEgLjFJm0CFvYRb7MFdGlVYY7mMsJ5YsSU67VQe/uj6+yXmIOlYBZgoXjkNNCf0GhJJDMGMIiEJP7Nr13b3ZL56XEZe02Wpx+P0J+Fh3j0Iyrk4Z+Rrcxvj2AP9Bwo+g==
+  whatup:whatupAnonKey:
+    secure: AAABAIWnSCiSeLjrt5i7KA7qihf+IOfy0We3G9WRoGo7tHIXn/GYaViR5guF5AZPn+Ka7ZhirXiK9eVkDEfxY/iHai08XBbSxLlBYv5B5TLWXsbivLcBoHV0qEei7lWmGf8jVnGyd4KwqEN5lEC1BZ2S6B8Wbj3SQcqLMcKr+AvKslbXu7IlUNiuYUix8Tt+BYB+yA8fnw5u9p382bpEcA==
+  whatup:whatupSalt:
+    secure: AAABAF+dsEIJZrz/xOuC19zz8/wr/vIHFtPYSMjPDVBwolry9sHKxJ2BpLoY2zcvG1ZWN63uWL5f4RNUL/ggeMbvi4oomQVz61sa7n8/CU2QPliBEMCHsMCCA9S7heZWHNFyvDHxwfOXPo3USCWBE6oTcF7oObTKTMB43UxvY9RChToihYgF3mSLvf+ji6NAKz2FIRABKIvBYAGRmefsog==
+  whatup:wucPassword:
+    secure: AAABANvtQmtupTUm2IBo5FRWM57txXShdoHkW21UnBC4OS5536g+iNB6qTSsXt2xG5eu0WBBECEvC2GN8DUuQ3qtfMAFTZRL+XJG/TtDjAPYnlrO2n2Rljfmj1iUYkemjMomKLHNofEE+gdjlKlzuh020WjR+xMRbM+7D7c+jHrPswQ5GHSybOjFxyKGm/ETh5W2DHiYoiygahzJxivTZQ==
+  whatup:machineTypes:
+    - serviceName: whatupcore2
+      type: E2Small
+    - serviceName: bot-db
+      type: E2Micro
+    - serviceName: bot-archive
+      type: E2Micro
+    - serviceName: null
+      type: E2Micro
+  whatup:control_groups:
+    - 120363293503899527@g.us # Carter / Announcements
+    - 120363292026589689@g.us # Carter / South Africa
+  whatup:isProd: true
+  whatup:primary_bot_name: heather
+  whatup:loadArchiveJob: false
+  whatup:translationEnabled: false

@@ -48,9 +48,9 @@ class UserServicesBot(BaseBot):
 
         bot_factory = partial(
             UserBot,
-            connect_callback=self.new_device,
             logger=self.logger,
             db=self.db,
+            connect_callback=self.new_device,
             group_min_participants=group_min_participants,
             **kwargs,
         )

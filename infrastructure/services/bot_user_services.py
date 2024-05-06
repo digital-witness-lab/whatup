@@ -9,7 +9,6 @@ from container_vm import (
     ContainerEnv,
     ContainerOnVm,
     ContainerOnVmArgs,
-    SharedCoreMachineType,
 )
 from dwl_secrets import db_url_secrets
 from jobs.db_migrations import migrations_job_complete
@@ -146,7 +145,6 @@ bot_user_services = ContainerOnVm(
                 ),
             ],
         ),
-        machine_type=SharedCoreMachineType.E2Micro,
         secret_env=[
             compute.v1.MetadataItemsItemArgs(
                 key="SSL_CERT_PEM",
