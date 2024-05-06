@@ -501,6 +501,10 @@ class DatabaseBot(BaseBot):
         group_info_hash = utils.group_info_hash(group_info)
 
         group_info_id = f"{chat_jid}-{donor_jid}-{group_info_hash}"
+        if table.count(id=group_info_id) > 0:
+            table.update({"last_seen": update_time, "id": group_info_id}, keys=["id"])
+            return
+
         group_info_flat = flatten_proto_message(
             group_info,
             preface_keys=True,
@@ -509,11 +513,12 @@ class DatabaseBot(BaseBot):
         group_info_flat["id"] = group_info_id
         group_info_flat["donor_jid"] = donor_jid
         group_info_flat["timestamp"] = update_time
+        group_info_flat["last_seen"] = update_time
         group_info_flat["version_hash"] = group_info_hash
         group_info_flat["provenance"] = {**(group_info_flat.get("provenance") or {}), **db_provenance}
         group_info_flat[RECORD_MTIME_FIELD] = now
 
-        table.insert_ignore(group_info_flat, keys=['id'])
+        table.insert(group_info_flat)
         logger.info("Updating group: %s", chat_jid)
 
     async def _update_edit(self, message: wuc.WUMessage):
