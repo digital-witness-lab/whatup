@@ -62,7 +62,7 @@ anon_key_secret_manager_perm = secretmanager.SecretIamMember(
     ),
 )
 
-whatup_anon_key_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
+whatup_anon_key_secret_source = cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
     secret_key_ref=JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
         secret=whatup_anon_key_secret.name,
         version="latest",
@@ -94,7 +94,7 @@ whatupcore2_rmuser_job = Job(
                 name="ENC_KEY_SALT",
                 value_source=whatup_salt_secret_source,
             ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
+            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                 name="ANON_KEY",
                 value_source=whatup_anon_key_secret_source,
             ),

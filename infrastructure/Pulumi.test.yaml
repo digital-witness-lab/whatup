@@ -8,6 +8,12 @@ config:
   whatup:bqDatasetRegion: EU
   whatup:control_groups:
     - c+c-stage@g.us # c+c-stage
+  whatup:isProd: false
+  whatup:machineTypes:
+    - serviceName: whatupcore2
+      type: E2Small
+    - serviceName: null
+      type: E2Micro
   whatup:databases:
     - name: messages
       nameShort: msg
@@ -20,7 +26,8 @@ config:
       passwordKey: usrPassword
   whatup:dbRootPassword:
     secure: AAABADVUvMSQDJbmM1efOsI9/xM0BDBF8zU9/11FbNH2ErKOZ9/FdZjAEG0tJtcjW4IeWkJE6/d1PIgY/BmisAUd4m1NWgMQ3mcfJMwPjnSEnb1vPjubiH5BmlOEPi2L
-  whatup:loadArchiveJob: "false"
+  whatup:loadArchiveJob: false
+  whatup:translationEnabled: true
   whatup:msgPassword:
     secure: AAABADidjer3HeL9MDtQF7uJ/cCA0T0aLaKA4Scm1DLzScD5s5oJhXR3fF+TurCdwU69uOUV08u1VzAbZABQcsH5UkBAY77Bm/G8PNxLxbTa6lLszF1+0fpRrPy0YzrK
   whatup:primary_bot_name: flo

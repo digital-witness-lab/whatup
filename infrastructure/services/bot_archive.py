@@ -3,13 +3,12 @@ from pulumi_gcp import kms, secretmanager, serviceaccount, storage
 from pulumi_google_native import compute
 
 from artifact_registry import whatupy_image
-from config import control_groups, is_prod_stack
+from config import control_groups
 from container_vm import (
     Container,
     ContainerEnv,
     ContainerOnVm,
     ContainerOnVmArgs,
-    SharedCoreMachineType,
 )
 from jobs.db_migrations import migrations_job_complete
 from kms import sessions_encryption_key, sessions_encryption_key_uri
@@ -64,10 +63,6 @@ ssl_cert_pem_secret_perm = secretmanager.SecretIamMember(
     ),
 )
 
-machine_type = SharedCoreMachineType.E2Medium
-if not is_prod_stack():
-    machine_type = SharedCoreMachineType.E2Micro
-
 bot_archive = ContainerOnVm(
     service_name,
     ContainerOnVmArgs(
@@ -116,7 +111,6 @@ bot_archive = ContainerOnVm(
                 ),
             ],
         ),
-        machine_type=machine_type,
         secret_env=[
             compute.v1.MetadataItemsItemArgs(
                 key="SSL_CERT_PEM",
