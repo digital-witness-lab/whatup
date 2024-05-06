@@ -204,9 +204,28 @@ services:
     secrets:
       - ssl-cert
     volumes:
-      - ./data/sessions/registered-users/:/usr/src/whatupy-data/sessions/
+      - ./data/sessions/registered-users/:/usr/src/whatupy-data/sessions/:ro
       - ./data/message-archive-user/:/usr/src/whatupy-data/message-archive/
     command: whatupy --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
+
+  bot-user-database:
+    build: ./whatupy/
+    links:
+      - whatup
+      - db
+    environment:
+      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CONTROL_GROUPS=c+c-prod@g.us anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net # c+c-prod + micha
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
+    secrets:
+      - ssl-cert
+      - postgres-messages-passwd
+    env_file:
+      - .env
+    volumes:
+      - ./data/sessions/registered-users/:/usr/src/whatupy-data/sessions/:ro
+      - ./data/media/:/usr/src/whatupy-data/media/
+    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert databasebot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ /usr/src/whatupy-data/sessions/"
 
   hash-gen:
     build: ./hash-gen/
