@@ -318,15 +318,15 @@ class DatabaseBot(BaseBot):
         archive_data: ArchiveData,
         media_filename: T.Optional[str] = None,
     ):
+        chat_jid = utils.jid_to_str(message.info.source.chat)
         message_flat = flatten_proto_message(message)
         media_filename = media_filename or utils.media_message_filename(message)
         if message_flat.get("thumbnail"):
             thumbnail: bytes = message_flat.pop("thumbnail")
             message_flat["thumbnail_url"] = self.write_media(
                 thumbnail,
-                message,
                 f"{message.info.id}.jpg",
-                ["thumbnail"],
+                [chat_jid, "thumbnail"],
             )
         with self.db as db:
             message_flat["mediaFilename"] = media_filename
@@ -348,13 +348,11 @@ class DatabaseBot(BaseBot):
     def write_media(
         self,
         content: bytes,
-        message: wuc.WUMessage,
         filename: str,
         path_prefixes: T.Optional[T.List[str]],
     ) -> str:
-        jid = utils.jid_to_str(message.info.source.chat) or "no_chat"
-        prefixes = [jid, *(path_prefixes or [])]
-        filepath = self.media_url(prefixes, filename)
+        path_prefixes = path_prefixes or []
+        filepath = self.media_url(path_prefixes, filename)
         filepath.parent.mkdir(exist_ok=True, parents=True)
         filepath.write_bytes(content)
         return str(filepath)
@@ -367,17 +365,15 @@ class DatabaseBot(BaseBot):
         datum: dict,
     ):
         if content:
+            chat_jid = utils.jid_to_str(message.info.source.chat)
             datum["content_url"] = self.write_media(
-                content, message, datum["filename"], ["media"]
+                content, datum["filename"], [chat_jid, "media"]
             )
-            del content
         else:
             self.logger.critical(
                 "Empty media body... Writing empty media URI: %s", datum
             )
-        datum["error"] = None
-        if error:
-            datum["error"] = str(error)
+        datum["error"] = None if error is None else str(error)
         datum[RECORD_MTIME_FIELD] = datetime.now()
         self.db["media"].upsert(datum, ["filename"])
 
