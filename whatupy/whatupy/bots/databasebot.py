@@ -137,13 +137,6 @@ class DatabaseBot(BaseBot):
         )
         group_info.create_index(["JID", "timestamp"])
 
-        db["group_info"].create_column(
-            "first_seen", type=db.types.datetime, server_default=func.now()
-        )
-        db["group_info"].create_column(
-            "last_update", type=db.types.datetime, server_default=func.now()
-        )
-
         group_participants = db.create_table("group_participants")
         try:
             group_participants.create_index(["chat_jid"])

@@ -225,7 +225,7 @@ services:
     volumes:
       - ./data/sessions/registered-users/:/usr/src/whatupy-data/sessions/:ro
       - ./data/media/:/usr/src/whatupy-data/media/
-    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert databasebot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ /usr/src/whatupy-data/sessions/"
+    command: sh -c "whatupy --debug --host whatup --cert /run/secrets/ssl-cert databasebot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ /usr/src/whatupy-data/sessions/"
 
   hash-gen:
     build: ./hash-gen/
