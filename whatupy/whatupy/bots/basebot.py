@@ -437,7 +437,6 @@ class BaseBot:
                     "Exception calling download_media_message_eventually callback: %s",
                     message.info.id,
                 )
-            sleep_time = random.randint(1, 5)
             await asyncio.sleep(sleep_time)
 
     async def download_message_media_eventually(

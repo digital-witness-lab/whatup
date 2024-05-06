@@ -10,6 +10,7 @@ import mimetypes
 import random
 import re
 import string
+import sys
 import typing as T
 import warnings
 from collections import namedtuple
@@ -32,6 +33,29 @@ RANDOM_SALT = random.randbytes(32)
 
 CommandQuery = namedtuple("CommandQuery", "namespace command params".split(" "))
 Generic = T.TypeVar("Generic")
+
+
+def group_info_hash(group_info: wuc.GroupInfo) -> str:
+    data = (
+        group_info.createdAt.ToNanoseconds(),
+        group_info.JID.user,
+        group_info.JID.server,
+        group_info.groupName.updatedAt.ToNanoseconds(),
+        group_info.groupTopic.updatedAt.ToNanoseconds(),
+        group_info.memberAddMode,
+        group_info.isLocked,
+        group_info.isAnnounce,
+        group_info.isEphemeral,
+        group_info.disappearingTimer,
+        group_info.isCommunity,
+        group_info.isCommunityDefaultGroup,
+        group_info.isPartialInfo,
+        group_info.isIncognito,
+        group_info.parentJID.user,
+        group_info.parentJID.server,
+    )
+    hash_int = hash(data) % ((sys.maxsize + 1) * 2)
+    return f"{hash_int:x}"
 
 
 def gspath_to_self_signed_url(

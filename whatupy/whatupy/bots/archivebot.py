@@ -86,10 +86,12 @@ class ArchiveBot(BaseBot):
         timestamp = int((now.timestamp() // refresh_dt) * refresh_dt)
 
         meta_group_path = (
-            conversation_dir / "group-info" / f"group-info_{timestamp}.json"
+            conversation_dir / "group-info" / f"group-info_{timestamp}_{reciever}.json"
         )
         meta_community_path = (
-            conversation_dir / "community-info" / f"community-info_{timestamp}.json"
+            conversation_dir
+            / "community-info"
+            / f"community-info_{timestamp}_{reciever}.json"
         )
 
         should_check_messages = (
