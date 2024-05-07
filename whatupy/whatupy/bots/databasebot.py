@@ -437,10 +437,12 @@ class DatabaseBot(BaseBot):
             )
             last_update: datetime = group_info_prev.get("timestamp", datetime.min)
             if not is_archive and last_update + self.group_info_refresh_time > now:
+                self.logger.debug("Is Archive or Too Soon for new group info: %s: %s: %s", last_update, self.group_info_refresh_time, now)
                 return
             try:
                 group_info = await self.core_client.GetGroupInfo(chat)
                 if group_info is None:
+                    self.logger.debug("Empty group info... stopping")
                     return
                 if utils.jid_to_str(group_info.parentJID) is not None:
                     community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = (
@@ -453,7 +455,7 @@ class DatabaseBot(BaseBot):
                     return
 
         if community_info is not None:
-            self.logger.debug("Using community info to update groups for community")
+            self.logger.info("Updating community info: %s", chat_jid)
             # FIX for old whatupcore that didn't fill in parentJID
             parentJID = next(gi.JID for gi in community_info if gi.isCommunity)
             for gi in community_info:
@@ -474,7 +476,7 @@ class DatabaseBot(BaseBot):
                         now,
                     )
         elif group_info is not None:
-            self.logger.debug("Using group info to update group: %s", chat_jid)
+            self.logger.info("Updating group info: %s", chat_jid)
             with self.db as db:
                 await self._insert_device_group_info(
                     db, group_info, donor, now
@@ -485,6 +487,8 @@ class DatabaseBot(BaseBot):
             )
 
     async def _update_group_participants(self, db: dataset.Database, update_time: datetime, chat_jid: str, group_participants_proto: T.Sequence[wuc.GroupParticipant]):
+        if not group_participants_proto:
+            return
         now = datetime.now()
         group_participants = [flatten_proto_message(p) for p in group_participants_proto]
         participant_jids = list(p["JID"] for p in group_participants)
