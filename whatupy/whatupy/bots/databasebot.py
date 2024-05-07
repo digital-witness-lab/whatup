@@ -117,6 +117,27 @@ class DatabaseBot(BaseBot):
         return cls.__db_cache[url_hash]
 
     def init_database(self, db):
+        device_group_info = db.create_table(
+            "device_group_info",
+            primary_id="id",
+            primary_type=db.types.text,
+            primary_increment=False,
+        )
+        device_group_info.create_column(
+            "JID",
+            type=db.types.text,
+        )
+        device_group_info.create_column(
+            "donor_jid",
+            type=db.types.text,
+        )
+        device_group_info.create_column(
+            "timestamp",
+            type=db.types.datetime,
+        )
+        device_group_info.create_index(["JID", "timestamp"])
+
+        # <depricated>
         group_info = db.create_table(
             "group_info",
             primary_id="id",
@@ -127,15 +148,15 @@ class DatabaseBot(BaseBot):
             "JID",
             type=db.types.text,
         )
-        group_info.create_column(
-            "donor_jid",
-            type=db.types.text,
+        group_info.create_index(["JID"])
+
+        db["group_info"].create_column(
+            "first_seen", type=db.types.datetime, server_default=func.now()
         )
-        group_info.create_column(
-            "timestamp",
-            type=db.types.datetime,
+        db["group_info"].create_column(
+            "last_update", type=db.types.datetime, server_default=func.now()
         )
-        group_info.create_index(["JID", "timestamp"])
+        # </depricated>
 
         group_participants = db.create_table("group_participants")
         try:
@@ -260,15 +281,22 @@ class DatabaseBot(BaseBot):
 
         if message.info.source.isGroup and not is_history:
             self.logger.debug("Updating group or community groups: %s", message.info.id)
-            await self._update_group_or_community(
+            await self._update_device_group_or_community(
                 message.info.source.chat,
                 message.info.source.reciever,
                 is_archive,
                 archive_data,
             )
+
+        # <depricated>
+        if message.info.source.isGroup and not is_history:
             self.logger.debug(
-                "Done updating group or community groups: %s", message.info.id
+                "Updating group or community groups: %s", message.info.id
             )
+            await self._update_group_or_community_old(
+                message.info.source.chat, is_archive, archive_data,
+            )
+        # </depricated>
 
     async def _update_media(
         self,
@@ -370,7 +398,7 @@ class DatabaseBot(BaseBot):
         datum[RECORD_MTIME_FIELD] = datetime.now()
         self.db["media"].upsert(datum, ["filename"])
 
-    async def _update_group_or_community(
+    async def _update_device_group_or_community(
         self,
         chat: wuc.JID,
         donor: wuc.JID,
@@ -393,8 +421,9 @@ class DatabaseBot(BaseBot):
             now = archive_data.WUMessage.info.timestamp.ToDatetime()
             self.logger.debug("Storing archived message timestamp: %s", now)
         else:
+            table: dataset.Table = self.db.get_table("device_group_info")
             group_info_prev = (
-                self.db["group_info"].find_one(JID=chat_jid, donor_jid=donor_jid, order_by="-timestamp") or {}
+                table.find_one(JID=chat_jid, donor_jid=donor_jid, order_by="-timestamp") or {}
             )
             last_update: datetime = group_info_prev.get("timestamp", datetime.min)
             if not is_archive and last_update + self.group_info_refresh_time > now:
@@ -428,7 +457,7 @@ class DatabaseBot(BaseBot):
                     community_group_jid,
                 )
                 with self.db as db:
-                    await self._insert_group_info(
+                    await self._insert_device_group_info(
                         db,
                         group_from_community,
                         donor,
@@ -437,7 +466,7 @@ class DatabaseBot(BaseBot):
         elif group_info is not None:
             self.logger.debug("Using group info to update group: %s", chat_jid)
             with self.db as db:
-                await self._insert_group_info(
+                await self._insert_device_group_info(
                     db, group_info, donor, now
                 )
         elif not is_archive:
@@ -474,7 +503,7 @@ class DatabaseBot(BaseBot):
         logger.debug("Updating participants for group/community: %s", chat_jid)
         table.upsert_many(group_participants, ["JID", "chat_jid"])
 
-    async def _insert_group_info(
+    async def _insert_device_group_info(
         self,
         db: dataset.Database,
         group_info: wuc.GroupInfo,
@@ -497,7 +526,7 @@ class DatabaseBot(BaseBot):
 
         await self._update_group_participants(db, update_time, chat_jid, group_info.participants)
 
-        table: dataset.Table = db.get_table("group_info")
+        table: dataset.Table = db.get_table("device_group_info")
         group_info_hash = utils.group_info_hash(group_info)
 
         group_info_id = f"{chat_jid}-{donor_jid}-{group_info_hash}"
@@ -637,3 +666,161 @@ class DatabaseBot(BaseBot):
                 media_path = self.media_base_path / jid
                 self.logger.info("Removing media path: %s", media_path)
                 media_path.rmtree()
+
+    # <depricated>
+    async def _update_group_or_community_old(
+        self,
+        chat: wuc.JID,
+        is_archive: bool,
+        archive_data: ArchiveData,
+    ):
+        chat_jid = utils.jid_to_str(chat)
+        now = datetime.now()
+
+        community_info: T.List[wuc.GroupInfo] | None = None
+        group_info: wuc.GroupInfo | None = None
+        if is_archive:
+            if archive_data.CommunityInfo is not None:
+                community_info = archive_data.CommunityInfo
+            if archive_data.GroupInfo is not None:
+                group_info = archive_data.GroupInfo
+            if not (archive_data or community_info):
+                return
+            now = archive_data.WUMessage.info.timestamp.ToDatetime()
+            self.logger.debug("Storing archived message timestamp: %s", now)
+
+        group_info_prev = self.db["group_info"].find_one(id=chat_jid) or {}
+
+        if not is_archive:
+            last_update: datetime = group_info_prev.get("last_update", datetime.min)
+            if not is_archive and last_update + self.group_info_refresh_time > now:
+                return
+            try:
+                group_info = await self.core_client.GetGroupInfo(chat)
+                if group_info is None:
+                    return
+                if utils.jid_to_str(group_info.parentJID) is not None:
+                    community_info_iterator: T.AsyncIterator[
+                        wuc.GroupInfo
+                    ] = self.core_client.GetCommunityInfo(group_info.parentJID)
+                    community_info = await utils.aiter_to_list(community_info_iterator)
+            except grpc.aio._call.AioRpcError as e:
+                if "rate-overlimit" in (e.details() or ""):
+                    self.logger.warn("Rate Overlimit for group info: %s", chat_jid)
+                    return
+
+        if community_info is not None:
+            self.logger.debug("Using community info to update groups for community")
+            parentJID = next(gi.JID for gi in community_info if gi.isCommunity)
+            for gi in community_info:
+                if not gi.isCommunity and not gi.parentJID:
+                    gi.parentJID.CopyFrom(parentJID)
+            for group_from_community in community_info:
+                self.logger.debug(
+                    "Inserting community group: %s",
+                    utils.jid_to_str(group_from_community.JID),
+                )
+                with self.db as db:
+                    await self._insert_group_info_old(db, group_from_community, now, group_info_prev=group_info_prev)
+        elif group_info is not None:
+            self.logger.debug("Using group info to update group: %s", chat_jid)
+            with self.db as db:
+                await self._insert_group_info_old(db, group_info, now, group_info_prev=group_info_prev)
+        elif not is_archive:
+            self.logger.critical(
+                "Both community_info and group_info are none...: %s", chat_jid
+            )
+
+    async def _insert_group_info_old(
+            self, db: dataset.Database, group_info: wuc.GroupInfo, update_time: datetime, group_info_prev=None
+    ):
+        now = datetime.now()
+        chat_jid = utils.jid_to_str(group_info.JID)
+        logger = self.logger.getChild(chat_jid or "")
+        group_info_flat = flatten_proto_message(
+            group_info,
+            preface_keys=True,
+            skip_keys=set(["participants", "participantVersionId"]),
+        )
+
+        db_provenance = {
+            "databasebot__timestamp": datetime.now().isoformat(),
+            "databasebot__version": self.__version__,
+            **self.meta,
+        }
+        group_info_prev = group_info_prev or db["group_info"].find_one(id=chat_jid) or {}
+        has_prev_group_info = bool(group_info_prev)
+
+        if has_prev_group_info and group_info_prev['last_update'] > update_time:
+            logger.debug("DB group info is more recent. Not updating")
+            return
+
+        group_info_flat["id"] = chat_jid
+        group_info_flat["last_update"] = update_time
+
+        if group_info_prev.get("provenance") is None:
+            group_info_prev.update(provenance=db_provenance)
+        else:
+            group_info_prev["provenance"].update(db_provenance)
+
+        if group_info_flat.get("provenance") is None:
+            group_info_flat.update(provenance=db_provenance)
+        else:
+            group_info_flat["provenance"].update(db_provenance)
+
+        if has_prev_group_info:
+            logger.debug("Has prev group info")
+            keys = set(group_info_flat.keys())
+            [keys.discard(f) for f in ("provenance", "last_update", "record_mtime")]
+            changed_keys = [
+                k for k in keys if group_info_flat.get(k) != group_info_prev.get(k)
+            ]
+            if changed_keys:
+                logger.debug(
+                    "Found previous out-of-date entry, updating: %s: %s",
+                    chat_jid,
+                    changed_keys,
+                )
+                group_info_flat["provenance"]["databasebot__changed_fields"] = ",".join(
+                    changed_keys
+                )
+                n_versions = db["group_info"].count(JID=chat_jid)
+                group_info_prev["n_versions"] = n_versions
+                prev_id = group_info_prev["id"]
+                N = group_info_flat["n_versions"] = n_versions + 1
+
+                n = N
+                while db["group_info"].count(id=f"{chat_jid}-{n:06d}") > 0:
+                    n += 1
+                id_ = f"{chat_jid}-{n:06d}"
+                group_info_prev["id"] = id_
+
+                group_info_prev["last_update"] = update_time
+                group_info_flat["previous_version_id"] = id_
+                if group_first_seen := group_info_prev.get("first_seen"):
+                    group_info_flat["first_seen"] = group_first_seen
+
+                group_info_flat[RECORD_MTIME_FIELD] = now
+                group_info_prev[RECORD_MTIME_FIELD] = now
+                db["group_info"].delete(id=prev_id)
+                db["group_info"].insert(group_info_prev)
+                db["group_info"].upsert(group_info_flat, ["id"])
+            else:
+                logger.debug("Updating group info last updated field: %s", changed_keys)
+                db["group_info"].update(
+                    {
+                        "id": chat_jid,
+                        "last_update": update_time,
+                        "provenance": group_info_prev.get("provenance"),
+                        RECORD_MTIME_FIELD: now,
+                    },
+                    ["id"],
+                )
+        else:
+            logger.debug("Inserting new group info row")
+            group_info_flat["first_seen"] = update_time
+            group_info_flat[RECORD_MTIME_FIELD] = now
+            db["group_info"].insert(group_info_flat)
+
+        logger.info("Updating group: %s", chat_jid)
+    # </depricated>

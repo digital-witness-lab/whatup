@@ -10,6 +10,7 @@ database_descriptions = {
     "messages": {
         "reactions": {"pk": "id"},
         "group_info": {"pk": "id"},
+        "device_group_info": {"pk": "id"},
         "group_participants": {"pk": "id"},
         "messages": {"pk": "id"},
         "media": {"pk": "filename"},
