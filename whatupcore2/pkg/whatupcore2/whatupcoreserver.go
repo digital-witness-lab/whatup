@@ -488,10 +488,20 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
 	}
 
 	for _, subgroup := range subgroups {
+        var groupInfo *types.GroupInfo
 		gJID := subgroup.JID
-		groupInfo, err := session.Client.GetGroupInfo(gJID)
+        can_read, _ := CanReadJID(session, &gJID)
 		isPartial := false
-		if err != nil {
+        if can_read {
+            var err error
+		    groupInfo, err = session.Client.GetGroupInfo(gJID)
+            if err != nil {
+                isPartial = true
+            }
+        } else {
+            isPartial = true
+        }
+		if isPartial {
 			groupInfo = &types.GroupInfo{
 				JID:       gJID,
 				GroupName: subgroup.GroupName,
@@ -502,7 +512,6 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
 					IsDefaultSubGroup: subgroup.IsDefaultSubGroup,
 				},
 			}
-			isPartial = true
 		}
 		groupInfoProto := GroupInfoToProto(groupInfo, session.Client.Store)
 		groupInfoProto.IsPartialInfo = isPartial
