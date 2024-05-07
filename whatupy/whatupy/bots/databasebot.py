@@ -21,7 +21,7 @@ RECORD_MTIME_FIELD = "record_mtime"
 
 
 class DatabaseBot(BaseBot):
-    __version__ = "3.0.0"
+    __version__ = "3.1.0"
     __db_cache: T.Dict[str, dataset.Database] = {}
 
     def __init__(
