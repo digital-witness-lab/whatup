@@ -230,8 +230,13 @@ def str_to_jid(sjid: str) -> wuc.JID:
     return wuc.JID(user=user, server=server)
 
 
-def same_jid(a: wuc.JID, b: wuc.JID) -> bool:
-    return a.user == b.user and a.server == b.server
+def same_jid(a: wuc.JID | None, b: wuc.JID | None) -> bool:
+    return (
+        (a is not None)
+        and (b is not None)
+        and a.user == b.user
+        and a.server == b.server
+    )
 
 
 def random_words(n_words=3) -> T.List[str]:

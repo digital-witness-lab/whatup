@@ -166,9 +166,8 @@ class DatabaseBot(BaseBot):
             self.logger.warn(
                 "Could not create group_participants indices because table doesn't exist yet"
             )
-        group_participants.create_column(
-            "first_seen", type=db.types.datetime, server_default=func.now()
-        )
+        group_participants.create_column("first_seen", type=db.types.datetime)
+        group_participants.create_column("last_seen", type=db.types.datetime)
 
         db.create_table(
             "messages",
@@ -536,7 +535,6 @@ class DatabaseBot(BaseBot):
         }
 
         await self._update_group_participants(db, update_time, chat_jid, group_info.participants)
-
         table: dataset.Table = db.get_table("device_group_info")
         group_info_hash = utils.group_info_hash(group_info)
 
@@ -557,9 +555,7 @@ class DatabaseBot(BaseBot):
         group_info_flat["version_hash"] = group_info_hash
         group_info_flat["provenance"] = {**(group_info_flat.get("provenance") or {}), **db_provenance}
         group_info_flat[RECORD_MTIME_FIELD] = now
-
         table.insert(group_info_flat)
-        logger.info("Updating group: %s", chat_jid)
 
     async def _update_edit(self, message: wuc.WUMessage):
         message_flat = flatten_proto_message(message)
