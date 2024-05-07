@@ -64,7 +64,7 @@ case $app_command in
     ;;
 
     databasebot)
-        exec ${WHATUPY_CMD} $DEBUG --host "${WHATUPCORE2_HOST}" \
+        exec ${WHATUPY_CMD} --debug $DEBUG --host "${WHATUPCORE2_HOST}" \
             --cert /run/secrets/ssl-cert \
             --port 3447 \
             databasebot \

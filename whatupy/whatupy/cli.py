@@ -53,7 +53,8 @@ load_dotenv(dotenv_path=os.path.join("/", "tmp", "whatup", ".env"))
 def cli(ctx, debug, host, port, control_groups: list, cert: T.Optional[Path]):
     ctx.obj = {"debug": debug}
     if debug:
-        logging.basicConfig(format=FORMAT, level=logging.DEBUG)
+        logger.info("Running with debug")
+        logger.setLevel(logging.DEBUG)
     control_groups_jid = [str_to_jid(cg) for cg in control_groups]
     ctx.obj["connection_params"] = {
         "host": host,

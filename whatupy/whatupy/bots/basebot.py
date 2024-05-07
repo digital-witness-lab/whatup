@@ -306,6 +306,7 @@ class BaseBot:
             source_hash == sa and pb.expiration_time > now
             for sa, pb in COMMAND_PINNING.items()
         )
+        self.logger.debug("Got message: %s: %s", jid_from, message.info.id)
         try:
             if is_control:
                 message_age = now - message.info.timestamp.ToDatetime()
