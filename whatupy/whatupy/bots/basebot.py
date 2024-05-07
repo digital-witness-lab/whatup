@@ -435,7 +435,7 @@ class BaseBot:
                 error = e
 
             try:
-                self.logger.info("Media callback: %s: %d: %s", message.info.id, len(content), error)
+                self.logger.info("Media callback: %s: %d: %s", message.info.id, len(content), error or "no error")
                 await callback(message, content, error=error)
             except Exception:
                 self.logger.exception(

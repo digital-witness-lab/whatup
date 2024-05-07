@@ -107,36 +107,33 @@ class ArchiveBot(BaseBot):
                 meta_community_path.parent.mkdir(exist_ok=True, parents=True)
 
                 if utils.jid_to_str(group_info.parentJID) is not None:
-                    if (
-                        not meta_community_path.exists()
-                    ):  # this group is part of a community
-                        self.logger.debug(
-                            "Processing metadata for community with ID: %s",
-                            group_info.parentJID,
+                    self.logger.debug(
+                        "Processing metadata for community with ID: %s",
+                        group_info.parentJID,
+                    )
+                    try:
+                        community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = (
+                            self.core_client.GetCommunityInfo(group_info.parentJID)
                         )
-                        try:
-                            community_info_iterator: T.AsyncIterator[wuc.GroupInfo] = (
-                                self.core_client.GetCommunityInfo(group_info.parentJID)
-                            )
-                            community_info: T.List[wuc.GroupInfo] = (
-                                await utils.aiter_to_list(community_info_iterator)
-                            )
-                            for community_group in community_info:
-                                community_group.provenance.update(provenance)
-                                community_group.provenance[
-                                    "archivebot__communityInfoRefreshTime"
-                                ] = str(refresh_dt)
-                            self.logger.debug("Got metadata for community: %s", chat_id)
-                            meta_community_path.write_text(
-                                utils.protobuf_to_json_list(community_info)
-                            )
-                            message.provenance["archivebot__communityInfoPath"] = str(
-                                meta_community_path.relative_to(archive_filename.parent)
-                            )
-                        except grpc.RpcError:
-                            self.logger.exception("Could not get community info")
+                        community_info: T.List[wuc.GroupInfo] = (
+                            await utils.aiter_to_list(community_info_iterator)
+                        )
+                        for community_group in community_info:
+                            community_group.provenance.update(provenance)
+                            community_group.provenance[
+                                "archivebot__communityInfoRefreshTime"
+                            ] = str(refresh_dt)
+                        self.logger.debug("Got metadata for community: %s", chat_id)
+                        meta_community_path.write_text(
+                            utils.protobuf_to_json_list(community_info)
+                        )
+                        message.provenance["archivebot__communityInfoPath"] = str(
+                            meta_community_path.relative_to(archive_filename.parent)
+                        )
+                    except grpc.RpcError:
+                        self.logger.exception("Could not get community info")
 
-                elif not meta_group_path.exists():  # this is a standalone group
+                else:
                     group_info.provenance.update(provenance)
                     group_info.provenance["archivebot__groupInfoRefreshTime"] = str(
                         refresh_dt
@@ -177,12 +174,15 @@ class ArchiveBot(BaseBot):
         media_path: Path,
         media_filename: str,
     ):
+        error_path = media_path.with_suffix(".log")
         if error is not None:
-            return
+            error_path.write_text(f"Error reading media content: {error}")
         elif not media_bytes:
             self.logger.critical(
                 "Empty media body... skipping writing to archive: %s", media_filename
             )
             return
-        self.logger.debug("Found media. Saving to %s", media_filename)
-        media_path.write_bytes(media_bytes)
+        else:
+            self.logger.debug("Found media. Saving to %s", media_filename)
+            error_path.unlink(missing_ok=True)
+            media_path.write_bytes(media_bytes)

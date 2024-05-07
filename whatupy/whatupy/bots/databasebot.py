@@ -305,6 +305,7 @@ class DatabaseBot(BaseBot):
         archive_data: ArchiveData,
         media_filename: T.Optional[str] = None,
     ):
+        chat_jid = utils.jid_to_str(message.info.source.chat)
         media_filename = media_filename or utils.media_message_filename(message)
         if not media_filename:
             self.logger.warn(
@@ -320,6 +321,13 @@ class DatabaseBot(BaseBot):
             "fileExtension": file_extension,
             "timestamp": message.info.timestamp.ToDatetime(),
         }
+        content_url = self.media_url(media_filename, [str(chat_jid), "media"])
+        try:
+            if content_url.exists() and content_url.stat().st_size > 0:
+                return await self._handle_media_content(message, content=None, content_url=content_url, datum=datum, error=None)
+        except Exception:
+            self.logger.exception("Could not check existing content_url for existence or size")
+
         callback = partial(self._handle_media_content, datum=datum)
         if is_archive:
             mp = archive_data.MediaPath
@@ -347,14 +355,14 @@ class DatabaseBot(BaseBot):
             message_flat["thumbnail_url"] = self.write_media(
                 thumbnail,
                 f"{message.info.id}.jpg",
-                [chat_jid, "thumbnail"],
+                [str(chat_jid), "thumbnail"],
             )
         with self.db as db:
             message_flat["mediaFilename"] = media_filename
             db["messages"].upsert(message_flat, ["id"])
         self.logger.debug("Done updating message: %s", message.info.id)
 
-    def media_url(self, path_prefixes: T.List[str], filename: str) -> AnyPath:
+    def media_url(self, filename: str, path_prefixes: T.List[str]) -> AnyPath:
         path_elements = [
             self.media_base_path,
             *path_prefixes,
@@ -368,12 +376,12 @@ class DatabaseBot(BaseBot):
 
     def write_media(
         self,
-        content: bytes,
+        content: bytes | None,
         filename: str,
         path_prefixes: T.Optional[T.List[str]],
     ) -> str:
         path_prefixes = path_prefixes or []
-        filepath = self.media_url(path_prefixes, filename)
+        filepath = self.media_url(filename, path_prefixes)
         filepath.parent.mkdir(exist_ok=True, parents=True)
         filepath.write_bytes(content)
         return str(filepath)
@@ -384,8 +392,11 @@ class DatabaseBot(BaseBot):
         content: bytes,
         error: Exception | None,
         datum: dict,
+        content_url=None
     ):
-        if content:
+        if content_url is not None:
+            datum["content_url"] = str(content_url)
+        elif content:
             chat_jid = utils.jid_to_str(message.info.source.chat)
             datum["content_url"] = self.write_media(
                 content, datum["filename"], [chat_jid, "media"]
