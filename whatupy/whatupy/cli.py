@@ -55,6 +55,8 @@ def cli(ctx, debug, host, port, control_groups: list, cert: T.Optional[Path]):
     if debug:
         logger.info("Running with debug")
         logger.setLevel(logging.DEBUG)
+        for handler in logger.handlers:
+            handler.setLevel(logging.DEBUG)
     control_groups_jid = [str_to_jid(cg) for cg in control_groups]
     ctx.obj["connection_params"] = {
         "host": host,
