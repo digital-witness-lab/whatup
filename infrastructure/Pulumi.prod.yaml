@@ -39,6 +39,7 @@ config:
     - 120363238202807454@g.us # 101Pilot
     - 120363249975211460@g.us # DEF WhatsApp Watch
     - 120363255209424976@g.us # Gujarat WW
+    - 120363297088065893@g.us # Jharkhand onboarding room
   whatup:usrPassword:
     secure: AAABAEAmTtZjTL1be4uv48gNkr05KhIaCy+60iiwKazYu0iQlz1ZO5jLVVhDumQdfJdD3LwjENDhQqsLALeAN9eg7aGAqXsTWHhSamaeO0gWfrODBkUDAnh+CpZh5DJ1twPYltbJ/735lL/EXF4fFUeNVcUM9bKWReANpo/nC3SyG3hd5/lw8yIK7ZqljunpIzNriBFqilGqmd3Q6zC5/Q==
   whatup:whatupAnonKey:
