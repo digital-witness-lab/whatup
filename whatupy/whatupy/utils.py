@@ -37,11 +37,11 @@ Generic = T.TypeVar("Generic")
 
 def group_info_hash(group_info: wuc.GroupInfo) -> str:
     data = (
-        group_info.createdAt.ToNanoseconds(),
+        group_info.createdAt.ToJsonString(),
         group_info.JID.user,
         group_info.JID.server,
-        group_info.groupName.updatedAt.ToNanoseconds(),
-        group_info.groupTopic.updatedAt.ToNanoseconds(),
+        group_info.groupName.updatedAt.ToJsonString(),
+        group_info.groupTopic.updatedAt.ToJsonString(),
         group_info.memberAddMode,
         group_info.isLocked,
         group_info.isAnnounce,
@@ -54,8 +54,10 @@ def group_info_hash(group_info: wuc.GroupInfo) -> str:
         group_info.parentJID.user,
         group_info.parentJID.server,
     )
-    hash_int = hash(data) % ((sys.maxsize + 1) * 2)
-    return f"{hash_int:x}"
+    h = hashlib.new("sha256")
+    for item in data:
+        h.update(f"{item}".encode("utf8"))
+    return h.hexdigest()[:16]
 
 
 def gspath_to_self_signed_url(
