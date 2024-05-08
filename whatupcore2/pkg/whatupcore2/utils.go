@@ -28,8 +28,8 @@ func mergeGroupParticipants(participants []types.GroupParticipant, jids []types.
 	}
 
 	for i, participant := range participants {
-		pJID := participant.JID
-		seenJids[pJID.String()] = true
+		seenJids[participant.JID.String()] = true
+		seenJids[participant.LID.String()] = true
 		participantsFull[i] = participant
 	}
 
