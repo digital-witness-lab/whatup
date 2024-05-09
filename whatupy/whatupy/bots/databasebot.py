@@ -461,7 +461,6 @@ class DatabaseBot(BaseBot):
         if not chat_jid or not donor_jid:
             self.logger.critical("Could not get chat JID or donor JID string: %s: %s", donor, group_info)
             return
-        logger = self.logger.getChild(chat_jid or "")
         db_provenance = {
             "databasebot__timestamp": datetime.now().isoformat(),
             "databasebot__version": self.__version__,
@@ -474,8 +473,13 @@ class DatabaseBot(BaseBot):
         group_info_hash = utils.group_info_hash(group_info)
 
         group_info_id = f"{chat_jid}-{donor_jid}-{group_info_hash}"
-        if table.count(id=group_info_id) > 0:
-            table.update({"last_seen": update_time, "id": group_info_id}, keys=["id"])
+        previous_row = table.find_one(id=group_info_id)
+        if previous_row:
+            table.update({
+                "last_seen": max(previous_row.get("last_seen", datetime.min), update_time),
+                "timestamp": min(previous_row.get("timestamp", datetime.max), update_time),
+                "id": group_info_id
+            }, keys=["id"])
             return
 
         group_info_flat = flatten_proto_message(
