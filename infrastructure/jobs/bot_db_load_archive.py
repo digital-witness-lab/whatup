@@ -80,6 +80,10 @@ db_migrations_vm = ContainerOnVm(
                     name="MEDIA_BUCKET",
                     value=media_bucket.name,
                 ),
+                ContainerEnv(
+                    name="WHATUPY_RUN_NAME",
+                    value="post-device-group-info",
+                ),
                 # Create an implicit dependency on the migrations
                 # job completing successfully.
                 ContainerEnv(

@@ -20,7 +20,7 @@ from .bots import (
 from .credentials_manager import CredentialsManager
 from .device_manager import run_multi_bots
 from .protos import whatupcore_pb2 as wuc
-from .utils import async_cli, expand_glob, str_to_jid
+from .utils import async_cli, expand_glob, str_to_jid, short_hash
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
@@ -250,6 +250,10 @@ async def databasebot(
 @click.option(
     "--media-base", type=click.Path(path_type=AnyPath), default=Path("./dbmedia/")
 )
+@click.option(
+    "--run-lock-path", type=click.Path(path_type=AnyPath), default=Path("/tmp/")
+)
+@click.option("--run-name", type=str)
 @click.argument(
     "archive-files",
     type=str,
@@ -257,10 +261,7 @@ async def databasebot(
 )
 @click.pass_context
 async def databasebot_load_archive(
-    ctx,
-    database_url,
-    archive_files,
-    media_base,
+    ctx, database_url, archive_files, media_base, run_lock_path, run_name
 ):
     """
     desc="File glob for archived messages to load. Will load the messages then quit",
@@ -273,11 +274,25 @@ async def databasebot_load_archive(
     db = DatabaseBot(connect=False, **params)
 
     filenames = []
+    filenames_lock = []
     for archive_blob in archive_files:
-        filenames.extend(expand_glob(AnyPath(archive_blob)))
+        blob_hash = short_hash(str(archive_blob))
+        filename_lock = run_lock_path / f"{run_name}-{blob_hash}.lock"
+        if not filename_lock.exists():
+            filenames.extend(expand_glob(AnyPath(archive_blob)))
+            filenames_lock.append(filename_lock)
+        else:
+            logger.info(
+                "Skipping blob because it is already completed: %s: %s",
+                archive_blob,
+                filename_lock,
+            )
     filenames.sort()
     await db.process_archive(filenames)
+
     logger.info("Done processing archive files")
+    for lock in filenames_lock:
+        lock.write_text("DONE")
 
 
 @cli.command("databasebot-delete-groups")

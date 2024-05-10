@@ -123,6 +123,8 @@ case $app_command in
                     databasebot-load-archive \
                     --database-url ${DATABASE_URL} \
                     --media-base "gs://${MEDIA_BUCKET}/" \
+                    --run-lock-path "gs://${MEDIA_BUCKET}/load-archive-lock/" \
+                    --run-name  "${WHATUPY_RUN_NAME}" \
                     '{}/*.json' 
         retval=$?
         echo "Exiting run.sh with code: $retval"
