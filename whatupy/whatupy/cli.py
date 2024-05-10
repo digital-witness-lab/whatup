@@ -292,7 +292,7 @@ async def databasebot_load_archive(
 
     logger.info("Done processing archive files")
     for lock in filenames_lock:
-        lock.write_text("DONE")
+        lock.write_text("OK")
 
 
 @cli.command("databasebot-delete-groups")
