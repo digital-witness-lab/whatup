@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/env bash
 
 # Bucket URLs
 TASK_NAME=$1
@@ -27,7 +27,7 @@ while true; do
     completed_tasks=$(gsutil ls $LOCK_BUCKET${TASK_NAME}* | wc -l)
     
     # Calculate the progress percentage
-    progress=$(echo "scale=2; $completed_tasks/$TOTAL_TASKS*100" | bc)
+    progress=$(echo "scale=2; $completed_tasks * 100.0 / $TOTAL_TASKS" | bc)
     
     # Calculate elapsed time in days since the oldest file date
     current_seconds=$(date -u '+%s')
@@ -57,6 +57,8 @@ while true; do
     printf "%0.s=" $(seq 1 $filled_length)
     printf "%0.s " $(seq 1 $(($bar_length-$filled_length)))
     printf "]\n"
-    sleep 1m
-    echo "========================================"
+    sleep 10m
+    echo
+    echo "]]]]]]]]]]]]]]]]]]]][[[[[[[[[[[[[[[[[[[["
+    echo
 done
