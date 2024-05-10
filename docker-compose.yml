@@ -114,10 +114,11 @@ services:
     profiles:
       - donotstart
     volumes:
-      - ./data/message-archive/:/usr/src/whatupy-data/archive/:ro
+      - ./data/message-archive-user/:/usr/src/whatupy-data/archive/:ro
       - ./data/media/:/usr/src/whatupy-data/media/
+      - ./data/lock/:/tmp/load-archive-lock/
     #command: sh -c "ls /usr/src/whatupy-data/archive/ | xargs -P 6 -I{} whatupy databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ '/usr/src/whatupy-data/archive/{}/*_*.json'"
-    command: sh -c "whatupy --debug databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ --run-lock-path /tmp/ --run-name TEST123 '/usr/src/whatupy-data/archive/919805410057-1420515391@g.us/*_*.json'"
+    command: sh -c "whatupy --debug databasebot-load-archive --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ --run-lock-path /tmp/load-archive-lock/ --run-name TEST123 '/usr/src/whatupy-data/archive/anon.My5_-a9dotXGbdGmlgiMb77Lho8e8CKOt-IpfVzV7YI.v001@g.us/*_*.json'"
 
   bot-onboard-bulk:
     build: ./whatupy/

@@ -118,6 +118,7 @@ case $app_command in
             egrep "${ARCHIVE_FILTER:=.}" | \
             filter-by-job $idx $n_jobs | \
             tee /dev/stderr | \
+            shuf | \
             xargs -P ${num_tasks} -I{} \
                 ${WHATUPY_CMD} $DEBUG \
                     databasebot-load-archive \
