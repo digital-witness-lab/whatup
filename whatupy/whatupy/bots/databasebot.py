@@ -37,14 +37,17 @@ class DatabaseBot(BaseBot):
         super().__init__(*args, **kwargs)
         self.media_base_path: AnyPath = media_base_path
         self.group_info_refresh_time = group_info_refresh_time
-        self.db: dataset.Database = DatabaseBot.__db_connect(database_url)
+        self.db: dataset.Database = DatabaseBot.__db_connect(database_url, logger=self.logger)
         self.init_database(self.db)
 
     @classmethod
-    def __db_connect(cls, database_url) -> dataset.Database:
+    def __db_connect(cls, database_url, logger=logger) -> dataset.Database:
         url_hash = utils.short_hash(database_url, N=None)
         if url_hash not in cls.__db_cache:
+            logger.info("Using new DB connection")
             cls.__db_cache[url_hash] = dataset.connect(database_url)
+        else:
+            logger.info("Using cached DB connection")
         return cls.__db_cache[url_hash]
 
     def init_database(self, db):
@@ -428,7 +431,7 @@ class DatabaseBot(BaseBot):
             chat_jid=chat_jid, JID={"in": participant_jids}
         )
         group_participants_prev_lookup = {
-            gp["JID"]: gp for gp in group_participants_prev
+            gp.get("JID"): gp for gp in group_participants_prev
         }
         for participant in group_participants:
             pjid = participant["JID"]
