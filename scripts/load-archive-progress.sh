@@ -17,7 +17,6 @@ if [ -z "$TOTAL_TASKS" ]; then
     TOTAL_TASKS=$(gsutil ls $TOTAL_BUCKET | wc -l)
 fi
 
-
 # Get the date of the oldest file in the load-archive-lock bucket
 oldest_file_date=$(gsutil ls -l $LOCK_BUCKET | grep "${TASK_NAME}" | grep -v "TOTAL" | awk '{print $2}' | sort | head -n 1)
 start_seconds=$(date -d "$oldest_file_date" '+%s')
@@ -48,6 +47,8 @@ while true; do
     echo "Started on: $oldest_file_date"
     echo "Current date: $( date -u +"%Y-%m-%dT%H:%M:%SZ" )"
     echo "Estimated completion date: $estimated_completion_date"
+
+    ntfy send load-archive "Progress: $progress% ($completed_tasks/$TOTAL_TASKS) ; ETC: $estimated_completion_date" 
     
     # Simple ASCII progress bar
     read -r rows cols < <(stty size)
