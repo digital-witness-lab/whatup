@@ -32,7 +32,6 @@ class DatabaseBot(BaseBot):
         *args,
         **kwargs,
     ):
-        kwargs["mark_messages_read"] = True
         kwargs["read_historical_messages"] = True
         super().__init__(*args, **kwargs)
         self.media_base_path: AnyPath = media_base_path
