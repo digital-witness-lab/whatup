@@ -14,8 +14,10 @@ config:
       type: E2Medium
     - serviceName: bot-archive
       type: E2Medium
-    - serviceName: null
+    - serviceName: bot-register
       type: E2Micro
+    - serviceName: null
+      type: E2Small
   whatup:databases:
     - name: messages
       nameShort: msg
