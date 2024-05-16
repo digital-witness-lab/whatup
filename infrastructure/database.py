@@ -36,6 +36,11 @@ sql_instance_settings = sql.DatabaseInstanceSettingsArgs(
     # https://cloud.google.com/sql/pricing#instance-pricing
     tier="db-g1-small",
     backup_configuration=backup_config,
+    database_flags=[
+        sql.DatabaseInstanceSettingsDatabaseFlagArgs(
+            name="max_connections", value="500"
+        )
+    ],
     # Only disable disable protection if you are intentional
     # about wanting to delete the instance.
     deletion_protection_enabled=is_prod_stack(),
