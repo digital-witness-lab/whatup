@@ -93,15 +93,12 @@ class DatabaseBot(BaseBot):
         # </depricated>
 
         group_participants = db.create_table("group_participants")
-        try:
-            group_participants.create_index(["chat_jid"])
-            group_participants.create_index(["chat_jid", "JID"])
-        except DatasetException:
-            self.logger.warn(
-                "Could not create group_participants indices because table doesn't exist yet"
-            )
+        group_participants.create_column("chat_jid", type=db.types.string)
+        group_participants.create_column("JID", type=db.types.string)
         group_participants.create_column("first_seen", type=db.types.datetime)
         group_participants.create_column("last_seen", type=db.types.datetime)
+        group_participants.create_index(["chat_jid"])
+        group_participants.create_index(["chat_jid", "JID"])
 
         db.create_table(
             "messages",
@@ -140,12 +137,7 @@ class DatabaseBot(BaseBot):
         donor_messages.create_column("donor_jid", type=db.types.text)
         donor_messages.create_column("message_id", type=db.types.text)
         donor_messages.create_column(RECORD_MTIME_FIELD, type=db.types.datetime)
-        try:
-            donor_messages.create_index(["donor_jid", "message_id"])
-        except DatasetException:
-            self.logger.warn(
-                "Could not create donor_messages indices because table doesn't exist yet"
-            )
+        donor_messages.create_index(["donor_jid", "message_id"])
 
     def _ping_donor_messages(self, message: wuc.WUMessage):
         donor_jid = utils.jid_to_str(message.info.source.reciever)
