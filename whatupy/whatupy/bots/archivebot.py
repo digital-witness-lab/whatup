@@ -34,7 +34,6 @@ class ArchiveBot(BaseBot):
     ):
         self.archive_dir = archive_dir
         self.group_info_refresh_time = group_info_refresh_time
-        kwargs["mark_messages_read"] = True
         kwargs["read_historical_messages"] = True
         self.group_info_last_attempt: T.Dict[str, int]
         super().__init__(*args, **kwargs)
