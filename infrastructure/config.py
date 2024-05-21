@@ -10,6 +10,7 @@ class SharedCoreMachineType(Enum):
     E2Micro = "e2-micro"
     E2Small = "e2-small"
     E2Medium = "e2-medium"
+    E2HighMem2 = "e2-highmem-2"
     E2HighMem8 = "e2-highmem-8"
 
 

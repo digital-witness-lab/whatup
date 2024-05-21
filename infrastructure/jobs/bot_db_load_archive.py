@@ -54,8 +54,8 @@ secret_manager_perm = secretmanager.SecretIamMember(
 machine_type = SharedCoreMachineType.E2Small
 num_tasks = 4
 if is_prod_stack():
-    machine_type = SharedCoreMachineType.E2HighMem8
-    num_tasks = 64
+    machine_type = SharedCoreMachineType.E2HighMem2
+    num_tasks = 28
 n_instances = 1 if load_archive_job else 0
 
 db_migrations_vm = ContainerOnVm(
