@@ -37,6 +37,7 @@ var (
 	ErrDownloadRetryCanceled = errors.New("Download Retry canceled")
 	ErrNoChatHistory         = errors.New("Could not find any chat history")
 	appNameSuffix            = os.Getenv("APP_NAME_SUFFIX")
+    loginProxy               = os.Getenv("LOGIN_PROXY")
 )
 var _DeviceContainer *encsqlstore.EncContainer
 var _DB *sql.DB
@@ -157,12 +158,19 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 		deviceStore = container.NewDevice()
 	}
 
-	wmClient := whatsmeow.NewClient(deviceStore, log.Sub("WMC"))
+    wmLog := log.Sub("WMC")
+	wmClient := whatsmeow.NewClient(deviceStore, wmLog)
 	wmClient.EnableAutoReconnect = true
 	wmClient.AutoTrustIdentity = true
 	wmClient.AutomaticMessageRerequestFromPhone = true
 	wmClient.EmitAppStateEventsOnFullSync = true
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
+
+    if loginProxy != "" {
+        wmLog.Infof("Using login proxy for WM Client")
+        wmClient.ToggleProxyOnlyForLogin(true)
+        wmClient.SetProxyAddress(loginProxy)
+    }
 
 	ctxC := NewContextWithCancel(ctx)
 
