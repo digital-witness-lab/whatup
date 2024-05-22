@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
 	"github.com/digital-witness-lab/whatup/whatupcore2/pkg/encsqlstore"
@@ -38,6 +39,7 @@ var (
 	ErrNoChatHistory         = errors.New("Could not find any chat history")
 	appNameSuffix            = os.Getenv("APP_NAME_SUFFIX")
     loginProxy               = os.Getenv("LOGIN_PROXY")
+    loginProxyFile           = os.Getenv("LOGIN_PROXY_FILE")
 )
 var _DeviceContainer *encsqlstore.EncContainer
 var _DB *sql.DB
@@ -166,6 +168,14 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	wmClient.EmitAppStateEventsOnFullSync = true
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 
+    if loginProxy == "" && loginProxyFile != "" {
+        buf, err := os.ReadFile(loginProxyFile)
+        if err != nil {
+            wmLog.Errorf("Could not open login proxy file: %s: %v", loginProxyFile, err)
+            return nil, err
+        }
+        loginProxy = strings.TrimFunc(string(buf), unicode.IsSpace)
+    }
     if loginProxy != "" {
         wmLog.Infof("Using login proxy for WM Client")
         wmClient.ToggleProxyOnlyForLogin(true)
