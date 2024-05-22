@@ -67,8 +67,7 @@ class UserServicesBot(BaseBot):
 
     def lookup_user(self, jid: wuc.JID) -> UserBot | None:
         for device in self.device_manager.devices.values():
-            j = device.bot.jid_anon
-            if j is not None and j.user == jid.user and j.server == jid.server:
+            if utils.same_jid(jid, device.bot.jid_anon) or utils.same_jid(jid, device.bot.jid):
                 return device.bot
         return None
 
@@ -259,6 +258,7 @@ Total devices: {n_devices}
 
         user = self.lookup_user(message.info.source.sender)
         if user is None or user.username is None:
+            self.logger.info("Got message from unknown user: %s: %s: %s", self.device_manager.devices.keys(), user, message.info.source.sender)
             return
         ulog = self.logger.getChild(user.username)
 

@@ -113,6 +113,7 @@ class BaseBot:
         self.healthcheck_timeout = healthcheck_timeout
 
         self.download_queue = asyncio.Queue()
+        self.download_tasks = set()
         if connect:
             self.core_client, self.authenticator = create_whatupcore_clients(
                 self.host, self.port, self.cert
@@ -305,6 +306,7 @@ class BaseBot:
             source_hash == sa and pb.expiration_time > now
             for sa, pb in COMMAND_PINNING.items()
         )
+        self.logger.debug("Got message: %s: %s", jid_from, message.info.id)
         try:
             if is_control:
                 message_age = now - message.info.timestamp.ToDatetime()
@@ -426,19 +428,21 @@ class BaseBot:
                     tries,
                     message.info.id,
                 )
-                asyncio.create_task(
+                task = asyncio.create_task(
                     self.download_message_media_eventually(message, callback, tries + 1, error=e)
                 )
+                self.download_tasks.add(task)
+                task.add_done_callback(self.download_tasks.discard)
                 error = e
+
             try:
+                self.logger.info("Media callback: %s: %d: %s", message.info.id, len(content), error or "no error")
                 await callback(message, content, error=error)
             except Exception:
                 self.logger.exception(
                     "Exception calling download_media_message_eventually callback: %s",
                     message.info.id,
                 )
-            sleep_time = random.randint(1, 5)
-            await asyncio.sleep(sleep_time)
 
     async def download_message_media_eventually(
         self,

@@ -54,8 +54,8 @@ secret_manager_perm = secretmanager.SecretIamMember(
 machine_type = SharedCoreMachineType.E2Small
 num_tasks = 4
 if is_prod_stack():
-    machine_type = SharedCoreMachineType.E2HighMem8
-    num_tasks = 16
+    machine_type = SharedCoreMachineType.E2HighMem2
+    num_tasks = 28
 n_instances = 1 if load_archive_job else 0
 
 db_migrations_vm = ContainerOnVm(
@@ -65,7 +65,7 @@ db_migrations_vm = ContainerOnVm(
         machine_type=machine_type,
         is_spot=True,
         n_instances=n_instances,
-        restart_policy="OnFailure",
+        restart_policy="Never",
         container_spec=Container(
             args=["/usr/src/whatupy/run.sh", "load-archive"],
             image=whatupy_image.repo_digest,
@@ -79,6 +79,10 @@ db_migrations_vm = ContainerOnVm(
                 ContainerEnv(
                     name="MEDIA_BUCKET",
                     value=media_bucket.name,
+                ),
+                ContainerEnv(
+                    name="WHATUPY_RUN_NAME",
+                    value="post-device-group-info",
                 ),
                 # Create an implicit dependency on the migrations
                 # job completing successfully.

@@ -23,7 +23,7 @@ for TABLE in ${TABLES//,/ }; do
             --schema_update_option=ALLOW_FIELD_ADDITION \
             --schema_update_option=ALLOW_FIELD_RELAXATION \
             --use_legacy_sql=false \
-                "SELECT * FROM EXTERNAL_QUERY('${BQ_PSQL_CONNECTION}', 'SELECT * FROM ${TABLE} LIMIT 1;');" \
+                "SELECT * FROM EXTERNAL_QUERY('${BQ_PSQL_CONNECTION}', 'SELECT * FROM ${TABLE} LIMIT 500;');" \
             > /dev/null
     else
         echo "Could not transfer from table: ${TABLE}"

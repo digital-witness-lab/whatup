@@ -64,7 +64,7 @@ case $app_command in
     ;;
 
     databasebot)
-        exec ${WHATUPY_CMD} $DEBUG --host "${WHATUPCORE2_HOST}" \
+        exec ${WHATUPY_CMD} --debug $DEBUG --host "${WHATUPCORE2_HOST}" \
             --cert /run/secrets/ssl-cert \
             --port 3447 \
             databasebot \
@@ -118,11 +118,14 @@ case $app_command in
             egrep "${ARCHIVE_FILTER:=.}" | \
             filter-by-job $idx $n_jobs | \
             tee /dev/stderr | \
+            shuf | \
             xargs -P ${num_tasks} -I{} \
                 ${WHATUPY_CMD} $DEBUG \
                     databasebot-load-archive \
                     --database-url ${DATABASE_URL} \
                     --media-base "gs://${MEDIA_BUCKET}/" \
+                    --run-lock-path "gs://${MEDIA_BUCKET}/load-archive-lock/" \
+                    --run-name  "${WHATUPY_RUN_NAME}" \
                     '{}/*.json' 
         retval=$?
         echo "Exiting run.sh with code: $retval"
