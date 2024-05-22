@@ -69,6 +69,6 @@ for database, tables_spec in database_descriptions.items():
                     value=migrations_job_complete.apply(lambda b: f"{b}"),
                 ),
             ],
-            timeout="60s",
+            timeout="600s",
         ),
     )

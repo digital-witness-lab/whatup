@@ -185,6 +185,7 @@ message GroupParticipant {
 
 message GroupInfo {
     // types.GroupInfo
+    // NOTE: if this gets updated, update whatupy.utils:group_info_hash
     google.protobuf.Timestamp createdAt = 1;
     JID JID = 2;
     JID ownerJID = 3;

@@ -10,6 +10,7 @@ import mimetypes
 import random
 import re
 import string
+import sys
 import typing as T
 import warnings
 from collections import namedtuple
@@ -32,6 +33,31 @@ RANDOM_SALT = random.randbytes(32)
 
 CommandQuery = namedtuple("CommandQuery", "namespace command params".split(" "))
 Generic = T.TypeVar("Generic")
+
+
+def group_info_hash(group_info: wuc.GroupInfo) -> str:
+    data = (
+        group_info.createdAt.ToJsonString(),
+        group_info.JID.user,
+        group_info.JID.server,
+        group_info.groupName.updatedAt.ToJsonString(),
+        group_info.groupTopic.updatedAt.ToJsonString(),
+        group_info.memberAddMode,
+        group_info.isLocked,
+        group_info.isAnnounce,
+        group_info.isEphemeral,
+        group_info.disappearingTimer,
+        group_info.isCommunity,
+        group_info.isCommunityDefaultGroup,
+        group_info.isPartialInfo,
+        group_info.isIncognito,
+        group_info.parentJID.user,
+        group_info.parentJID.server,
+    )
+    h = hashlib.new("sha256")
+    for item in data:
+        h.update(f"{item}".encode("utf8"))
+    return h.hexdigest()[:16]
 
 
 def gspath_to_self_signed_url(
@@ -206,8 +232,13 @@ def str_to_jid(sjid: str) -> wuc.JID:
     return wuc.JID(user=user, server=server)
 
 
-def same_jid(a: wuc.JID, b: wuc.JID) -> bool:
-    return a.user == b.user and a.server == b.server
+def same_jid(a: wuc.JID | None, b: wuc.JID | None) -> bool:
+    return (
+        (a is not None)
+        and (b is not None)
+        and a.user == b.user
+        and a.server == b.server
+    )
 
 
 def random_words(n_words=3) -> T.List[str]:
