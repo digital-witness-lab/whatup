@@ -14,6 +14,7 @@ from dwl_secrets import (
     db_url_secrets,
     whatup_anon_key_secret,
     whatup_salt_secret,
+    whatup_login_proxy_secret,
 )
 from network import private_services_network_with_db
 from whatupcore_network import (
@@ -76,6 +77,15 @@ ssl_cert_pem_perm = secretmanager.SecretIamMember(
     ),
 )
 
+whatup_login_proxy_perm = secretmanager.SecretIamMember(
+    "whatupcore-login-proxy-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=whatup_login_proxy_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+
 log_level = "INFO" if is_prod_stack() else "DEBUG"
 whatupcore2_service = ContainerOnVm(
     service_name,
@@ -129,6 +139,12 @@ whatupcore2_service = ContainerOnVm(
                 key="SSL_PRIV_KEY_PEM",
                 value=Output.concat(
                     ssl_private_key_pem_secret.id, "/versions/latest"
+                ),
+            ),
+            compute.v1.MetadataItemsItemArgs(
+                key="LOGIN_PROXY",
+                value=Output.concat(
+                    whatup_login_proxy_secret.id, "/versions/latest"
                 ),
             ),
         ],
