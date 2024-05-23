@@ -34,7 +34,9 @@ COMMAND_PINNING: T.Dict[bytes, PinningEntry] = {}
 BOT_REGISTRY = defaultdict(dict)
 CONTROL_CACHE = deque(maxlen=1028)
 
-DownloadMediaCallback = T.Callable[[wuc.WUMessage, bytes, Exception | None], T.Awaitable[None]]
+DownloadMediaCallback = T.Callable[
+    [wuc.WUMessage, bytes, Exception | None], T.Awaitable[None]
+]
 MediaType = enum.Enum("MediaType", wuc.SendMessageMedia.MediaType.items())
 TypeLanguages = T.Literal["hi"] | T.Literal["en"]
 
@@ -183,7 +185,9 @@ class BaseBot:
     async def _connection_healthcheck(self):
         while True:
             # sleep healthcheck_timeout +/- rand(10%)
-            await asyncio.sleep(self.healthcheck_timeout * (1 + 0.1 * random.uniform(-1, 1)))
+            await asyncio.sleep(
+                self.healthcheck_timeout * (1 + 0.1 * random.uniform(-1, 1))
+            )
             conn: wuc.ConnectionStatus = await self.core_client.GetConnectionStatus(
                 wuc.ConnectionStatusOptions()
             )
@@ -429,14 +433,21 @@ class BaseBot:
                     message.info.id,
                 )
                 task = asyncio.create_task(
-                    self.download_message_media_eventually(message, callback, tries + 1, error=e)
+                    self.download_message_media_eventually(
+                        message, callback, tries + 1, error=e
+                    )
                 )
                 self.download_tasks.add(task)
                 task.add_done_callback(self.download_tasks.discard)
                 error = e
 
             try:
-                self.logger.info("Media callback: %s: %d: %s", message.info.id, len(content), error or "no error")
+                self.logger.info(
+                    "Media callback: %s: %d: %s",
+                    message.info.id,
+                    len(content),
+                    error or "no error",
+                )
                 await callback(message, content, error=error)
             except Exception:
                 self.logger.exception(
@@ -449,14 +460,18 @@ class BaseBot:
         message: wuc.WUMessage,
         callback: DownloadMediaCallback,
         retries: int = 0,
-        error: Exception | None = None
+        error: Exception | None = None,
     ):
         if retries > 5:
             self.logger.info(
                 "Out of retries... running callback with empty bytes: %s",
                 message.info.id,
             )
-            return await callback(message, b"", error or Exception("Ran out of retries trying to get media"))
+            return await callback(
+                message,
+                b"",
+                error or Exception("Ran out of retries trying to get media"),
+            )
         elif retries > 0:
             t = min(2**retries, 60 * 60)
             self.logger.info(
@@ -587,9 +602,9 @@ class BaseBot:
                 community_info_path = filename_path.parent / community_info_filename
                 try:
                     with community_info_path.open() as fd:
-                        community_info_list: T.List[
-                            wuc.GroupInfo
-                        ] = utils.json_list_to_protobuf_list(fd.read(), wuc.GroupInfo)
+                        community_info_list: T.List[wuc.GroupInfo] = (
+                            utils.json_list_to_protobuf_list(fd.read(), wuc.GroupInfo)
+                        )
                     metadata["CommunityInfo"] = community_info_list
                     community_infos[chat_id] = community_info_list
                 except FileNotFoundError:

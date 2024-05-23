@@ -11,6 +11,8 @@ secrets:
     file: ./data/static/dev/postgres-whatupcore-passwd.secret
   whatupcore-anon-key:
     file: ./data/static/dev/whatupcore-anon-key.secret
+  whatupcore-login-proxy:
+    file: ./data/static/dev/whatupcore-login-proxy.secret
 
 services:
   whatup:
@@ -24,6 +26,7 @@ services:
       - ENC_KEY_SALT=kajsdfhkajsdfhaksdjfhkjasdfhskd
       - POSTGRES_DATABASE=whatupcore
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-whatupcore-passwd
+      - LOGIN_PROXY_FILE=/run/secrets/whatupcore-login-proxy
     links:
       - db
     secrets:
@@ -31,6 +34,7 @@ services:
       - ssl-key
       - postgres-whatupcore-passwd
       - whatupcore-anon-key
+      - whatupcore-login-proxy
     command: rpc --log-level DEBUG
 
   db:

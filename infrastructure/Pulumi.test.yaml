@@ -8,12 +8,6 @@ config:
   whatup:bqDatasetRegion: EU
   whatup:control_groups:
     - c+c-stage@g.us # c+c-stage
-  whatup:isProd: false
-  whatup:machineTypes:
-    - serviceName: whatupcore2
-      type: E2Small
-    - serviceName: null
-      type: E2Micro
   whatup:databases:
     - name: messages
       nameShort: msg
@@ -26,16 +20,24 @@ config:
       passwordKey: usrPassword
   whatup:dbRootPassword:
     secure: AAABADVUvMSQDJbmM1efOsI9/xM0BDBF8zU9/11FbNH2ErKOZ9/FdZjAEG0tJtcjW4IeWkJE6/d1PIgY/BmisAUd4m1NWgMQ3mcfJMwPjnSEnb1vPjubiH5BmlOEPi2L
-  whatup:loadArchiveJob: false
-  whatup:translationEnabled: true
+  whatup:isProd: "false"
+  whatup:loadArchiveJob: "false"
+  whatup:machineTypes:
+    - serviceName: whatupcore2
+      type: E2Small
+    - serviceName: null
+      type: E2Micro
   whatup:msgPassword:
     secure: AAABADidjer3HeL9MDtQF7uJ/cCA0T0aLaKA4Scm1DLzScD5s5oJhXR3fF+TurCdwU69uOUV08u1VzAbZABQcsH5UkBAY77Bm/G8PNxLxbTa6lLszF1+0fpRrPy0YzrK
   whatup:primary_bot_name: flo
   whatup:temp_bucket_ttl_days: "1"
+  whatup:translationEnabled: "true"
   whatup:usrPassword:
     secure: AAABAKiWovX77BLq0YB4lHfGiknqXyjpgr/IrzLOWzpSy5QcneSnCtYCwwKM6OAouyD81aAoC+ZVt+hJwY+bhg+J6xRQhpMwF+Opxz7ag7P4pEHWAsPXxEcYlZhjeNFq
   whatup:whatupAnonKey:
     secure: AAABABHofWZw2NwlgJbT4OHZa2IXamZ0zQ6A67X1uQsv26eyxEqUN0lUIMvhIMY+FSsrD/kNUpMDbuktAHtxpPcZ6oCzCiSrDgsNnMBF3G9v5+Sut3cnLwQzc7XA/6of
+  whatup:whatupLoginProxy:
+    secure: AAABAB6cTUkpcpx4rAoRrZ9KNta4613LgyaVz5Day8Qza1Gsek46/h+xLkDbkXM+iovTgBVZgNE1TzidSxkv3C4/itWa5+JdeAFG/mwtqM6DBKJfuwP5kOEWETkFKwbqqG30LJyw3XatXKNRG4smw0pIYass/QE=
   whatup:whatupSalt:
     secure: AAABABJ8V5h80V3CEsEaqWpE3Eno8N4febeytfHwicuc3o0cyjukO1r2qS3JnBjd4sKABHvcPQxnGq6zcFxI2ZM3LUsymBDT66zjHmZJQkBZYmUhEUp2Kfn81JICF5em
   whatup:wucPassword:

@@ -47,6 +47,7 @@ bq_dataset_region = config.require("bqDatasetRegion")
 db_root_password = config.require_secret("dbRootPassword")
 whatup_salt = config.require_secret("whatupSalt")
 whatup_anon_key = config.require_secret("whatupAnonKey")
+whatup_login_proxy = config.get_secret("whatupLoginProxy") or ""
 
 primary_bot_name = str(config.require("primary_bot_name"))
 temp_bucket_ttl_days = config.require_int("temp_bucket_ttl_days")

@@ -67,7 +67,9 @@ class UserServicesBot(BaseBot):
 
     def lookup_user(self, jid: wuc.JID) -> UserBot | None:
         for device in self.device_manager.devices.values():
-            if utils.same_jid(jid, device.bot.jid_anon) or utils.same_jid(jid, device.bot.jid):
+            if utils.same_jid(jid, device.bot.jid_anon) or utils.same_jid(
+                jid, device.bot.jid
+            ):
                 return device.bot
         return None
 
@@ -101,11 +103,13 @@ class UserServicesBot(BaseBot):
             default=None,
         )
 
-        UserGroupJob.create_command(sub_parser,
-            "group-refresh", description="Refresh the history of a user or group"
+        UserGroupJob.create_command(
+            sub_parser,
+            "group-refresh",
+            description="Refresh the history of a user or group",
         )
-        UserGroupJob.create_command(sub_parser,
-            "group-invites", description="Get group invite links"
+        UserGroupJob.create_command(
+            sub_parser, "group-invites", description="Get group invite links"
         )
 
         return parser
@@ -118,6 +122,7 @@ class UserServicesBot(BaseBot):
         elif params.command == "status":
             await self._on_status(message, params)
         elif params.command == "group-invites":
+
             async def response(content):
                 await self.send_media_message(
                     message.info.source.sender,
@@ -127,7 +132,13 @@ class UserServicesBot(BaseBot):
                     mimetype="text/csv",
                     filename=f"group-invites.csv",
                 )
-            await self._on_user_group_job(message, params, GroupInviteListJob, job_kwargs={'response_callback': response})
+
+            await self._on_user_group_job(
+                message,
+                params,
+                GroupInviteListJob,
+                job_kwargs={"response_callback": response},
+            )
         elif params.command == "group-refresh":
             await self._on_user_group_job(message, params, GroupRefreshJob)
         elif params.command == "list-users":
@@ -146,8 +157,12 @@ class UserServicesBot(BaseBot):
             message.info.source.sender, f"Registered users:\n{user_listing}"
         )
 
-    async def _on_user_group_job(self, message, params, job_type: T.Type[UserGroupJob], job_kwargs=None):
-        user_job = job_type(name=params.job_name, timeout=params.timeout, **(job_kwargs or {}))
+    async def _on_user_group_job(
+        self, message, params, job_type: T.Type[UserGroupJob], job_kwargs=None
+    ):
+        user_job = job_type(
+            name=params.job_name, timeout=params.timeout, **(job_kwargs or {})
+        )
         sender = message.info.source.sender
         users = self.list_users()
         if params.all:
@@ -166,11 +181,7 @@ class UserServicesBot(BaseBot):
             n_added = 0
             for username in params.username:
                 try:
-                    user = next(
-                        user
-                        for user in users
-                        if user.username == username
-                    )
+                    user = next(user for user in users if user.username == username)
                     await user_job.add_user(user)
                     n_added += 1
                 except StopIteration:
@@ -182,9 +193,7 @@ class UserServicesBot(BaseBot):
         elif params.jid:
             if params.username:
                 target_users = [
-                    user
-                    for user in users
-                    if user.username in set(params.username)
+                    user for user in users if user.username in set(params.username)
                 ]
             else:
                 target_users = users
@@ -209,9 +218,7 @@ class UserServicesBot(BaseBot):
         task = await user_job.start()
         self.user_jobs.add(user_job)
         task.add_done_callback(lambda t: self.user_jobs.discard(user_job))
-        await self.send_text_message(
-            message.info.source.sender, str(user_job.status)
-        )
+        await self.send_text_message(message.info.source.sender, str(user_job.status))
 
     async def _on_status(self, message, params):
         users = self.list_users()
@@ -220,9 +227,7 @@ class UserServicesBot(BaseBot):
         n_active_demo = sum(1 for u in users if u.state.get("is_demo"))
         n_groups_shared = sum(u.state.get("n_groups") or 0 for u in users)
         n_active_users = sum(
-            1
-            for u in users
-            if not (u.state.get("is_demo") or u.state.get("is_bot"))
+            1 for u in users if not (u.state.get("is_demo") or u.state.get("is_bot"))
         )
         refresh_status = "\n".join(str(uj.status) for uj in self.user_jobs)
         status = f"""
@@ -258,7 +263,12 @@ Total devices: {n_devices}
 
         user = self.lookup_user(message.info.source.sender)
         if user is None or user.username is None:
-            self.logger.info("Got message from unknown user: %s: %s: %s", self.device_manager.devices.keys(), user, message.info.source.sender)
+            self.logger.info(
+                "Got message from unknown user: %s: %s: %s",
+                self.device_manager.devices.keys(),
+                user,
+                message.info.source.sender,
+            )
             return
         ulog = self.logger.getChild(user.username)
 
