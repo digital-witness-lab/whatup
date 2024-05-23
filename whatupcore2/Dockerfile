@@ -35,17 +35,6 @@ RUN \
     --mount=type=cache,target=/usr/local/cache/go-mod-cache/ \
     make whatupcore2
 
-FROM golang:1.20-bullseye AS certificates
-
-RUN mkdir /usr/local/share/ca-certificates/brightdata && \
-    apt update && \
-    apt upgrade -y && \
-    apt install -y ca-certificates
-
-COPY ./static/proxy.crt /usr/local/share/ca-certificates/brightdata
-
-RUN update-ca-certificates
-
 FROM gcr.io/distroless/base-debian11 AS run
 
 WORKDIR /
@@ -74,8 +63,6 @@ COPY --from=whatupcore2 /build/run.sh /run.sh
 COPY --from=configure-vm-secrets /configureVmSecrets /configureVmSecrets
 COPY --from=log-cleaner /log-cleaner /log-cleaner
 
-# Install certificates
-COPY --from=certificates /etc/ssl/certs/ /etc/ssl/certs/
 EXPOSE 3447
 
 ARG ENVIRONMENT="dev"
