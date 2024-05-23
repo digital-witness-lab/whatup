@@ -47,7 +47,7 @@ config:
   whatup:whatupAnonKey:
     secure: AAABAKj9qj4TvvSCPvuJqDb4cIfZsVvrEzr4SoOIGPcpsNPAF+q6GUxhpWAy5WAlEQKdc7ZV3Nq49q7eOs3Fc+kHlcntWMWoVCxippyIqJrm+xAO0tRHoE+k+4Gb9/ws
   whatup:whatupLoginProxy:
-    secure: AAABAGXjEUZ8pD+nEhM0OWmg1PCUSNmTy7Ocf3JHTFEayFUbPi+22YK4LyIZevpf1cQvQaWSsv6ADGX8y9o+ouTvxeVrPX5CIhdwmxM5R5LU8sxDd003QO4U9nqTx4Ew3Eh06ZFIJZ8aoe6YC4u70Qc17kNX65ttQCl1pGmkSmkylzmP
+    secure: AAABAJ73BVatNUgl6ZB7l8GsfSqHwggT3R9DDjHiN83Lr8xr7x/xllykuzvcLoaK9+XOSSAfPZXtetsMyaM9MWpFnDkJ0NESRNYJtNYzbilfXax2Szo2AVtTW8PvuRiRMbifvoWl3zW/KS2nkKE4yikfCUDCHinzfQ==
   whatup:whatupSalt:
     secure: AAABAIvDi1nskbCLLSHpB8mwBbx53znHjUTLwPq2AfB1RKz3i602Znzxl/VNGmmrFU5Tx7P7FH9If9ykF+SF4QD9ed23EItQGLVqArCXK6tynDwnOUwi6IbU89fWscfWoceGAJMMsc+GlJJT5sVPogMkcextSmJ17s+6t1vvBXjxfYV/SDSg6QZPazAv2x6/ZPXDdFLL7jLDjYZ8GCHIOQ==
   whatup:wucPassword:
