@@ -13,12 +13,13 @@ import (
 )
 
 var (
-	VERSION            = "v0.1.3"
+	VERSION            = "v0.2.0"
 	STREAM_BUFFER_SIZE = 5 * 1024 * 1024 // 5MB in bytes
 	CLEANERS           = []CleanerFunc{
 		phoneNumberCleaner(),
 		notifyAttribCleaner(),
 		notifyBodyCleaner(),
+		pushNameCleaner(),
 	}
 )
 
