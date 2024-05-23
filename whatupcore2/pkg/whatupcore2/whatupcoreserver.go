@@ -488,19 +488,19 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
 	}
 
 	for _, subgroup := range subgroups {
-        var groupInfo *types.GroupInfo
+		var groupInfo *types.GroupInfo
 		gJID := subgroup.JID
-        can_read, _ := CanReadJID(session, &gJID)
+		can_read, _ := CanReadJID(session, &gJID)
 		isPartial := false
-        if can_read {
-            var err error
-		    groupInfo, err = session.Client.GetGroupInfo(gJID)
-            if err != nil {
-                isPartial = true
-            }
-        } else {
-            isPartial = true
-        }
+		if can_read {
+			var err error
+			groupInfo, err = session.Client.GetGroupInfo(gJID)
+			if err != nil {
+				isPartial = true
+			}
+		} else {
+			isPartial = true
+		}
 		if isPartial {
 			groupInfo = &types.GroupInfo{
 				JID:       gJID,

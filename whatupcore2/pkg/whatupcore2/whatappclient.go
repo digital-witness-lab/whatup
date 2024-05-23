@@ -38,8 +38,8 @@ var (
 	ErrDownloadRetryCanceled = errors.New("Download Retry canceled")
 	ErrNoChatHistory         = errors.New("Could not find any chat history")
 	appNameSuffix            = os.Getenv("APP_NAME_SUFFIX")
-    loginProxy               = os.Getenv("LOGIN_PROXY")
-    loginProxyFile           = os.Getenv("LOGIN_PROXY_FILE")
+	loginProxy               = os.Getenv("LOGIN_PROXY")
+	loginProxyFile           = os.Getenv("LOGIN_PROXY_FILE")
 )
 var _DeviceContainer *encsqlstore.EncContainer
 var _DB *sql.DB
@@ -160,7 +160,7 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 		deviceStore = container.NewDevice()
 	}
 
-    wmLog := log.Sub("WMC")
+	wmLog := log.Sub("WMC")
 	wmClient := whatsmeow.NewClient(deviceStore, wmLog)
 	wmClient.EnableAutoReconnect = true
 	wmClient.AutoTrustIdentity = true
@@ -168,25 +168,25 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	wmClient.EmitAppStateEventsOnFullSync = true
 	wmClient.ErrorOnSubscribePresenceWithoutToken = false
 
-    if loginProxy == "" && loginProxyFile != "" {
-        buf, err := os.ReadFile(loginProxyFile)
-        if err != nil {
-            wmLog.Errorf("Could not open login proxy file: %s: %v", loginProxyFile, err)
-            return nil, err
-        }
-        loginProxy = strings.TrimFunc(string(buf), unicode.IsSpace)
-    }
-    if loginProxy != "" {
-        wmLog.Infof("Using login proxy for WM Client")
-        wmClient.ToggleProxyOnlyForLogin(true)
-        err = wmClient.SetProxyAddress(loginProxy, whatsmeow.SetProxyOptions{
-            NoMedia: true,
-        })
-        if err != nil {
-            wmLog.Errorf("Could not set proxy: %v", err)
-            return nil, fmt.Errorf("Could not set login proxy: %v", err)
-        }
-    }
+	if loginProxy == "" && loginProxyFile != "" {
+		buf, err := os.ReadFile(loginProxyFile)
+		if err != nil {
+			wmLog.Errorf("Could not open login proxy file: %s: %v", loginProxyFile, err)
+			return nil, err
+		}
+		loginProxy = strings.TrimFunc(string(buf), unicode.IsSpace)
+	}
+	if loginProxy != "" {
+		wmLog.Infof("Using login proxy for WM Client")
+		wmClient.ToggleProxyOnlyForLogin(true)
+		err = wmClient.SetProxyAddress(loginProxy, whatsmeow.SetProxyOptions{
+			NoMedia: true,
+		})
+		if err != nil {
+			wmLog.Errorf("Could not set proxy: %v", err)
+			return nil, fmt.Errorf("Could not set login proxy: %v", err)
+		}
+	}
 
 	ctxC := NewContextWithCancel(ctx)
 
@@ -196,8 +196,8 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	messageQueue.Start()
 
 	aclStore := NewACLStore(db, username, log.Sub("ACL"))
-    // 64 MB cache
-	mediaCache, err := NewDiskCacheTempdir(ctxC, time.Minute, 64 * 1024 * 1024, time.Minute, log.Sub("mediaCache"))
+	// 64 MB cache
+	mediaCache, err := NewDiskCacheTempdir(ctxC, time.Minute, 64*1024*1024, time.Minute, log.Sub("mediaCache"))
 	if err != nil {
 		return nil, err
 	}
