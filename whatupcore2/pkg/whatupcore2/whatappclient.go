@@ -178,11 +178,14 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
     }
     if loginProxy != "" {
         wmLog.Infof("Using login proxy for WM Client")
-        wmLog.Debugf("Using proxy URL: %s", loginProxy)
         wmClient.ToggleProxyOnlyForLogin(true)
-        wmClient.SetProxyAddress(loginProxy, whatsmeow.SetProxyOptions{
+        err = wmClient.SetProxyAddress(loginProxy, whatsmeow.SetProxyOptions{
             NoMedia: true,
         })
+        if err != nil {
+            wmLog.Errorf("Could not set proxy: %v", err)
+            return nil, fmt.Errorf("Could not set login proxy: %v", err)
+        }
     }
 
 	ctxC := NewContextWithCancel(ctx)
