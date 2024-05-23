@@ -22,7 +22,7 @@ database_descriptions = {
 retention_settings = (
     sql.DatabaseInstanceSettingsBackupConfigurationBackupRetentionSettingsArgs(
         retention_unit="COUNT",
-        retained_backups=5,
+        retained_backups=7,
     )
 )  # noqa: E501
 

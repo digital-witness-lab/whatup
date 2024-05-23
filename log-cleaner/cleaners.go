@@ -58,3 +58,11 @@ func notifyBodyCleaner() CleanerFunc {
 		return notifyBody.ReplaceAllString(line, `$1[NBODY-$2]<`)
 	}
 }
+
+func pushNameCleaner() CleanerFunc {
+	notifyBody := regexp.MustCompile(`Got push name (.*) for`)
+
+	return func(line string) string {
+		return notifyBody.ReplaceAllString(line, `Got push name [PUSHNAME] for`)
+	}
+}
