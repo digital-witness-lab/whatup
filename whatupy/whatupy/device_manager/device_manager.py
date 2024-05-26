@@ -41,6 +41,7 @@ class DeviceManager:
             # figure out how to wait for the bot tasks from the devices list as
             # well. Maybe this is also a good way to have a restart mechanism
             # on error with exp backoff?
+        self.logger.critical("Device Manager Closing")
 
     async def _start_bot(self, bot: BaseBot, username: str):
         try:

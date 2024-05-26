@@ -1,6 +1,7 @@
 import asyncio
 import glob
 import json
+import random
 import typing as T
 
 from cloudpathlib import CloudPath, AnyPath
@@ -76,6 +77,9 @@ class CredentialsManagerCloudPath(CredentialsManager):
                     username,
                     credential_file,
                 )
+                await asyncio.sleep(
+                    10 * random.random()
+                )  # avoid all bots connecting at once
                 self.active_usernames[username] = credential_file
                 await device_manager.on_credentials(self, credential)
         except ValueError:
@@ -85,12 +89,15 @@ class CredentialsManagerCloudPath(CredentialsManager):
     async def listen(self, device_manager):
         self.logger.info("CredentialsManagerFile listening to path: %s", self.path)
         should_loop = True
-        while should_loop or (await self.blocker.wait()):
-            self.blocker.clear()
-            should_loop, credentials = self._get_credentials()
-            for credential_file in credentials:
-                await self._handle_credential(device_manager, credential_file)
-            await asyncio.sleep(self.timeout)
+        async with asyncio.TaskGroup() as tg:
+            while should_loop or (await self.blocker.wait()):
+                self.blocker.clear()
+                should_loop, credentials = self._get_credentials()
+                for credential_file in credentials:
+                    tg.create_task(
+                        self._handle_credential(device_manager, credential_file)
+                    )
+                await asyncio.sleep(self.timeout)
 
     def mark_dead(self, username):
         self.logger.info("Marking user dead: %s", username)
