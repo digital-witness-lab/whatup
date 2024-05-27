@@ -222,6 +222,7 @@ type WhatUpCoreClient interface {
 	RequestChatHistory(ctx context.Context, in *HistoryRequestOptions, opts ...grpc.CallOption) (*GroupInfo, error)
 	// DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
 	DownloadMedia(ctx context.Context, in *DownloadMediaOptions, opts ...grpc.CallOption) (*MediaContent, error)
+	ReingestMessage(ctx context.Context, in *ReingestOptions, opts ...grpc.CallOption) (*ReingestInfo, error)
 	SendMessage(ctx context.Context, in *SendMessageOptions, opts ...grpc.CallOption) (*SendMessageReceipt, error)
 	SetDisappearingMessageTime(ctx context.Context, in *DisappearingMessageOptions, opts ...grpc.CallOption) (*DisappearingMessageResponse, error)
 	Unregister(ctx context.Context, in *UnregisterOptions, opts ...grpc.CallOption) (*ConnectionStatus, error)
@@ -444,6 +445,15 @@ func (c *whatUpCoreClient) DownloadMedia(ctx context.Context, in *DownloadMediaO
 	return out, nil
 }
 
+func (c *whatUpCoreClient) ReingestMessage(ctx context.Context, in *ReingestOptions, opts ...grpc.CallOption) (*ReingestInfo, error) {
+	out := new(ReingestInfo)
+	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/ReingestMessage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *whatUpCoreClient) SendMessage(ctx context.Context, in *SendMessageOptions, opts ...grpc.CallOption) (*SendMessageReceipt, error) {
 	out := new(SendMessageReceipt)
 	err := c.cc.Invoke(ctx, "/protos.WhatUpCore/SendMessage", in, out, opts...)
@@ -489,6 +499,7 @@ type WhatUpCoreServer interface {
 	RequestChatHistory(context.Context, *HistoryRequestOptions) (*GroupInfo, error)
 	// DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
 	DownloadMedia(context.Context, *DownloadMediaOptions) (*MediaContent, error)
+	ReingestMessage(context.Context, *ReingestOptions) (*ReingestInfo, error)
 	SendMessage(context.Context, *SendMessageOptions) (*SendMessageReceipt, error)
 	SetDisappearingMessageTime(context.Context, *DisappearingMessageOptions) (*DisappearingMessageResponse, error)
 	Unregister(context.Context, *UnregisterOptions) (*ConnectionStatus, error)
@@ -537,6 +548,9 @@ func (UnimplementedWhatUpCoreServer) RequestChatHistory(context.Context, *Histor
 }
 func (UnimplementedWhatUpCoreServer) DownloadMedia(context.Context, *DownloadMediaOptions) (*MediaContent, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DownloadMedia not implemented")
+}
+func (UnimplementedWhatUpCoreServer) ReingestMessage(context.Context, *ReingestOptions) (*ReingestInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReingestMessage not implemented")
 }
 func (UnimplementedWhatUpCoreServer) SendMessage(context.Context, *SendMessageOptions) (*SendMessageReceipt, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
@@ -806,6 +820,24 @@ func _WhatUpCore_DownloadMedia_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WhatUpCore_ReingestMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReingestOptions)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WhatUpCoreServer).ReingestMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.WhatUpCore/ReingestMessage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WhatUpCoreServer).ReingestMessage(ctx, req.(*ReingestOptions))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WhatUpCore_SendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SendMessageOptions)
 	if err := dec(in); err != nil {
@@ -902,6 +934,10 @@ var WhatUpCore_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DownloadMedia",
 			Handler:    _WhatUpCore_DownloadMedia_Handler,
+		},
+		{
+			MethodName: "ReingestMessage",
+			Handler:    _WhatUpCore_ReingestMessage_Handler,
 		},
 		{
 			MethodName: "SendMessage",

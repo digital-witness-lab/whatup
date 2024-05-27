@@ -42,6 +42,35 @@ UNKNOWN: GroupPermission.ValueType
 global___GroupPermission = GroupPermission
 
 @typing_extensions.final
+class ReingestOptions(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    MESSAGE_FIELD_NUMBER: builtins.int
+    ASHISTORY_FIELD_NUMBER: builtins.int
+
+    @property
+    def message(self) -> global___WUMessage:
+        ...
+    asHistory: builtins.bool
+
+    def __init__(self, *, message: global___WUMessage | None=..., asHistory: builtins.bool=...) -> None:
+        ...
+
+    def HasField(self, field_name: typing_extensions.Literal['message', b'message']) -> builtins.bool:
+        ...
+
+    def ClearField(self, field_name: typing_extensions.Literal['asHistory', b'asHistory', 'message', b'message']) -> None:
+        ...
+global___ReingestOptions = ReingestOptions
+
+@typing_extensions.final
+class ReingestInfo(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(self) -> None:
+        ...
+global___ReingestInfo = ReingestInfo
+
+@typing_extensions.final
 class MessageStream(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
     TIMESTAMP_FIELD_NUMBER: builtins.int
@@ -531,7 +560,9 @@ class GroupInfo(google.protobuf.message.Message):
 
     @property
     def createdAt(self) -> google.protobuf.timestamp_pb2.Timestamp:
-        """types.GroupInfo"""
+        """types.GroupInfo
+        NOTE: if this gets updated, update whatupy.utils:group_info_hash
+        """
 
     @property
     def JID(self) -> global___JID:
