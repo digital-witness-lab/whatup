@@ -300,7 +300,7 @@ Total devices: {n_devices}
 
     async def handle_bot_change(self, user: UserBot) -> bool:
         primary_bot = user.state.get("primary_bot")
-        if primary_bot == self.jid_anon:
+        if primary_bot == utils.jid_to_str(self.jid_anon):
             return False
         user.state["primary_bot"] = self.jid_anon
         if primary_bot is None:
