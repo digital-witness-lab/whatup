@@ -36,6 +36,7 @@ class RegisterBot(BaseBot):
             primary_increment=False,
         )
         ru.create_column("timestamp", type=db.types.datetime)
+        ru.create_column("primary_bot", type=db.types.text)
 
         db.create_table(
             "user_registration_meta",
