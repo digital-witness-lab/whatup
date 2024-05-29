@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import random
 import typing as T
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -308,6 +309,7 @@ Total devices: {n_devices}
             return False
         # The primary user_services bot has changed since the user last
         # logged in
+        await asyncio.sleep(30 * random.random())  # avoid bot sending notification to all users at the same time and triggering spam control
         await self.send_template_user(user, "new_bot")
         return True
 
