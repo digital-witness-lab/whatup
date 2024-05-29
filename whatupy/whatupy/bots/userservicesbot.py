@@ -312,7 +312,8 @@ Total devices: {n_devices}
             user.state["pending_new_bot_message"] = True
         # The primary user_services bot has changed since the user last
         # logged in
-        await asyncio.sleep(300 * random.random())  # avoid bot sending notification to all users at the same time and triggering spam control
+        await asyncio.sleep(600 * random.random())  # avoid bot sending notification to all users at the same time and triggering spam control
+        self.logger.info("Sending new bot notification to: %s", user.username)
         await self.send_template_user(user, "new_bot")
         user.state["pending_new_bot_message"] = False
         return True
