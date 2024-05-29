@@ -523,7 +523,7 @@ func (s *WhatUpCoreServer) GetCommunityInfo(pJID *pb.JID, server pb.WhatUpCore_G
 	return nil
 }
 
-func (s *WhatUpCoreServer) GetGroupInfoLink(ctx context.Context, inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
+func (s *WhatUpCoreServer) GetGroupInfoInvite(ctx context.Context, inviteCode *pb.InviteCode) (*pb.GroupInfo, error) {
 	session, ok := ctx.Value("session").(*Session)
 	if !ok {
 		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
