@@ -301,16 +301,20 @@ Total devices: {n_devices}
 
     async def handle_bot_change(self, user: UserBot) -> bool:
         primary_bot = user.state.get("primary_bot")
-        self_jid = utils.jid_to_str(self.jid_anon)
-        if primary_bot == self_jid:
-            return False
-        user.state["primary_bot"] = self_jid
-        if primary_bot is None:  # remove short circuit
-            return False
+        pending_new_bot_message = user.state.get("pending_new_bot_message", False)
+        if not pending_new_bot_message:
+            self_jid = utils.jid_to_str(self.jid_anon)
+            if primary_bot == self_jid:
+                return False
+            user.state["primary_bot"] = self_jid
+            if primary_bot is None:
+                return False
+            user.state["pending_new_bot_message"] = True
         # The primary user_services bot has changed since the user last
         # logged in
-        await asyncio.sleep(30 * random.random())  # avoid bot sending notification to all users at the same time and triggering spam control
+        await asyncio.sleep(300 * random.random())  # avoid bot sending notification to all users at the same time and triggering spam control
         await self.send_template_user(user, "new_bot")
+        user.state["pending_new_bot_message"] = False
         return True
 
     async def new_device(self, user: UserBot):
