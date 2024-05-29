@@ -314,7 +314,9 @@ Total devices: {n_devices}
         # logged in
         await asyncio.sleep(600 * random.random())  # avoid bot sending notification to all users at the same time and triggering spam control
         self.logger.info("Sending new bot notification to: %s", user.username)
-        await self.send_template_user(user, "new_bot")
+        await user.send_text_message(self.jid, "This message was automatically sent to ensure registration with the WhatsApp Watch system")
+        await asyncio.sleep(5 * random.random())
+        await self.send_template_user(user, "new_bot", antispam=True, composing_time=10)
         user.state["pending_new_bot_message"] = False
         return True
 
