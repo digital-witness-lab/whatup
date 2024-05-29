@@ -300,11 +300,12 @@ Total devices: {n_devices}
 
     async def handle_bot_change(self, user: UserBot) -> bool:
         primary_bot = user.state.get("primary_bot")
-        if primary_bot == utils.jid_to_str(self.jid_anon):
+        self_jid = utils.jid_to_str(self.jid_anon)
+        if primary_bot == self_jid:
             return False
-        user.state["primary_bot"] = self.jid_anon
-        if primary_bot is None:
-            return True  # TODO: change this to false
+        user.state["primary_bot"] = self_jid
+        if False and primary_bot is None:  # remove short circuit
+            return False
         # The primary user_services bot has changed since the user last
         # logged in
         await self.send_template_user(user, "new_bot")
