@@ -304,7 +304,7 @@ Total devices: {n_devices}
             return False
         user.state["primary_bot"] = self.jid_anon
         if primary_bot is None:
-            return False
+            return True  # TODO: change this to false
         # The primary user_services bot has changed since the user last
         # logged in
         await self.send_template_user(user, "new_bot")
