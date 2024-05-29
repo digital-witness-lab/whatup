@@ -298,6 +298,19 @@ Total devices: {n_devices}
                 ulog.debug("Unrecognized command: %s", text)
                 await self.help_text(user)
 
+    async def handle_bot_change(self, user: UserBot) -> bool:
+        primary_bot = user.state.get("primary_bot")
+        self_jid = utils.jid_to_str(self.jid_anon)
+        if primary_bot == self_jid:
+            return False
+        user.state["primary_bot"] = self_jid
+        if primary_bot is None:  # remove short circuit
+            return False
+        # The primary user_services bot has changed since the user last
+        # logged in
+        await self.send_template_user(user, "new_bot")
+        return True
+
     async def new_device(self, user: UserBot):
         if not user.jid_anon:
             return
@@ -305,10 +318,12 @@ Total devices: {n_devices}
         if not user_jid_str:
             return
         self.logger.info("User services handling user: %s", user.username)
-        if not user.state.get("finalize_registration", False):
+        bot_changed = await self.handle_bot_change(user)
+        if bot_changed or not user.state.get("finalize_registration", False):
             await self.onboard_user(user)
         if user.state.get("is_demo"):
             asyncio.create_task(self.unregister_demo(user))
+
 
     async def unregister_demo(self, user: UserBot):
         timestamp = user.state.get("timestamp") or datetime.min
