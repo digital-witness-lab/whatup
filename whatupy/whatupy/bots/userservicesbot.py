@@ -304,7 +304,7 @@ Total devices: {n_devices}
         if primary_bot == self_jid:
             return False
         user.state["primary_bot"] = self_jid
-        if False and primary_bot is None:  # remove short circuit
+        if primary_bot is None:  # remove short circuit
             return False
         # The primary user_services bot has changed since the user last
         # logged in
