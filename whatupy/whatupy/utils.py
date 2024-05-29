@@ -35,6 +35,20 @@ CommandQuery = namedtuple("CommandQuery", "namespace command params".split(" "))
 Generic = T.TypeVar("Generic")
 
 
+def modify_for_antispam(message: str) -> str:
+    identity = lambda x: x
+
+    def random_spaces(group):
+        return random.choice([" ", "  "])
+
+    message = random.choice([str.lower, str.title, identity])(message)
+    message = re.sub("[ ]+", random_spaces, message)
+    h = short_hash(message + str(random.random()))
+    message += f" (id: {h})"
+
+    return message
+
+
 def group_info_hash(group_info: wuc.GroupInfo) -> str:
     data = (
         group_info.createdAt.ToJsonString(),
