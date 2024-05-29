@@ -11,7 +11,7 @@ config:
     - pilot1@g.us # pilot1
     - pilot2@g.us # pilot2
     - pilot3@g.us # pilot3
-    - pilot7@g.us # pilot7
+      #- pilot7@g.us # pilot7
   whatup:databases:
     - name: messages
       nameShort: msg
@@ -39,7 +39,7 @@ config:
       type: E2Small
   whatup:msgPassword:
     secure: AAABAPft8aaBuey6IpzgenxXImjFxNmYYOckUp+a9XrXmlLU13C4H6ajxAdKJ7JMFg1UOYvLWWESI7iWpGBc6pCRb/Cg6/aGbqyNi5iY+aqYlPaiyYEvolFyuMP77H1a4/83ict2ooffR95bDlaHdpo98pjweIUb7sbwu1E0ojk5JOvGycahMxszFY/3zbvgipiXsvkKjoXl4fKXJageUw==
-  whatup:primary_bot_name: beatrice
+  whatup:primary_bot_name: iris
   whatup:temp_bucket_ttl_days: "1"
   whatup:translationEnabled: "true"
   whatup:usrPassword:
