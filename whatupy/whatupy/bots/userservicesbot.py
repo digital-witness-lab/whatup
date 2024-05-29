@@ -60,6 +60,7 @@ class UserServicesBot(BaseBot):
             bot_factory=bot_factory,
             credential_managers=[credentials_manager],
         )
+        self.bot_change_lock = asyncio.Lock()
 
         self.user_jobs: T.Set[UserJob] = set()
 
@@ -312,7 +313,8 @@ Total devices: {n_devices}
             user.state["pending_new_bot_message"] = True
         # The primary user_services bot has changed since the user last
         # logged in
-        await asyncio.sleep(12 * 60 * 60 * random.random())  # avoid bot sending notification to all users at the same time and triggering spam control
+        self.logger.info("Acquiring lock to send new bot notification to: %s", user.username)
+        await self.bot_change_lock.acquire()
         self.logger.info("Sending new bot notification to: %s", user.username)
         await user.core_client.SetACL(
             wuc.GroupACL(JID=self.jid, permission=wuc.GroupPermission.READWRITE)
@@ -321,6 +323,9 @@ Total devices: {n_devices}
         await asyncio.sleep(5 * random.random())
         await self.send_template_user(user, "new_bot", antispam=True, composing_time=10)
         user.state["pending_new_bot_message"] = False
+        # wait ~20 minutes until releasing the lock again
+        dt = 60 * (17.5 + 5 * random.random())
+        asyncio.get_running_loop().call_later(dt, self.bot_change_lock.release)
         return True
 
     async def new_device(self, user: UserBot):
