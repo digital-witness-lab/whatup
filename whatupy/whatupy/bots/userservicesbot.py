@@ -315,7 +315,8 @@ Total devices: {n_devices}
         # logged in
         self.logger.info("Acquiring lock to send new bot notification to: %s", user.username)
         async with self.bot_change_lock:
-            dt = 60 * (17.5 + 5 * random.random())
+            # wait ~60 minutes before contacting user from this new number
+            dt = 60 * (60 + 10 * random.uniform(-1, 1))
             self.logger.info("Sleeping before sending new bot notification to: %s", user.username)
             await asyncio.sleep(dt)
             self.logger.info("Sending new bot notification to: %s", user.username)
@@ -327,7 +328,6 @@ Total devices: {n_devices}
             await asyncio.sleep(5 * random.random())
             await self.send_template_user(user, "new_bot", antispam=True, composing_time=10)
             user.state["pending_new_bot_message"] = False
-            # wait ~20 minutes until releasing the lock again
         return True
 
     async def new_device(self, user: UserBot):

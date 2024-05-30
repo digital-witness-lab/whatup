@@ -683,7 +683,7 @@ class BaseBot:
     ):
         messages = format_lang_template(template, lang, **kwargs)
         for message in messages:
-            message = random.choice(message.split("##")).strip()
+            message = random.choice(message.split("@@")).strip()
             if antispam:
                 message = utils.modify_for_antispam(message)
             await self.send_text_message(
