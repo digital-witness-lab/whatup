@@ -11,7 +11,7 @@ config:
     - pilot1@g.us # pilot1
     - pilot2@g.us # pilot2
     - pilot3@g.us # pilot3
-      #- pilot7@g.us # pilot7
+    - pilot4@g.us # pilot4
   whatup:databases:
     - name: messages
       nameShort: msg

@@ -678,7 +678,7 @@ class BaseBot:
         template: str,
         lang: TypeLanguages,
         context_info=None,
-        antispam=True,
+        antispam=False,
         **kwargs,
     ):
         messages = format_lang_template(template, lang, **kwargs)
