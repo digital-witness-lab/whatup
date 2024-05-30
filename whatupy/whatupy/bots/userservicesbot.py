@@ -314,18 +314,20 @@ Total devices: {n_devices}
         # The primary user_services bot has changed since the user last
         # logged in
         self.logger.info("Acquiring lock to send new bot notification to: %s", user.username)
-        await self.bot_change_lock.acquire()
-        self.logger.info("Sending new bot notification to: %s", user.username)
-        await user.core_client.SetACL(
-            wuc.GroupACL(JID=self.jid, permission=wuc.GroupPermission.READWRITE)
-        )
-        await user.send_text_message(self.jid, utils.modify_for_antispam("This message was automatically sent to ensure registration with the WhatsApp Watch system"))
-        await asyncio.sleep(5 * random.random())
-        await self.send_template_user(user, "new_bot", antispam=True, composing_time=10)
-        user.state["pending_new_bot_message"] = False
-        # wait ~20 minutes until releasing the lock again
-        dt = 60 * (17.5 + 5 * random.random())
-        asyncio.get_running_loop().call_later(dt, self.bot_change_lock.release)
+        async with self.bot_change_lock:
+            dt = 60 * (17.5 + 5 * random.random())
+            self.logger.info("Sleeping before sending new bot notification to: %s", user.username)
+            await asyncio.sleep(dt)
+            self.logger.info("Sending new bot notification to: %s", user.username)
+
+            await user.core_client.SetACL(
+                wuc.GroupACL(JID=self.jid, permission=wuc.GroupPermission.READWRITE)
+            )
+            await user.send_text_message(self.jid, utils.modify_for_antispam("This message was automatically sent to ensure registration with the WhatsApp Watch system"))
+            await asyncio.sleep(5 * random.random())
+            await self.send_template_user(user, "new_bot", antispam=True, composing_time=10)
+            user.state["pending_new_bot_message"] = False
+            # wait ~20 minutes until releasing the lock again
         return True
 
     async def new_device(self, user: UserBot):
