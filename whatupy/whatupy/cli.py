@@ -75,15 +75,9 @@ def cli(ctx, debug, host, port, control_groups: list, cert: T.Optional[Path]):
     default=60 * 60 * 4,
     help="Mean response time (seconds)",
 )
-@click.option(
-    "--response-time-sigma",
-    type=float,
-    default=60 * 60 * 2,
-    help="Response time sigma (seconds)",
-)
 @click.argument("credentials", nargs=-1)
 @click.pass_context
-async def chatbot(ctx, credentials, response_time, response_time_sigma):
+async def chatbot(ctx, credentials, response_time):
     """
     Create a bot-evasion chat-bot. Multiple bots can be turned into this mode
     and they will communicate with one-another so as to simulate real users
@@ -91,7 +85,6 @@ async def chatbot(ctx, credentials, response_time, response_time_sigma):
     """
     params = {
         "response_time": response_time,
-        "response_time_sigma": response_time_sigma,
         **ctx.obj["connection_params"],
     }
     await run_multi_bots(ChatBot, credentials, params)

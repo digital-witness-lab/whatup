@@ -99,8 +99,8 @@ func isGoogleComputeEngineEnv() bool {
 				fmt.Println("Request to internal metadata service timed-out")
 				return false
 			}
-
-			panic(err)
+            fmt.Println("Couldn't contact metadata.google.internal:", err)
+            return false
 		default:
 			panic(err)
 		}
