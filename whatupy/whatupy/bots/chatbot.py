@@ -40,7 +40,8 @@ class ChatBot(BaseBot):
 
     async def initiate_friend_chats(self, *args, **kwargs):
         self.logger.info("Greeting friends")
-        for friend in CHATBOT_FRIEND_JIDS.values():
+        friends = list(CHATBOT_FRIEND_JIDS.values())
+        for friend in friends:
             if utils.same_jid(friend.jid, self.jid):
                 continue
             self.logger.info(f"Saying hello to: {friend.username}")
@@ -96,5 +97,6 @@ class ChatBot(BaseBot):
         return " ".join(utils.random_words(n_words))
 
     def stop(self):
-        CHATBOT_FRIEND_JIDS.pop(self.strAnonJID)
+        jid_anon_str = utils.jid_to_str(self.jid_anon)
+        CHATBOT_FRIEND_JIDS.pop(jid_anon_str)
         super().stop()

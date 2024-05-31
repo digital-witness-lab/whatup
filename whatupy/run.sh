@@ -99,7 +99,7 @@ case $app_command in
             --cert /run/secrets/ssl-cert \
             --port 3447 \
             chatbot \
-            --response-time $(( 1 * 60 * 60 )) \ 
+            --response-time 3600 \
             "kek+gs://${SESSIONS_BUCKET}/"
     ;;
 
