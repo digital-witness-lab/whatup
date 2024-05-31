@@ -14,7 +14,7 @@ from container_vm import (
 from dwl_secrets import db_url_secrets
 from jobs.db_migrations import migrations_job_complete
 from kms import sessions_encryption_key, sessions_encryption_key_uri
-from network import private_services_network_with_db
+from network import private_services_network
 from storage import sessions_bucket, temp_bucket
 
 from .whatupcore2 import ssl_cert_pem_secret, whatupcore2_service
@@ -36,7 +36,7 @@ sessions_bucket_perm = storage.BucketIAMMember(
     ),
 )
 encryption_key_perm = kms.CryptoKeyIAMMember(
-    "bot-us-enc-key-perm",
+    "bot-chat-enc-key-perm",
     kms.CryptoKeyIAMMemberArgs(
         crypto_key_id=sessions_encryption_key.id,
         member=Output.concat("serviceAccount:", service_account.email),
@@ -45,7 +45,7 @@ encryption_key_perm = kms.CryptoKeyIAMMember(
 )
 
 ssl_cert_pem_secret_perm = secretmanager.SecretIamMember(
-    "bot-us-ssl-cert-secret-perm",
+    "bot-chat-ssl-cert-secret-perm",
     secretmanager.SecretIamMemberArgs(
         secret_id=ssl_cert_pem_secret.id,
         role="roles/secretmanager.secretAccessor",
