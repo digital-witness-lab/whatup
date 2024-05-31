@@ -162,7 +162,7 @@ services:
       - ssl-cert
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot --response-time 300 /usr/src/whatupy-data/sessions/
+    command: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot --response-time 3600 /usr/src/whatupy-data/sessions/
 
   bot-register:
     build: ./whatupy/
