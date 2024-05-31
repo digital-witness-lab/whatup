@@ -29,6 +29,7 @@ class ChatBot(BaseBot):
         self.response_time = response_time
         self.pending_messages = defaultdict(int)
         kwargs["read_historical_messages"] = False
+        kwargs["mark_messages_read"] = True
         super().__init__(*args, **kwargs)
 
     async def post_start(self, **kwargs):
