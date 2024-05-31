@@ -79,7 +79,7 @@ class ChatBot(BaseBot):
         status = await self.send_text_message(friend.jid, response)
         self.pending_messages[friend.username] -= 1
 
-    def message_response_rate_local(self, scale=0.3):
+    def message_response_rate_local(self, scale=0.5):
         now = datetime.now()
         seconds_since_midnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
         seconds_per_day = 60 * 60 * 24
