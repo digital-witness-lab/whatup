@@ -318,7 +318,7 @@ Total devices: {n_devices}
         self.logger.info("Acquiring lock to send new bot notification to: %s", user.username)
         async with self.bot_change_lock:
             # wait ~60 minutes before contacting user from this new number
-            dt = 60 * (60 + 10 * random.uniform(-1, 1))
+            dt = 60 * (60 + 30 * random.uniform(-1, 1))
             self.logger.info("Sleeping before sending new bot notification to: %s: %0.2f", user.username, dt)
             await asyncio.sleep(dt)
             self.logger.info("Sending new bot notification to: %s", user.username)
