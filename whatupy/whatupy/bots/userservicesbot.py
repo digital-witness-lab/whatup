@@ -339,7 +339,8 @@ Total devices: {n_devices}
         if not user_jid_str:
             return
         self.logger.info("User services handling user: %s", user.username)
-        bot_changed = await self.handle_bot_change(user)
+        bot_changed = False
+        # bot_changed = await self.handle_bot_change(user)
         if bot_changed or not user.state.get("finalize_registration", False):
             await self.onboard_user(user)
         if user.state.get("is_demo"):
