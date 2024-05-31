@@ -192,8 +192,9 @@ class BaseBot:
                 wuc.ConnectionStatusOptions()
             )
             if not conn.isLoggedIn:
+                self.logger.critical("Bot failed health check")
                 raise NotLoggedInException
-            self.logger.info("Bot still alive")
+            self.logger.debug("Bot still alive")
 
     async def _throw_on_unlock(self, cond: asyncio.Event):
         await cond.wait()
