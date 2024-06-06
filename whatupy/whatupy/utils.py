@@ -10,7 +10,6 @@ import mimetypes
 import random
 import re
 import string
-import sys
 import typing as T
 import warnings
 from collections import namedtuple
@@ -32,7 +31,6 @@ WORDLIST_SIZE = None
 RANDOM_SALT = random.randbytes(32)
 
 CommandQuery = namedtuple("CommandQuery", "namespace command params".split(" "))
-Generic = T.TypeVar("Generic")
 
 
 def modify_for_antispam(message: str) -> str:
@@ -217,14 +215,14 @@ def protobuf_to_json_list(proto_objs) -> str:
     return json.dumps(data, cls=WhatUpyJSONEncoder)
 
 
-def jsons_to_protobuf(jsons: str, proto_type: Generic) -> Generic:
+def jsons_to_protobuf[PT](jsons: str, proto_type: T.Type[PT]) -> PT:
     data = json.loads(jsons, cls=WhatUpyJSONDecoder)
     return ParseDict(data, proto_type(), ignore_unknown_fields=True)
 
 
-def json_list_to_protobuf_list(jsons: str, proto_type: Generic) -> T.List[Generic]:
+def json_list_to_protobuf_list[PT](jsons: str, proto_type: T.Type[PT]) -> T.List[PT]:
     data = json.loads(jsons, cls=WhatUpyJSONDecoder)
-    object_list: T.List[Generic] = []
+    object_list: T.List[PT] = []
     for item in data:
         item_object = proto_type()
         object_list.append(ParseDict(item, item_object, ignore_unknown_fields=True))

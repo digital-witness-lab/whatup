@@ -14,7 +14,7 @@ import utils
 logger = getLogger(__name__)
 
 
-class JobStats(defaultdict):
+class JobResults(defaultdict):
     def __init__(
         self, *args, output_delay: timedelta = timedelta(seconds=60), **kwargs
     ):
@@ -35,7 +35,7 @@ class JobStats(defaultdict):
     def status(self):
         output = ", ".join("{key}={value}" for key, value in self.items())
         running_time = datetime.now() - self.start_time
-        return f"JobStats: {running_time}: {output}"
+        return f"JobResults: {running_time}: {output}"
 
 
 async def find_missing_media(
@@ -66,21 +66,18 @@ async def find_missing_media(
         logger.error("Can't get reference to media table")
         return
 
-    job_stats = JobStats()
+    job_results = JobResults()
+    # Turn this fxn into a UserGroupJob and add each db_media_messages as a `task`. The result of the process will be the `JobResults` (in CSV?)
     for db_media_message in db_media_messages:
         if db_media_message is None:
             continue
 
-        job_stats.maybe_output(print=logger.info)
+        job_results.maybe_output(print=logger.info)
 
-        message_id: str | None = db_media_message.get("id")
-        media_filename: str | None = db_media_message.get("mediaFilename")
-        if not media_filename or not message_id:
-            # This should never happen, but checking makes my types checker
-            # happy
-            continue
+        message_id: str = db_media_message.get("id")
+        media_filename: str = db_media_message.get("mediaFilename")
 
-        job_stats.ping("db_message")
+        job_results.ping("db_message")
         chat_jid = db_media_message["chat_jid"]
         conversation_dir: CloudPath = archive_base_path / chat_jid
         archive_media_path = db_media_message["provenance"].get("archivebot__mediaPath")
@@ -89,49 +86,46 @@ async def find_missing_media(
         mimetype = db_media_message.get("mimetype")
         timestamp = db_media_message.get("timestamp")
         reciever_jid = db_media_message.get("reciever_jid")
+        message_orig: wuc.WUMessage | None = None
+        tried_finding_message = False
 
         if not archive_media_path:
-            job_stats.ping("no_archive_media_path")
+            job_results.ping("no_archive_media_path")
             if file_extension and media_filename:
-                job_stats.ping("has_extension")
+                job_results.ping("has_extension")
                 archive_media_path = f"media/{media_filename}.{file_extension}"
             else:
                 proposals = list(
                     (conversation_dir / "media").glob(f"{media_filename}.*")
                 )
                 if proposals:
-                    job_stats.ping("found_w_glob")
+                    job_results.ping("found_w_glob")
                     archive_media_path = str(proposals[0].relative_to(conversation_dir))
-                elif timestamp and message_id and reciever_jid:
-                    t = int(timestamp.timestamp())
-                    archive_file = (
-                        conversation_dir / f"{t}_{message_id}_{reciever_jid}.json"
+                elif timestamp and message_id:
+                    tried_finding_message = True
+                    message_orig = _get_archive_file(
+                        conversation_dir, timestamp, message_id, reciever_jid, job_results
                     )
-                    archive_file_old = conversation_dir / f"{t}_{message_id}.json"
-                    if archive_file.exists():
-                        job_stats.ping("found_archive_file")
-                        archive_media_path = _archive_file_media_path(archive_file)
-                    elif archive_file_old.exists():
-                        job_stats.ping("found_archive_old_file")
-                        archive_media_path = _archive_file_media_path(archive_file)
+                    if message_orig and filename := utils.media_message_filename(message):
+                        archive_media_path = "media/" + filename
                     else:
-                        job_stats.ping("no_archive_file")
+                        archive_media_path = None
 
         if archive_media_path:
             if not file_extension:
-                job_stats.ping("filled_extension")
+                job_results.ping("filled_extension")
                 file_extension = archive_media_path.split(".", 1)[-1]
             if not mimetype:
-                job_stats.ping("filled_mimetype")
+                job_results.ping("filled_mimetype")
                 mimetype = mimetypes.types_map.get(file_extension)
 
             archive_media = conversation_dir / archive_media_path
             archive_media_exists = archive_media.exists()
             if archive_media.exists() and content_url:
-                job_stats.ping("has_all")
+                job_results.ping("has_all")
                 continue
             if archive_media_exists and not content_url:
-                job_stats.ping("filled_content_url")
+                job_results.ping("filled_content_url")
                 content_url = media_base_path / DatabaseBot.media_url_path(
                     [chat_jid, "media"], media_filename
                 )
@@ -146,18 +140,33 @@ async def find_missing_media(
                     ["filename"],
                 )
             elif content_url and not archive_media_exists:
-                job_stats.ping("archive_media")
+                job_results.ping("archive_media")
                 CloudPath(content_url).copy(archive_media)
             else:
-                job_stats.ping("needs_request")
-                yield message_id
-    logger.info("Finished running: %s", job_stats.status())
+                if message_orig is None and not tried_finding_message:
+                    message_orig = _get_archive_file(
+                        conversation_dir, timestamp, message_id, reciever_jid, job_results
+                    )
+                if message_orig is None:
+                    job_results.ping("no_archive")
+                else:
+                    job_results.ping("needs_request")
+    logger.info("Finished running: %s", job_results.status())
 
 
-def _archive_file_media_path(archive_file: CloudPath) -> str | None:
-    message: wuc.WUMessage = utils.jsons_to_protobuf(
-        archive_file.read_text(), wuc.WUMessage
-    )
-    if filename := utils.media_message_filename(message):
-        return "media/" + filename
+def _get_archive_file(conversation_dir, timestamp, message_id, reciever_jid, job_results) -> wuc.WUMessage | None:
+    t = int(timestamp.timestamp())
+    archive_file = conversation_dir / f"{t}_{message_id}_{reciever_jid}.json"
+    archive_file_old = conversation_dir / f"{t}_{message_id}.json"
+    if archive_file.exists():
+        job_results.ping("found_archive_file")
+        return utils.jsons_to_protobuf(
+            archive_file.read_text(), wuc.WUMessage
+        )
+    elif archive_file_old.exists():
+        job_results.ping("found_archive_old_file")
+        return utils.jsons_to_protobuf(
+            archive_file_old.read_text(), wuc.WUMessage
+        )
+    job_results.ping("no_archive_file")
     return None
