@@ -18,6 +18,7 @@ from services import (
     bot_db,
     bot_register,
     bot_user_services,
+    bot_chat,
     whatupcore2,
 )
 from scheduled_tasks import (

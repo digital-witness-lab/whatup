@@ -318,7 +318,7 @@ Total devices: {n_devices}
         self.logger.info("Acquiring lock to send new bot notification to: %s", user.username)
         async with self.bot_change_lock:
             # wait ~60 minutes before contacting user from this new number
-            dt = 60 * (60 + 10 * random.uniform(-1, 1))
+            dt = 60 * (60 + 30 * random.uniform(-1, 1))
             self.logger.info("Sleeping before sending new bot notification to: %s: %0.2f", user.username, dt)
             await asyncio.sleep(dt)
             self.logger.info("Sending new bot notification to: %s", user.username)
@@ -339,7 +339,8 @@ Total devices: {n_devices}
         if not user_jid_str:
             return
         self.logger.info("User services handling user: %s", user.username)
-        bot_changed = await self.handle_bot_change(user)
+        bot_changed = False
+        # bot_changed = await self.handle_bot_change(user)
         if bot_changed or not user.state.get("finalize_registration", False):
             await self.onboard_user(user)
         if user.state.get("is_demo"):

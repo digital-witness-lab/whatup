@@ -26,7 +26,6 @@ services:
       - ENC_KEY_SALT=kajsdfhkajsdfhaksdjfhkjasdfhskd
       - POSTGRES_DATABASE=whatupcore
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-whatupcore-passwd
-      - LOGIN_PROXY_FILE=/run/secrets/whatupcore-login-proxy
     links:
       - db
     secrets:
@@ -153,7 +152,7 @@ services:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
     command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission READWRITE --credentials-url "/usr/src/whatupy-data/sessions/" ${SESSION_NAME}
 
-  bot-chatbot:
+  bot-chat:
     build: ./whatupy/
     links:
       - whatup
@@ -163,7 +162,7 @@ services:
       - ssl-cert
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot /usr/src/whatupy-data/sessions/
+    command: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot --response-time 3600 /usr/src/whatupy-data/sessions/
 
   bot-register:
     build: ./whatupy/
