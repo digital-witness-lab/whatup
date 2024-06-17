@@ -35,6 +35,8 @@ config:
       type: E2Medium
     - serviceName: bot-register
       type: E2Micro
+    - serviceName: bot-chat
+      type: E2Micro
     - serviceName: null
       type: E2Small
   whatup:msgPassword:

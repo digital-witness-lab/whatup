@@ -94,6 +94,15 @@ case $app_command in
             "kek+gs://${SESSIONS_BUCKET}/${PRIMARY_BOT_NAME}.json"
     ;;
 
+    chat)
+        exec ${WHATUPY_CMD} $DEBUG --host "${WHATUPCORE2_HOST}" \
+            --cert /run/secrets/ssl-cert \
+            --port 3447 \
+            chatbot \
+            --response-time 3600 \
+            "kek+gs://${SESSIONS_BUCKET}/"
+    ;;
+
     onboard)
         if [ -z "${WHATUPY_ONBOARD_BOT_NAME:-}" ]; then
             echo "WHATUPY_ONBOARD_BOT_NAME env var is required."
