@@ -7,6 +7,7 @@ from dataset import Database, Table
 from cloudpathlib import CloudPath
 
 from .bots import DatabaseBot
+from .bots.lib import UserBot
 from .protos import whatupcore_pb2 as wuc
 import utils
 
@@ -39,9 +40,14 @@ class JobResults(defaultdict):
 
 
 async def find_missing_media(
-    db: Database, archive_base_path: CloudPath, media_base_path: CloudPath
+    db: Database,
+    user: UserBot,
+    archive_base_path: CloudPath,
+    media_base_path: CloudPath,
 ):
     mimetypes.init()
+    if not user.jid_anon:
+        return None
     db_media_messages = db.query(
         """
         SELECT
@@ -54,12 +60,17 @@ async def find_missing_media(
             media.content_url,
             media."fileExtension",
             media.mimetype
-        FROM "messages" AS msg
+        FROM "donor_messages" AS dm
+        INNER JOIN "messages" AS msg
+            ON msg.id = dm.message_id
         LEFT JOIN "media" AS media
             ON msg."mediaFilename" = media.filename
         WHERE
+            dm.donor_jid = :jid AND
             msg."mediaFilename" IS NOT NULL
-    """
+        ORDER BY msg.timestamp DESC
+    """,
+        utils.jid_to_str(user.jid_anon),
     )
     media_table: Table | None = db.get_table("media")
     if media_table is None:
@@ -104,9 +115,15 @@ async def find_missing_media(
                 elif timestamp and message_id:
                     tried_finding_message = True
                     message_orig = _get_archive_file(
-                        conversation_dir, timestamp, message_id, reciever_jid, job_results
+                        conversation_dir,
+                        timestamp,
+                        message_id,
+                        reciever_jid,
+                        job_results,
                     )
-                    if message_orig and filename := utils.media_message_filename(message):
+                    if message_orig and (
+                        filename := utils.media_message_filename(message_orig)
+                    ):
                         archive_media_path = "media/" + filename
                     else:
                         archive_media_path = None
@@ -145,7 +162,11 @@ async def find_missing_media(
             else:
                 if message_orig is None and not tried_finding_message:
                     message_orig = _get_archive_file(
-                        conversation_dir, timestamp, message_id, reciever_jid, job_results
+                        conversation_dir,
+                        timestamp,
+                        message_id,
+                        reciever_jid,
+                        job_results,
                     )
                 if message_orig is None:
                     job_results.ping("no_archive")
@@ -154,19 +175,17 @@ async def find_missing_media(
     logger.info("Finished running: %s", job_results.status())
 
 
-def _get_archive_file(conversation_dir, timestamp, message_id, reciever_jid, job_results) -> wuc.WUMessage | None:
+def _get_archive_file(
+    conversation_dir, timestamp, message_id, reciever_jid, job_results
+) -> wuc.WUMessage | None:
     t = int(timestamp.timestamp())
     archive_file = conversation_dir / f"{t}_{message_id}_{reciever_jid}.json"
     archive_file_old = conversation_dir / f"{t}_{message_id}.json"
     if archive_file.exists():
         job_results.ping("found_archive_file")
-        return utils.jsons_to_protobuf(
-            archive_file.read_text(), wuc.WUMessage
-        )
+        return utils.jsons_to_protobuf(archive_file.read_text(), wuc.WUMessage)
     elif archive_file_old.exists():
         job_results.ping("found_archive_old_file")
-        return utils.jsons_to_protobuf(
-            archive_file_old.read_text(), wuc.WUMessage
-        )
+        return utils.jsons_to_protobuf(archive_file_old.read_text(), wuc.WUMessage)
     job_results.ping("no_archive_file")
     return None
