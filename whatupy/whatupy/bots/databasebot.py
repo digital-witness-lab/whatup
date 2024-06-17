@@ -296,9 +296,9 @@ class DatabaseBot(BaseBot):
             db["messages"].upsert(message_flat, ["id"])
         self.logger.debug("Done updating message: %s", message.info.id)
 
-    def media_url(self, filename: str, path_prefixes: T.List[str]) -> AnyPath:
+    @classmethod
+    def media_url_path(cls, path_prefixes: T.List[str], filename: str) -> str:
         path_elements = [
-            self.media_base_path,
             *path_prefixes,
             filename[0],
             filename[1],
@@ -306,7 +306,7 @@ class DatabaseBot(BaseBot):
             filename[3],
             filename,
         ]
-        return reduce(lambda a, b: a / b, path_elements)
+        return "/".join(path_elements)
 
     def write_media(
         self,
@@ -314,8 +314,8 @@ class DatabaseBot(BaseBot):
         filename: str,
         path_prefixes: T.Optional[T.List[str]],
     ) -> str:
-        path_prefixes = path_prefixes or []
-        filepath = self.media_url(filename, path_prefixes)
+        prefixes = path_prefixes or []
+        filepath = self.media_base_path / self.media_url_path(prefixes, filename)
         filepath.parent.mkdir(exist_ok=True, parents=True)
         filepath.write_bytes(content)
         return str(filepath)
