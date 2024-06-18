@@ -35,6 +35,27 @@ CommandQuery = namedtuple("CommandQuery", "namespace command params".split(" "))
 Generic = T.TypeVar("Generic")
 
 
+def protobuf_fill_fields(proto_obj, skip_keys=None) -> T.Any:
+    skip_keys = skip_keys or set()
+    key_list = proto_obj.DESCRIPTOR.fields_by_name.keys()
+    for key in key_list:
+        if key in skip_keys:
+            continue
+        obj = getattr(proto_obj, key)
+        if hasattr(obj, "ByteSize"):
+            print("!!!!", key)
+            protobuf_fill_fields(obj, skip_keys=skip_keys)
+        else:
+            t = type(obj)
+            print(key, obj, t)
+            try:
+                fill_value = t(True)
+                setattr(proto_obj, key, fill_value)
+            except (TypeError, RuntimeError) as e:
+                logger.error("Could not set key in proto: %s: %s: %s", t, key, e)
+    return proto_obj
+
+
 def modify_for_antispam(message: str) -> str:
     identity = lambda x: x
 

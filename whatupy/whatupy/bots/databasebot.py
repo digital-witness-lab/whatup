@@ -140,6 +140,25 @@ class DatabaseBot(BaseBot):
         donor_messages.create_column(RECORD_MTIME_FIELD, type=db.types.datetime)
         donor_messages.create_index(["donor_jid", "message_id"])
 
+    async def post_start(self):
+        message = utils.protobuf_fill_fields(
+            wuc.WUMessage(), {"originalMessage", "mediaMessage"}
+        )
+        archive_data = ArchiveData(
+            WUMessage=message,
+            GroupInfo=utils.protobuf_fill_fields(wuc.GroupInfo()),
+            CommunityInfo=None,
+            MediaPath=None,
+        )
+        archive_data.WUMessage.info.id = "FILLMESSAGE"
+        archive_data.GroupInfo.JID.user = "FILLUSER"
+        await self.on_message(
+            archive_data.WUMessage,
+            is_history=False,
+            is_archive=True,
+            archive_data=archive_data,
+        )
+
     def _ping_donor_messages(self, message: wuc.WUMessage):
         donor_jid = utils.jid_to_str(message.info.source.reciever)
         datum = {
