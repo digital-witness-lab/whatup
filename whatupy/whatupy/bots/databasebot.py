@@ -141,23 +141,34 @@ class DatabaseBot(BaseBot):
         donor_messages.create_index(["donor_jid", "message_id"])
 
     async def post_start(self):
+        fields = (None, "isDelete", "isEdit", "isReaction")
+        group_info = utils.protobuf_fill_fields(wuc.GroupInfo())
+        group_info.JID.user = "filluser"
+        group_info.JID.server = "fillmessage.test"
         message = utils.protobuf_fill_fields(
             wuc.WUMessage(), {"originalMessage", "mediaMessage"}
         )
-        archive_data = ArchiveData(
-            WUMessage=message,
-            GroupInfo=utils.protobuf_fill_fields(wuc.GroupInfo()),
-            CommunityInfo=None,
-            MediaPath=None,
-        )
-        archive_data.WUMessage.info.id = "FILLMESSAGE"
-        archive_data.GroupInfo.JID.user = "FILLUSER"
-        await self.on_message(
-            archive_data.WUMessage,
-            is_history=False,
-            is_archive=True,
-            archive_data=archive_data,
-        )
+        for i, toggle_field in enumerate(fields):
+            message.info.id = f"fillmessage-{i:02d}"
+            for field in fields:
+                if field:
+                    setattr(message.messageProperties, field, field == toggle_field)
+            archive_data = ArchiveData(
+                WUMessage=message,
+                GroupInfo=group_info if i == 0 else None,
+                CommunityInfo=None,
+                MediaPath=None,
+            )
+            self.logger.info(
+                "Inserting fully filled message into database: %s",
+                toggle_field or "Normal Message",
+            )
+            await self.on_message(
+                message,
+                is_history=False,
+                is_archive=True,
+                archive_data=archive_data,
+            )
 
     def _ping_donor_messages(self, message: wuc.WUMessage):
         donor_jid = utils.jid_to_str(message.info.source.reciever)
@@ -187,6 +198,8 @@ class DatabaseBot(BaseBot):
         self._ping_donor_messages(message)
         if not self.db["messages_seen"].count(id=msg_id):
             self.db["messages_seen"].insert({"id": msg_id, **message.provenance})
+            # NOTE: if there is a new case here, make sure to update the
+            # `post_start` method to handle it
             if message.messageProperties.isReaction:
                 await self._update_reaction(message)
             elif message.messageProperties.isEdit:
@@ -557,7 +570,7 @@ class DatabaseBot(BaseBot):
                 N = message_flat["n_edits"] = n_edits + 1
                 id_ = source_message["id"] = f"{source_message_id}-{N:03d}"
                 message_flat["previous_version_id"] = id_
-                message_flat["previous_version_text"] = source_message["text"]
+                message_flat["previous_version_text"] = source_message.get("text")
                 source_message[RECORD_MTIME_FIELD] = datetime.now()
                 db["messages"].insert(source_message)
             db["messages"].upsert(message_flat, ["id"])
