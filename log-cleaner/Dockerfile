@@ -4,8 +4,8 @@ WORKDIR /build
 
 COPY . .
 
-ENV GOCACHE /usr/local/cache/go-build-cache/
-ENV GOMODCACHE /usr/local/cache/go-mod-cache/
+ENV GOCACHE=/usr/local/cache/go-build-cache/
+ENV GOMODCACHE=/usr/local/cache/go-mod-cache/
 
 RUN \
     --mount=type=cache,target=/usr/local/cache/go-build-cache/ \
