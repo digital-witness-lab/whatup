@@ -1,18 +1,26 @@
-.PHONY: auth auth-test auth-prod lint-ci
+.PHONY: auth-% select-project-% lint-ci
 
-auth-carter:
+
+select-project-carter:
+	@echo "Selecting carter stack"
 	pulumi org set-default mynameisfiber
 	pulumi stack select mynameisfiber/carter
-	make auth
 
-auth-test:
+select-project-test:
+	@echo "Selecting test stack"
 	pulumi org set-default digitalwitnesslab
 	pulumi stack select digitalwitnesslab/test
-	make auth
 
-auth-prod:
+select-project-prod:
+	@echo "SELECTING PROD STACK!!!"
+	@echo "SELECTING PROD STACK!!!"
+	@echo "SELECTING PROD STACK!!!"
 	pulumi org set-default mynameisfiber
 	pulumi stack select mynameisfiber/prod
+
+auth-%:
+	@echo "Running make select-project-$*"
+	make select-project-$*
 	make auth
 
 auth:

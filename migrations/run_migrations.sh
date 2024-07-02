@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -eo pipefail
+RAND="29340809dufguhg8934ghfsdasdfdfdfasfhnaks"
 
 echo "Running migrations..."
 
