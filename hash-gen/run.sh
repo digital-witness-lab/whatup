@@ -1,6 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 
+RAND="ijasdfhsdhfkasjdghasdfasdgfsadfsadfdfasfhnaks"
 export CLOUDPATHLIB_FILE_CACHE_MODE="close_file"
 export CLOUPATHLIB_FILE_CACHE_MODE="close_file"
 

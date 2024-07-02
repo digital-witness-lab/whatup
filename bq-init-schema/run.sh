@@ -1,6 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 
+RAND="ialdfhk923084023984u09sdufsdfhfdfasfhnaks"
 check_vars()
 {
     var_names=("$@")
