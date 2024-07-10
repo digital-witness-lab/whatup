@@ -1,0 +1,10 @@
+devices:
+- device: 024c51120cb82b6c
+  name: kate-flo
+  type: usb
+  whatsapp_dir: /storage/self/primary/WhatsApp/Media
+- device: 01HAY1TR89
+  host: 192.168.1.200
+  name: burner4-burner7
+  port: 5555
+  type: network
