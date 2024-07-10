@@ -1,17 +1,17 @@
+import subprocess
+import shlex
 from pathlib import Path
 import html
 from datetime import datetime
 import hashlib
 import re
+import tempfile
+from packaging.version import Version
 
 import requests
 
 
-def get_whatsapp(archive: Path, download=False):
-    if not download:
-        files = list((archive / "packages").glob("*.apk"))
-        files.sort()
-        return files[-1]
+def get_whatsapp(archive: Path):
     with requests.Session() as session:
         download_page = session.get("https://www.whatsapp.com/android/")
         download_link = re.findall(
@@ -28,21 +28,30 @@ def get_whatsapp(archive: Path, download=False):
             raise ValueError(
                 f"Got non 200 response code from WhatsApp download: {data.text}"
             )
-    filehash = hashlib.sha256(data.content).hexdigest()[:8]
-    candidate_packages = list(archive.glob(f"packages/WhatsApp-*-{filehash}.apk"))
-    if not candidate_packages:
-        print("Found new WhatsApp version")
-        date = datetime.now().date().isoformat()
-        fileloc = archive / "packages" / f"WhatsApp-{date}-{filehash}.apk"
-        fileloc.parent.mkdir(exist_ok=True, parents=True)
-        with fileloc.open("wb+") as fd:
-            fd.write(data.content)
-        return fileloc
-    elif len(candidate_packages) == 1:
-        return candidate_packages[1]
-    else:
-        print(
-            f"Somehow got more than one package with the same hash... returning the most recent one: {candidate_packages}"
-        )
-        candidate_packages.sort()
-        return candidate_packages[-1]
+    with tempfile.NamedTemporaryFile("wb+") as tfd:
+        tfd.write(data.content)
+        version = get_apk_version(tfd.name)
+
+        candidate = archive / "packages" / f"WhatsApp-{version}.apk"
+        if candidate.exists():
+            print(f"Using existing WhatsApp apk: {version}")
+            return version, candidate
+
+        print(f"Found new WhatsApp version: {version}")
+        tfd.seek(0)
+        candidate.write_bytes(tfd.read())
+        return version, candidate
+
+
+def get_apk_version(path):
+    result = run_command(f"aapt dump badging '{path}'").strip()
+    version = re.findall("versionName='([^']+)'", result, re.MULTILINE)
+    if len(version) != 1:
+        raise ValueError(f"Could not find APK version: {version}")
+    return Version(version[0])
+
+
+def run_command(command):
+    proc = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    proc.wait()
+    return proc.stdout.read().decode("utf-8").strip()

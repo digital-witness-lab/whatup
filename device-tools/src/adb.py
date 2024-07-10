@@ -1,10 +1,10 @@
-import subprocess
 from pathlib import Path
 from packaging.version import Version
-import shlex
 import ipaddress
 import re
 import time
+
+from . import utils
 
 ADB_PATH = "adb"
 
@@ -12,9 +12,7 @@ ADB_PATH = "adb"
 def adb_command(cmd) -> str:
     full_command = f"{ADB_PATH} {cmd}"
     # print(f"Running: {full_command}")
-    proc = subprocess.Popen(shlex.split(full_command), stdout=subprocess.PIPE)
-    proc.wait()
-    response = proc.stdout.read().decode("utf-8").strip()
+    response = utils.run_command(full_command)
     # print(f"Got response: {response}")
     return response
 
@@ -50,11 +48,30 @@ class ADB:
                 return
             time.sleep(1)
 
+    def update_whatsapp(self, version, apk):
+        current_version = self.get_package_version("com.whatsapp")
+        if current_version < version:
+            print(f"Updating WhatsApp: {current_version} < {version}")
+            self.install_package(apk)
+        else:
+            print(f"WhatsApp already at newest version: {current_version}")
+            return
+        self.run_app("com.whatsapp")
+
     def is_connected(self) -> bool:
         devices = self.connected_devices()
         if len(devices) == 1 and devices[0] == self.devices_identifier:
             return True
         return False
+
+    def get_package_version(self, package) -> Version:
+        if not self.is_connected():
+            raise ValueError("Must connect to device")
+        response = adb_command(f"shell dumpsys package '{package}'")
+        version = re.findall("versionName=([1-9\.]+)", response, re.MULTILINE)
+        if len(version) != 1:
+            raise ValueError(f"Could not find package version: {package}: {version}")
+        return Version(version[0])
 
     def install_package(self, path: Path):
         if not self.is_connected():
@@ -67,6 +84,8 @@ class ADB:
         find_cmd = f"find {path} -type f -mtime +30"
         if interactive:
             files = adb_command(f"shell '{find_cmd}'").split("\n")
+            if not files:
+                return
             print("\t" + "\n\t".join(files))
             resp = (
                 input(

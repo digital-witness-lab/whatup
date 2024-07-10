@@ -58,12 +58,13 @@ def update_whatsapp_cli(ctx, archive, package_location):
     config = ctx.obj["config"]
     devices = ctx.obj["devices"]
     if not package_location:
-        package_location = utils.get_whatsapp(archive)
+        package_version, package_location = utils.get_whatsapp(archive)
+    else:
+        package_version = utils.get_apk_version(package_location)
     for device_config in config["devices"]:
         if not devices or device_config["name"] in devices:
             device = ADB.from_config(device_config, interactive=True)
-            device.install_package(package_location)
-            device.run_app("com.whatsapp")
+            device.update_whatsapp(package_version, package_location)
 
 
 @cli.command("clean-media")
@@ -86,13 +87,14 @@ def clean_media_cli(ctx, max_days, no_interactive):
 def maintenance_cli(ctx):
     config = ctx.obj["config"]
     devices = ctx.obj["devices"]
-    package_location = utils.get_whatsapp(Path("./data/package-archive"))
+    package_version, package_location = utils.get_whatsapp(
+        Path("./data/package-archive")
+    )
     for device_config in config["devices"]:
         if not devices or device_config["name"] in devices:
             device = ADB.from_config(device_config, interactive=True)
             print("Updating WhatsApp")
-            device.install_package(package_location)
-            device.run_app("com.whatsapp")
+            device.update_whatsapp(package_version, package_location)
             print("Cleaning old media")
             if not (media_path := device_config.get("whatsapp_dir")):
                 media_path = device.get_whatsapp_media_dir()
