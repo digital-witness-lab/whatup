@@ -76,6 +76,7 @@ def clean_media_cli(ctx, max_days, no_interactive):
     devices = ctx.obj["devices"]
     for device_config in config["devices"]:
         if not devices or device_config["name"] in devices:
+            print("******************")
             device = ADB.from_config(device_config, interactive=True)
             if not (media_path := device_config.get("whatsapp_dir")):
                 media_path = device.get_whatsapp_media_dir()
@@ -92,6 +93,7 @@ def maintenance_cli(ctx):
     )
     for device_config in config["devices"]:
         if not devices or device_config["name"] in devices:
+            print("******************")
             device = ADB.from_config(device_config, interactive=True)
             print("Updating WhatsApp")
             device.update_whatsapp(package_version, package_location)

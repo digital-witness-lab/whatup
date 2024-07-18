@@ -53,5 +53,5 @@ def get_apk_version(path):
 
 def run_command(command):
     proc = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
-    proc.wait()
-    return proc.stdout.read().decode("utf-8").strip()
+    outs, _ = proc.communicate()
+    return outs.decode("utf-8").strip()

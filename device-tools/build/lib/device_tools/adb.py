@@ -11,9 +11,9 @@ ADB_PATH = "adb"
 
 def adb_command(cmd) -> str:
     full_command = f"{ADB_PATH} {cmd}"
-    # print(f"Running: {full_command}")
+    print(f"Running: {full_command}")
     response = utils.run_command(full_command)
-    # print(f"Got response: {response}")
+    print(f"Got response: {response}")
     return response
 
 
@@ -69,6 +69,7 @@ class ADB:
             raise ValueError("Must connect to device")
         response = adb_command(f"shell dumpsys package '{package}'")
         version = re.findall("versionName=([1-9\.]+)", response, re.MULTILINE)
+        print(f"Found version: {version}")
         if len(version) != 1:
             raise ValueError(f"Could not find package version: {package}: {version}")
         return Version(version[0])
@@ -81,7 +82,7 @@ class ADB:
             raise ValueError(f"Did not sucessfully install package: {response}")
 
     def clean_directory(self, path: Path, max_days=30, interactive=False):
-        find_cmd = f"find {path} -type f -mtime +30"
+        find_cmd = f"""find "{path}" -type f -mtime +30"""
         if interactive:
             files = adb_command(f"shell '{find_cmd}'").split("\n")
             if not files:
@@ -136,6 +137,7 @@ class ADB:
             config["type"] = "network"
             config["host"] = cls.get_ip_address()
             adb_command(f"tcpip {port}")
+            time.sleep(2)
             cls.connected_devices()  # this effectively waits for the above TCPIP command to complete
         config["whatsapp_dir"] = str(cls.get_whatsapp_media_dir())
         return config
@@ -143,10 +145,10 @@ class ADB:
     @classmethod
     def get_whatsapp_media_dir(cls):
         video_dir = adb_command(
-            """shell 'find -L /storage/ -type d -name "WhatsApp Video" 2> /dev/null'"""
+            """shell 'find -L /storage/ -type d -name "WhatsApp Video" 2> /dev/null' | head -n 1"""
         )
         if not video_dir:
-            raise ValueError("Could not find WhatsApp media directory")
+            raise ValueError(f"Could not find WhatsApp media directory: {video_dir}")
         return Path(video_dir).parent
 
     @classmethod
@@ -157,6 +159,7 @@ class ADB:
     @classmethod
     def disconnect(cls):
         adb_command("disconnect")
+        time.sleep(2)
 
     @classmethod
     def get_android_version(cls) -> Version:
