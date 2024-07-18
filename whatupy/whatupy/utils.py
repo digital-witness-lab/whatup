@@ -46,7 +46,6 @@ def protobuf_fill_fields(proto_obj, skip_keys=None) -> T.Any:
             protobuf_fill_fields(obj, skip_keys=skip_keys)
         else:
             t = type(obj)
-            print(key, obj, t)
             try:
                 fill_value = t(True)
                 setattr(proto_obj, key, fill_value)
