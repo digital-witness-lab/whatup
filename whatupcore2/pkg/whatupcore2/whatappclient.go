@@ -288,12 +288,12 @@ func (wac *WhatsAppClient) stateReFetcher() {
 }
 
 func (wac *WhatsAppClient) presenceTwiddler() {
-	ticker := time.NewTicker(24 * time.Hour)
+	ticker := time.NewTicker(3 * time.Hour)
 	defer ticker.Stop()
 	for {
 		wac.Log.Infof("Twiddling client presence")
 		wac.SendPresence(types.PresenceAvailable)
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 		wac.SendPresence(types.PresenceUnavailable)
 		select {
 		case <-wac.ctxC.Done():
