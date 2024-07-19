@@ -44,6 +44,7 @@ config:
   whatup:primary_bot_name: lauren
   whatup:temp_bucket_ttl_days: "1"
   whatup:translationEnabled: "true"
+  whatup:multimodalEnabled: "true"
   whatup:usrPassword:
     secure: AAABAEAmTtZjTL1be4uv48gNkr05KhIaCy+60iiwKazYu0iQlz1ZO5jLVVhDumQdfJdD3LwjENDhQqsLALeAN9eg7aGAqXsTWHhSamaeO0gWfrODBkUDAnh+CpZh5DJ1twPYltbJ/735lL/EXF4fFUeNVcUM9bKWReANpo/nC3SyG3hd5/lw8yIK7ZqljunpIzNriBFqilGqmd3Q6zC5/Q==
   whatup:whatupAnonKey:

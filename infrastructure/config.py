@@ -56,6 +56,7 @@ control_groups = config.require_object("control_groups")
 is_prod = config.get_bool("isProd", False) or False
 load_archive_job = config.get_bool("loadArchiveJob", False)
 translation_enabled = config.get_bool("translationEnabled", False)
+multimodal_enabled = config.get_bool("multimodalEnabled", False)
 
 # Import the provider's configuration settings.
 gcp_config = pulumi.Config("gcp")
