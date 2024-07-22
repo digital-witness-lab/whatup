@@ -43,6 +43,7 @@ if None in machine_types:
     default_type = machine_types.pop(None)
     machine_types = defaultdict(lambda: default_type, **machine_types)
 
+root_domain = config.get("rootDomain", None)
 bq_dataset_region = config.require("bqDatasetRegion")
 db_root_password = config.require_secret("dbRootPassword")
 whatup_salt = config.require_secret("whatupSalt")

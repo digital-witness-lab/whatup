@@ -2,7 +2,7 @@ import hashlib
 from typing import List, Optional
 
 import pulumi_docker as docker
-from attr import dataclass
+from attr import dataclass, field
 from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_gcp import cloudrunv2, serviceaccount
 
@@ -35,9 +35,13 @@ class ServiceArgs:
     # Specify the subnet to use Direct VPC egress instead of
     # serverless VPC connectors for outbound traffic from
     # this service.
-    subnet: cloudrunv2.ServiceTemplateVpcAccessNetworkInterfaceArgs
+    subnet: Optional[
+        cloudrunv2.ServiceTemplateVpcAccessNetworkInterfaceArgs
+    ] = field(default=None)
 
-    envs: Optional[List[cloudrunv2.ServiceTemplateContainerEnvArgs]]
+    envs: Optional[List[cloudrunv2.ServiceTemplateContainerEnvArgs]] = field(
+        default=None
+    )
 
 
 class Service(ComponentResource):
@@ -83,7 +87,10 @@ class Service(ComponentResource):
                     ),
                     timeout=f"{60*60}s",  # 1hr is the max time allowed by cloudrun
                     vpc_access=cloudrunv2.ServiceTemplateVpcAccessArgs(
-                        egress=props.egress, network_interfaces=[props.subnet]
+                        egress=props.egress,
+                        network_interfaces=(
+                            [props.subnet] if props.subnet else None
+                        ),
                     ),
                     # https://cloud.google.com/run/docs/configuring/execution-environments#yaml
                     # Read about the differences between gen1 and gen2
