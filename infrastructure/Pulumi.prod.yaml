@@ -6,11 +6,10 @@ config:
   google-native:region: us-central1
   google-native:zone: us-central1-a
   whatup:bqDatasetRegion: US
+  whatup:rootDomain: g.digitalwitnesslab.org
   whatup:control_groups:
     - 120363104970691776@g.us # cool friends
-    - 120363238202807454@g.us # 101Pilot
     - 120363249975211460@g.us # DEF WhatsApp Watch
-    - 120363255209424976@g.us # Gujarat WW
     - 120363287994878585@g.us # Jharkhand2 onboarding room
   whatup:databases:
     - name: messages
