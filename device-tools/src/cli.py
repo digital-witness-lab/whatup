@@ -68,10 +68,14 @@ def update_whatsapp_cli(ctx, archive, package_location):
 
 
 @cli.command("clean-media")
-@click.option("--max-days", type=int, default=30)
+@click.option("--max-days", type=int, default=14)
+@click.option("--max-mb", type=int, default=24)
 @click.option("--no-interactive", type=bool, default=False, is_flag=True)
 @click.pass_context
-def clean_media_cli(ctx, max_days, no_interactive):
+def clean_media_cli(ctx, max_days, max_mb, no_interactive):
+    if not (max_days or max_mb):
+        click.echo("max-mb and/or max-days must be set")
+        return
     config = ctx.obj["config"]
     devices = ctx.obj["devices"]
     for device_config in config["devices"]:
@@ -80,7 +84,12 @@ def clean_media_cli(ctx, max_days, no_interactive):
             device = ADB.from_config(device_config, interactive=True)
             if not (media_path := device_config.get("whatsapp_dir")):
                 media_path = device.get_whatsapp_media_dir()
-            device.clean_directory(media_path, max_days, interactive=not no_interactive)
+            device.clean_directory(
+                media_path,
+                max_days=max_days,
+                max_mb=max_mb,
+                interactive=not no_interactive,
+            )
 
 
 @cli.command("maintenance")

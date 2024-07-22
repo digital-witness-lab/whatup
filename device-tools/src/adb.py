@@ -81,8 +81,15 @@ class ADB:
         if "Success" not in response:
             raise ValueError(f"Did not sucessfully install package: {response}")
 
-    def clean_directory(self, path: Path, max_days=30, interactive=False):
-        find_cmd = f"""find "{path}" -type f -mtime +30"""
+    def clean_directory(self, path: Path, max_days=14, max_mb=24, interactive=False):
+        assert max_days or max_mb
+        conditions = []
+        if max_days:
+            conditions.append(f"-mtime +{max_days}")
+        if max_mb:
+            conditions.append(f"-size +{max_mb}M")
+        condition = " -or ".join(conditions)
+        find_cmd = f"""find "{path}" -type f -and \\( {condition} \\)"""
         if interactive:
             files = adb_command(f"shell '{find_cmd}'").split("\n")
             if not files:
