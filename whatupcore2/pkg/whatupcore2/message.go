@@ -21,8 +21,8 @@ type HasContextInfo interface {
 	GetContextInfo() *waProto.ContextInfo
 }
 
-type HasJpegThumbnail interface {
-	GetJpegThumbnail() []byte
+type HasJPEGThumbnail interface {
+	GetJPEGThumbnail() []byte
 }
 
 type MessageEvent = events.Message
@@ -107,15 +107,15 @@ func (msg *Message) downloadableMessageToMediaMessage(extMessage interface{}) *p
 	mediaMessage := &pb.MediaMessage{}
 	switch v := extMessage.(type) {
 	case *waProto.ImageMessage:
-		v.JpegThumbnail = nil
+		v.JPEGThumbnail = nil
 		mediaMessage.Payload = &pb.MediaMessage_ImageMessage{ImageMessage: v}
 	case *waProto.VideoMessage:
-		v.JpegThumbnail = nil
+		v.JPEGThumbnail = nil
 		mediaMessage.Payload = &pb.MediaMessage_VideoMessage{VideoMessage: v}
 	case *waProto.AudioMessage:
 		mediaMessage.Payload = &pb.MediaMessage_AudioMessage{AudioMessage: v}
 	case *waProto.DocumentMessage:
-		v.JpegThumbnail = nil
+		v.JPEGThumbnail = nil
 		mediaMessage.Payload = &pb.MediaMessage_DocumentMessage{DocumentMessage: v}
 	case *waProto.StickerMessage:
 		mediaMessage.Payload = &pb.MediaMessage_StickerMessage{StickerMessage: v}
@@ -232,8 +232,8 @@ func (msg *Message) getThumbnail(extMessage interface{}) ([]byte, error) {
 	if err == nil {
 		return thumbnail, err
 	}
-	if msgThumbnail, ok := extMessage.(HasJpegThumbnail); ok {
-		thumbnail := msgThumbnail.GetJpegThumbnail()
+	if msgThumbnail, ok := extMessage.(HasJPEGThumbnail); ok {
+		thumbnail := msgThumbnail.GetJPEGThumbnail()
 		return thumbnail, nil
 	}
 	return nil, ErrNoThumbnails

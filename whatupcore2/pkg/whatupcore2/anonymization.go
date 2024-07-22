@@ -152,9 +152,9 @@ func AnonymizeInterface[T any](al *AnonLookup, object T) T {
 				al.anonymizeJIDProto(JID)
 			} else if extText, ok := value.Interface().(*waProto.ExtendedTextMessage); ok && extText != nil {
 				text := *extText.Text
-				if mentionedJids := extText.GetContextInfo().GetMentionedJid(); mentionedJids != nil {
-					newMentioned := make([]string, len(mentionedJids))
-					for i, jid := range mentionedJids {
+				if mentionedJIDs := extText.GetContextInfo().GetMentionedJID(); mentionedJIDs != nil {
+					newMentioned := make([]string, len(mentionedJIDs))
+					for i, jid := range mentionedJIDs {
 						if user, rest, found := strings.Cut(jid, "@"); found {
 							anonUser := AnonymizeString(user)
 							al.setAnon(anonUser, user)
@@ -164,7 +164,7 @@ func AnonymizeInterface[T any](al *AnonLookup, object T) T {
 					}
 					extText.Text = &text
 					any(object).(*pb.WUMessage).Content.Text = text
-					extText.ContextInfo.MentionedJid = newMentioned
+					extText.ContextInfo.MentionedJID = newMentioned
 				}
 			}
 		}
