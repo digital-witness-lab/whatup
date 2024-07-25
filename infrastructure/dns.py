@@ -3,6 +3,7 @@ from pulumi import get_stack
 import pulumi_gcp as gcp
 
 from config import root_domain
+from service import Service
 
 
 if root_domain:
@@ -45,25 +46,28 @@ def create_subdomain(subdomain, targets):
     return domain
 
 
-def create_subdomain_cloudrun(subdomain, cloud_run_service) -> str:
+def create_subdomain_service(subdomain, service: Service) -> str:
+    cr_service = service._service
+    url = cr_service.traffic_statuses.apply(lambda s: s[0].url)
     if dns_zone is None:
-        cloud_run_service.statuses.apply(lambda s: s[0].url)
+        return url
 
     subdomain = subdomain.strip(".")
     domain = create_subdomain(
         subdomain,
-        [cloud_run_service.statuses.apply(lambda statuses: statuses[0].url)],
+        [url],
     )
     # Map the custom domain to the Cloud Run service
     domain_mapping = gcp.cloudrun.DomainMapping(
         f"{subdomain}-{get_stack()}-domain-mapping",
         gcp.cloudrun.DomainMappingArgs(
             name=domain,
-            location=cloud_run_service.location,
-            service=cloud_run_service.id,
-            metadata=None,
+            location=cr_service.location,
+            metadata=gcp.cloudrun.DomainMappingMetadataArgs(
+                namespace=cr_service.id,
+            ),
             spec=gcp.cloudrun.DomainMappingSpecArgs(
-                route_name=cloud_run_service.name,
+                route_name=cr_service.name,
                 certificate_mode="AUTOMATIC",
             ),
         ),
