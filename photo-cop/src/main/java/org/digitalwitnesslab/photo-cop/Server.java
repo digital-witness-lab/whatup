@@ -97,20 +97,16 @@ public class Server {
             Map<String, Object> match;
             try {
                 match = photoDNAMatcher.match(hash);
-                System.out.println(match);
             } catch (IOException e) {
                 throw new RuntimeException("Could not get PhotoDNA match result", e);
             }
 
-            boolean isMatch = (boolean) match.get("IsMatch");
-            Map<String, String> matchDetails = new HashMap<>();
-
-            CheckPhotoResponse.Builder response = CheckPhotoResponse.newBuilder()
-                    .setIsMatch(isMatch)
-                    .putAllMatchDetails(matchDetails);
+            CheckPhotoResponse.Builder response = photoDNAMatcher.resultToCheckPhotoResponse(match);
 
             if (request.getGetHash()) {
                 response.setHash(ByteString.copyFrom(hash));
+            } else {
+                response.setHash(ByteString.EMPTY);
             }
 
             responseObserver.onNext(response.build());

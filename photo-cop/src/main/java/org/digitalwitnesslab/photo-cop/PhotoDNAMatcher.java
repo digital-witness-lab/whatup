@@ -11,10 +11,14 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
+import org.digitalwitnesslab.photocop.CheckPhotoResponse;
+import org.digitalwitnesslab.photocop.MatchInfo;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
 public class PhotoDNAMatcher {
 
@@ -86,6 +90,34 @@ public class PhotoDNAMatcher {
                 }
             }
         }
+        return result;
+    }
+
+    static public CheckPhotoResponse.Builder resultToCheckPhotoResponse(Map<String, Object> match) {
+        CheckPhotoResponse.Builder result = CheckPhotoResponse.newBuilder();
+
+        boolean isMatch = (boolean) match.get("IsMatch");
+        result.setIsMatch(isMatch);
+        if (!isMatch) {
+            return result;
+        }
+
+        Object matchFlags = ((Map<String, Object>) match.get("MatchDetails")).get("MatchFlags");
+        if (matchFlags instanceof List<?>) {
+            List<Map<String, Object>> matchFlatsList = (List<Map<String, Object>>) matchFlags;
+            List<MatchInfo> matchInfos = new ArrayList();
+            for(Map<String, Object> element: matchFlatsList) {
+                matchInfos.add(
+                    MatchInfo.newBuilder()
+                        .setSource((String) element.get("Source"))
+                        .setDistance((int) element.get("MatchDistance"))
+                        .addAllViolations((List<String>) element.get("Violations"))
+                        .build()
+                );
+            }
+            result.addAllMatches(matchInfos);
+        }
+
         return result;
     }
 }

@@ -27,8 +27,13 @@ message CheckPhotoRequest {
 
 message CheckPhotoResponse {
   bool IsMatch = 1;
-  map<string, string> MatchDetails = 2;
+  bytes Hash = 2;
 
-  bytes Hash = 3;
+  repeated MatchInfo Matches = 3;
 }
 
+message MatchInfo {
+    string Source = 1;
+    int32 Distance = 2;
+    repeated string Violations = 3;
+}
