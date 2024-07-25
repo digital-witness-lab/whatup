@@ -11,4 +11,4 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 ARG ENVIRONMENT="dev"
 ENV ENVIRONMENT=$ENVIRONMENT
 
-CMD diwi-api
+ENTRYPOINT ["diwi-api"]

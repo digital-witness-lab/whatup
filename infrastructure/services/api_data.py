@@ -11,7 +11,7 @@ from artifact_registry import diwi_api_image
 from service import Service, ServiceArgs
 from storage import media_bucket
 from bigquery import messages_dataset
-from dns import create_subdomain_cloudrun
+from dns import create_subdomain_service
 
 service_name = "api-data"
 
@@ -53,7 +53,7 @@ api_data = Service(
     ServiceArgs(
         args=["data-api"],
         concurrency=50,
-        container_port=None,
+        container_port=8080,
         cpu="1",
         # Route all egress traffic via the VPC network.
         egress="ALL_TRAFFIC",
@@ -85,4 +85,4 @@ api_data = Service(
     ),
 )
 
-create_subdomain_cloudrun("data", api_data)
+create_subdomain_service("data", api_data)
