@@ -85,13 +85,15 @@ public class Server {
             boolean isMatch = false;
             Map<String, String> matchDetails = new HashMap<>();
 
-            CheckPhotoResponse response = CheckPhotoResponse.newBuilder()
+            CheckPhotoResponse.Builder response = CheckPhotoResponse.newBuilder()
                     .setIsMatch(isMatch)
-                    .setHash(ByteString.copyFrom(hash))
-                    .putAllMatchDetails(matchDetails)
-                    .build();
+                    .putAllMatchDetails(matchDetails);
 
-            responseObserver.onNext(response);
+            if (request.getGetHash()) {
+                response.setHash(ByteString.copyFrom(hash));
+            }
+
+            responseObserver.onNext(response.build());
             responseObserver.onCompleted();
         }
     }
