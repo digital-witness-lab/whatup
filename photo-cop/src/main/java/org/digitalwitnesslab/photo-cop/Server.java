@@ -13,7 +13,7 @@ import org.digitalwitnesslab.photocop.CheckPhotoResponse;
 import org.digitalwitnesslab.photocop.GetPhotoHashRequest;
 import org.digitalwitnesslab.photocop.GetPhotoHashResponse;
 
-import java.awt.image.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import javax.imageio.ImageIO;
 import PhotoDNA.*;
@@ -22,9 +22,14 @@ public class Server {
     private io.grpc.Server server;
 
     private void start() throws IOException {
-        int port = 50051;
+        start(50051);
+    }
+
+    private void start(int port) throws IOException {
+        String photoDnaKey = System.getenv("PHOTO_DNA_KEY");
+
         server = ServerBuilder.forPort(port)
-                .addService(new PhotoCopImpl())
+                .addService(new PhotoCopImpl(photoDnaKey))
                 .build()
                 .start();
         System.out.println("Server started, listening on " + port);
@@ -49,11 +54,18 @@ public class Server {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         final Server server = new Server();
+        // TODO: take in port from args
         server.start();
         server.blockUntilShutdown();
     }
 
     static class PhotoCopImpl extends PhotoCopGrpc.PhotoCopImplBase {
+        PhotoDNAMatcher photoDNAMatcher;
+
+        public PhotoCopImpl(String photoDnaKey) {
+            this.photoDNAMatcher = new PhotoDNAMatcher(photoDnaKey);
+        }
+
         @Override
         public void getPhotoHash(GetPhotoHashRequest request, StreamObserver<GetPhotoHashResponse> responseObserver) {
 
@@ -82,7 +94,15 @@ public class Server {
                 throw new RuntimeException("Could not generate hash from photo", e);
             }
 
-            boolean isMatch = false;
+            Map<String, Object> match;
+            try {
+                match = photoDNAMatcher.match(hash);
+                System.out.println(match);
+            } catch (IOException e) {
+                throw new RuntimeException("Could not get PhotoDNA match result", e);
+            }
+
+            boolean isMatch = (boolean) match.get("IsMatch");
             Map<String, String> matchDetails = new HashMap<>();
 
             CheckPhotoResponse.Builder response = CheckPhotoResponse.newBuilder()
