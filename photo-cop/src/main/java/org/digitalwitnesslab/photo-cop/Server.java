@@ -5,6 +5,7 @@ import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 import com.google.protobuf.ByteString;
 import org.digitalwitnesslab.photocop.PhotoCopGrpc;
@@ -101,7 +102,7 @@ public class Server {
                 throw new RuntimeException("Could not get PhotoDNA match result", e);
             }
 
-            CheckPhotoResponse.Builder response = photoDNAMatcher.resultToCheckPhotoResponse(match);
+            CheckPhotoResponse.Builder response = photoDNAMatcher.resultsToProto(match);
 
             if (request.getGetHash()) {
                 response.setHash(ByteString.copyFrom(hash));
@@ -113,7 +114,6 @@ public class Server {
             responseObserver.onCompleted();
         }
     }
-    
 
     private static byte[] generateHash(byte[] image) throws java.io.IOException {
 		BufferedImage imgBuffer = null;

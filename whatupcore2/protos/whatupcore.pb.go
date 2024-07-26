@@ -1397,6 +1397,7 @@ type GroupInfo struct {
 	unknownFields protoimpl.UnknownFields
 
 	// types.GroupInfo
+	// NOTE: if this gets updated, update whatupy.utils:group_info_hash
 	CreatedAt               *timestamp.Timestamp `protobuf:"bytes,1,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
 	JID                     *JID                 `protobuf:"bytes,2,opt,name=JID,proto3" json:"JID,omitempty"`
 	OwnerJID                *JID                 `protobuf:"bytes,3,opt,name=ownerJID,proto3" json:"ownerJID,omitempty"`

@@ -1,11 +1,14 @@
-all: whatupcore.pb.go ../whatupy/whatupy/whatupcore_pb2_grpc.py
+all: ../whatupcore2/protos/whatupcore.pb.go ../whatupy/whatupy/whatupcore_pb2_grpc.py
 .PHONY: all clean client client-ssl evans
 
 EVANS_PARAMS := --host 127.0.0.1 --port 3447 --proto whatupcore.proto
 EVANS_SSL_PARAMS := --tls --cert ../data/keys/cert.pem --certkey ../data/keys/key.pem --servername localhost
 
 
-whatupcore.pb.go: whatupcore.proto
+../photo-cop/src/main/proto/photo_cop.proto: photo_cop.proto
+	cp photo_cop.proto ../photo-cop/src/main/proto/photo_cop.proto
+
+../whatupcore2/protos/whatupcore.pb.go: whatupcore.proto
 	protoc \
 		--go_out=../whatupcore2/protos/ \
 		--go_opt paths=source_relative \
@@ -22,7 +25,7 @@ whatupcore.pb.go: whatupcore.proto
 		--grpc_python_out=../whatupy/whatupy/protos/ \
 		--mypy_out=../whatupy/whatupy/protos/ \
 		./whatupcore.proto ./whatsappweb.proto
-	protol \
+	python -m protoletariat \
 		--create-package \
 		--in-place \
 		--python-out ../whatupy/whatupy/protos/ \

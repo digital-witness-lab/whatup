@@ -93,7 +93,7 @@ public class PhotoDNAMatcher {
         return result;
     }
 
-    static public CheckPhotoResponse.Builder resultToCheckPhotoResponse(Map<String, Object> match) {
+    static public CheckPhotoResponse.Builder resultsToProto(Map<String, Object> match) {
         CheckPhotoResponse.Builder result = CheckPhotoResponse.newBuilder();
 
         boolean isMatch = (boolean) match.get("IsMatch");

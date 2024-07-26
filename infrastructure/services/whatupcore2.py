@@ -22,6 +22,7 @@ from whatupcore_network import (
     ssl_private_key_pem_secret,
     whatupcore2_static_private_ip,
 )
+from .photo_cop import photo_cop_addr
 
 service_name = "whatupcore2"
 
@@ -109,6 +110,10 @@ whatupcore2_service = ContainerOnVm(
                 ContainerEnv(
                     name="RAND_STRING",  # change rand string to force deploy
                     value="34932948073298",
+                ),
+                ContainerEnv(
+                    name="PHOTO_COP_ADDRESS",
+                    value=photo_cop_addr,
                 ),
             ],
         ),
