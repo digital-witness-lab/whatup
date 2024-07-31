@@ -11,7 +11,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
-import org.digitalwitnesslab.photocop.CheckPhotoResponse;
+import org.digitalwitnesslab.photocop.PhotoCopDecision;
 import org.digitalwitnesslab.photocop.MatchInfo;
 
 import java.io.IOException;
@@ -93,8 +93,8 @@ public class PhotoDNAMatcher {
         return result;
     }
 
-    static public CheckPhotoResponse.Builder resultsToProto(Map<String, Object> match) {
-        CheckPhotoResponse.Builder result = CheckPhotoResponse.newBuilder();
+    static public PhotoCopDecision.Builder resultsToProto(Map<String, Object> match) {
+        PhotoCopDecision.Builder result = PhotoCopDecision.newBuilder();
 
         boolean isMatch = (boolean) match.get("IsMatch");
         result.setIsMatch(isMatch);

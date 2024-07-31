@@ -10,9 +10,9 @@ import java.util.Properties;
 import com.google.protobuf.ByteString;
 import org.digitalwitnesslab.photocop.PhotoCopGrpc;
 import org.digitalwitnesslab.photocop.CheckPhotoRequest;
-import org.digitalwitnesslab.photocop.CheckPhotoResponse;
+import org.digitalwitnesslab.photocop.PhotoCopDecision;
 import org.digitalwitnesslab.photocop.GetPhotoHashRequest;
-import org.digitalwitnesslab.photocop.GetPhotoHashResponse;
+import org.digitalwitnesslab.photocop.PhotoCopHash;
 
 import java.awt.image.BufferedImage;
 import java.io.*;
@@ -68,7 +68,7 @@ public class Server {
         }
 
         @Override
-        public void getPhotoHash(GetPhotoHashRequest request, StreamObserver<GetPhotoHashResponse> responseObserver) {
+        public void getPhotoHash(GetPhotoHashRequest request, StreamObserver<PhotoCopHash> responseObserver) {
 
             byte[] hash;
             try {
@@ -77,8 +77,8 @@ public class Server {
                 throw new RuntimeException("Could not generate hash from photo", e);
             }
 
-            GetPhotoHashResponse response = GetPhotoHashResponse.newBuilder()
-                    .setHash(ByteString.copyFrom(hash))
+            PhotoCopHash response = PhotoCopHash.newBuilder()
+                    .setValue(ByteString.copyFrom(hash))
                     .build();
 
             responseObserver.onNext(response);
@@ -86,7 +86,7 @@ public class Server {
         }
 
         @Override
-        public void checkPhoto(CheckPhotoRequest request, StreamObserver<CheckPhotoResponse> responseObserver) {
+        public void checkPhoto(CheckPhotoRequest request, StreamObserver<PhotoCopDecision> responseObserver) {
 
             byte[] hash;
             try {
@@ -102,12 +102,13 @@ public class Server {
                 throw new RuntimeException("Could not get PhotoDNA match result", e);
             }
 
-            CheckPhotoResponse.Builder response = photoDNAMatcher.resultsToProto(match);
+            PhotoCopDecision.Builder response = photoDNAMatcher.resultsToProto(match);
 
             if (request.getGetHash()) {
-                response.setHash(ByteString.copyFrom(hash));
-            } else {
-                response.setHash(ByteString.EMPTY);
+                PhotoCopHash pcHash = PhotoCopHash.newBuilder()
+                        .setValue(ByteString.copyFrom(hash))
+                        .build();
+                response.setHash(pcHash);
             }
 
             responseObserver.onNext(response.build());
