@@ -30,7 +30,7 @@ public class PhotoDNAMatcher {
     public PhotoDNAMatcher(String photoDnaKey) {
         this.photoDnaKey = photoDnaKey;
         this.objectMapper = new ObjectMapper();
-        this.rateLimitExecutor = new RateLimitRunner(5, 1000);
+        this.rateLimitExecutor = new RateLimitRunner(2048, 5, 1000);
     }
 
     public static void main(String[] args) {
@@ -53,11 +53,11 @@ public class PhotoDNAMatcher {
         }
     }
 
-    public Map<String, Object> match_ratelimit(byte[] imageHash, int priority) throws IOException {
+    public Map<String, Object> match_ratelimit(byte[] imageHash, byte[] cacheKey, int priority) throws IOException {
         try {
             return this.rateLimitExecutor.submit(() -> {
                 return this.match(imageHash);
-            }, priority).get();
+            }, cacheKey, priority).get();
         } catch (ExecutionException | InterruptedException e) {
             e.printStackTrace();
             return Map.of();

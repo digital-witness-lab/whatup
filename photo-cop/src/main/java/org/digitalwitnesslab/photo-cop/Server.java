@@ -15,6 +15,8 @@ import org.digitalwitnesslab.photocop.GetPhotoHashRequest;
 import org.digitalwitnesslab.photocop.PhotoCopHash;
 
 import java.awt.image.BufferedImage;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.io.*;
 import javax.imageio.ImageIO;
 import PhotoDNA.*;
@@ -89,16 +91,24 @@ public class Server {
         public void checkPhoto(CheckPhotoRequest request, StreamObserver<PhotoCopDecision> responseObserver) {
 
             byte[] hash;
+            byte[] photo = request.getPhoto().toByteArray();
             try {
-                hash = generateHash(request.getPhoto().toByteArray());
+                hash = generateHash(photo);
             } catch (java.io.IOException e) {
                 throw new RuntimeException("Could not generate hash from photo", e);
             }
 
+            MessageDigest digest;
+            try {
+                digest = MessageDigest.getInstance("SHA-256");
+            } catch(NoSuchAlgorithmException e) {
+                throw new RuntimeException("Current java implemintation doesn't have sha-256.");
+            }
+            byte[] cacheKey = digest.digest(photo);
             int priority = request.getPriority();
             Map<String, Object> match;
             try {
-                match = photoDNAMatcher.match_ratelimit(hash, priority);
+                match = photoDNAMatcher.match_ratelimit(hash, cacheKey, priority);
             } catch (IOException e) {
                 throw new RuntimeException("Could not get PhotoDNA match result", e);
             }
