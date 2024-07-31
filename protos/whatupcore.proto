@@ -4,6 +4,7 @@ package protos;
 
 import "google/protobuf/timestamp.proto";
 import "whatsappweb.proto";
+import "photo_cop.proto";
 
 option go_package = "github.com/digital-witness-lab/whatup/protos";
 
@@ -335,4 +336,5 @@ message MediaMessage {
 
 message MediaContent {
     bytes Body = 1;
+    photocop.PhotoCopDecision PhotoCop = 2;
 }
