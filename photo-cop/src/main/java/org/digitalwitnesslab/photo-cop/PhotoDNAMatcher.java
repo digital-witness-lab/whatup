@@ -14,6 +14,7 @@ import org.apache.http.util.EntityUtils;
 import org.digitalwitnesslab.photocop.PhotoCopDecision;
 import org.digitalwitnesslab.photocop.MatchInfo;
 
+import java.util.concurrent.ExecutionException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -24,10 +25,12 @@ public class PhotoDNAMatcher {
 
     private final String photoDnaKey;
     private ObjectMapper objectMapper;
+    private RateLimitRunner rateLimitExecutor;
 
     public PhotoDNAMatcher(String photoDnaKey) {
         this.photoDnaKey = photoDnaKey;
         this.objectMapper = new ObjectMapper();
+        this.rateLimitExecutor = new RateLimitRunner(5, 1000);
     }
 
     public static void main(String[] args) {
@@ -47,6 +50,17 @@ public class PhotoDNAMatcher {
             System.out.println(response);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    public Map<String, Object> match_ratelimit(byte[] imageHash, int priority) throws IOException {
+        try {
+            return this.rateLimitExecutor.submit(() -> {
+                return this.match(imageHash);
+            }, priority).get();
+        } catch (ExecutionException | InterruptedException e) {
+            e.printStackTrace();
+            return Map.of();
         }
     }
 
