@@ -95,9 +95,10 @@ public class Server {
                 throw new RuntimeException("Could not generate hash from photo", e);
             }
 
+            int priority = request.getPriority();
             Map<String, Object> match;
             try {
-                match = photoDNAMatcher.match(hash);
+                match = photoDNAMatcher.match_ratelimit(hash, priority);
             } catch (IOException e) {
                 throw new RuntimeException("Could not get PhotoDNA match result", e);
             }

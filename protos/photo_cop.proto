@@ -24,6 +24,7 @@ message PhotoCopHash {
 message CheckPhotoRequest {
   bytes Photo = 1;
   bool GetHash = 2;
+  int32 Priority = 3;
 }
 
 message PhotoCopDecision {
