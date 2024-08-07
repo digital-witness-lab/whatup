@@ -25,6 +25,7 @@ type SessionManager struct {
 	usernameToSessionId map[string]string
 	secretKey           []byte
 	dbUri               string
+    photoCopUri         string
 
 	log         waLog.Logger
 	sessionLock *MutexMap
@@ -32,12 +33,13 @@ type SessionManager struct {
 	ctxC ContextWithCancel
 }
 
-func NewSessionManager(secretKey []byte, dbUri string, log waLog.Logger) *SessionManager {
+func NewSessionManager(secretKey []byte, dbUri string, photoCopUri string, log waLog.Logger) *SessionManager {
 	return &SessionManager{
 		sessionIdToSession:  make(map[string]*Session),
 		usernameToSessionId: make(map[string]string),
 		secretKey:           secretKey,
 		dbUri:               dbUri,
+		photoCopUri:photoCopUri,
 		log:                 log,
 		sessionLock:         NewMutexMap(log.Sub("LOCK")),
 	}
@@ -91,7 +93,7 @@ func (sm *SessionManager) AddLogin(username string, passphrase string) (*Session
 		return session, nil
 	}
 
-	session, err = NewSessionLogin(username, passphrase, sm.secretKey, sm.dbUri, sm.log.Sub(username))
+	session, err = NewSessionLogin(username, passphrase, sm.secretKey, sm.dbUri, sm.photoCopUri, sm.log.Sub(username))
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +114,7 @@ func (sm *SessionManager) AddRegistration(ctx context.Context, username string, 
 		return session, nil, nil
 	}
 
-	session, state, err := NewSessionRegister(ctx, username, passphrase, registerOptions, sm.secretKey, sm.dbUri, sm.log.Sub(username))
+	session, state, err := NewSessionRegister(ctx, username, passphrase, registerOptions, sm.secretKey, sm.dbUri, sm.photoCopUri, sm.log.Sub(username))
 	if err != nil || state == nil {
 		return nil, nil, err
 	}

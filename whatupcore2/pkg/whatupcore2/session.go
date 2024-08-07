@@ -52,26 +52,26 @@ func NewSessionDisconnected(username, passphrase string, secretKey []byte, log w
 	return session, nil
 }
 
-func NewSessionLogin(username string, passphrase string, secretKey []byte, dbUri string, log waLog.Logger) (*Session, error) {
+func NewSessionLogin(username string, passphrase string, secretKey []byte, dbUri string, photoCopUri string, log waLog.Logger) (*Session, error) {
 	session, err := NewSessionDisconnected(username, passphrase, secretKey, log)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = session.Login(username, passphrase, dbUri); err != nil {
+	if err = session.Login(username, passphrase, dbUri, photoCopUri); err != nil {
 		log.Errorf("Could not login... closing session: %+v", err)
 		return nil, err
 	}
 	return session, nil
 }
 
-func NewSessionRegister(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions, secretKey []byte, dbUri string, log waLog.Logger) (*Session, *RegistrationState, error) {
+func NewSessionRegister(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions, secretKey []byte, dbUri string, photoCopUri string, log waLog.Logger) (*Session, *RegistrationState, error) {
 	session, err := NewSessionDisconnected(username, passphrase, secretKey, log)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	state, err := session.LoginOrRegister(ctx, username, passphrase, registerOptions, dbUri)
+	state, err := session.LoginOrRegister(ctx, username, passphrase, registerOptions, dbUri, photoCopUri)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -89,9 +89,9 @@ func (session *Session) ToProto() *pb.SessionToken {
 	return &pb.SessionToken{Token: session.TokenString(), ExpirationTime: timestamppb.New(expirationTime)}
 }
 
-func (session *Session) Login(username string, passphrase string, dbUri string) error {
+func (session *Session) Login(username string, passphrase string, dbUri string, photoCopUri string,) error {
 	session.log.Infof("Creating new login for user: %s", username)
-	client, err := NewWhatsAppClient(session.ctxC, username, passphrase, dbUri, false, session.log.Sub("WAC"))
+	client, err := NewWhatsAppClient(session.ctxC, username, passphrase, dbUri, photoCopUri, false, session.log.Sub("WAC"))
 	if err != nil {
 		client.Close()
 		return err
@@ -105,8 +105,8 @@ func (session *Session) Login(username string, passphrase string, dbUri string) 
 	return nil
 }
 
-func (session *Session) LoginOrRegister(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions, dbUri string) (*RegistrationState, error) {
-	client, err := NewWhatsAppClient(session.ctxC, username, passphrase, dbUri, registerOptions.GetHistory, session.log.Sub("WAC"))
+func (session *Session) LoginOrRegister(ctx context.Context, username string, passphrase string, registerOptions *pb.RegisterOptions, dbUri string, photoCopUri string) (*RegistrationState, error) {
+	client, err := NewWhatsAppClient(session.ctxC, username, passphrase, dbUri, photoCopUri, registerOptions.GetHistory, session.log.Sub("WAC"))
 	if err != nil {
 		return nil, err
 	}
