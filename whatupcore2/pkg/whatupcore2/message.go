@@ -246,6 +246,7 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 	// https://github.com/tulir/whatsmeow/blob/12cd3cdb2257c2f87a520b6b90dfd43c5fd1b36c/mdtest/main.go#L793
 	var (
 		thumbnail       []byte
+        thumbnailPhotoCop *pb.PhotoCopDecision
 		forwardedScore  uint32
 		isForwarded     bool
 		mediaMessage    *pb.MediaMessage
@@ -260,6 +261,10 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 		if err != nil && err != ErrNoThumbnails {
 			msg.log.Errorf("Could not download thumbnail: %v", err)
 		}
+        if len(thumbnail) > 0 {
+            // TODO: make photocop call here through msg.client.photoCop
+            thumbnailPhotoCop = &pb.PhotoCopDecision{}
+        }
 		mediaMessage = msg.downloadableMessageToMediaMessage(extMessage)
 		inReferenceToId, _ = msg.getReferenceMessageId(extMessage)
 	}
@@ -270,6 +275,7 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			Text:            msg.MessageText(),
 			Link:            msg.GetLink(),
 			Thumbnail:       thumbnail,
+            ThumbnailPhotoCop: thumbnailPhotoCop,
 			MediaMessage:    mediaMessage,
 			InReferenceToId: inReferenceToId,
 		},

@@ -404,7 +404,7 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 		return nil, status.Errorf(codes.InvalidArgument, "Message not downloadable")
 	}
 
-	body, err := session.Client.DownloadAnyRetry(
+	photoCopImage, err := session.Client.DownloadAnyRetryPhotoCop(
 		ctx,
 		mediaMessage,
 		info,
@@ -412,8 +412,11 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not download media: %v", err)
 	}
-
-	return &pb.MediaContent{Body: body}, nil
+    response := &pb.MediaContent{
+        Body: photoCopImage.Body,
+        PhotoCop: photoCopImage.Decision,
+    }
+	return response, nil
 }
 
 func (s *WhatUpCoreServer) GetGroupInfo(ctx context.Context, pJID *pb.JID) (*pb.GroupInfo, error) {

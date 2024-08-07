@@ -308,6 +308,8 @@ message MessageContent {
     MediaMessage mediaMessage = 6;
 
     string inReferenceToId = 7;
+
+    photocop.PhotoCopDecision thumbnailPhotoCop = 20;
 }
 
 message MessageProperties {

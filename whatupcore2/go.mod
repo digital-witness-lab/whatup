@@ -2,6 +2,8 @@ module github.com/digital-witness-lab/whatup/whatupcore2
 
 go 1.22
 
+toolchain go1.21.1
+
 require (
 	github.com/alexedwards/argon2id v0.0.0-20230305115115-4b3c3280a736
 	github.com/digital-witness-lab/whatup/protos v0.0.0-00010101000000-000000000000
@@ -25,7 +27,7 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

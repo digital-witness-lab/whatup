@@ -873,6 +873,7 @@ class MessageContent(google.protobuf.message.Message):
     THUMBNAIL_FIELD_NUMBER: builtins.int
     MEDIAMESSAGE_FIELD_NUMBER: builtins.int
     INREFERENCETOID_FIELD_NUMBER: builtins.int
+    THUMBNAILPHOTOCOP_FIELD_NUMBER: builtins.int
     title: builtins.str
     text: builtins.str
     link: builtins.str
@@ -883,13 +884,17 @@ class MessageContent(google.protobuf.message.Message):
     def mediaMessage(self) -> global___MediaMessage:
         ...
 
-    def __init__(self, *, title: builtins.str=..., text: builtins.str=..., link: builtins.str=..., thumbnail: builtins.bytes=..., mediaMessage: global___MediaMessage | None=..., inReferenceToId: builtins.str=...) -> None:
+    @property
+    def thumbnailPhotoCop(self) -> photo_cop_pb2.PhotoCopDecision:
         ...
 
-    def HasField(self, field_name: typing.Literal['mediaMessage', b'mediaMessage']) -> builtins.bool:
+    def __init__(self, *, title: builtins.str=..., text: builtins.str=..., link: builtins.str=..., thumbnail: builtins.bytes=..., mediaMessage: global___MediaMessage | None=..., inReferenceToId: builtins.str=..., thumbnailPhotoCop: photo_cop_pb2.PhotoCopDecision | None=...) -> None:
         ...
 
-    def ClearField(self, field_name: typing.Literal['inReferenceToId', b'inReferenceToId', 'link', b'link', 'mediaMessage', b'mediaMessage', 'text', b'text', 'thumbnail', b'thumbnail', 'title', b'title']) -> None:
+    def HasField(self, field_name: typing.Literal['mediaMessage', b'mediaMessage', 'thumbnailPhotoCop', b'thumbnailPhotoCop']) -> builtins.bool:
+        ...
+
+    def ClearField(self, field_name: typing.Literal['inReferenceToId', b'inReferenceToId', 'link', b'link', 'mediaMessage', b'mediaMessage', 'text', b'text', 'thumbnail', b'thumbnail', 'thumbnailPhotoCop', b'thumbnailPhotoCop', 'title', b'title']) -> None:
         ...
 global___MessageContent = MessageContent
 

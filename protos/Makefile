@@ -27,7 +27,6 @@ EVANS_SSL_PARAMS := --tls --cert ../data/keys/cert.pem --certkey ../data/keys/ke
 	cd ../whatupcore2/protos/ ; go mod tidy
 
 ../whatupy/whatupy/whatupcore_pb2_grpc.py: whatupcore.proto
-	python -m pip install protoletariat grpclib protobuf grpcio-tools mypy mypy-protobuf
 	python -m grpc_tools.protoc \
 		-I . \
 		--python_out=../whatupy/whatupy/protos/ \
@@ -40,5 +39,6 @@ EVANS_SSL_PARAMS := --tls --cert ../data/keys/cert.pem --certkey ../data/keys/ke
 		--python-out ../whatupy/whatupy/protos/ \
 		protoc --proto-path=. ./whatupcore.proto ./whatsappweb.proto
 
-install-evans:
-	go install github.com/ktr0731/evans@v0.10.11
+init:
+	python -m pip install protoletariat grpclib protobuf grpcio-tools mypy mypy-protobuf
+	#go install github.com/ktr0731/evans@v0.10.11

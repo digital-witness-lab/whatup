@@ -50,7 +50,7 @@ func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(cont
 	}
 }
 
-func StartRPC(port uint32, dbUri string, logLevel string) error {
+func StartRPC(port uint32, dbUri string, photoCopUri string, logLevel string) error {
 	Log = waLog.Stdout("RPC", logLevel, true)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
@@ -59,7 +59,7 @@ func StartRPC(port uint32, dbUri string, logLevel string) error {
 		return err
 	}
 
-	sessionManager := NewSessionManager(JWT_SECRET, dbUri, Log.Sub("SM"))
+	sessionManager := NewSessionManager(JWT_SECRET, dbUri, photoCopUri, Log.Sub("SM"))
 	sessionManager.Start()
 	defer sessionManager.Close()
 	authCheck := createAuthCheck(sessionManager, JWT_SECRET)
