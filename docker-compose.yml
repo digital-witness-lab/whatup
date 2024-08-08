@@ -28,8 +28,10 @@ services:
       - ENC_KEY_SALT=kajsdfhkajsdfhaksdjfhkjasdfhskd
       - POSTGRES_DATABASE=whatupcore
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-whatupcore-passwd
+      - PHOTOCOP_URI=photocop:8080
     links:
       - db
+      - photocop
     secrets:
       - ssl-cert
       - ssl-key
@@ -37,6 +39,12 @@ services:
       - whatupcore-anon-key
       - whatupcore-login-proxy
     command: rpc --log-level DEBUG
+
+  photocop:
+    platform: linux/x86_64
+    build: ./photo-cop/
+    env_file:
+      - .env
 
   db:
     image: postgres:15-alpine
