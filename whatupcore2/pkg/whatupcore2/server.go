@@ -57,7 +57,7 @@ func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(cont
 func getDBConnections(dbUri string, dbLog waLog.Logger) (*encsqlstore.EncContainer, *sql.DB, error) {
 	dbLog.Infof("Initializing DB Connection and global Device Store")
 	encsqlstore.PostgresArrayWrapper = pq.Array
-    db, err := sql.Open("postgres", dbUri)
+	db, err := sql.Open("postgres", dbUri)
 	if err != nil {
 		dbLog.Errorf("Could not open database: %w", err)
 		return nil, nil, fmt.Errorf("failed to open database: %w", err)
@@ -67,7 +67,7 @@ func getDBConnections(dbUri string, dbLog waLog.Logger) (*encsqlstore.EncContain
 		dbLog.Errorf("Could not ping database: %w", err)
 		return nil, nil, fmt.Errorf("failed to open database: %w", err)
 	}
-    deviceContainer := encsqlstore.NewWithDB(db, "postgres", dbLog)
+	deviceContainer := encsqlstore.NewWithDB(db, "postgres", dbLog)
 	return deviceContainer, db, nil
 }
 
@@ -80,22 +80,22 @@ func StartRPC(port uint32, dbUri string, photoCopUri string, logLevel string) er
 		return err
 	}
 
-    deviceContainer, db, err := getDBConnections(dbUri, Log.Sub("db"))
-    if err != nil {
+	deviceContainer, db, err := getDBConnections(dbUri, Log.Sub("db"))
+	if err != nil {
 		Log.Errorf("Could not create database connections: %v", err)
 		return err
-    }
+	}
 
-    photoCop, err := NewPhotoCopOrEmpty(photoCopUri)
-    if err != nil {
-        Log.Errorf("Could not init photo cop: %v", err)
-	    return err
-    }
-    clientOpts := &WhatsAppClientConfig{
-        deviceContainer: deviceContainer,
-        db: db,
-        photoCop: photoCop,
-    }
+	photoCop, err := NewPhotoCopOrEmpty(photoCopUri)
+	if err != nil {
+		Log.Errorf("Could not init photo cop: %v", err)
+		return err
+	}
+	clientOpts := &WhatsAppClientConfig{
+		deviceContainer: deviceContainer,
+		db:              db,
+		photoCop:        photoCop,
+	}
 	sessionManager := NewSessionManager(JWT_SECRET, clientOpts, Log.Sub("SM"))
 	sessionManager.Start()
 	defer sessionManager.Close()

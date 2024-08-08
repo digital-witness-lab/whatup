@@ -11,7 +11,7 @@ var (
 	Port          uint32
 	LogLevel      string
 	DBUri         string
-	PhotoCopUri         string
+	PhotoCopUri   string
 	whatsUpRPCCmd = &cobra.Command{
 		Use:     "rpc",
 		Aliases: []string{"r"},

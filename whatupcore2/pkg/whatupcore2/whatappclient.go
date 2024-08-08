@@ -82,7 +82,7 @@ type WhatsAppClient struct {
 	historyMessageQueue *MessageQueue
 	messageQueue        *MessageQueue
 
-    photoCop PhotoCopInterface
+	photoCop PhotoCopInterface
 
 	historyRequestContexts map[string]ContextWithCancel
 	shouldRequestHistory   map[string]bool
@@ -105,11 +105,11 @@ type WhatsAppClient struct {
 }
 
 type WhatsAppClientConfig struct {
-    photoCop PhotoCopInterface
-    getHistory bool
+	photoCop   PhotoCopInterface
+	getHistory bool
 
-    deviceContainer *encsqlstore.EncContainer
-    db *sql.DB
+	deviceContainer *encsqlstore.EncContainer
+	db              *sql.DB
 }
 
 func NewWhatsAppClient(ctx context.Context, username string, passphrase string, opts *WhatsAppClientConfig, log waLog.Logger) (*WhatsAppClient, error) {
@@ -118,9 +118,9 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	store.DeviceProps.RequireFullSync = proto.Bool(opts.getHistory)
 	dbLog := log.Sub("DB")
 
-    deviceContainer := opts.deviceContainer
-    db := opts.db
-    db.Ping()
+	deviceContainer := opts.deviceContainer
+	db := opts.db
+	db.Ping()
 	container, err := deviceContainer.WithCredentials(username, passphrase)
 	if err != nil {
 		dbLog.Errorf("Could not create encrypted SQL store: %w", err)
@@ -197,7 +197,7 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 		username:               username,
 		historyMessageQueue:    historyMessageQueue,
 		messageQueue:           messageQueue,
-        photoCop: opts.photoCop,
+		photoCop:               opts.photoCop,
 		historyRequestContexts: make(map[string]ContextWithCancel),
 		shouldRequestHistory:   make(map[string]bool),
 		groupInfoCache:         expirable.NewLRU[string, *types.GroupInfo](128, nil, time.Minute),
@@ -706,34 +706,34 @@ func (wac *WhatsAppClient) DownloadAnyRetryPhotoCop(ctx context.Context, msg *wa
 	defer lock.Unlock()
 
 	data, err := wac.mediaCache.Get(msgInfo.ID)
-    if err != nil {
-        return nil, err
-    } else if data == nil {
-        data, err = wac.DownloadAnyRetry(ctx, msg, msgInfo)
-        if  err != nil {
-            return nil, err
-        }
+	if err != nil {
+		return nil, err
+	} else if data == nil {
+		data, err = wac.DownloadAnyRetry(ctx, msg, msgInfo)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-    pcImage := NewPhotoCopMedia()
-    if msg.GetImageMessage() != nil && len(data) > 0 {
-        // TODO: use photo cop client here to get decision
-        decision := &pb.PhotoCopDecision{
-            IsMatch: false,
-        }
-        pcImage.Decision = decision
-        if decision.IsMatch {
-            data = []byte{}
-        }
-	    wac.mediaCache.Add(msgInfo.ID, data)
+	pcImage := NewPhotoCopMedia()
+	if msg.GetImageMessage() != nil && len(data) > 0 {
+		// TODO: use photo cop client here to get decision
+		decision := &pb.PhotoCopDecision{
+			IsMatch: false,
+		}
+		pcImage.Decision = decision
+		if decision.IsMatch {
+			data = []byte{}
+		}
+		wac.mediaCache.Add(msgInfo.ID, data)
 	}
-    return pcImage, nil
+	return pcImage, nil
 }
 
 func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
 	rateLimit(wac.mediaMutexMap, "download", 2*time.Second)
 	wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
-    data, err := wac.Client.DownloadAny(msg)
+	data, err := wac.Client.DownloadAny(msg)
 	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith403) {
 		return wac.RetryDownload(ctx, msg, msgInfo)
 	} else if err != nil {
@@ -755,7 +755,7 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 		wac.Log.Errorf("Could not convert MediaKey: %+v: %+v", msg, mediaKeyCandidates)
 		return nil, ErrInvalidMediaMessage
 	}
-    err := wac.Client.SendMediaRetryReceipt(msgInfo, mediaKey)
+	err := wac.Client.SendMediaRetryReceipt(msgInfo, mediaKey)
 	if err != nil {
 		wac.Log.Errorf("Could not send media retry: %+v", err)
 		return nil, err

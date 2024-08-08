@@ -245,13 +245,13 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 	// https://github.com/tulir/whatsmeow/blob/12cd3cdb2257c2f87a520b6b90dfd43c5fd1b36c/types/events/events.go#L226
 	// https://github.com/tulir/whatsmeow/blob/12cd3cdb2257c2f87a520b6b90dfd43c5fd1b36c/mdtest/main.go#L793
 	var (
-		thumbnail       []byte
-        thumbnailPhotoCop *pb.PhotoCopDecision
-		forwardedScore  uint32
-		isForwarded     bool
-		mediaMessage    *pb.MediaMessage
-		err             error
-		inReferenceToId string
+		thumbnail         []byte
+		thumbnailPhotoCop *pb.PhotoCopDecision
+		forwardedScore    uint32
+		isForwarded       bool
+		mediaMessage      *pb.MediaMessage
+		err               error
+		inReferenceToId   string
 	)
 
 	extMessage := msg.GetExtendedMessage()
@@ -261,23 +261,23 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 		if err != nil && err != ErrNoThumbnails {
 			msg.log.Errorf("Could not download thumbnail: %v", err)
 		}
-        if len(thumbnail) > 0 {
-            // TODO: make photocop call here through msg.client.photoCop
-            thumbnailPhotoCop = &pb.PhotoCopDecision{}
-        }
+		if len(thumbnail) > 0 {
+			// TODO: make photocop call here through msg.client.photoCop
+			thumbnailPhotoCop = &pb.PhotoCopDecision{}
+		}
 		mediaMessage = msg.downloadableMessageToMediaMessage(extMessage)
 		inReferenceToId, _ = msg.getReferenceMessageId(extMessage)
 	}
 
 	protoMsg := &pb.WUMessage{
 		Content: &pb.MessageContent{
-			Title:           msg.MessageTitle(),
-			Text:            msg.MessageText(),
-			Link:            msg.GetLink(),
-			Thumbnail:       thumbnail,
-            ThumbnailPhotoCop: thumbnailPhotoCop,
-			MediaMessage:    mediaMessage,
-			InReferenceToId: inReferenceToId,
+			Title:             msg.MessageTitle(),
+			Text:              msg.MessageText(),
+			Link:              msg.GetLink(),
+			Thumbnail:         thumbnail,
+			ThumbnailPhotoCop: thumbnailPhotoCop,
+			MediaMessage:      mediaMessage,
+			InReferenceToId:   inReferenceToId,
 		},
 		Info: MessageInfoToProto(msg.Info, msg.client.Store),
 		MessageProperties: &pb.MessageProperties{
