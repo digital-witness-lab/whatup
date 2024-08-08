@@ -1,6 +1,7 @@
 package whatupcore2
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -262,8 +263,10 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			msg.log.Errorf("Could not download thumbnail: %v", err)
 		}
 		if len(thumbnail) > 0 {
-			// TODO: make photocop call here through msg.client.photoCop
-			thumbnailPhotoCop = &pb.PhotoCopDecision{}
+            thumbnailPhotoCop, err = msg.client.photoCop.DecidePriority(context.TODO(), thumbnail, 50)
+            if err != nil {
+                msg.log.Errorf("Could not get photocop decision for thumbnail: %v", err)
+            }
 		}
 		mediaMessage = msg.downloadableMessageToMediaMessage(extMessage)
 		inReferenceToId, _ = msg.getReferenceMessageId(extMessage)

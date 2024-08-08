@@ -715,19 +715,19 @@ func (wac *WhatsAppClient) DownloadAnyRetryPhotoCop(ctx context.Context, msg *wa
 		}
 	}
 
-	pcImage := NewPhotoCopMedia()
+	pcMedia := NewPhotoCopMedia()
 	if msg.GetImageMessage() != nil && len(data) > 0 {
-		// TODO: use photo cop client here to get decision
-		decision := &pb.PhotoCopDecision{
-			IsMatch: false,
-		}
-		pcImage.Decision = decision
+        decision, err := wac.photoCop.DecidePriority(ctx, data, 100)
+        if err != nil {
+            wac.Log.Errorf("Could not get photocop decision: %v", err)
+        }
+		pcMedia.Decision = decision
 		if decision.IsMatch {
 			data = []byte{}
 		}
 		wac.mediaCache.Add(msgInfo.ID, data)
 	}
-	return pcImage, nil
+	return pcMedia, nil
 }
 
 func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
