@@ -24,7 +24,7 @@ type SessionManager struct {
 	sessionIdToSession  map[string]*Session
 	usernameToSessionId map[string]string
 	secretKey           []byte
-    clientOpts *WhatsAppClientConfig
+	clientOpts          *WhatsAppClientConfig
 
 	log         waLog.Logger
 	sessionLock *MutexMap
@@ -37,7 +37,7 @@ func NewSessionManager(secretKey []byte, clientOpts *WhatsAppClientConfig, log w
 		sessionIdToSession:  make(map[string]*Session),
 		usernameToSessionId: make(map[string]string),
 		secretKey:           secretKey,
-        clientOpts: clientOpts,
+		clientOpts:          clientOpts,
 		log:                 log,
 		sessionLock:         NewMutexMap(log.Sub("LOCK")),
 	}
@@ -91,7 +91,7 @@ func (sm *SessionManager) AddLogin(username string, passphrase string) (*Session
 		return session, nil
 	}
 
-    opts := *sm.clientOpts
+	opts := *sm.clientOpts
 	session, err = NewSessionLogin(username, passphrase, sm.secretKey, &opts, sm.log.Sub(username))
 	if err != nil {
 		return nil, err
@@ -113,8 +113,8 @@ func (sm *SessionManager) AddRegistration(ctx context.Context, username string, 
 		return session, nil, nil
 	}
 
-    opts := *sm.clientOpts
-    opts.getHistory = registerOptions.GetHistory
+	opts := *sm.clientOpts
+	opts.getHistory = registerOptions.GetHistory
 	session, state, err := NewSessionRegister(ctx, username, passphrase, sm.secretKey, registerOptions, &opts, sm.log.Sub(username))
 	if err != nil || state == nil {
 		return nil, nil, err

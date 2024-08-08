@@ -91,7 +91,7 @@ func (session *Session) ToProto() *pb.SessionToken {
 
 func (session *Session) Login(username string, passphrase string, opts *WhatsAppClientConfig) error {
 	session.log.Infof("Creating new login for user: %s", username)
-    opts.getHistory = false
+	opts.getHistory = false
 	client, err := NewWhatsAppClient(session.ctxC, username, passphrase, opts, session.log.Sub("WAC"))
 	if err != nil {
 		client.Close()

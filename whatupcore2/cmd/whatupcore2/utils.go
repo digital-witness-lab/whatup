@@ -18,7 +18,7 @@ func getPhotoCopUriFromEnv() string {
 	if photoCopUri, ok := os.LookupEnv("PHOTOCOP_URI"); ok {
 		return photoCopUri
 	}
-    return ""
+	return ""
 }
 
 func getDbUriFromEnv() string {
