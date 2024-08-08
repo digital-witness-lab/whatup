@@ -16,7 +16,6 @@ import (
 	pb "github.com/digital-witness-lab/whatup/protos"
 	"github.com/digital-witness-lab/whatup/whatupcore2/pkg/encsqlstore"
 	"github.com/hashicorp/golang-lru/v2/expirable"
-	"github.com/lib/pq"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/appstate"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
@@ -41,8 +40,6 @@ var (
 	loginProxy               = os.Getenv("LOGIN_PROXY")
 	loginProxyFile           = os.Getenv("LOGIN_PROXY_FILE")
 )
-var _DeviceContainer *encsqlstore.EncContainer
-var _DB *sql.DB
 
 type RegistrationState struct {
 	QRCodes   chan string
@@ -50,27 +47,6 @@ type RegistrationState struct {
 	Completed bool
 	Success   bool
 	*sync.WaitGroup
-}
-
-func getDeviceContainer(dbUri string, dbLog waLog.Logger) (*encsqlstore.EncContainer, *sql.DB, error) {
-	if _DeviceContainer != nil {
-		return _DeviceContainer, _DB, nil
-	}
-	dbLog.Infof("Initializing DB Connection and global Device Store")
-	encsqlstore.PostgresArrayWrapper = pq.Array
-	var err error
-	_DB, err = sql.Open("postgres", dbUri)
-	if err != nil {
-		dbLog.Errorf("Could not open database: %w", err)
-		return nil, nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	err = _DB.Ping()
-	if err != nil {
-		dbLog.Errorf("Could not ping database: %w", err)
-		return nil, nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	_DeviceContainer = encsqlstore.NewWithDB(_DB, "postgres", dbLog)
-	return _DeviceContainer, _DB, nil
 }
 
 func NewRegistrationState() *RegistrationState {
@@ -128,24 +104,23 @@ type WhatsAppClient struct {
 	anonLookup *AnonLookup
 }
 
-func NewWhatsAppClient(ctx context.Context, username string, passphrase string, dbUri string, photoCopUri string, getHistory bool, log waLog.Logger) (*WhatsAppClient, error) {
+type WhatsAppClientConfig struct {
+    photoCop PhotoCopInterface
+    getHistory bool
+
+    deviceContainer *encsqlstore.EncContainer
+    db *sql.DB
+}
+
+func NewWhatsAppClient(ctx context.Context, username string, passphrase string, opts *WhatsAppClientConfig, log waLog.Logger) (*WhatsAppClient, error) {
 	appName := strings.TrimSpace(fmt.Sprintf("WA by DWL %s", appNameSuffix))
 	store.SetOSInfo(appName, WhatUpCoreVersionInts)
-	store.DeviceProps.RequireFullSync = proto.Bool(getHistory)
+	store.DeviceProps.RequireFullSync = proto.Bool(opts.getHistory)
 	dbLog := log.Sub("DB")
 
-	deviceContainer, db, err := getDeviceContainer(dbUri, dbLog)
-
-    photoCop, err := NewPhotoCopOrEmpty(photoCopUri)
-    if err != nil {
-        dbLog.Errorf("Could not init photo cop: %v", err)
-	    return nil, fmt.Errorf("Could not init photo cop: %v", err)
-    }
-
-	if err != nil {
-		dbLog.Errorf("Could not create connection to DB and device container: %w", err)
-		return nil, err
-	}
+    deviceContainer := opts.deviceContainer
+    db := opts.db
+    db.Ping()
 	container, err := deviceContainer.WithCredentials(username, passphrase)
 	if err != nil {
 		dbLog.Errorf("Could not create encrypted SQL store: %w", err)
@@ -222,7 +197,7 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 		username:               username,
 		historyMessageQueue:    historyMessageQueue,
 		messageQueue:           messageQueue,
-        photoCop: photoCop,
+        photoCop: opts.photoCop,
 		historyRequestContexts: make(map[string]ContextWithCancel),
 		shouldRequestHistory:   make(map[string]bool),
 		groupInfoCache:         expirable.NewLRU[string, *types.GroupInfo](128, nil, time.Minute),

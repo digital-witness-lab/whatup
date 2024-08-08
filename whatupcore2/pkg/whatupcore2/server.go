@@ -2,6 +2,7 @@ package whatupcore2
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net"
 	"os"
@@ -10,6 +11,9 @@ import (
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
+	"github.com/digital-witness-lab/whatup/whatupcore2/pkg/encsqlstore"
+	"github.com/lib/pq"
+
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/grpc"
@@ -50,6 +54,23 @@ func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(cont
 	}
 }
 
+func getDBConnections(dbUri string, dbLog waLog.Logger) (*encsqlstore.EncContainer, *sql.DB, error) {
+	dbLog.Infof("Initializing DB Connection and global Device Store")
+	encsqlstore.PostgresArrayWrapper = pq.Array
+    db, err := sql.Open("postgres", dbUri)
+	if err != nil {
+		dbLog.Errorf("Could not open database: %w", err)
+		return nil, nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	err = db.Ping()
+	if err != nil {
+		dbLog.Errorf("Could not ping database: %w", err)
+		return nil, nil, fmt.Errorf("failed to open database: %w", err)
+	}
+    deviceContainer := encsqlstore.NewWithDB(db, "postgres", dbLog)
+	return deviceContainer, db, nil
+}
+
 func StartRPC(port uint32, dbUri string, photoCopUri string, logLevel string) error {
 	Log = waLog.Stdout("RPC", logLevel, true)
 
@@ -59,7 +80,23 @@ func StartRPC(port uint32, dbUri string, photoCopUri string, logLevel string) er
 		return err
 	}
 
-	sessionManager := NewSessionManager(JWT_SECRET, dbUri, photoCopUri, Log.Sub("SM"))
+    deviceContainer, db, err := getDBConnections(dbUri, Log.Sub("db"))
+    if err != nil {
+		Log.Errorf("Could not create database connections: %v", err)
+		return err
+    }
+
+    photoCop, err := NewPhotoCopOrEmpty(photoCopUri)
+    if err != nil {
+        Log.Errorf("Could not init photo cop: %v", err)
+	    return err
+    }
+    clientOpts := &WhatsAppClientConfig{
+        deviceContainer: deviceContainer,
+        db: db,
+        photoCop: photoCop,
+    }
+	sessionManager := NewSessionManager(JWT_SECRET, clientOpts, Log.Sub("SM"))
 	sessionManager.Start()
 	defer sessionManager.Close()
 	authCheck := createAuthCheck(sessionManager, JWT_SECRET)
