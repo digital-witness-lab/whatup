@@ -5,6 +5,7 @@ import (
 
 	pb "github.com/digital-witness-lab/whatup/protos"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type PhotoCopInterface interface {
@@ -38,7 +39,11 @@ func NewPhotoCopOrEmpty(host string) (PhotoCopInterface, error) {
 }
 
 func NewPhotoCop(host string) (*PhotoCop, error) {
-	conn, err := grpc.NewClient(host)
+    // TODO: change insecure.NewCredentials() to correponding photo-cop credentials
+	conn, err := grpc.NewClient(
+        host, 
+        grpc.WithTransportCredentials(insecure.NewCredentials()),
+    )
 	if err != nil {
 		return nil, err
 	}
