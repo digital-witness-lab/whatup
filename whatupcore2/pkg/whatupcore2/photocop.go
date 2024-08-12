@@ -14,13 +14,13 @@ type PhotoCopInterface interface {
 }
 
 type PhotoCopMedia struct {
-	Body     []byte
+	Body     *[]byte
 	Decision *pb.PhotoCopDecision
 }
 
 func NewPhotoCopMedia() *PhotoCopMedia {
 	return &PhotoCopMedia{
-		Body:     []byte{},
+		Body:     &[]byte{},
 		Decision: &pb.PhotoCopDecision{},
 	}
 }

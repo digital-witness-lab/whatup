@@ -113,16 +113,17 @@ public class Server {
                 throw new RuntimeException("Could not get PhotoDNA match result", e);
             }
 
-            PhotoCopDecision.Builder response = photoDNAMatcher.resultsToProto(match);
+            PhotoCopDecision.Builder responseBuilder = photoDNAMatcher.resultsToProto(match);
 
             if (request.getGetHash()) {
                 PhotoCopHash pcHash = PhotoCopHash.newBuilder()
                         .setValue(ByteString.copyFrom(hash))
                         .build();
-                response.setHash(pcHash);
+                responseBuilder.setHash(pcHash);
             }
 
-            responseObserver.onNext(response.build());
+            PhotoCopDecision response = responseBuilder.build();
+            responseObserver.onNext(response);
             responseObserver.onCompleted();
         }
     }

@@ -413,7 +413,7 @@ func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptio
 		return nil, status.Errorf(codes.Internal, "Could not download media: %v", err)
 	}
 	response := &pb.MediaContent{
-		Body:     photoCopImage.Body,
+		Body:     *photoCopImage.Body,
 		PhotoCop: photoCopImage.Decision,
 	}
 	return response, nil

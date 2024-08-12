@@ -32,8 +32,6 @@ public class RateLimitRunner {
         PriorityTask<T> priorityTask = new PriorityTask<>(task, priority);
     
         synchronized (cache) {
-            System.err.println("Cache key:");
-            System.err.println(keyWrapper.hashCode());
             if (cache.containsKey(keyWrapper)) {
                 System.err.println("Found request in cache");
                 return (Future<T>) cache.get(keyWrapper);
