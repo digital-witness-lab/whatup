@@ -32,12 +32,12 @@ EVANS_SSL_PARAMS := --tls --cert ../data/keys/cert.pem --certkey ../data/keys/ke
 		--python_out=../whatupy/whatupy/protos/ \
 		--grpc_python_out=../whatupy/whatupy/protos/ \
 		--mypy_out=../whatupy/whatupy/protos/ \
-		./whatupcore.proto ./whatsappweb.proto
+		./*.proto
 	python -m protoletariat \
 		--create-package \
 		--in-place \
 		--python-out ../whatupy/whatupy/protos/ \
-		protoc --proto-path=. ./whatupcore.proto ./whatsappweb.proto
+		protoc --proto-path=. ./*.proto
 
 init:
 	python -m pip install protoletariat grpclib protobuf grpcio-tools mypy mypy-protobuf

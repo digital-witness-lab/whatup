@@ -47,7 +47,6 @@ public class PhotoDNAMatcher {
 
         try {
             Map<String, Object> response = matcher.match(imageHash);
-            System.out.println(response);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -109,6 +108,9 @@ public class PhotoDNAMatcher {
 
     static public PhotoCopDecision.Builder resultsToProto(Map<String, Object> match) {
         PhotoCopDecision.Builder result = PhotoCopDecision.newBuilder();
+        if (match == null || match.isEmpty()) {
+            return result;
+        }
 
         boolean isMatch = (boolean) match.get("IsMatch");
         result.setIsMatch(isMatch);

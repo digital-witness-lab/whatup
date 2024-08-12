@@ -723,10 +723,12 @@ func (wac *WhatsAppClient) DownloadAnyRetryPhotoCop(ctx context.Context, msg *wa
         }
 		pcMedia.Decision = decision
 		if decision.IsMatch {
+            wac.Log.Warnf("Found photo-cop match... zero-ing out image: %v", decision)
 			data = []byte{}
 		}
 		wac.mediaCache.Add(msgInfo.ID, data)
 	}
+    pcMedia.Body = &data
 	return pcMedia, nil
 }
 

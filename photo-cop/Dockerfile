@@ -7,7 +7,7 @@ RUN --mount=type=cache,target=/home/gradle/.gradle/caches/ \
 
 FROM ibmjava:8-jre
 
-EXPOSE 8080
+EXPOSE 50051
 
 RUN mkdir /app
 
