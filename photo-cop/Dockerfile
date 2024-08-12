@@ -11,7 +11,8 @@ EXPOSE 8080
 
 RUN mkdir /app
 
+COPY ./run.sh /app/
 COPY --from=build /home/gradle/src/build/libs/photocop*.jar /app/photocop.jar
 COPY --from=build /home/gradle/src/build/libs/photocop*.jar /app/
 
-ENTRYPOINT ["java", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-Djava.security.egd=file:/dev/./urandom","-jar","/app/photocop.jar"]
+ENTRYPOINT ["/app/run.sh"]

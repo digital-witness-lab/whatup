@@ -15,6 +15,8 @@ secrets:
     file: ./data/static/dev/whatupcore-login-proxy.secret
   dashboard-google-auth:
     file: ./data/static/dev/dashboard-google-auth.secret
+  photo-dna-key:
+    file: ./data/static/dev/photo-dna-key.secret
 
 services:
   whatup:
@@ -43,6 +45,8 @@ services:
   photocop:
     platform: linux/x86_64
     build: ./photo-cop/
+    secrets:
+      - ssl-cert
     env_file:
       - .env
 
@@ -54,6 +58,11 @@ services:
       - postgres-whatupcore-passwd
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U whatupdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - ./data/db/:/var/lib/postgresql/data
       - ./scripts/initdb/:/docker-entrypoint-initdb.d/
