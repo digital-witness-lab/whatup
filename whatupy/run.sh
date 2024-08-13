@@ -23,12 +23,6 @@ if [ -e /tmp/whatup/.env ]; then
     set +o allexport
 fi
 
-# This block is for cloud-run services/jobs
-if [ -n "${SSL_CERT_PEM_B64+set}" ]; then
-    mkdir -p /run/secrets/
-    echo $SSL_CERT_PEM_B64 | base64 --decode > /run/secrets/ssl-cert
-fi
-
 function positive_mod() {
     local dividend=$1
     local divisor=$2
@@ -56,7 +50,7 @@ case $app_command in
 
     archivebot)
         exec ${WHATUPY_CMD} $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --cert /run/secrets/ssl-cert \
+            --cert /run/secrets/WHATUP_TLS_CERT \
             --port 3447 \
             archivebot \
             --archive-dir "gs://${MESSAGE_ARCHIVE_BUCKET}/" \
@@ -65,7 +59,7 @@ case $app_command in
 
     databasebot)
         exec ${WHATUPY_CMD} --debug $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --cert /run/secrets/ssl-cert \
+            --cert /run/secrets/WHATUP_TLS_CERT \
             --port 3447 \
             databasebot \
             --database-url "${DATABASE_URL}" \
@@ -75,7 +69,7 @@ case $app_command in
 
     registerbot)
         exec ${WHATUPY_CMD} $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --cert /run/secrets/ssl-cert \
+            --cert /run/secrets/WHATUP_TLS_CERT \
             --port 3447 \
             registerbot \
             --database-url "${DATABASE_URL}" \
@@ -85,7 +79,7 @@ case $app_command in
 
     userservices)
         exec ${WHATUPY_CMD} $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --cert /run/secrets/ssl-cert \
+            --cert /run/secrets/WHATUP_TLS_CERT \
             --port 3447 \
             userservicesbot \
             --database-url "${DATABASE_URL}" \
@@ -96,7 +90,7 @@ case $app_command in
 
     chat)
         exec ${WHATUPY_CMD} $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --cert /run/secrets/ssl-cert \
+            --cert /run/secrets/WHATUP_TLS_CERT \
             --port 3447 \
             chatbot \
             --response-time 3600 \
@@ -110,7 +104,7 @@ case $app_command in
             exit 1
         fi
         exec ${WHATUPY_CMD} $DEBUG --host "${WHATUPCORE2_HOST}" \
-            --cert /run/secrets/ssl-cert \
+            --cert /run/secrets/WHATUP_TLS_CERT \
             --port 3447 \
             onboard \
             --default-group-permission READWRITE  \
@@ -156,7 +150,7 @@ case $app_command in
 
     debugbot)
         exit 1
-        exec ${WHATUPY_CMD} $DEBUG --host "whatup" --cert /run/secrets/ssl-cert debugbot --host 0.0.0.0 --port 6666 /usr/src/whatupy-data/sessions/gertrude.json
+        exec ${WHATUPY_CMD} $DEBUG --host "whatup" --cert /run/secrets/WHATUP_TLS_CERT debugbot --host 0.0.0.0 --port 6666 /usr/src/whatupy-data/sessions/gertrude.json
 
     ;;
 

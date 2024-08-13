@@ -197,12 +197,7 @@ func writeCertFile(ctx context.Context, name, value string) error {
 	p := path.Join("/", "run", "secrets")
 	os.MkdirAll(p, 0755)
 
-	fileName := "ssl-cert"
-	if strings.Contains(name, "KEY") {
-		fileName = "ssl-key"
-	}
-
-	filePath := path.Join(p, fileName)
+	filePath := path.Join(p, name)
 	fmt.Println("Writing cert file to:", filePath)
 	err := os.WriteFile(filePath, []byte(value), 0600)
 	return err

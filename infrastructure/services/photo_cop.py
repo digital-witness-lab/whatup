@@ -1,9 +1,8 @@
-from pulumi import Output, ResourceOptions, get_stack, log
+from pulumi import Output, ResourceOptions, get_stack
 from pulumi_gcp import secretmanager, serviceaccount
 from pulumi_google_native import compute
 
 from artifact_registry import photo_cop_image
-from config import is_prod_stack
 from container_vm import (
     Container,
     ContainerEnv,
@@ -13,8 +12,7 @@ from container_vm import (
 from dwl_secrets import photodna_api_key_secret
 from network import private_services_network_with_db
 from whatupcore_network import (
-    ssl_cert_pem_secret,
-    ssl_private_key_pem_secret,
+    photocop_tls_cert,
     whatupcore2_static_private_ip,
 )
 
@@ -27,6 +25,24 @@ if photodna_api_key_secret is not None:
         "photo-cop",
         account_id=f"photo-cop-vm-{get_stack()}",
         description=f"Service account for {service_name}",
+    )
+
+    tls_private_key_pem_perm = secretmanager.SecretIamMember(
+        "photocop-tls-pk-perm",
+        secretmanager.SecretIamMemberArgs(
+            secret_id=photocop_tls_cert.key_secret.id,
+            role="roles/secretmanager.secretAccessor",
+            member=Output.concat("serviceAccount:", service_account.email),
+        ),
+    )
+
+    tls_cert_pem_perm = secretmanager.SecretIamMember(
+        "photocop-tls-cert-perm",
+        secretmanager.SecretIamMemberArgs(
+            secret_id=photocop_tls_cert.cert_secret.id,
+            role="roles/secretmanager.secretAccessor",
+            member=Output.concat("serviceAccount:", service_account.email),
+        ),
     )
 
     photodna_api_key_perm = secretmanager.SecretIamMember(
@@ -53,6 +69,14 @@ if photodna_api_key_secret is not None:
                         name="PHOTO_COP_PORT",
                         value=str(port),
                     ),
+                    ContainerEnv(
+                        name="PHOTOCOP_TLS_CERT",
+                        value="/run/secrets/PHOTOCOP_CERT_PEM",
+                    ),
+                    ContainerEnv(
+                        name="PHOTOCOP_TLS_KEY",
+                        value="/run/secrets/PHOTOCOP_KEY_PEM",
+                    ),
                 ],
             ),
             secret_env=[
@@ -60,6 +84,18 @@ if photodna_api_key_secret is not None:
                     key="PHOTODNA_API_KEY",
                     value=Output.concat(
                         photodna_api_key_secret.id, "/versions/latest"
+                    ),
+                ),
+                compute.v1.MetadataItemsItemArgs(
+                    key="PHOTOCOP_KEY_PEM",
+                    value=Output.concat(
+                        photocop_tls_cert.key_secret.id, "/versions/latest"
+                    ),
+                ),
+                compute.v1.MetadataItemsItemArgs(
+                    key="PHOTOCOP_CERT_PEM",
+                    value=Output.concat(
+                        photocop_tls_cert.cert_secret.id, "/versions/latest"
                     ),
                 ),
             ],

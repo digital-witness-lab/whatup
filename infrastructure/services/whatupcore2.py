@@ -18,8 +18,8 @@ from dwl_secrets import (
 )
 from network import private_services_network_with_db
 from whatupcore_network import (
-    ssl_cert_pem_secret,
-    ssl_private_key_pem_secret,
+    whatupcore_tls_cert,
+    photocop_tls_cert,
     whatupcore2_static_private_ip,
 )
 from .photo_cop import photo_cop_addr
@@ -60,19 +60,28 @@ anon_key_secret_manager_perm = secretmanager.SecretIamMember(
 )
 
 
-ssl_private_key_pem_perm = secretmanager.SecretIamMember(
-    "whatupcore-ssl-pk-perm",
+tls_private_key_pem_perm = secretmanager.SecretIamMember(
+    "whatupcore-tls-pk-perm",
     secretmanager.SecretIamMemberArgs(
-        secret_id=ssl_private_key_pem_secret.id,
+        secret_id=whatupcore_tls_cert.key_secret.id,
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
 )
 
-ssl_cert_pem_perm = secretmanager.SecretIamMember(
-    "whatupcore-ssl-cert-perm",
+tls_cert_pem_perm = secretmanager.SecretIamMember(
+    "whatupcore-tls-cert-perm",
     secretmanager.SecretIamMemberArgs(
-        secret_id=ssl_cert_pem_secret.id,
+        secret_id=whatupcore_tls_cert.cert_secret.id,
+        role="roles/secretmanager.secretAccessor",
+        member=Output.concat("serviceAccount:", service_account.email),
+    ),
+)
+
+tls_photocop_cert_pem_perm = secretmanager.SecretIamMember(
+    "whatupcore-pc-tls-cert-perm",
+    secretmanager.SecretIamMemberArgs(
+        secret_id=photocop_tls_cert.cert_secret.id,
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
@@ -100,10 +109,6 @@ whatupcore2_service = ContainerOnVm(
             image=whatupcore2_image.repo_digest,
             env=[
                 ContainerEnv(
-                    name="USE_SSL",
-                    value="true",
-                ),
-                ContainerEnv(
                     name="APP_NAME_SUFFIX",
                     value="" if is_prod_stack() else get_stack(),
                 ),
@@ -114,6 +119,18 @@ whatupcore2_service = ContainerOnVm(
                 ContainerEnv(
                     name="PHOTO_COP_ADDRESS",
                     value=photo_cop_addr,
+                ),
+                ContainerEnv(
+                    name="PHOTOCOP_TLS_CERT",
+                    value="/run/secrets/PHOTOCOP_CERT_PEM",
+                ),
+                ContainerEnv(
+                    name="WHATUP_TLS_CERT",
+                    value="/run/secrets/WHATUP_CERT_PEM",
+                ),
+                ContainerEnv(
+                    name="WHATUP_TLS_KEY",
+                    value="/run/secrets/WHATUP_KEY_PEM",
                 ),
             ],
         ),
@@ -135,15 +152,21 @@ whatupcore2_service = ContainerOnVm(
                 ),
             ),
             compute.v1.MetadataItemsItemArgs(
-                key="SSL_CERT_PEM",
+                key="WHATUPCORE_KEY_PEM",
                 value=Output.concat(
-                    ssl_cert_pem_secret.id, "/versions/latest"
+                    whatupcore_tls_cert.cert_secret.id, "/versions/latest"
                 ),
             ),
             compute.v1.MetadataItemsItemArgs(
-                key="SSL_PRIV_KEY_PEM",
+                key="WHATUPCORE_CERT_PEM",
                 value=Output.concat(
-                    ssl_private_key_pem_secret.id, "/versions/latest"
+                    whatupcore_tls_cert.key_secret.id, "/versions/latest"
+                ),
+            ),
+            compute.v1.MetadataItemsItemArgs(
+                key="PHOTOCOP_CERT_PEM",
+                value=Output.concat(
+                    photocop_tls_cert.key_secret.id, "/versions/latest"
                 ),
             ),
             compute.v1.MetadataItemsItemArgs(
