@@ -30,26 +30,26 @@ type PhotoCop struct {
 	host   string
 	client pb.PhotoCopClient
 	conn   *grpc.ClientConn
-    log waLog.Logger
+	log    waLog.Logger
 }
 
 func NewPhotoCopOrEmpty(host string, cert string, log waLog.Logger) (PhotoCopInterface, error) {
 	if host != "" {
 		return NewPhotoCop(host, cert, log)
 	}
-    return &EmptyPhotoCop{log: log}, nil
+	return &EmptyPhotoCop{log: log}, nil
 }
 
 func NewPhotoCop(host string, cert string, log waLog.Logger) (*PhotoCop, error) {
-    // TODO: change insecure.NewCredentials() to correponding photo-cop credentials
+	// TODO: change insecure.NewCredentials() to correponding photo-cop credentials
 	creds, err := credentials.NewClientTLSFromFile(cert, "")
-    if err != nil {
-        return nil, err
-    }
+	if err != nil {
+		return nil, err
+	}
 	conn, err := grpc.NewClient(
-        host, 
-        grpc.WithTransportCredentials(creds),
-    )
+		host,
+		grpc.WithTransportCredentials(creds),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -57,12 +57,12 @@ func NewPhotoCop(host string, cert string, log waLog.Logger) (*PhotoCop, error) 
 	return &PhotoCop{
 		host:   host,
 		client: client,
-        log: log,
+		log:    log,
 	}, nil
 }
 
 func (pc *PhotoCop) DecidePriority(ctx context.Context, data []byte, priority int32) (*pb.PhotoCopDecision, error) {
-    pc.log.Debugf("Request to PhotoCop DecidePriority()")
+	pc.log.Debugf("Request to PhotoCop DecidePriority()")
 	return pc.client.CheckPhoto(ctx, &pb.CheckPhotoRequest{
 		Photo:    data,
 		Priority: priority,
@@ -74,15 +74,15 @@ func (pc *PhotoCop) Decide(ctx context.Context, data []byte) (*pb.PhotoCopDecisi
 }
 
 type EmptyPhotoCop struct {
-    log waLog.Logger
+	log waLog.Logger
 }
 
 func (pc *EmptyPhotoCop) DecidePriority(ctx context.Context, data []byte, priority int32) (*pb.PhotoCopDecision, error) {
-    pc.log.Debugf("Request to empty PhotoCop DecidePriority()")
+	pc.log.Debugf("Request to empty PhotoCop DecidePriority()")
 	return &pb.PhotoCopDecision{}, nil
 }
 
 func (pc *EmptyPhotoCop) Decide(ctx context.Context, data []byte) (*pb.PhotoCopDecision, error) {
-    pc.log.Debugf("Request to empty PhotoCop Decide()")
+	pc.log.Debugf("Request to empty PhotoCop Decide()")
 	return &pb.PhotoCopDecision{}, nil
 }

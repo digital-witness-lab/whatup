@@ -263,14 +263,14 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			msg.log.Errorf("Could not download thumbnail: %v", err)
 		}
 		if len(thumbnail) > 0 {
-            thumbnailPhotoCop, err = msg.client.photoCop.DecidePriority(context.TODO(), thumbnail, 50)
-            if thumbnailPhotoCop.IsMatch {
-                msg.log.Warnf("Found photo-cop match... zero-ing out image: %v", thumbnailPhotoCop)
-                thumbnail = []byte{}
-            }
-            if err != nil {
-                msg.log.Errorf("Could not get photocop decision for thumbnail: %v", err)
-            }
+			thumbnailPhotoCop, err = msg.client.photoCop.DecidePriority(context.TODO(), thumbnail, 50)
+			if thumbnailPhotoCop.IsMatch {
+				msg.log.Warnf("Found photo-cop match... zero-ing out image: %v", thumbnailPhotoCop)
+				thumbnail = []byte{}
+			}
+			if err != nil {
+				msg.log.Errorf("Could not get photocop decision for thumbnail: %v", err)
+			}
 		}
 		mediaMessage = msg.downloadableMessageToMediaMessage(extMessage)
 		inReferenceToId, _ = msg.getReferenceMessageId(extMessage)
