@@ -25,10 +25,10 @@ import (
 )
 
 var (
-	TLS_CERT_FILE = "/run/secrets/ssl-cert"
-	TLS_KEY_FILE  = "/run/secrets/ssl-key"
+	PHOTOCOP_CERT_FILE = os.Getenv("PHOTOCOP_TLS_CERT")
+	TLS_CERT_FILE = mustGetEnv("WHATUP_TLS_CERT")
+	TLS_KEY_FILE  = mustGetEnv("WHATUP_TLS_KEY")
 	JWT_SECRET    = []byte("SECRETSECRET")
-	USE_SSL       = getEnvAsBoolean(os.Getenv("USE_SSL"))
 	Log           waLog.Logger
 )
 
@@ -86,7 +86,7 @@ func StartRPC(port uint32, dbUri string, photoCopUri string, logLevel string) er
 		return err
 	}
 
-	photoCop, err := NewPhotoCopOrEmpty(photoCopUri)
+	photoCop, err := NewPhotoCopOrEmpty(photoCopUri, PHOTOCOP_CERT_FILE, Log.Sub("photocop"))
 	if err != nil {
 		Log.Errorf("Could not init photo cop: %v", err)
 		return err
@@ -109,28 +109,18 @@ func StartRPC(port uint32, dbUri string, photoCopUri string, logLevel string) er
 	})
 
 	var s *grpc.Server
-	if USE_SSL {
-		Log.Infof("Using SSL")
-		creds, err := credentials.NewServerTLSFromFile(TLS_CERT_FILE, TLS_KEY_FILE)
-		if err != nil {
-			Log.Errorf("could not load server credentials: %v", err)
-			return err
-		}
-		s = grpc.NewServer(
-			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
-			grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
-			grpc.Creds(creds),
-			keepAliveEnforcement,
-			keepAlive,
-		)
-	} else {
-		s = grpc.NewServer(
-			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
-			grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
-			keepAliveEnforcement,
-			keepAlive,
-		)
+	creds, err := credentials.NewServerTLSFromFile(TLS_CERT_FILE, TLS_KEY_FILE)
+	if err != nil {
+		Log.Errorf("could not load server credentials: %v", err)
+		return err
 	}
+	s = grpc.NewServer(
+		grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
+		grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
+		grpc.Creds(creds),
+		keepAliveEnforcement,
+		keepAlive,
+	)
 	reflection.Register(s)
 
 	pb.RegisterWhatUpCoreAuthServer(s, &WhatUpCoreAuthServer{

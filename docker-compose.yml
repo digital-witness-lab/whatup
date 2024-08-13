@@ -1,8 +1,12 @@
 secrets:
-  ssl-key:
-    file: ./data/keys/key.pem
-  ssl-cert:
-    file: ./data/keys/cert.pem
+  whatup-ssl-key:
+    file: ./data/keys/whatup.key.pem
+  whatup-ssl-cert:
+    file: ./data/keys/whatup.cert.pem
+  photocop-ssl-key:
+    file: ./data/keys/photocop.key.pem
+  photocop-ssl-cert:
+    file: ./data/keys/photocop.cert.pem
   postgres-whatupdb-passwd:
     file: ./data/static/dev/postgres-whatupdb-passwd.secret
   postgres-messages-passwd:
@@ -31,12 +35,16 @@ services:
       - POSTGRES_DATABASE=whatupcore
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-whatupcore-passwd
       - PHOTOCOP_URI=photocop:50051
+      - WHATUP_TLS_KEY=/run/secrets/whatup-ssl-key
+      - WHATUP_TLS_CERT=/run/secrets/whatup-ssl-cert
+      - PHOTOCOP_TLS_CERT=/run/secrets/photocop-ssl-cert
     links:
       - db
       - photocop
     secrets:
-      - ssl-cert
-      - ssl-key
+      - whatup-ssl-cert
+      - whatup-ssl-key
+      - photocop-ssl-cert
       - postgres-whatupcore-passwd
       - whatupcore-anon-key
       - whatupcore-login-proxy
@@ -49,6 +57,11 @@ services:
     build: ./photo-cop/
     secrets:
       - photo-dna-key
+      - photocop-ssl-cert
+      - photocop-ssl-key
+    environment:
+      - PHOTOCOP_TLS_CERT=/run/secrets/photocop-ssl-cert
+      - PHOTOCOP_TLS_KEY=/run/secrets/photocop-ssl-key
     env_file:
       - .env
 
@@ -91,14 +104,14 @@ services:
     links:
       - whatup
     environment:
-      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CERT=/run/secrets/whatup-ssl-cert
       - WHATUPY_CONTROL_GROUPS=c+c-dev@g.us # c+c-dev
     secrets:
-      - ssl-cert
+      - whatup-ssl-cert
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
       - ./data/message-archive/:/usr/src/whatupy-data/message-archive/
-    command: whatupy --debug --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
+    command: whatupy --debug --host whatup --cert /run/secrets/whatup-ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
 
   bot-debug:
     # run with,
@@ -109,16 +122,16 @@ services:
     links:
       - whatup
     environment:
-      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CERT=/run/secrets/whatup-ssl-cert
       - WHATUPY_CONTROL_GROUPS=c+c-dev@g.us # c+c-dev
     secrets:
-      - ssl-cert
+      - whatup-ssl-cert
     ports:
       - 6666:6666
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
       - ./data/message-archive/:/usr/src/whatupy-data/message-archive/
-    entrypoint: whatupy --host whatup --cert /run/secrets/ssl-cert debugbot --host 0.0.0.0 --port 6666
+    entrypoint: whatupy --host whatup --cert /run/secrets/whatup-ssl-cert debugbot --host 0.0.0.0 --port 6666
     profiles:
       - donotstart
 
@@ -128,18 +141,18 @@ services:
       - whatup
       - db
     environment:
-      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CERT=/run/secrets/whatup-ssl-cert
       - WHATUPY_CONTROL_GROUPS=c+c-prod@g.us anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net # c+c-prod + micha
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
     secrets:
-      - ssl-cert
+      - whatup-ssl-cert
       - postgres-messages-passwd
     env_file:
       - .env
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
       - ./data/media/:/usr/src/whatupy-data/media/
-    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert databasebot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ /usr/src/whatupy-data/sessions/"
+    command: sh -c "whatupy --host whatup --cert /run/secrets/whatup-ssl-cert databasebot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ /usr/src/whatupy-data/sessions/"
 
   bot-database-load-archive:
     build: ./whatupy/
@@ -164,41 +177,41 @@ services:
     links:
       - whatup
     environment:
-      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CERT=/run/secrets/whatup-ssl-cert
     secrets:
-      - ssl-cert
+      - whatup-ssl-cert
     profiles:
       - donotstart
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard-bulk --credentials-url /usr/src/whatupy-data/sessions/
+    command: whatupy --host whatup --cert /run/secrets/whatup-ssl-cert onboard-bulk --credentials-url /usr/src/whatupy-data/sessions/
 
   bot-onboard:
     build: ./whatupy/
     links:
       - whatup
     environment:
-      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CERT=/run/secrets/whatup-ssl-cert
       - SESSION_NAME=$SESSION_NAME
     secrets:
-      - ssl-cert
+      - whatup-ssl-cert
     profiles:
       - donotstart
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert onboard --default-group-permission READWRITE --credentials-url "/usr/src/whatupy-data/sessions/" ${SESSION_NAME}
+    command: whatupy --host whatup --cert /run/secrets/whatup-ssl-cert onboard --default-group-permission READWRITE --credentials-url "/usr/src/whatupy-data/sessions/" ${SESSION_NAME}
 
   bot-chat:
     build: ./whatupy/
     links:
       - whatup
     environment:
-      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CERT=/run/secrets/whatup-ssl-cert
     secrets:
-      - ssl-cert
+      - whatup-ssl-cert
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/:ro
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert chatbot --response-time 3600 /usr/src/whatupy-data/sessions/
+    command: whatupy --host whatup --cert /run/secrets/whatup-ssl-cert chatbot --response-time 3600 /usr/src/whatupy-data/sessions/
 
   bot-register:
     build: ./whatupy/
@@ -206,15 +219,15 @@ services:
       - whatup
       - db
     environment:
-      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CERT=/run/secrets/whatup-ssl-cert
       - WHATUPY_CONTROL_GROUPS=c+c-dev@g.us # c+c-dev
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
     secrets:
       - postgres-messages-passwd
-      - ssl-cert
+      - whatup-ssl-cert
     volumes:
       - ./data/sessions/:/usr/src/whatupy-data/sessions/
-    command: sh -c "whatupy --host whatup --cert /run/secrets/ssl-cert registerbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --sessions-url  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/beatrice.json"
+    command: sh -c "whatupy --host whatup --cert /run/secrets/whatup-ssl-cert registerbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --sessions-url  /usr/src/whatupy-data/sessions/registered-users/ /usr/src/whatupy-data/sessions/beatrice.json"
 
   bot-userservices:
     build: ./whatupy/
@@ -222,31 +235,31 @@ services:
       - whatup
       - db
     environment:
-      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CERT=/run/secrets/whatup-ssl-cert
       - WHATUPY_CONTROL_GROUPS=c+c-dev@g.us # c+c-dev
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
     secrets:
       - postgres-messages-passwd
-      - ssl-cert
+      - whatup-ssl-cert
     volumes:
       - ./data/sessions/beatrice.json:/usr/src/whatupy-data/beatrice.json:ro
       - ./data/sessions/registered-users/:/usr/src/whatupy-data/sessions/
       - ./data/public/:/data-public/
-    command: sh -c "whatupy --debug --host whatup --cert /run/secrets/ssl-cert userservicesbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --public-path=/data-public/ --sessions-url  /usr/src/whatupy-data/sessions/ /usr/src/whatupy-data/beatrice.json"
+    command: sh -c "whatupy --debug --host whatup --cert /run/secrets/whatup-ssl-cert userservicesbot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --public-path=/data-public/ --sessions-url  /usr/src/whatupy-data/sessions/ /usr/src/whatupy-data/beatrice.json"
 
   bot-user-archive:
     build: ./whatupy/
     links:
       - whatup
     environment:
-      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CERT=/run/secrets/whatup-ssl-cert
       - WHATUPY_CONTROL_GROUPS=XXXXX@g.us  # NO ONE
     secrets:
-      - ssl-cert
+      - whatup-ssl-cert
     volumes:
       - ./data/sessions/registered-users/:/usr/src/whatupy-data/sessions/:ro
       - ./data/message-archive-user/:/usr/src/whatupy-data/message-archive/
-    command: whatupy --host whatup --cert /run/secrets/ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
+    command: whatupy --host whatup --cert /run/secrets/whatup-ssl-cert archivebot --archive-dir /usr/src/whatupy-data/message-archive/ /usr/src/whatupy-data/sessions/
 
   bot-user-database:
     build: ./whatupy/
@@ -254,18 +267,18 @@ services:
       - whatup
       - db
     environment:
-      - WHATUPY_CERT=/run/secrets/ssl-cert
+      - WHATUPY_CERT=/run/secrets/whatup-ssl-cert
       - WHATUPY_CONTROL_GROUPS=c+c-prod@g.us anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net # c+c-prod + micha
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
     secrets:
-      - ssl-cert
+      - whatup-ssl-cert
       - postgres-messages-passwd
     env_file:
       - .env
     volumes:
       - ./data/sessions/registered-users/:/usr/src/whatupy-data/sessions/:ro
       - ./data/media/:/usr/src/whatupy-data/media/
-    command: sh -c "whatupy --debug --host whatup --cert /run/secrets/ssl-cert databasebot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ /usr/src/whatupy-data/sessions/"
+    command: sh -c "whatupy --debug --host whatup --cert /run/secrets/whatup-ssl-cert databasebot --database-url \"postgresql://messages:$$( cat $${POSTGRES_PASSWORD_FILE})@db/messages\" --media-base /usr/src/whatupy-data/media/ /usr/src/whatupy-data/sessions/"
 
   hash-gen:
     build: ./hash-gen/

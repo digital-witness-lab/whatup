@@ -28,10 +28,27 @@ public class Server {
         start(50051);
     }
 
-    private void start(int port) throws IOException {
+    private File loadTLSFile(String envvar) {
+        String tlsPath = System.getenv(envvar);
+
+        if (tlsPath == null || tlsPath.isEmpty()) {
+            throw new IllegalArgumentException(envvar + " environment variable is not set or is empty.");
+        }
+
+        File tlsFile = new File(tlsPath);
+        if (!tlsFile.exists()) {
+            throw new IllegalArgumentException("TLS file does not exist: " + tlsPath);
+        }
+        return tlsFile;
+    }
+
+    private void start(int port) throws IOException, IllegalArgumentException {
+        File tlsCertFile = loadTLSFile("PHOTOCOP_TLS_CERT");
+        File tlsKeyFile = loadTLSFile("PHOTOCOP_TLS_KEY");
         String photoDnaKey = System.getenv("PHOTO_DNA_KEY");
 
         server = ServerBuilder.forPort(port)
+                .useTransportSecurity(tlsCertFile, tlsKeyFile)
                 .addService(new PhotoCopImpl(photoDnaKey))
                 .build()
                 .start();
