@@ -1,6 +1,7 @@
-import base64
+from dataclasses import dataclass
 
 import pulumi_gcp.compute
+from pulumi_gcp import secretmanager
 import pulumi_tls as tls
 from pulumi import get_stack
 from pulumi_google_native import compute
@@ -21,45 +22,52 @@ whatupcore2_static_private_ip = compute.v1.Address(
     ),
 )
 
-# We can't use ED25519 because GRPC needs to be build from sorce with
-# GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 for this to work.
-ssl_private_key = tls.PrivateKey(
-    f"whatup-ssl-pk-{get_stack()}", algorithm="RSA", rsa_bits=4096
-)
 
-ssl_cert = tls.SelfSignedCert(
-    f"whatup-ssl-cert-{get_stack()}",
-    private_key_pem=ssl_private_key.private_key_pem,
-    validity_period_hours=24 * 365,  # 1 year
-    early_renewal_hours=24 * 7 * 4 * 2,  # 2 months
-    is_ca_certificate=True,
-    subject=tls.SelfSignedCertSubjectArgs(
-        country="US",
-        province="NY",
-        locality="NY",
-        organization="Digital Witness Lab",
-        organizational_unit="WhatUp",
-        common_name="whatup.digitalwitnesslab.org",
-    ),
-    allowed_uses=[
-        # uses as per https://github.com/grpc/grpc/issues/24129#issuecomment-849202691
-        "key_encipherment",
-        "data_encipherment",
-        "digital_signature",
-    ],
-    ip_addresses=[whatupcore2_static_private_ip.address],
-)
+@dataclass
+class TLSKeysSecret:
+    key_secret: secretmanager.Secret
+    cert_secret: secretmanager.Secret
 
-ssl_private_key_pem_secret = create_secret(
-    "whatup-ssl-pk-pem", ssl_private_key.private_key_pem
-)
-ssl_cert_pem_secret = create_secret("whatup-ssl-cert-pem", ssl_cert.cert_pem)
-ssl_cert_pem_b64_secret = create_secret(
-    "whatup-ssl-cert-pem-b64",
-    ssl_cert.cert_pem.apply(
-        lambda cert: base64.b64encode(cert.encode("utf8")).decode("utf8")
-    ),
-)
+
+def create_tls_keys(service: str) -> TLSKeysSecret:
+    # We can't use ED25519 because GRPC needs to be build from sorce with
+    # GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 for this to work.
+    tls_private_key = tls.PrivateKey(
+        f"{service}-tls-pk-{get_stack()}", algorithm="RSA", rsa_bits=4096
+    )
+
+    tls_cert = tls.SelfSignedCert(
+        f"{service}-tls-cert-{get_stack()}",
+        private_key_pem=tls_private_key.private_key_pem,
+        validity_period_hours=24 * 365,  # 1 year
+        early_renewal_hours=24 * 7 * 4 * 2,  # 2 months
+        is_ca_certificate=True,
+        subject=tls.SelfSignedCertSubjectArgs(
+            country="US",
+            province="NY",
+            locality="NY",
+            organization="Digital Witness Lab",
+            organizational_unit="WhatUp",
+            common_name="{service}.digitalwitnesslab.org",
+        ),
+        allowed_uses=[
+            # uses as per https://github.com/grpc/grpc/issues/24129#issuecomment-849202691
+            "key_encipherment",
+            "data_encipherment",
+            "digital_signature",
+        ],
+        ip_addresses=[whatupcore2_static_private_ip.address],
+    )
+
+    key_secret = create_secret(
+        f"{service}-tls-pk-pem", tls_private_key.private_key_pem
+    )
+    cert_secret = create_secret(f"{service}-tls-cert-pem", tls_cert.cert_pem)
+    return TLSKeysSecret(key_secret, cert_secret)
+
+
+whatupcore_tls_cert = create_tls_keys("whatup")
+photocop_tls_cert = create_tls_keys("photocop")
 
 
 pulumi_gcp.compute.NetworkFirewallPolicyRule(
