@@ -717,18 +717,18 @@ func (wac *WhatsAppClient) DownloadAnyRetryPhotoCop(ctx context.Context, msg *wa
 
 	pcMedia := NewPhotoCopMedia()
 	if msg.GetImageMessage() != nil && len(data) > 0 {
-        decision, err := wac.photoCop.DecidePriority(ctx, data, 100)
-        if err != nil {
-            wac.Log.Errorf("Could not get photocop decision: %v", err)
-        }
+		decision, err := wac.photoCop.DecidePriority(ctx, data, 100)
+		if err != nil {
+			wac.Log.Errorf("Could not get photocop decision: %v", err)
+		}
 		pcMedia.Decision = decision
 		if decision.IsMatch {
-            wac.Log.Warnf("Found photo-cop match... zero-ing out image: %v", decision)
+			wac.Log.Warnf("Found photo-cop match... zero-ing out image: %v", decision)
 			data = []byte{}
 		}
 		wac.mediaCache.Add(msgInfo.ID, data)
 	}
-    pcMedia.Body = &data
+	pcMedia.Body = &data
 	return pcMedia, nil
 }
 

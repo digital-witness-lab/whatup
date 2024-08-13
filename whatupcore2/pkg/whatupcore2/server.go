@@ -26,10 +26,10 @@ import (
 
 var (
 	PHOTOCOP_CERT_FILE = os.Getenv("PHOTOCOP_TLS_CERT")
-	TLS_CERT_FILE = mustGetEnv("WHATUP_TLS_CERT")
-	TLS_KEY_FILE  = mustGetEnv("WHATUP_TLS_KEY")
-	JWT_SECRET    = []byte("SECRETSECRET")
-	Log           waLog.Logger
+	TLS_CERT_FILE      = mustGetEnv("WHATUP_TLS_CERT")
+	TLS_KEY_FILE       = mustGetEnv("WHATUP_TLS_KEY")
+	JWT_SECRET         = []byte("SECRETSECRET")
+	Log                waLog.Logger
 )
 
 func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(context.Context) (context.Context, error) {
