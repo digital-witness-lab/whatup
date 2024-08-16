@@ -35,7 +35,7 @@ BOT_REGISTRY = defaultdict(dict)
 CONTROL_CACHE = deque(maxlen=1028)
 
 DownloadMediaCallback = T.Callable[
-    [wuc.WUMessage, bytes, Exception | None], T.Awaitable[None]
+    [wuc.WUMessage, wuc.MediaContent, Exception | None], T.Awaitable[None]
 ]
 MediaType = enum.Enum("MediaType", wuc.SendMessageMedia.MediaType.items())
 TypeLanguages = T.Literal["hi"] | T.Literal["en"]
@@ -396,7 +396,7 @@ class BaseBot:
                 )
             return await self.on_control(message)
 
-    async def download_message_media(self, message: wuc.WUMessage) -> bytes:
+    async def download_message_media(self, message: wuc.WUMessage) -> wuc.MediaContent:
         mm = message.content.mediaMessage
         payload = mm.WhichOneof("payload")
         if payload is None:
@@ -408,7 +408,7 @@ class BaseBot:
                 info=message.info,
             )
         )
-        return media_content.Body
+        return media_content
 
     async def _download_messages_background(self):
         while True:
@@ -418,14 +418,14 @@ class BaseBot:
                 message.info.id,
                 self.download_queue.qsize(),
             )
-            content: bytes = b""
+            content = wuc.MediaContent()
             error = None
             try:
                 content = await self.download_message_media(message)
                 self.logger.debug(
                     "Got content for message: %s: len(content) = %d",
                     message.info.id,
-                    len(content),
+                    len(content.Body),
                 )
             except Exception as e:
                 self.logger.exception(
@@ -446,7 +446,7 @@ class BaseBot:
                 self.logger.info(
                     "Media callback: %s: %d: %s",
                     message.info.id,
-                    len(content),
+                    len(content.Body),
                     error or "no error",
                 )
                 await callback(message, content, error=error)

@@ -142,7 +142,7 @@ services:
       - db
     environment:
       - WHATUPY_CERT=/run/secrets/whatup-ssl-cert
-      - WHATUPY_CONTROL_GROUPS=c+c-prod@g.us anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net # c+c-prod + micha
+      - WHATUPY_CONTROL_GROUPS=c+c-prod@g.us # anon.NlUiJWkTKZtZ7jgGVob9Loe4vkHphhoBJJQ-T-Niuuk.v001@s.whatsapp.net # c+c-prod + micha
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-messages-passwd
     secrets:
       - whatup-ssl-cert
