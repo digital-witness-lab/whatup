@@ -397,6 +397,7 @@ class BaseBot:
             return await self.on_control(message)
 
     async def download_message_media(self, message: wuc.WUMessage) -> wuc.MediaContent:
+        # TODO: return bytes here but raise PhotoCop exception on match??
         mm = message.content.mediaMessage
         payload = mm.WhichOneof("payload")
         if payload is None:
