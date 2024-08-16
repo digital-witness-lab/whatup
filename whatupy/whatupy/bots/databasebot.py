@@ -359,22 +359,25 @@ class DatabaseBot(BaseBot):
     async def _handle_media_content(
         self,
         message: wuc.WUMessage,
-        content: bytes,
+        content: wuc.MediaContent,
         error: Exception | None,
         datum: dict,
         content_url=None,
     ):
         if content_url is not None:
             datum["content_url"] = str(content_url)
-        elif content:
+        elif content.Body:
             chat_jid = utils.jid_to_str(message.info.source.chat)
             datum["content_url"] = self.write_media(
-                content, datum["filename"], [chat_jid, "media"]
+                content.Body, datum["filename"], [chat_jid, "media"]
             )
         else:
             self.logger.critical(
                 "Empty media body... Writing empty media URI: %s", datum
             )
+        datum["photocop_match"] = content.PhotoCop.IsMatch
+        datum["photocop_match_source"] = ",".join(m.Source for m in content.PhotoCop.Matches)
+        datum["photocop_match_violations"] = ",".join(v for m in content.PhotoCop.Matches for v in m.Violations)
         datum["error"] = None if error is None else str(error)
         datum[RECORD_MTIME_FIELD] = datetime.now()
         self.db["media"].upsert(datum, ["filename"])
