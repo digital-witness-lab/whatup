@@ -13,7 +13,7 @@ from sqlalchemy.sql import func
 from .. import utils
 from ..protos import whatupcore_pb2 as wuc
 from .lib import flatten_proto_message
-from . import ArchiveData, BaseBot
+from . import ArchiveData, BaseBot, PhotoCopMatchException
 from .chatbot import ChatBot
 
 
@@ -301,9 +301,10 @@ class DatabaseBot(BaseBot):
         callback = partial(self._handle_media_content, datum=datum)
         if is_archive:
             mp = archive_data.MediaPath
+            error = archive_data.PhotoCopDecision
             if mp is not None and mp.exists():
                 content = mp.read_bytes()
-                await callback(message, content, None)
+                await callback(message, content, error)
             else:
                 await callback(message, bytes(), Exception("No media in archive"))
         else:
@@ -332,10 +333,10 @@ class DatabaseBot(BaseBot):
             db["messages"].upsert(message_flat, ["id"])
         self.logger.debug("Done updating message: %s", message.info.id)
 
-    def media_url(self, filename: str, path_prefixes: T.List[str]) -> AnyPath:
+    def media_url(self, filename: str, path_prefixes: T.List[str | None]) -> AnyPath:
         path_elements = [
             self.media_base_path,
-            *path_prefixes,
+            *filter(None, path_prefixes),
             filename[0],
             filename[1],
             filename[2],
@@ -348,7 +349,7 @@ class DatabaseBot(BaseBot):
         self,
         content: bytes | None,
         filename: str,
-        path_prefixes: T.Optional[T.List[str]],
+        path_prefixes: T.Optional[T.List[str | None]],
     ) -> str:
         path_prefixes = path_prefixes or []
         filepath = self.media_url(filename, path_prefixes)
@@ -359,25 +360,30 @@ class DatabaseBot(BaseBot):
     async def _handle_media_content(
         self,
         message: wuc.WUMessage,
-        content: wuc.MediaContent,
+        content: bytes | None,
         error: Exception | None,
         datum: dict,
         content_url=None,
     ):
         if content_url is not None:
             datum["content_url"] = str(content_url)
-        elif content.Body:
+        elif content:
             chat_jid = utils.jid_to_str(message.info.source.chat)
             datum["content_url"] = self.write_media(
-                content.Body, datum["filename"], [chat_jid, "media"]
+                content, datum["filename"], [chat_jid, "media"]
             )
         else:
             self.logger.critical(
                 "Empty media body... Writing empty media URI: %s", datum
             )
-        datum["photocop_match"] = content.PhotoCop.IsMatch
-        datum["photocop_match_source"] = ",".join(m.Source for m in content.PhotoCop.Matches)
-        datum["photocop_match_violations"] = ",".join(v for m in content.PhotoCop.Matches for v in m.Violations)
+        if isinstance(error, PhotoCopMatchException):
+            datum["photocop_match"] = error.decision.IsMatch
+            datum["photocop_match_source"] = ",".join(
+                m.Source for m in error.decision.Matches
+            )
+            datum["photocop_match_violations"] = ",".join(
+                v for m in error.decision.Matches for v in m.Violations
+            )
         datum["error"] = None if error is None else str(error)
         datum[RECORD_MTIME_FIELD] = datetime.now()
         self.db["media"].upsert(datum, ["filename"])
