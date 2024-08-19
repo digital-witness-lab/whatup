@@ -3,6 +3,7 @@ from typing import TypeVar
 from .basebot import (
     ArchiveData,
     BaseBot,
+    PhotoCopMatchException,
     BotCommandArgs,
     BotCommandArgsException,
     InvalidCredentialsException,

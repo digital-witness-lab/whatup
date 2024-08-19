@@ -13,6 +13,7 @@ from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
 from . import BaseBot
 from .chatbot import ChatBot
+from . import PhotoCopMatchException
 
 logger = logging.getLogger(__name__)
 
@@ -171,13 +172,16 @@ class ArchiveBot(BaseBot):
     async def _handle_media_content(
         self,
         message: wuc.WUMessage,
-        media_bytes: bytes,
+        media_bytes: bytes | None,
         error: Exception | None,
         media_path: Path,
         media_filename: str,
     ):
         error_path = media_path.with_suffix(".log")
-        if error is not None:
+        if isinstance(error, PhotoCopMatchException):
+            photo_cop_path = media_path.with_suffix(".photocop.json")
+            photo_cop_path.write_text(utils.protobuf_to_json(error.decision))
+        elif error is not None:
             error_path.write_text(f"Error reading media content: {error}")
         elif not media_bytes:
             self.logger.critical(
