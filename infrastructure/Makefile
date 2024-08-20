@@ -1,6 +1,11 @@
 .PHONY: auth-% select-project-% lint-ci
 
 
+select-project-carter-sl:
+	@echo "Selecting carter-sl stack"
+	pulumi org set-default mynameisfiber
+	pulumi stack select mynameisfiber/carter-sl
+
 select-project-carter:
 	@echo "Selecting carter stack"
 	pulumi org set-default mynameisfiber
