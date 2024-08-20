@@ -559,7 +559,7 @@ class BaseBot:
         is_history: bool = False,
         is_archive: bool = False,
         archive_data: T.Optional[ArchiveData] = None,
-    ):
+    ) -> None:
         pass
 
     async def process_archive(self, filenames: T.List[Path]):
