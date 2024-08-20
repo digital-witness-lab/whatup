@@ -301,7 +301,9 @@ class DatabaseBot(BaseBot):
         callback = partial(self._handle_media_content, datum=datum)
         if is_archive:
             mp = archive_data.MediaPath
-            error = archive_data.PhotoCopDecision
+            error = None
+            if archive_data.PhotoCopDecision is not None:
+                error = PhotoCopMatchException(archive_data.PhotoCopDecision)
             if mp is not None and mp.exists():
                 content = mp.read_bytes()
                 await callback(message, content, error)
