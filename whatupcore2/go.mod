@@ -1,6 +1,6 @@
 module github.com/digital-witness-lab/whatup/whatupcore2
 
-go 1.19
+go 1.22
 
 require (
 	github.com/alexedwards/argon2id v0.0.0-20230305115115-4b3c3280a736
