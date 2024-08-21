@@ -50,7 +50,7 @@ db_url_secret_source = cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs
     secret_key_ref=JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
         secret=db_url_secrets["whatupcore"].name,
         version="latest",
-    )
+    ),
 )
 
 anon_key_secret_manager_perm = secretmanager.SecretIamMember(
