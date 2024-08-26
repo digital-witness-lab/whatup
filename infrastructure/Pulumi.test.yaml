@@ -27,6 +27,7 @@ config:
       type: E2Small
     - serviceName: null
       type: E2Micro
+  whatup:enabledServices:
   whatup:msgPassword:
     secure: AAABADidjer3HeL9MDtQF7uJ/cCA0T0aLaKA4Scm1DLzScD5s5oJhXR3fF+TurCdwU69uOUV08u1VzAbZABQcsH5UkBAY77Bm/G8PNxLxbTa6lLszF1+0fpRrPy0YzrK
   whatup:primary_bot_name: flo

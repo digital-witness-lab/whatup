@@ -32,6 +32,10 @@ config:
       type: E2Micro
     - serviceName: null
       type: E2Micro
+  whatup:enabledServices:
+    - bot-archive
+    - bot-db
+    - bot-user-services
   whatup:msgPassword:
     secure: AAABAKfrD/12malL0Q0nCRA3CQhjJ/iG/bf66DtnFqZ+5Q7yKVHMMe5AGxD4qJrWV92sFgA0UMpFLRX0XCP6RrlFBDNd/cOQwfUQ/TL5V+XJASjWvJ5yaJLbUSl5CK6daMcAjXcwFRE7cPXWHtuW++ELA7OT/sR0isM6ICQlmxo6Jal0FiZXarhII4F7ga46L14Lv+d7tHaarfKPwMBJ6w==
   whatup:primary_bot_name: heather
