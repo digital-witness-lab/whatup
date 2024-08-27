@@ -236,12 +236,12 @@ def protobuf_to_json_list(proto_objs) -> str:
     return json.dumps(data, cls=WhatUpyJSONEncoder)
 
 
-def jsons_to_protobuf(jsons: str, proto_type: Generic) -> Generic:
+def jsons_to_protobuf(jsons: str, proto_type: T.Type[Generic]) -> Generic:
     data = json.loads(jsons, cls=WhatUpyJSONDecoder)
     return ParseDict(data, proto_type(), ignore_unknown_fields=True)
 
 
-def json_list_to_protobuf_list(jsons: str, proto_type: Generic) -> T.List[Generic]:
+def json_list_to_protobuf_list(jsons: str, proto_type: T.Type[Generic]) -> T.List[Generic]:
     data = json.loads(jsons, cls=WhatUpyJSONDecoder)
     object_list: T.List[Generic] = []
     for item in data:
