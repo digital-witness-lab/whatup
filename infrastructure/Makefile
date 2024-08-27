@@ -1,15 +1,23 @@
 .PHONY: auth-% select-project-% lint-ci
 
 
+select-project-carter-sl:
+	@echo "Selecting carter-sl stack"
+	pulumi org set-default mynameisfiber
+	pulumi stack select mynameisfiber/carter-sl
+	gcloud config set project $$( pulumi config get gcp:project )
+
 select-project-carter:
 	@echo "Selecting carter stack"
 	pulumi org set-default mynameisfiber
 	pulumi stack select mynameisfiber/carter
+	gcloud config set project $$( pulumi config get gcp:project )
 
 select-project-test:
 	@echo "Selecting test stack"
 	pulumi org set-default digitalwitnesslab
 	pulumi stack select digitalwitnesslab/test
+	gcloud config set project $$( pulumi config get gcp:project )
 
 select-project-prod:
 	@echo "SELECTING PROD STACK!!!"
@@ -17,6 +25,7 @@ select-project-prod:
 	@echo "SELECTING PROD STACK!!!"
 	pulumi org set-default mynameisfiber
 	pulumi stack select mynameisfiber/prod
+	gcloud config set project $$( pulumi config get gcp:project )
 
 auth-%:
 	@echo "Running make select-project-$*"
@@ -26,7 +35,6 @@ auth-%:
 auth:
 	gcloud auth login
 	gcloud auth application-default login
-	gcloud config set project $$( pulumi config get gcp:project )
 	make auth-docker
 
 auth-docker:

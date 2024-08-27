@@ -1,0 +1,53 @@
+config:
+  gcp:project: whatup-carter-sl
+  gcp:region: us-central1
+  gcp:zone: us-central1-a
+  google-native:project: whatup-carter-sl
+  google-native:region: us-central1
+  google-native:zone: us-central1-a
+  whatup:bqDatasetRegion: US
+  whatup:control_groups:
+    - pilot6@g.us # pilot6
+  whatup:databases:
+    - name: messages
+      nameShort: msg
+      passwordKey: msgPassword
+    - name: whatupcore
+      nameShort: wuc
+      passwordKey: wucPassword
+    - name: users
+      nameShort: usr
+      passwordKey: usrPassword
+  whatup:dbRootPassword:
+    secure: AAABAL9LiWPIn3LT6zbN7WKo/TUDg9Ky8A/CjtxVSZiQcaLPx19BUubfbMPGf8DfHOo4AR9DXnFekfwznkqPlI05Oak5MnYE75AnGuz8RZhMjDrcF2H6QsRM8HV5LroCcko3WYpY+GRZSQyYC7Vq1ilOvJV6xbRd6qLUnN44tW8mtr+BC018Nhi0NL8wI/w00xJEa/f8pI4hDgawiBkH+w==
+  whatup:isProd: "true"
+  whatup:loadArchiveJob: "false"
+  whatup:machineTypes:
+    - serviceName: whatupcore2
+      type: E2Small
+    - serviceName: bot-db
+      type: E2Micro
+    - serviceName: bot-archive
+      type: E2Micro
+    - serviceName: null
+      type: E2Micro
+  whatup:msgPassword:
+    secure: AAABANwGrHQzMdloMLgqEX1VWB5AQhFZE93qWhpsEHO/SUN5vM2V21phz3+avfSkulYoDamYcI5V3A2HaOj/JCOl5DnWP0BbsLc/ctL4w6gAyBuF0P4Q1H4yBLuWhHa0SVE+kj23sDXI5T8V8xT8axiNhDvfaRFQA/BitfHhP4y7SvalaSb8os7JB8/7PySZoaLpK1nqQpJ4G9zQz3XEvQ==
+  whatup:primary_bot_name: heather
+  whatup:temp_bucket_ttl_days: "1"
+  whatup:translationEnabled: "false"
+  whatup:enabledServices:
+    - bot-archive
+    - bot-db
+    - bot-user-services
+    - bot-register
+  whatup:usrPassword:
+    secure: AAABAK5MmJLb5nINRupyDeKwl9J2CnR75pwV/yhdY0G9Bj/aJLdSX03vQvNbC8mBHLRe1BrXqEAzdjNDUxAI9nhAWqkNmS98+wQoziKC2QChae5wULKHdg8buyDS1/RCvqpYCrA1OkeZQgmdKBGxuEI4RTgLBWiYJHp4RyvAj5JiYjX2Bunl+EbJy8YDjiMjROqpBYNk8sktRX80gOzq7g==
+  whatup:whatupAnonKey:
+    secure: AAABANG0QM8SbLLGgJdWJlgwiofmBq3ZlnZOu/fObujr0YNWujRW+GAuaI0XDrbEKDknNThRL7moD9r0RId+5CfswewRavL60IPJuDy1q60Tq3j4G1xSqNFWwNG2plSQ8zZWR8cthsreE+TJUUe31o8HrElqPfKLbQ6sXwWtzkX6hUCTKOahvti4UI2RW7/CKWrvVVKJE5RgtghqeCXjTg==
+  whatup:whatupLoginProxy:
+    secure: AAABAMLC1LwBUlNUnLFkp2iEqhavUpy8MCKVvciNh0oD5HjCSzdTttC+3YUmuRU/rBlLApIFQlUSSJ0fF46IMAnHYsLGjm/q4XG/2PDerwwHwEbOo7R7CZ0kEwCZVFuxVX0brRPr6Jymgt8ZOi1MpjTYQFNPT06mW3sWfV/Svw==
+  whatup:whatupSalt:
+    secure: AAABAOZfM8LiG/QUAs5IbsKQOGp7wgyZvx8MkjVfeywuwMUbad+pSDTDLMcE93ge3GqsQ4QVxVlSSVDdyO3aXfVQbk+yYFHkUmXNV7i6Mqy5/q3IQgkR2B005olb6qGEKR/rGkkj3qz+oxeaqgOHbB+kvdcAfMQsm34r/sYiJie1hNxkCVbMiZKUOrVbufdvWHIlaWwQXjyEj1o+ptuk/A==
+  whatup:wucPassword:
+    secure: AAABALcB03SWDpNOsyLqZOOFqy1uK7It6TWKabCArqrCpAZxwbHGobU+5USflJNiwt2s0JxLBLSnKpIs0wmE4W54GMqz8Ck7bqcPbIlHVB70+bRwQlxUBSZOV3lvmddFGKIknikqM0jA27GooXUQr4tkCSeeZZOJJdiv+nro0BspnC1mg833tiOI2AOvZh+hbMsSjlK6V75+q7cymhxWbg==

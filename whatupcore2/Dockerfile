@@ -4,7 +4,7 @@ ARG LOG_CLEANER_REPO=log-cleaner:latest
 FROM $CONFIGURE_VM_SECRETS_REPO as configure-vm-secrets
 FROM $LOG_CLEANER_REPO as log-cleaner
 
-FROM golang:1.20-bullseye AS whatupcore2
+FROM golang:1.22-bullseye AS whatupcore2
 
 WORKDIR /build
 

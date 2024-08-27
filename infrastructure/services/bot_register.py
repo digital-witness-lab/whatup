@@ -18,6 +18,7 @@ from storage import sessions_bucket
 
 from .whatupcore2 import ssl_cert_pem_secret, whatupcore2_service
 
+
 service_name = "bot-register"
 
 service_account = serviceaccount.Account(

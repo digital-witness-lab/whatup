@@ -57,6 +57,8 @@ is_prod = config.get_bool("isProd", False) or False
 load_archive_job = config.get_bool("loadArchiveJob", False)
 translation_enabled = config.get_bool("translationEnabled", False)
 
+enabledServices = config.require_object("enabledServices")
+
 # Import the provider's configuration settings.
 gcp_config = pulumi.Config("gcp")
 location = gcp_config.require("region")
