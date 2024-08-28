@@ -24,7 +24,7 @@ service_account = serviceaccount.Account(
 bigquery_user_perm = bigquery.DatasetIamMember(
     "api-data-bq-user-perm",
     bigquery.DatasetIamMemberArgs(
-        dataset_id=messages_dataset.id,
+        dataset_id=messages_dataset.dataset_id,
         role="roles/bigquery.user",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
@@ -33,7 +33,7 @@ bigquery_user_perm = bigquery.DatasetIamMember(
 bigquery_jobs_perm = bigquery.DatasetIamMember(
     "api-data-bq-job-perm",
     bigquery.DatasetIamMemberArgs(
-        dataset_id=messages_dataset.id,
+        dataset_id=messages_dataset.dataset_id,
         role="roles/bigquery.jobUser",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
@@ -74,7 +74,7 @@ api_data = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="BIGQUERY_DATASET_ID",
-                value=messages_dataset.id,
+                value=messages_dataset.dataset_id,
             ),
         ],
     ),
