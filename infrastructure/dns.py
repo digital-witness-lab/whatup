@@ -1,8 +1,8 @@
 import pulumi
-from pulumi import get_stack
+from pulumi import get_stack, Output
 import pulumi_gcp as gcp
 
-from config import root_domain
+from config import root_domain, project
 from service import Service
 
 
@@ -39,23 +39,26 @@ def create_subdomain(subdomain, targets):
         f"{subdomain}-{get_stack()}-dns-record",
         managed_zone=dns_zone.name,
         name=f"{domain}.",
-        type="A",
+        type="CNAME",
         ttl=300,
         rrdatas=targets,
     )
     return domain
 
 
-def create_subdomain_service(subdomain, service: Service) -> str:
-    cr_service = service._service
-    url = cr_service.traffic_statuses.apply(lambda s: s[0].url)
+def create_subdomain_service(
+    subdomain, service: Service
+) -> Output[str | None]:
+    cr_service = service.service
+    url = service.get_url()
+    pulumi.export(f"Service URI: {subdomain}", url)
     if dns_zone is None:
         return url
 
     subdomain = subdomain.strip(".")
     domain = create_subdomain(
         subdomain,
-        [url],
+        ["ghs.googlehosted.com."],
     )
     # Map the custom domain to the Cloud Run service
     domain_mapping = gcp.cloudrun.DomainMapping(
@@ -64,7 +67,7 @@ def create_subdomain_service(subdomain, service: Service) -> str:
             name=domain,
             location=cr_service.location,
             metadata=gcp.cloudrun.DomainMappingMetadataArgs(
-                namespace=cr_service.id,
+                namespace=project,
             ),
             spec=gcp.cloudrun.DomainMappingSpecArgs(
                 route_name=cr_service.name,

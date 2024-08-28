@@ -1,6 +1,6 @@
 import hashlib
 import warnings
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 import pulumi_docker as docker
 from attr import dataclass, field
@@ -40,7 +40,9 @@ class ServiceArgs:
         cloudrunv2.ServiceTemplateVpcAccessNetworkInterfaceArgs
     ] = field(default=None)
 
-    request_timeout: int = (field(default=60 * 60),)
+    request_timeout: int = field(default=60 * 60)
+    protocol: Literal["h2c", "http1"] = field(default="h2c")
+
     envs: Optional[List[cloudrunv2.ServiceTemplateContainerEnvArgs]] = field(
         default=None
     )
@@ -141,7 +143,10 @@ class Service(ComponentResource):
     def service(self):
         return self._service
 
-    def get_host(self):
+    def get_url(self) -> Output[str]:
+        return self._service.uri
+
+    def get_host(self) -> Output[str]:
         return Output.apply(
             self._service.uri,
             lambda u: u.replace("https://", ""),
@@ -209,7 +214,7 @@ class Service(ComponentResource):
                             # This enables end-to-end HTTP/2 (gRPC)
                             # as described in:
                             # https://cloud.google.com/run/docs/configuring/http2
-                            name="h2c",
+                            name=props.protocol,
                             container_port=props.container_port,
                         ),
                     ]
