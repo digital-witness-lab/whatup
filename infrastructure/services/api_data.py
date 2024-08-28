@@ -10,7 +10,7 @@ from pulumi_gcp import (
 from artifact_registry import diwi_api_image
 from service import Service, ServiceArgs
 from storage import media_bucket
-from bigquery import messages_dataset
+from bigquery import bq_dataset_id
 from dns import create_subdomain_service
 
 service_name = "api-data"
@@ -24,17 +24,8 @@ service_account = serviceaccount.Account(
 bigquery_user_perm = bigquery.DatasetIamMember(
     "api-data-bq-user-perm",
     bigquery.DatasetIamMemberArgs(
-        dataset_id=messages_dataset.dataset_id,
+        dataset_id=bq_dataset_id,
         role="roles/bigquery.user",
-        member=Output.concat("serviceAccount:", service_account.email),
-    ),
-)
-
-bigquery_jobs_perm = bigquery.DatasetIamMember(
-    "api-data-bq-job-perm",
-    bigquery.DatasetIamMemberArgs(
-        dataset_id=messages_dataset.dataset_id,
-        role="roles/bigquery.jobUser",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
 )
@@ -74,7 +65,7 @@ api_data = Service(
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="BIGQUERY_DATASET_ID",
-                value=messages_dataset.dataset_id,
+                value=bq_dataset_id,
             ),
         ],
     ),
