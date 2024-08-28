@@ -46,6 +46,7 @@ api_data = Service(
         args=["data-api"],
         concurrency=50,
         container_port=8080,
+        protocol="http1",
         cpu="1",
         # Route all egress traffic via the VPC network.
         egress="ALL_TRAFFIC",
