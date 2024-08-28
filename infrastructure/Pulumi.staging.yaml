@@ -1,0 +1,47 @@
+config:
+  gcp:project: whatup-staging
+  gcp:region: us-central1
+  gcp:zone: us-central1-a
+  google-native:project: whatup-staging
+  google-native:region: us-central1
+  google-native:zone: us-central1-a
+  whatup:bqDatasetRegion: US
+  whatup:control_groups:
+    - 120363159470639781@g.us
+  whatup:databases:
+    - name: messages
+      nameShort: msg
+      passwordKey: msgPassword
+    - name: whatupcore
+      nameShort: wuc
+      passwordKey: wucPassword
+    - name: users
+      nameShort: usr
+      passwordKey: usrPassword
+  whatup:dbRootPassword:
+    secure: AAABAE6NTqu6stQ5wNcKG0f4t6D696pDKupkvshnne0A5T1TxPjSSXn0CPQY2wxU7qvEyg0yKWsFjL51jlTUYOE2KzLVch5dDbp7lvu23XPudZyHgEogFUMInuURR4I87FiIa4EIIs93A3eRqR/ofyPNvnRvTuWpNpNGpee148X83VqDIBY618qHtPa7YnVVtXVDG6vDotp5EmNHTPikCQ==
+  whatup:enabledServices:
+    - api-data
+  whatup:isProd: "false"
+  whatup:loadArchiveJob: "false"
+  whatup:machineTypes:
+    - serviceName: whatupcore2
+      type: E2Small
+    - serviceName: null
+      type: E2Micro
+  whatup:msgPassword:
+    secure: AAABACeSfLNEW4PSFWqF1cc+z1zh1lMmlFWlAE3K8bc5NX5MaLHR2GlEmKaUcP3i1fSsDRJpNAE4zxqHx6GySaKGPM7oOok3FuezRq2uVhvVktL7Y3ifInzI7FA+21Rssk/u3gSLUbCR9qpBGYikoOpIJhfv2UVWBZZIoBeIydmMiODRaG2hXKJ+yK8BIY8qI0vWk1xJ9M4DXu9bPXM0xQ==
+  whatup:primary_bot_name: flo
+  whatup:rootDomain: gt.digitalwitnesslab.org
+  whatup:temp_bucket_ttl_days: "1"
+  whatup:translationEnabled: "true"
+  whatup:usrPassword:
+    secure: AAABAHq39TpBJirQuA7UvRRuBvRZv9wZEHG0lC3N4mbz1n2IrsuhoscoiKiWcflqMmg+fa3uxJq+pY5UPBZwn5LrLUWULCkMsfuiASU6w27+iyMHvCtfgTALd+5tWr23+ozlAT+c9NhVozvXVW5aWgjxgNDwIsNChqBTOJkOVsu+NYoeJoBki3Ueb2ESY4Cqt2QoRcM9nyRybDPd2e82pg==
+  whatup:whatupAnonKey:
+    secure: AAABALsuGGKSTicWS39/2Wisy2AG5W+vlQGGvzUlco5gO3btaURrb8Mr3v1y+l8wnObNKeK7qu33cBfHNPyj29pVQSL5HJW6aol8umT8elkMIvk89HIUj6hYlqQ+gl6CrzZ2bArqsE8f+QDVlDBHzZnofrRfj3rOQsSKSLEu/Uj4oJ/18MWLYyMl+g8lOypo/ivn5GK2KoGUaLzl4v43CA==
+  whatup:whatupLoginProxy:
+    secure: AAABAFP5SUco971zzEKEjo2BBPg9cIOw+Becuk/ksry5Gof2WOxFob/2nSpxtPcKY2pXZ8QeYPpUTJYUffZvFg/OM9Nq89gnvfpDUdDLuJ5mexltHEb87petfBsJxVpV9a7N7zbF+vllocNR3STpQgBZorGhsfI=
+  whatup:whatupSalt:
+    secure: AAABANiQegtTuf3yt14YKiuK8JPBErs/fytTVf4jRq6F+tTf3tQycxFV0MMln4fOrzjDk6WY+RMdSdi9pAN39sxpNmegOA/8jsFHio4iqYfmGgtH4Io8vyqCWpjeifJivFnu1LrgsCdIxgKFlfDmO24C/7DhDls0ZEdifgPXGUXRhFgwjMtf+aP69L2Yjl2kt+YJ+LVB5kfTWvB7Equhwg==
+  whatup:wucPassword:
+    secure: AAABAB7WpD1flNM8bK6r03yWVfWd9qqYsFKMcfWzbUM04dW/QWc9ugfzTIfA2XwG7+3cJuAy6dxscUDv62MMnR6obWZmCD1gnXoLQCzZ/19qsUw8q/7kxEC8bh+bPsLxzc75Ds0yjFlb6YCdcHhB9hN/RE+G1QnvRRi2brradwZzM34Yth6dkdCPcf8CUWjsiJxqt1bV1CfoTkHEnrizVQ==
