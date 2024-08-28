@@ -40,6 +40,7 @@ class ServiceArgs:
         cloudrunv2.ServiceTemplateVpcAccessNetworkInterfaceArgs
     ] = field(default=None)
 
+    request_timeout: int = (field(default=60 * 60),)
     envs: Optional[List[cloudrunv2.ServiceTemplateContainerEnvArgs]] = field(
         default=None
     )
@@ -87,7 +88,7 @@ class Service(ComponentResource):
                     scaling=cloudrunv2.ServiceTemplateScalingArgs(
                         min_instance_count=1, max_instance_count=1
                     ),
-                    timeout=f"{60*60}s",  # 1hr is the max time allowed by cloudrun
+                    timeout=f"{props.request_timeout}s",  # 1hr is the max time allowed by cloudrun
                     vpc_access=cloudrunv2.ServiceTemplateVpcAccessArgs(
                         egress=props.egress,
                         network_interfaces=(

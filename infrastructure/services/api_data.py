@@ -12,6 +12,7 @@ from service import Service, ServiceArgs
 from storage import media_bucket
 from bigquery import bq_dataset_id
 from dns import create_subdomain_service
+from network import public_services_network, vpc_public
 
 service_name = "api-data"
 
@@ -55,9 +56,13 @@ api_data = Service(
         memory="1Gi",
         public_access=True,
         service_account=service_account,
+        request_timeout=60,
         # Specifying the subnet causes CloudRun to use
         # Direct VPC egress for outbound traffic based
         # on the value of the `egress` property above.
+        subnet=cloudrunv2.ServiceTemplateVpcAccessNetworkInterfaceArgs(
+            network=vpc_public.id, subnetwork=public_services_network.id
+        ),
         envs=[
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="MEDIA_BUCKET",
@@ -72,6 +77,7 @@ api_data = Service(
     opts=ResourceOptions(
         depends_on=[
             media_bucket_perm,
+            bigquery_user_perm,
         ]
     ),
 )
