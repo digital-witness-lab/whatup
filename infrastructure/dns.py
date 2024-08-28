@@ -29,12 +29,6 @@ def create_subdomain(subdomain, targets):
     subdomain = subdomain.strip(".")
     domain = f"{subdomain}.{root_domain}"
 
-    managed_certificate = gcp.compute.ManagedSslCertificate(
-        f"{subdomain}-{get_stack()}-certificate",
-        managed=gcp.compute.ManagedSslCertificateManagedArgs(domains=[domain]),
-        name=f"{subdomain}-{get_stack()}-certificate",
-    )
-
     dns_record = gcp.dns.RecordSet(
         f"{subdomain}-{get_stack()}-dns-record",
         managed_zone=dns_zone.name,
