@@ -1,4 +1,5 @@
 from functools import wraps
+from typing import List
 from dataclasses import dataclass
 
 import aiohttp
@@ -27,7 +28,7 @@ GOOGLE_CLIENT_ID = google_creds["web"]["client_id"]
 GOOGLE_CLIENT_SECRET = google_creds["web"]["client_secret"]
 
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
-GOOGLE_GROUP = os.environ["GOOGLE_AUTH_GROUP"]
+GOOGLE_AUTH_GROUP_DEFAULT = os.environ["GOOGLE_AUTH_GROUP_DEFAULT"]
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 
@@ -36,29 +37,48 @@ class User:
     email: str
     name: str
     picture: str
+    groups: List[str]
 
 
-def authorized(fxn):
-    @wraps(fxn)
-    async def _(request, *args, **kwargs):
-        token = request.cookies.get("access_token")
+class AuthorizedRequest(web.BaseRequest):
+    user: User
 
-        if not token:
-            return web.json_response({"error": "Unauthorized"}, status=401)
 
-        try:
-            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        except jwt.ExpiredSignatureError:
-            return web.json_response({"error": "Token expired"}, status=401)
-        except jwt.InvalidTokenError:
-            return web.json_response({"error": "Invalid token"}, status=401)
+def authorized(authorized_groups: List[str] | str = GOOGLE_AUTH_GROUP_DEFAULT):
+    if isinstance(authorized_groups, str):
+        authorized_groups = authorized_groups.split(",")
+    groups = set(authorized_groups)
 
-        user = User(
-            email=payload["email"],
-            name=payload["name"],
-            picture=payload["picture"],
-        )
-        return await fxn(request, *args, user=user, **kwargs)
+    def _(fxn):
+        @wraps(fxn)
+        async def __(request: web.BaseRequest):
+            token = request.cookies.get("access_token")
+
+            if not token:
+                return web.json_response({"error": "Unauthorized"}, status=401)
+
+            try:
+                payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            except jwt.ExpiredSignatureError:
+                return web.json_response({"error": "Token expired"}, status=401)
+            except jwt.InvalidTokenError:
+                return web.json_response({"error": "Invalid token"}, status=401)
+
+            print(payload)
+            print(groups)
+            if not groups.intersection(payload["groups"]):
+                return web.json_response({"error": "User not authorized"}, status=403)
+
+            user = User(
+                email=payload["email"],
+                name=payload["name"],
+                picture=payload["picture"],
+                groups=payload["groups"],
+            )
+            request.user = user
+            return await fxn(request)
+
+        return __
 
     return _
 
@@ -80,7 +100,7 @@ async def login(request):
             "openid",
             "email",
             "profile",
-            "https://www.googleapis.com/auth/admin.directory.group.member.readonly",
+            "https://www.googleapis.com/auth/admin.directory.group.readonly",
         ],
     )
     return web.HTTPFound(location=request_uri)
@@ -122,18 +142,19 @@ async def callback(request):
             {"error": "User email not verified by Google"}, status=400
         )
 
-    if not await is_user_in_group(userinfo["email"], GOOGLE_GROUP, token_response_data):
+    user_groups = await get_user_groups(userinfo["email"], token_response_data)
+    if not user_groups:
         return web.json_response(
-            {"error": "User is not a member of the required Google Group"}, status=403
+            {"error": "User has no possible authorizations"}, status=403
         )
 
-    print(userinfo)
     exp = datetime.now(tz=timezone.utc) + timedelta(seconds=JWT_EXP_DELTA_SECONDS)
     access_token = jwt.encode(
         {
             "email": userinfo["email"],
             "name": userinfo["given_name"],
             "picture": userinfo["picture"],
+            "groups": list(user_groups),
             "exp": exp,
         },
         JWT_SECRET,
@@ -157,19 +178,47 @@ async def logout(request):
     return response
 
 
-async def is_user_in_group(user_email, group_name, token_response_data):
+async def get_user_groups(
+    user_email, token_response_data, domain="digitalwitnesslab.org"
+):
+    """
+    Retrieves all groups that the user is a member of within the specified domain.
+
+    :param user_email: The email of the user whose groups are being fetched.
+    :param token_response_data: The token data obtained after user authentication.
+    :param domain: The domain within which to look for groups (default is "digitalwitnesslab.org").
+    :return: A list of group names that the user is a member of within the specified domain.
+    """
     creds = google_credentials.Credentials(token_response_data["access_token"])
     service = googleapiclient.discovery.build(
         "admin", "directory_v1", credentials=creds
     )
 
+    user_groups = []
+    page_token = None
+
     try:
-        group_members = service.members().list(groupKey=group_name).execute()
-        emails = [member["email"] for member in group_members.get("members", [])]
-        return user_email in emails
+        # Iterate over all groups in the domain
+        while True:
+            results = (
+                service.groups()
+                .list(domain=domain, userKey=user_email, pageToken=page_token)
+                .execute()
+            )
+            groups = results.get("groups", [])
+
+            for group in groups:
+                user_groups.append(group["email"])
+
+            page_token = results.get("nextPageToken", None)
+            if not page_token:
+                break
+
     except Exception as e:
-        print(f"Error checking group membership: {e}")
-        return False
+        print(f"Error fetching user groups: {e}")
+        return []
+
+    return user_groups
 
 
 def init(app: web.Application) -> web.Application:
