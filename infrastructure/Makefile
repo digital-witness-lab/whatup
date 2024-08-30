@@ -19,6 +19,12 @@ select-project-test:
 	pulumi stack select digitalwitnesslab/test
 	gcloud config set project $$( pulumi config get gcp:project )
 
+select-project-staging:
+	@echo "Selecting staging stack"
+	pulumi org set-default digitalwitnesslab
+	pulumi stack select digitalwitnesslab/staging
+	gcloud config set project $$( pulumi config get gcp:project )
+
 select-project-prod:
 	@echo "SELECTING PROD STACK!!!"
 	@echo "SELECTING PROD STACK!!!"

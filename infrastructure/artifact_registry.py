@@ -76,3 +76,4 @@ bq_init_schema_image: docker.Image = create_image(
     "bq-init-schema", "../bq-init-schema/"
 )
 hash_gen_image: docker.Image = create_image("hash-gen", "../hash-gen/")
+diwi_api_image: docker.Image = create_image("diwi-api", "../diwi-api/")

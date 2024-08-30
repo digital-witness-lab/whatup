@@ -61,7 +61,6 @@ n_instances = 1 if load_archive_job else 0
 db_migrations_vm = ContainerOnVm(
     service_name,
     ContainerOnVmArgs(
-        automatic_static_private_ip=False,
         machine_type=machine_type,
         is_spot=True,
         n_instances=n_instances,
