@@ -1,7 +1,6 @@
 from pulumi import Output, ResourceOptions, get_stack
 from pulumi_gcp import (
     cloudrunv2,
-    secretmanager,
     serviceaccount,
     storage,
     bigquery,
