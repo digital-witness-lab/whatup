@@ -29,7 +29,7 @@ def create_subdomain(subdomain, targets):
     subdomain = subdomain.strip(".")
     domain = f"{subdomain}.{root_domain}"
 
-    dns_record = gcp.dns.RecordSet(
+    gcp.dns.RecordSet(
         f"{subdomain}-{get_stack()}-dns-record",
         managed_zone=dns_zone.name,
         name=f"{domain}.",

@@ -1,4 +1,3 @@
-import pulumi
 from pulumi import get_stack
 import pulumi_gcp as gcp
 
