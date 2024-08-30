@@ -64,8 +64,6 @@ def authorized(authorized_groups: List[str] | str = GOOGLE_AUTH_GROUP_DEFAULT):
             except jwt.InvalidTokenError:
                 return web.json_response({"error": "Invalid token"}, status=401)
 
-            print(payload)
-            print(groups)
             if not groups.intersection(payload["groups"]):
                 return web.json_response({"error": "User not authorized"}, status=403)
 
