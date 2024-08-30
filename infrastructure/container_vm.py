@@ -9,7 +9,7 @@ from google.cloud.compute_v1 import (
 )
 from pulumi.resource import ResourceOptions
 from pulumi_gcp import compute as classic_gcp_compute
-from pulumi_gcp import projects
+from pulumi_gcp import projects, artifactregistry
 from pulumi_google_native.compute import v1 as native_compute_v1
 
 from config import (
@@ -19,6 +19,8 @@ from config import (
     machine_types,
     is_prod_stack,
 )
+from artifact_registry import repository
+from roles import artifact_downloader_role
 from gcloud import get_project_number
 from network_firewall import firewall_association
 
@@ -137,14 +139,15 @@ class ContainerOnVm(pulumi.ComponentResource):
         )
 
         # Grant access to pull container image from Artifact Registry.
-        self.__artifact_registry_perm = projects.IAMMember(
-            f"{name}-artifact-reg-perm",
-            args=projects.IAMMemberArgs(
+        self.__artifact_registry_perm = artifactregistry.RepositoryIamMember(
+            f"{name}-artifact-reg-dwn-perm",
+            args=artifactregistry.RepositoryIamMemberArgs(
                 member=pulumi.Output.concat(
                     "serviceAccount:", args.service_account_email
                 ),
-                role="roles/artifactregistry.reader",
+                role=artifact_downloader_role,
                 project=project,
+                repository=repository,
             ),
             opts=pulumi.ResourceOptions(parent=self),
         )
@@ -280,6 +283,11 @@ class ContainerOnVm(pulumi.ComponentResource):
                 ),
                 scheduling=native_compute_v1.SchedulingArgs(
                     provisioning_model=provisioning_model,
+                ),
+                shielded_instance_config=native_compute_v1.ShieldedInstanceConfigArgs(
+                    enable_secure_boot=True,
+                    enable_vtpm=True,
+                    enable_integrity_monitoring=True
                 ),
                 service_accounts=[
                     native_compute_v1.ServiceAccountArgs(
