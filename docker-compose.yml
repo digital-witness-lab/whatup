@@ -13,6 +13,8 @@ secrets:
     file: ./data/static/dev/whatupcore-anon-key.secret
   whatupcore-login-proxy:
     file: ./data/static/dev/whatupcore-login-proxy.secret
+  data-api-google-auth:
+    file: ./data/static/dev/data-api-google-auth.secret
 
 services:
   whatup:
@@ -49,6 +51,21 @@ services:
       - ./scripts/initdb/:/docker-entrypoint-initdb.d/
     ports:
       - 5432:5432
+
+  api-data:
+    platform: linux/x86_64
+    build: ./diwi-api/
+    secrets:
+      - data-api-google-auth
+    ports:
+      - 8080:8080
+    environment:
+      - GOOGLE_AUTH_FILE=/run/secrets/data-api-google-auth
+      - JWT_SECRET=hjdfhaskdufhiudha8ty893uhfsdiluaidufh
+      - GOOGLE_AUTH_GROUP=diwi-dashboard-dev-micha@digitalwitnesslab.org
+      - OAUTHLIB_INSECURE_TRANSPORT=1
+      - PYTHONUNBUFFERED=1
+    command: data-api
 
   bot-archive:
     build: ./whatupy/

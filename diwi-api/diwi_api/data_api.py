@@ -1,30 +1,18 @@
 from aiohttp import web
 
-
-async def handle(request):
-    name = request.match_info.get("name", "Anonymous")
-    text = "Hello, " + name
-    return web.Response(text=text)
+from .lib import authorization
 
 
-async def wshandle(request):
-    ws = web.WebSocketResponse()
-    await ws.prepare(request)
-
-    async for msg in ws:
-        if msg.type == web.WSMsgType.text:
-            await ws.send_str("Hello, {}".format(msg.data))
-        elif msg.type == web.WSMsgType.binary:
-            await ws.send_bytes(msg.data)
-        elif msg.type == web.WSMsgType.close:
-            break
-
-    return ws
+@authorization.authorized
+async def dashboard(request: web.BaseRequest, user: authorization.User):
+    return web.json_response({"logged_in_as": user.email, "name": user.name})
 
 
 def run(*args, **kwargs):
     data_app = web.Application()
-    data_app.add_routes(
-        [web.get("/", handle), web.get("/echo", wshandle), web.get("/{name}", handle)]
-    )
+    authorization.init(data_app)
+
+    data_app.router.add_get("/dashboard", dashboard)
+
+    print("Starting Data API")
     web.run_app(data_app, *args, **kwargs)
