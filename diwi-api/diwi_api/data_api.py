@@ -3,8 +3,9 @@ from aiohttp import web
 from .lib import authorization
 
 
-@authorization.authorized
-async def dashboard(request: web.BaseRequest, user: authorization.User):
+@authorization.authorized()
+async def dashboard(request: authorization.AuthorizedRequest):
+    user = request.user
     return web.json_response({"logged_in_as": user.email, "name": user.name})
 
 

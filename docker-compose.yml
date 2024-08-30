@@ -62,7 +62,7 @@ services:
     environment:
       - GOOGLE_AUTH_FILE=/run/secrets/data-api-google-auth
       - JWT_SECRET=hjdfhaskdufhiudha8ty893uhfsdiluaidufh
-      - GOOGLE_AUTH_GROUP=diwi-dashboard-dev-micha@digitalwitnesslab.org
+      - GOOGLE_AUTH_GROUP_DEFAULT=diwi-dashboard-dev-micha@digitalwitnesslab.org
       - OAUTHLIB_INSECURE_TRANSPORT=1
       - PYTHONUNBUFFERED=1
     command: data-api
