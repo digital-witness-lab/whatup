@@ -1,7 +1,7 @@
 Arpeggio==2.0.2
 attrs==23.1.0
 dill==0.3.7
-grpcio==1.56.2
+grpcio==1.60.1
 parver==0.4
 protobuf==4.24.3
 
@@ -11,19 +11,21 @@ flake8==6.1.0
 pylint==3.0.2
 
 # Cloud Run client library to execute jobs.
-google-cloud-run==0.9.1
+google-cloud-run==0.10.7
 # Google Compute Engine client library to list managed instances.
-google-cloud-compute==1.16.1
+google-cloud-compute==1.19.1
 
-pulumi==3.86.0
-pulumi-docker==4.5.1
-pulumi-gcp==6.67.0
+pulumi==3.125.0
+pulumi-docker==4.5.4
+pulumi-gcp==7.38.0
 pulumi-google-native==0.32.0
-pulumi-random==4.14.0
-pulumi-tls==5.0.0
+pulumi-random==4.16.3
+pulumi-tls==5.0.4
 
 PyYAML==6.0.1
 
 semver==2.13.0
 six==1.16.0
 typing-extensions==4.8.0
+
+setuptools==71.1.0

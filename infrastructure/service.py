@@ -1,8 +1,9 @@
 import hashlib
-from typing import List, Optional
+import warnings
+from typing import List, Optional, Literal
 
 import pulumi_docker as docker
-from attr import dataclass
+from attr import dataclass, field
 from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_gcp import cloudrunv2, serviceaccount
 
@@ -35,9 +36,16 @@ class ServiceArgs:
     # Specify the subnet to use Direct VPC egress instead of
     # serverless VPC connectors for outbound traffic from
     # this service.
-    subnet: cloudrunv2.ServiceTemplateVpcAccessNetworkInterfaceArgs
+    subnet: Optional[
+        cloudrunv2.ServiceTemplateVpcAccessNetworkInterfaceArgs
+    ] = field(default=None)
 
-    envs: Optional[List[cloudrunv2.ServiceTemplateContainerEnvArgs]]
+    request_timeout: int = field(default=60 * 60)
+    protocol: Literal["h2c", "http1"] = field(default="h2c")
+
+    envs: Optional[List[cloudrunv2.ServiceTemplateContainerEnvArgs]] = field(
+        default=None
+    )
 
 
 class Service(ComponentResource):
@@ -58,8 +66,8 @@ class Service(ComponentResource):
         # the internet. We do not expect to have such services deployed
         # via this component resource at this time.
         if props.ingress == "INGRESS_TRAFFIC_ALL" and props.public_access:
-            raise Exception(
-                "Public access with direct ingress traffic from the internet is not allowed"  # noqa: E501
+            warnings.warn(
+                f"Public access with direct ingress traffic from the internet is dangerous: {name}",
             )
 
         child_opts = ResourceOptions(parent=self)
@@ -77,13 +85,17 @@ class Service(ComponentResource):
                 # https://cloud.google.com/run/docs/configuring/vpc-direct-vpc
                 launch_stage="BETA",
                 ingress=props.ingress,
+                annotations={"namespace": f"{name}-svc"},
                 template=cloudrunv2.ServiceTemplateArgs(
                     scaling=cloudrunv2.ServiceTemplateScalingArgs(
                         min_instance_count=1, max_instance_count=1
                     ),
-                    timeout=f"{60*60}s",  # 1hr is the max time allowed by cloudrun
+                    timeout=f"{props.request_timeout}s",  # 1hr is the max time allowed by cloudrun
                     vpc_access=cloudrunv2.ServiceTemplateVpcAccessArgs(
-                        egress=props.egress, network_interfaces=[props.subnet]
+                        egress=props.egress,
+                        network_interfaces=(
+                            [props.subnet] if props.subnet else None
+                        ),
                     ),
                     # https://cloud.google.com/run/docs/configuring/execution-environments#yaml
                     # Read about the differences between gen1 and gen2
@@ -131,7 +143,10 @@ class Service(ComponentResource):
     def service(self):
         return self._service
 
-    def get_host(self):
+    def get_url(self) -> Output[str]:
+        return self._service.uri
+
+    def get_host(self) -> Output[str]:
         return Output.apply(
             self._service.uri,
             lambda u: u.replace("https://", ""),
@@ -183,25 +198,29 @@ class Service(ComponentResource):
                 args=props.args,
                 image=props.image.repo_digest,
                 resources=resources,
-                startup_probe=cloudrunv2.ServiceTemplateContainerStartupProbeArgs(  # noqa: E501
-                    failure_threshold=1,
-                    initial_delay_seconds=60,
-                    timeout_seconds=20,
-                    tcp_socket=cloudrunv2.ServiceTemplateContainerStartupProbeTcpSocketArgs(),  # noqa: E501
-                )
-                if props.container_port is not None
-                else None,
-                ports=[
-                    cloudrunv2.ServiceTemplateContainerPortArgs(
-                        # This enables end-to-end HTTP/2 (gRPC)
-                        # as described in:
-                        # https://cloud.google.com/run/docs/configuring/http2
-                        name="h2c",
-                        container_port=props.container_port,
-                    ),
-                ]
-                if props.container_port is not None
-                else None,
+                startup_probe=(
+                    cloudrunv2.ServiceTemplateContainerStartupProbeArgs(  # noqa: E501
+                        failure_threshold=1,
+                        initial_delay_seconds=60,
+                        timeout_seconds=20,
+                        tcp_socket=cloudrunv2.ServiceTemplateContainerStartupProbeTcpSocketArgs(),  # noqa: E501
+                    )
+                    if props.container_port is not None
+                    else None
+                ),
+                ports=(
+                    [
+                        cloudrunv2.ServiceTemplateContainerPortArgs(
+                            # This enables end-to-end HTTP/2 (gRPC)
+                            # as described in:
+                            # https://cloud.google.com/run/docs/configuring/http2
+                            name=props.protocol,
+                            container_port=props.container_port,
+                        ),
+                    ]
+                    if props.container_port is not None
+                    else None
+                ),
                 envs=envs,
             ),
         )

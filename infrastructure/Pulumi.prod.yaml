@@ -6,11 +6,10 @@ config:
   google-native:region: us-central1
   google-native:zone: us-central1-a
   whatup:bqDatasetRegion: US
+  whatup:rootDomain: g.digitalwitnesslab.org
   whatup:control_groups:
     - c+c-prod@g.us # c+c-prod
-    - pilot1@g.us # pilot1
     - pilot2@g.us # pilot2
-    - pilot3@g.us # pilot3
     - pilot4@g.us # pilot4
   whatup:databases:
     - name: messages
