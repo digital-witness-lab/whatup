@@ -292,15 +292,15 @@ func (wac *WhatsAppClient) presenceTwiddler() {
 
 	defaultAcl, err := wac.aclStore.GetDefault()
     if err != nil && defaultAcl.CanReadWrite() {
-        wac.Log.Infof("Default READ/WRITE ACL... not setting presence to unavailable")
+        wac.Log.Infof("Default READ/WRITE ACL... not setting presence to unavailable ")
         shouldTwiddle = false
+    } else {
+        wac.Log.Infof("Default group ACL for presence twiddler: %s: %d", err, defaultAcl.Permission)
     }
     
 	baseDuration := 30 * time.Minute
-	timer := time.NewTimer(durationWithJitter(baseDuration, 0.25))
-	defer timer.Stop()
 	for {
-		wac.Log.Infof("Twiddling client presence")
+		wac.Log.Infof("Twiddling client presence ")
 		wac.SendPresence(types.PresenceAvailable)
         if shouldTwiddle {
 	        time.Sleep(durationWithJitter(10 * time.Second, 0.1))
@@ -309,8 +309,7 @@ func (wac *WhatsAppClient) presenceTwiddler() {
 		select {
 		case <-wac.ctxC.Done():
 			return
-		case <-timer.C:
-			timer.Reset(durationWithJitter(baseDuration, 0.25))
+		case <-time.After(durationWithJitter(baseDuration, 0.25)):
 			continue
 		}
 	}
@@ -666,9 +665,8 @@ func (wac *WhatsAppClient) requestHistoryMsgInfoRetry(msgInfo *types.MessageInfo
 			wac.requestHistoryMsgInfo(msgInfo)
 			dt := ((1 << attempts) + 5) * time.Minute
 			wac.Log.Infof("Waiting for history request. Will try again in: %s", dt)
-			timer := time.NewTimer((1 << attempts) * time.Minute)
 			select {
-			case <-timer.C:
+			case <-time.After((1 << attempts) * time.Minute):
 				attempts += 1
 				if attempts > 11 {
 					wac.Log.Warnf("Could not get group history after max number of attempts. Not retrying again: %s: %d", key, attempts)
