@@ -7,7 +7,6 @@ from functools import partial, reduce
 import dataset
 import grpc
 from cloudpathlib import AnyPath
-from dataset.util import DatasetException
 from sqlalchemy.sql import func
 
 from .. import utils
@@ -33,6 +32,7 @@ class DatabaseBot(BaseBot):
         **kwargs,
     ):
         kwargs["read_historical_messages"] = True
+        kwargs["mark_messages_read "] = True
         super().__init__(*args, **kwargs)
         self.media_base_path: AnyPath = media_base_path
         self.group_info_refresh_time = group_info_refresh_time
