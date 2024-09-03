@@ -78,6 +78,10 @@ func (aclEntry *ACLEntry) CanWrite() bool {
 	}
 }
 
+func (aclEntry *ACLEntry) CanReadWrite() bool {
+    return aclEntry.CanWrite() && aclEntry.CanRead()
+}
+
 func (aclEntry *ACLEntry) Proto() (*pb.GroupACL, error) {
 	var jid types.JID
 	var err error
