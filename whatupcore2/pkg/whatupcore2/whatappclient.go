@@ -288,14 +288,23 @@ func (wac *WhatsAppClient) stateReFetcher() {
 }
 
 func (wac *WhatsAppClient) presenceTwiddler() {
+    shouldTwiddle := true
+
+	defaultAcl, err := wac.aclStore.GetDefault()
+    if err != nil && defaultAcl.CanReadWrite() {
+        shouldTwiddle = false
+    }
+    
 	baseDuration := 30 * time.Minute
 	timer := time.NewTimer(durationWithJitter(baseDuration, 0.25))
 	defer timer.Stop()
 	for {
 		wac.Log.Infof("Twiddling client presence")
 		wac.SendPresence(types.PresenceAvailable)
-		time.Sleep(durationWithJitter(10 * time.Second, 0.1))
-		wac.SendPresence(types.PresenceUnavailable)
+        if shouldTwiddle {
+	        time.Sleep(durationWithJitter(10 * time.Second, 0.1))
+		    wac.SendPresence(types.PresenceUnavailable)
+        }
 		select {
 		case <-wac.ctxC.Done():
 			return
