@@ -291,7 +291,7 @@ func (wac *WhatsAppClient) presenceTwiddler() {
     shouldTwiddle := true
 
 	defaultAcl, err := wac.aclStore.GetDefault()
-    if err != nil && defaultAcl.CanReadWrite() {
+    if err == nil && defaultAcl.CanReadWrite() {
         wac.Log.Infof("Default READ/WRITE ACL... not setting presence to unavailable ")
         shouldTwiddle = false
     } else {
