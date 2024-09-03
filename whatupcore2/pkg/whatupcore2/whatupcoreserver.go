@@ -379,7 +379,9 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 				return nil
 			}
 			if historyOptions.MarkMessagesRead {
-				msg.MarkRead()
+	            if canWrite, _ := CanWriteJID(session, &msg.Info.Chat); canWrite {
+				    msg.MarkRead()
+                }
 			}
 		}
 	}
