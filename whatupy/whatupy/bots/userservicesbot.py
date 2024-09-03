@@ -15,7 +15,7 @@ from ..credentials_manager import CredentialsManager
 from ..device_manager import DeviceManager
 from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
-from . import BotCommandArgs, static, MediaType
+from . import BotCommandArgs, static, MediaType, BotType
 from .basebot import BaseBot, TypeLanguages
 from .lib import GroupRefreshJob, GroupInviteListJob, UserBot, UserJob, UserGroupJob
 

@@ -2,6 +2,7 @@ package whatupcore2
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"reflect"
 	"time"
@@ -10,6 +11,12 @@ import (
 	"go.mau.fi/whatsmeow/types"
 	"golang.org/x/exp/constraints"
 )
+
+
+func jitterDuration(baseDuration time.Duration, jitterPercent float64) time.Duration {
+	jitter := time.Duration(rand.Float64()*2 - 1) * time.Duration(float64(baseDuration)*jitterPercent)
+	return baseDuration + jitter
+}
 
 func rateLimit(ml *MutexMap, key string, duration time.Duration) Unlocker {
 	locker := ml.Lock(key)

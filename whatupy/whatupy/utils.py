@@ -10,7 +10,6 @@ import mimetypes
 import random
 import re
 import string
-import sys
 import typing as T
 import warnings
 from collections import namedtuple
