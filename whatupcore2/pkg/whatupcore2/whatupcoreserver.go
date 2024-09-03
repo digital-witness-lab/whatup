@@ -296,7 +296,9 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 				}
 			}
 			if messageOptions.MarkMessagesRead {
-				msg.MarkRead()
+	            if canWrite, _ := CanWriteJID(session, &msg.Info.Chat); canWrite {
+				    msg.MarkRead()
+                }
 			}
 			msg.log.Debugf("Sending message to client: %s", msg.DebugString())
 			msgProto, ok := msg.ToProto()
@@ -377,7 +379,9 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 				return nil
 			}
 			if historyOptions.MarkMessagesRead {
-				msg.MarkRead()
+	            if canWrite, _ := CanWriteJID(session, &msg.Info.Chat); canWrite {
+				    msg.MarkRead()
+                }
 			}
 		}
 	}

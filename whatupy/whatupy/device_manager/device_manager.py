@@ -4,7 +4,8 @@ import typing as T
 from collections import abc, defaultdict
 from dataclasses import dataclass, field
 
-from ..bots.basebot import BaseBot, InvalidCredentialsException
+from ..bots import BotType
+from ..bots.basebot import InvalidCredentialsException
 from ..credentials_manager import Credential, CredentialsManager
 
 logger = logging.getLogger(__name__)
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DeviceObject:
     username: str
-    bot: BaseBot
+    bot: BotType
     task: asyncio.Task
     unregistered: bool = field(default=False)
 
@@ -21,7 +22,7 @@ class DeviceObject:
 class DeviceManager:
     def __init__(
         self,
-        bot_factory: abc.Callable[[], BaseBot],
+        bot_factory: abc.Callable[[], BotType],
         credential_managers: T.List[CredentialsManager],
         unregister_invalid_credentials: bool = True,
         logger=logger,
@@ -43,7 +44,7 @@ class DeviceManager:
             # on error with exp backoff?
         self.logger.critical("Device Manager Closing")
 
-    async def _start_bot(self, bot: BaseBot, username: str):
+    async def _start_bot(self, bot: BotType, username: str):
         try:
             await bot.start()
         except Exception:
