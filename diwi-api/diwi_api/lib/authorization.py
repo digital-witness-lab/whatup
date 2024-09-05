@@ -19,9 +19,12 @@ JWT_ALGORITHM = "HS256"
 JWT_EXP_DELTA_SECONDS = 48 * 60 * 60  # 48 hours
 
 # OAuth2 client configuration
-GOOGLE_AUTH_FILE = os.environ["GOOGLE_AUTH_FILE"]
-with open(GOOGLE_AUTH_FILE, "r") as f:
-    google_creds = json.load(f)
+if "GOOGLE_AUTH_DATA" in os.environ:
+    google_creds = json.loads(os.environ["GOOGLE_AUTH_DATA"])
+else:
+    GOOGLE_AUTH_FILE = os.environ["GOOGLE_AUTH_FILE"]
+    with open(GOOGLE_AUTH_FILE, "r") as f:
+        google_creds = json.load(f)
 
 # Extract the client ID and client secret
 GOOGLE_CLIENT_ID = google_creds["web"]["client_id"]
