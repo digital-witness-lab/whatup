@@ -1,19 +1,24 @@
 from aiohttp import web
 
 from .lib import authorization
+from .lib import bucket_proxy
 
 
 @authorization.authorized()
+@bucket_proxy.bucket_proxy("gs://dashboard.digitalwitnesslab.org/")
 async def dashboard(request: authorization.AuthorizedRequest):
-    user = request.user
-    return web.json_response({"logged_in_as": user.email, "name": user.name})
+    pass
 
 
 def run(*args, **kwargs):
     data_app = web.Application()
     authorization.init(data_app)
 
-    data_app.router.add_get("/dashboard", dashboard)
+    bucket_proxy.register_bucket_proxy(
+        data_app,
+        "/dashboard",
+        dashboard,
+    )
 
     print("Starting Data API")
     web.run_app(data_app, *args, **kwargs)

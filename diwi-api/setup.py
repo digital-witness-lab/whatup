@@ -15,12 +15,13 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT",
-    packages=find_packages(),
+    packages={"diwi_api": "diwi_api"},
     include_package_data=True,
     zip_safe=False,
     install_requires=requirements,
     extras_require={
         "dev": [
+            "pur",
             "flake8",
             "black",
             "isort",
