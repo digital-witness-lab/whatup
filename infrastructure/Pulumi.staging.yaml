@@ -8,6 +8,10 @@ config:
   whatup:bqDatasetRegion: US
   whatup:control_groups:
     - 120363159470639781@g.us
+  whatup:dataApiClientCreds:
+    secure: AAABAJytMk3MDI6n+LGQ8QJd6Yo2NhQwT4dxq0AcONpBD9L97xkKwFzK7PVXAtr0pl4iHWUvL1y2pWd7WlTjJRKKnh8yQDSq9rqFPcvhdiDpfMgjywAd99miw+Q3dl/Srytu1rLIDwwH+olGk3SpbX8K406fDG77AnrH/RJZ234PLLDsgLquIEz+Lz2sqZ/DaTrZN5hXb/MnXsTeWu6FU6yWzp5GLiWufp1I35GfLEPWfTSFIWKVOog++rSfnOBICbvNzwAXA7Y1wYOj1sqe2sXJ5pQ8dr/oYgb5zGiFnjXVm+AoMKkqslHZWIn1PMJE4rZ/46lgCOoWFwRBHIYmp8kEfifuAURISrACwuuQWuuj6D+Eh0i93s3ZVZuOVgtcs8FvjeyM+5MBMJOSa0O+YsVEDBs7L3VsV39XT+YhUeW9Athg1Br8fnCCuwJTYB+er/2NFbFgzzuEYW1KG3rgWElpMi2k4Q+Pbq/sUTK/ml/l3NI5caSieOCRigrFwUDQJ94AsXmTkT9Njg+wpwWbAU3IrB2jh+F9tBxBWFfp5MDydXH8mley4ZP/HDqxUXdkDDQ8dW9p3YLT1ncD0iLZ0ikJcdkfYu+Np6tg/BRMEtXVr2DZVAoZWfQYyzgE2oDwuP+MCoL+kfIOuZl4lDOg1RBqVKbXW3XNEt82
+  whatup:dataApiJWT:
+    secure: AAABAKrd8H+zBzE3iYMZnUUzwPifA3x2yCV3Hz5XLcZK2IRIs/WFsKNL2xcnFRiOoksKD4I5KJxFLxyGe65lhKCdzw6nagISE217cu7gtbOFPJNACAXOoznmxaj993ZRxIxKeJjvgFpPInkRFQjXftpw53QHVnpAWlFFCKKNMCCm6o7G2D23wdLtjGiG3dyFlxQPcaK2az6qkk1qoPnGbg==
   whatup:databases:
     - name: messages
       nameShort: msg

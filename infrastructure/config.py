@@ -60,6 +60,9 @@ translation_enabled = config.get_bool("translationEnabled", False)
 
 enabledServices = config.require_object("enabledServices")
 
+data_api_client_creds = config.get_secret("dataApiClientCreds")
+data_api_jwt = config.get_secret("dataApiJWT")
+
 # Import the provider's configuration settings.
 gcp_config = pulumi.Config("gcp")
 location = gcp_config.require("region")
