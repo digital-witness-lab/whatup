@@ -9,6 +9,8 @@ from config import (
     whatup_anon_key,
     whatup_salt,
     whatup_login_proxy,
+    data_api_client_creds,
+    data_api_jwt,
 )
 from database import get_sql_instance_url
 
@@ -64,4 +66,14 @@ whatup_anon_key_secret = create_secret(
 whatup_login_proxy_secret = create_secret(
     "whatup-login-proxy",
     whatup_login_proxy,
+)
+
+data_api_client_creds_secret = create_secret(
+    "data_api_client_creds",
+    data_api_client_creds,
+)
+
+data_api_jwt_secret = create_secret(
+    "data_api_jwt",
+    data_api_jwt,
 )

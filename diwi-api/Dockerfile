@@ -10,5 +10,6 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 ARG ENVIRONMENT="dev"
 ENV ENVIRONMENT=$ENVIRONMENT
+ENV PYTHONUNBUFFERED=1
 
 ENTRYPOINT ["diwi-api"]
