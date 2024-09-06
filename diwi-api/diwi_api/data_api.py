@@ -5,7 +5,7 @@ from .lib import bucket_proxy
 
 
 @authorization.authorized()
-@bucket_proxy.bucket_proxy("gs://dashboard.digitalwitnesslab.org/")
+@bucket_proxy.bucket_proxy("gs://diwi-dashboard-test/")
 async def dashboard(request: authorization.AuthorizedRequest):
     pass
 

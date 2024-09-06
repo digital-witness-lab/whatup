@@ -40,18 +40,16 @@ media_bucket_perm = storage.BucketIAMMember(
     storage.BucketIAMMemberArgs(
         bucket=media_bucket.name,
         member=Output.concat("serviceAccount:", service_account.email),
-        role="roles/storage.objectAdmin",
+        role="roles/storage.objectViewer",
     ),
 )
-
-dashboard_bucket = storage.Bucket('api-data-dashboard', bucket="dashboard.digitalwitnesslab.org")
 
 dashboard_bucket_perm = storage.BucketIAMMember(
     "api-data-dashbrd-bucket-perm",
     storage.BucketIAMMemberArgs(
-        bucket=dashboard_bucket,
+        bucket="diwi-dashboard-test",
         member=Output.concat("serviceAccount:", service_account.email),
-        role="roles/storage.objectAdmin",
+        role="roles/storage.objectViewer",
     ),
 )
 
