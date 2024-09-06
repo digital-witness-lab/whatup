@@ -5,7 +5,7 @@ public_services_network = compute.Subnetwork(
     "subnet-public",
     network=vpc_public.id,
     ip_cidr_range="10.1.0.0/16",
-    private_ip_google_access=False,
+    private_ip_google_access=True,
 )
 
 
