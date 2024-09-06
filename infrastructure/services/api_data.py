@@ -1,7 +1,7 @@
 from pulumi import Output, ResourceOptions, get_stack
 from pulumi_gcp.cloudrunv2 import (
-    ServiceTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs,
-)  # noqa: E501
+    ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
+)
 from pulumi_gcp import (
     cloudrunv2,
     serviceaccount,
@@ -53,8 +53,8 @@ jwt_perm = secretmanager.SecretIamMember(
     ),
 )
 
-jwt_secret_source = cloudrunv2.ServiceTemplateTemplateContainerEnvValueSourceArgs(
-    secret_key_ref=ServiceTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+jwt_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
+    secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
         secret=data_api_jwt_secret.name,
         version="latest",
     ),
@@ -69,11 +69,13 @@ client_creds_perm = secretmanager.SecretIamMember(
     ),
 )
 
-client_creds_secret_source = cloudrunv2.ServiceTemplateTemplateContainerEnvValueSourceArgs(
-    secret_key_ref=ServiceTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-        secret=data_api_client_creds_secret.name,
-        version="latest",
-    ),
+client_creds_secret_source = (
+    cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
+        secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
+            secret=data_api_client_creds_secret.name,
+            version="latest",
+        ),
+    )
 )
 
 api_data = Service(
@@ -114,11 +116,11 @@ api_data = Service(
                 value=bq_dataset_id,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                key="GOOGLE_AUTH_DATA",
+                name="GOOGLE_AUTH_DATA",
                 value_source=client_creds_secret_source,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                key="JWT_SECRET",
+                name="JWT_SECRET",
                 value_source=jwt_secret_source,
             ),
         ],
