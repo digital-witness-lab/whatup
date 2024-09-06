@@ -104,6 +104,10 @@ api_data = Service(
         ),
         envs=[
             cloudrunv2.ServiceTemplateContainerEnvArgs(
+                name="GOOGLE_AUTH_GROUP_DEFAULT",
+                value="diwi-dashboard-dev-micha@digitalwitnesslab.org",
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="MEDIA_BUCKET",
                 value=media_bucket.name,
             ),
