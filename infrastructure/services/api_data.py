@@ -104,6 +104,11 @@ api_data = Service(
         ),
         envs=[
             cloudrunv2.ServiceTemplateContainerEnvArgs(
+                # we _are_ using SSL but cloudrun hides this from aiohttp
+                name="OAUTHLIB_INSECURE_TRANSPORT",
+                value="1",
+            ),
+            cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="GOOGLE_AUTH_GROUP_DEFAULT",
                 value="diwi-dashboard-dev-micha@digitalwitnesslab.org",
             ),
