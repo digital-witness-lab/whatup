@@ -44,6 +44,17 @@ media_bucket_perm = storage.BucketIAMMember(
     ),
 )
 
+dashboard_bucket = storage.Bucket('api-data-dashboard', bucket="dashboard.digitalwitnesslab.org")
+
+dashboard_bucket_perm = storage.BucketIAMMember(
+    "api-data-dashbrd-bucket-perm",
+    storage.BucketIAMMemberArgs(
+        bucket=dashboard_bucket,
+        member=Output.concat("serviceAccount:", service_account.email),
+        role="roles/storage.objectAdmin",
+    ),
+)
+
 jwt_perm = secretmanager.SecretIamMember(
     "api-data-jwt-perm",
     secretmanager.SecretIamMemberArgs(
@@ -140,6 +151,7 @@ api_data = Service(
             bigquery_user_perm,
             jwt_perm,
             client_creds_perm,
+            dashboard_bucket_perm,
         ]
     ),
 )
