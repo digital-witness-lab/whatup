@@ -11,7 +11,7 @@ def bucket_proxy(gs_path):
 
     def _(fxn):
         @wraps(fxn)
-        def handler(request: web.Request):
+        async def handler(request: web.Request):
             relative_path = request.match_info.get("path", "index.html")
             target: CloudPath = base_path / relative_path
             print("relative path:", relative_path)
