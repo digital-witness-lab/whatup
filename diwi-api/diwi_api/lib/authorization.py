@@ -1,6 +1,7 @@
 from functools import wraps
 from typing import List, cast, Self
 from dataclasses import dataclass
+import urllib.parse
 
 import aiohttp
 from aiohttp import web
@@ -43,34 +44,48 @@ class User:
     groups: List[str]
 
 
-class AuthorizedRequest(web.BaseRequest):
+class AuthorizedRequest(web.Request):
     user: User
 
     @classmethod
-    def authorize_request(cls, request: web.BaseRequest, user: User):
+    def authorize_request(cls, request: web.Request, user: User):
         arequest = cast(AuthorizedRequest, request)
         arequest.user = user
         return arequest
 
 
-def authorized(authorized_groups: List[str] | str = GOOGLE_AUTH_GROUP_DEFAULT):
+def create_redirect(request: web.Request, reason=None):
+    redirect_to = str(request.rel_url)
+    path = request.app.router["login"].url_for().with_query({"redirect": redirect_to})
+    return web.HTTPTemporaryRedirect(path, reason="Unauthorized")
+
+
+def authorized(
+        authorized_groups: List[str] | str = GOOGLE_AUTH_GROUP_DEFAULT, redirect: bool = False
+):
     if isinstance(authorized_groups, str):
         authorized_groups = authorized_groups.split(",")
     groups = set(authorized_groups)
 
     def _(fxn):
         @wraps(fxn)
-        async def __(request: web.BaseRequest):
+        async def __(request: web.Request):
             token = request.cookies.get("access_token")
 
             if not token:
+                if redirect:
+                    raise create_redirect(request, reason="Unauthorized")
                 return web.json_response({"error": "Unauthorized"}, status=401)
 
             try:
                 payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
             except jwt.ExpiredSignatureError:
+                if redirect:
+                    raise create_redirect(request, reason="Token Expired")
                 return web.json_response({"error": "Token expired"}, status=401)
             except jwt.InvalidTokenError:
+                if redirect:
+                    raise create_redirect(request, reason="Invalid Token")
                 return web.json_response({"error": "Invalid token"}, status=401)
 
             if not groups.intersection(payload["groups"]):
@@ -99,6 +114,7 @@ async def get_google_provider_cfg():
 async def login(request):
     google_provider_cfg = await get_google_provider_cfg()
     authorization_endpoint = google_provider_cfg["authorization_endpoint"]
+    redirect_url = request.query.get("redirect", "/")
 
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
@@ -109,12 +125,14 @@ async def login(request):
             "profile",
             "https://www.googleapis.com/auth/admin.directory.group.readonly",
         ],
+        state=urllib.parse.urlencode({"redirect": redirect_url}),
     )
     return web.HTTPFound(location=request_uri)
 
 
 async def callback(request):
     code = request.query.get("code")
+    state = request.query.get("state")
 
     google_provider_cfg = await get_google_provider_cfg()
     token_endpoint = google_provider_cfg["token_endpoint"]
@@ -168,7 +186,9 @@ async def callback(request):
         algorithm=JWT_ALGORITHM,
     )
 
-    response = web.HTTPFound(location="/dashboard")
+    state_params = urllib.parse.parse_qs(state)
+    redirect_url = state_params.get("redirect", ["/"])[0]
+    response = web.HTTPFound(location=redirect_url)
     response.set_cookie(
         "access_token",
         access_token,
@@ -228,7 +248,7 @@ async def get_user_groups(
     return user_groups
 
 
-def init(app: web.Application) -> web.Application:
-    app.router.add_get("/login", login)
+def init(app: web.Application, login_path="/login") -> web.Application:
+    app.router.add_get(login_path, login, name="login")
     app.router.add_get("/callback", callback)
-    app.router.add_get("/logout", logout)
+    app.router.add_get("/logout", logout, name="logout")

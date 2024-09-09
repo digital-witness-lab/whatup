@@ -3,23 +3,25 @@ import mimetypes
 
 from aiohttp import web
 from cloudpathlib import CloudPath
+from google.api_core.exceptions import Forbidden
 
 
 def bucket_proxy(gs_path):
     base_path: CloudPath = CloudPath(gs_path)
-    print(f"base path: {base_path}")
 
     def _(fxn):
         @wraps(fxn)
         async def handler(request: web.Request):
-            relative_path = request.match_info.get("path", "index.html")
+            relative_path = request.match_info.get("path") or "index.html"
             target: CloudPath = base_path / relative_path
-            print("relative path:", relative_path)
             print(f"target: {target}")
             if not target.is_relative_to(base_path):
                 return web.json_response({"error": "Unauthorized Path"}, status=403)
-            if not target.exists():
-                raise web.HTTPNotFound(text="File not found.")
+            try:
+                if not target.exists():
+                    raise web.HTTPNotFound(text="File not found.")
+            except Forbidden:
+                raise web.HTTPForbidden(text="No access to storage")
 
             mime_type, _ = mimetypes.guess_type(target)
             if mime_type is None:
