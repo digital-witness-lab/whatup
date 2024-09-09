@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import List
+from typing import List, cast, Self
 from dataclasses import dataclass
 
 import aiohttp
@@ -46,6 +46,12 @@ class User:
 class AuthorizedRequest(web.BaseRequest):
     user: User
 
+    @classmethod
+    def authorize_request(cls, request: web.BaseRequest, user: User):
+        arequest = cast(AuthorizedRequest, request)
+        arequest.user = user
+        return arequest
+
 
 def authorized(authorized_groups: List[str] | str = GOOGLE_AUTH_GROUP_DEFAULT):
     if isinstance(authorized_groups, str):
@@ -76,8 +82,8 @@ def authorized(authorized_groups: List[str] | str = GOOGLE_AUTH_GROUP_DEFAULT):
                 picture=payload["picture"],
                 groups=payload["groups"],
             )
-            request.user = user
-            return await fxn(request)
+            arequest = AuthorizedRequest.authorize_request(request, user)
+            return await fxn(arequest)
 
         return __
 
