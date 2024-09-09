@@ -33,5 +33,5 @@ def bucket_proxy(gs_path):
 
 
 def register_bucket_proxy(app: web.Application, root: str, handler: web.RequestHandler):
-    app.router.add_get(f"{root}/{{path:.*}}", handler)
+    app.router.add_get(f"{root.rstrip('/')}/{{path:.*}}", handler)
     app.router.add_get(f"{root}", handler)
