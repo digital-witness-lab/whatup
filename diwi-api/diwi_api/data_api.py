@@ -12,11 +12,11 @@ async def dashboard(request: authorization.AuthorizedRequest):
 
 def run(*args, **kwargs):
     data_app = web.Application()
-    authorization.init(data_app)
 
+    authorization.init(data_app)
     bucket_proxy.register_bucket_proxy(
         data_app,
-        "/dashboard",
+        "/",
         dashboard,
     )
 
