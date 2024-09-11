@@ -37,10 +37,10 @@ def bucket_proxy(gs_path, chunk_size=1024):
 
             try:
                 bucket = client.bucket(bucket_name)
-                blob = bucket.blob(blob_name)
+                blob = bucket.get_blob(blob_name)
 
                 # Check if file exists
-                if not blob.exists():
+                if blob is None:
                     raise web.HTTPNotFound(text="File not found.")
 
                 etag = blob.etag
