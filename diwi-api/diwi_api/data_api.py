@@ -1,23 +1,18 @@
 from aiohttp import web
 
+from .lib import dashboard
 from .lib import authorization
-from .lib import bucket_proxy
 
 
-@authorization.authorized(redirect=True)
-@bucket_proxy.bucket_proxy("gs://diwi-dashboard-test/")
-async def dashboard(request: authorization.AuthorizedRequest):
-    pass
-
-
-def run(*args, **kwargs):
+def run(dashboard_path, gs_path, auth_group, *args, **kwargs):
     data_app = web.Application()
 
     authorization.init(data_app)
-    bucket_proxy.register_bucket_proxy(
+    dashboard.add_dashboard(
         data_app,
-        "/",
-        dashboard,
+        dashboard_path,
+        gs_path,
+        auth_group,
     )
 
     print("Starting Data API")

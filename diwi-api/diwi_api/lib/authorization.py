@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import List, cast, Self
+from typing import List, cast
 from dataclasses import dataclass
 import urllib.parse
 
@@ -7,7 +7,6 @@ import aiohttp
 from aiohttp import web
 from oauthlib.oauth2 import WebApplicationClient
 from google.oauth2 import credentials as google_credentials
-import google_auth_oauthlib.flow
 import googleapiclient.discovery
 from datetime import timedelta, datetime, timezone
 import json
@@ -32,7 +31,6 @@ GOOGLE_CLIENT_ID = google_creds["web"]["client_id"]
 GOOGLE_CLIENT_SECRET = google_creds["web"]["client_secret"]
 
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
-GOOGLE_AUTH_GROUP_DEFAULT = os.environ["GOOGLE_AUTH_GROUP_DEFAULT"]
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 
@@ -57,12 +55,15 @@ class AuthorizedRequest(web.Request):
 def create_redirect(request: web.Request, reason=None):
     redirect_to = str(request.rel_url)
     path = request.app.router["login"].url_for().with_query({"redirect": redirect_to})
-    return web.HTTPTemporaryRedirect(path, reason="Unauthorized")
+    return web.HTTPTemporaryRedirect(path, reason=reason)
 
 
 def authorized(
-        authorized_groups: List[str] | str = GOOGLE_AUTH_GROUP_DEFAULT, redirect: bool = False
+    authorized_groups: List[str] | str,
+    redirect: bool = False,
 ):
+    if not authorized_groups:
+        raise ValueError("Authorized decorator must have non-empty authorization group")
     if isinstance(authorized_groups, str):
         authorized_groups = authorized_groups.split(",")
     groups = set(authorized_groups)
@@ -199,7 +200,7 @@ async def callback(request):
     return response
 
 
-async def logout(request):
+async def logout(_: web.Request):
     response = web.json_response({"msg": "Logout successful"})
     response.del_cookie("access_token")
     return response
@@ -252,3 +253,4 @@ def init(app: web.Application, login_path="/login") -> web.Application:
     app.router.add_get(login_path, login, name="login")
     app.router.add_get("/callback", callback)
     app.router.add_get("/logout", logout, name="logout")
+    return app

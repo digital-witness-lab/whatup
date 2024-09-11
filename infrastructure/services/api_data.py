@@ -19,6 +19,8 @@ from network import public_services_network, vpc_public
 from dwl_secrets import data_api_client_creds_secret, data_api_jwt_secret
 
 service_name = "api-data"
+DASHBOARD_BUCKET = "diwi-dashboard-test"
+DASHBOARD_AUTH_GROUP = "diwi-dashboard-dev-micha@digitalwitnesslab.org"
 
 service_account = serviceaccount.Account(
     "api-data",
@@ -26,28 +28,10 @@ service_account = serviceaccount.Account(
     description=f"Service account for {service_name}",
 )
 
-bigquery_user_perm = bigquery.DatasetIamMember(
-    "api-data-bq-user-perm",
-    bigquery.DatasetIamMemberArgs(
-        dataset_id=bq_dataset_id,
-        role="roles/bigquery.user",
-        member=Output.concat("serviceAccount:", service_account.email),
-    ),
-)
-
-media_bucket_perm = storage.BucketIAMMember(
-    "api-data-media-perm",
-    storage.BucketIAMMemberArgs(
-        bucket=media_bucket.name,
-        member=Output.concat("serviceAccount:", service_account.email),
-        role="roles/storage.objectViewer",
-    ),
-)
-
 dashboard_bucket_perm = storage.BucketIAMMember(
     "api-data-dashbrd-bucket-perm",
     storage.BucketIAMMemberArgs(
-        bucket="diwi-dashboard-test",
+        bucket=DASHBOARD_BUCKET,
         member=Output.concat("serviceAccount:", service_account.email),
         role="roles/storage.objectViewer",
     ),
@@ -118,20 +102,12 @@ api_data = Service(
                 value="1",
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="GOOGLE_AUTH_GROUP_DEFAULT",
-                value="diwi-dashboard-dev-micha@digitalwitnesslab.org",
+                name="DIWI_API_AUTH_GROUP",
+                value=DASHBOARD_AUTH_GROUP,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="MEDIA_BUCKET",
-                value=media_bucket.name,
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="BIGQUERY_DATASET_ID",
-                value=bq_dataset_id,
-            ),
-            cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="BIGQUERY_DATASET_ID",
-                value=bq_dataset_id,
+                name="DIWI_API_GS_PATH",
+                value=DASHBOARD_BUCKET,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="GOOGLE_AUTH_DATA",
