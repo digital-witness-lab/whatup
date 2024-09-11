@@ -4,8 +4,19 @@ import urllib.parse
 import mimetypes
 
 from aiohttp import web
+from aiohttp.typedefs import Handler
 from google.api_core.exceptions import Forbidden
 from google.cloud import storage
+
+
+async def stream_file(bucket, blob_name, response, chunk_size=1024):
+    """Stream file in chunks to the client"""
+    blob = bucket.blob(blob_name)
+    # Stream the file in chunks
+    with blob.open("rb") as file:
+        while chunk := file.read(chunk_size):
+            await response.write(chunk)
+    await response.write_eof()
 
 
 def bucket_proxy(gs_path, chunk_size=1024):
@@ -14,15 +25,6 @@ def bucket_proxy(gs_path, chunk_size=1024):
     path_parse = urllib.parse.urlparse(gs_path, scheme="gs")
     bucket_name = path_parse.netloc
     base_path = path_parse.path.strip("/")
-
-    async def stream_file(bucket, blob_name, response):
-        """Stream file in chunks to the client"""
-        blob = bucket.blob(blob_name)
-        # Stream the file in chunks
-        with blob.open("rb") as file:
-            while chunk := file.read(chunk_size):
-                await response.write(chunk)
-        await response.write_eof()
 
     def _(fxn):
         @wraps(fxn)
@@ -65,7 +67,7 @@ def bucket_proxy(gs_path, chunk_size=1024):
             await response.prepare(request)
 
             # Stream the file to the client
-            await stream_file(bucket, blob_name, response)
+            await stream_file(bucket, blob_name, response, chunk_size)
             return response
 
         return handler
@@ -73,6 +75,6 @@ def bucket_proxy(gs_path, chunk_size=1024):
     return _
 
 
-def register_bucket_proxy(app: web.Application, root: str, handler: web.RequestHandler):
+def register_bucket_proxy(app: web.Application, root: str, handler: Handler):
     app.router.add_get(f"{root.rstrip('/')}/{{path:.*}}", handler)
     app.router.add_get(f"{root}", handler)
