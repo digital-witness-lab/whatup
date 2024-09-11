@@ -121,8 +121,6 @@ api_data = Service(
     ),
     opts=ResourceOptions(
         depends_on=[
-            media_bucket_perm,
-            bigquery_user_perm,
             jwt_perm,
             client_creds_perm,
             dashboard_bucket_perm,
