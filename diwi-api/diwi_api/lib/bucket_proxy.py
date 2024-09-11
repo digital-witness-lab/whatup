@@ -1,5 +1,4 @@
-import asyncio
-from pathlib import PurePosixPath
+import os
 from functools import wraps
 import urllib.parse
 import mimetypes
@@ -16,7 +15,7 @@ def bucket_proxy(gs_path, chunk_size=1024):
 
     path_parse = urllib.parse.urlparse(gs_path, scheme="gs")
     bucket_name = path_parse.netloc
-    base_path = PurePosixPath(path_parse.path.rstrip("/"))
+    base_path = path_parse.path.rstrip("/")
 
     async def stream_file(bucket, blob_name, response):
         """Stream file in chunks to the client"""
@@ -31,11 +30,12 @@ def bucket_proxy(gs_path, chunk_size=1024):
         @wraps(fxn)
         async def handler(request: web.Request):
             relative_path = request.match_info.get("path") or "index.html"
-            target_path = (base_path / relative_path).resolve()
-            if not target_path.is_relative_to(base_path):
+            full_path = f"{base_path}/{relative_path}"
+            blob_name = os.path.normpath(full_path)
+            # Ensure the target path is within the base path
+            if not blob_name.startswith(base_path):
                 return web.json_response({"error": "Unauthorized Path"}, status=403)
 
-            blob_name = str(target_path)
             try:
                 bucket = client.bucket(bucket_name)
                 blob = bucket.blob(blob_name)
