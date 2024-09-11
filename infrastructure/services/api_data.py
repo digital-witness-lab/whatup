@@ -102,12 +102,12 @@ api_data = Service(
                 value="1",
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="DIWI_API_AUTH_GROUP",
+                name="DIWI_DATA_API_AUTH_GROUP",
                 value=DASHBOARD_AUTH_GROUP,
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
-                name="DIWI_API_GS_PATH",
-                value=DASHBOARD_BUCKET,
+                name="DIWI_DATA_API_GS_PATH",
+                value=f"gs://{DASHBOARD_BUCKET}",
             ),
             cloudrunv2.ServiceTemplateContainerEnvArgs(
                 name="GOOGLE_AUTH_DATA",
