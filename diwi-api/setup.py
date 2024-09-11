@@ -32,7 +32,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "diwi-api = diwi_api.cli:cli",
+            "diwi-api = diwi_api.cli:main",
         ],
     },
 )

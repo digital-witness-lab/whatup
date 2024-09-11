@@ -9,8 +9,8 @@ def cli():
 
 
 @cli.command("data-api")
-@click.option("--gs-path", required=True)
-@click.option("--dasbhoard-path", default="/")
+@click.option("--gs-path")
+@click.option("--dashboard-path", default="/")
 @click.option(
     "--auth-group",
     multiple=True,
@@ -20,5 +20,9 @@ def dataapi_cli(dashboard_path, gs_path, auth_group):
     data_api.run(dashboard_path, gs_path, auth_group)
 
 
+def main():
+    cli(auto_envvar_prefix="DIWI")
+
+
 if __name__ == "__main__":
-    cli(auto_envvar_prefix="DIWI_API")
+    main()

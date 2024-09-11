@@ -34,6 +34,9 @@ GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configura
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 
+AuthGroupType = List[str] | str
+
+
 @dataclass
 class User:
     email: str
@@ -59,7 +62,7 @@ def create_redirect(request: web.Request, reason=None):
 
 
 def authorized(
-    authorized_groups: List[str] | str,
+    authorized_groups: AuthGroupType,
     redirect: bool = False,
 ):
     if not authorized_groups:

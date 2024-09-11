@@ -1,4 +1,4 @@
-from typing import List, cast
+from typing import cast
 
 from aiohttp import web
 from aiohttp.typedefs import Handler
@@ -11,7 +11,7 @@ def add_dashboard(
     app: web.Application,
     path: str,
     gs_path: str,
-    auth_group: List[str] | str = authorization.GOOGLE_AUTH_GROUP_DEFAULT,
+    auth_group: authorization.AuthGroupType,
 ):
 
     @authorization.authorized(auth_group, redirect=True)

@@ -46,7 +46,7 @@ def bucket_proxy(gs_path, chunk_size=1024):
                 etag = blob.etag
                 client_etag = request.headers.get("If-None-Match")
                 if client_etag == etag:
-                    return web.Response(status=304)
+                    raise web.HTTPNotModified()
             except Forbidden:
                 raise web.HTTPForbidden(text="No access to storage")
 
@@ -64,11 +64,14 @@ def bucket_proxy(gs_path, chunk_size=1024):
                     "ETag": etag,
                 },
             )
-            await response.prepare(request)
 
-            # Stream the file to the client
-            await stream_file(bucket, blob_name, response, chunk_size)
-            return response
+            try:
+                await response.prepare(request)
+                # Stream the file to the client
+                await stream_file(bucket, blob_name, response, chunk_size)
+                return response
+            except ConnectionResetError:
+                pass
 
         return handler
 
