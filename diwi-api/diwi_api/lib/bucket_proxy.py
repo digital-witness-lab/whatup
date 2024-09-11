@@ -7,15 +7,13 @@ from aiohttp import web
 from google.api_core.exceptions import Forbidden
 from google.cloud import storage
 
-from cloudpathlib import CloudPath  # to remove
-
 
 def bucket_proxy(gs_path, chunk_size=1024):
     client = storage.Client()  # Initialize the GCS client
 
     path_parse = urllib.parse.urlparse(gs_path, scheme="gs")
     bucket_name = path_parse.netloc
-    base_path = path_parse.path.rstrip("/")
+    base_path = path_parse.path.strip("/")
 
     async def stream_file(bucket, blob_name, response):
         """Stream file in chunks to the client"""
@@ -30,8 +28,7 @@ def bucket_proxy(gs_path, chunk_size=1024):
         @wraps(fxn)
         async def handler(request: web.Request):
             relative_path = request.match_info.get("path") or "index.html"
-            full_path = f"{base_path}/{relative_path}"
-            blob_name = os.path.normpath(full_path)
+            blob_name = os.path.normpath(f"{base_path or '.'}/{relative_path}")
             # Ensure the target path is within the base path
             if not blob_name.startswith(base_path):
                 return web.json_response({"error": "Unauthorized Path"}, status=403)
@@ -43,6 +40,11 @@ def bucket_proxy(gs_path, chunk_size=1024):
                 # Check if file exists
                 if not blob.exists():
                     raise web.HTTPNotFound(text="File not found.")
+
+                etag = blob.etag
+                client_etag = request.headers.get("If-None-Match")
+                if client_etag == etag:
+                    return web.Response(status=304)
             except Forbidden:
                 raise web.HTTPForbidden(text="No access to storage")
 
@@ -57,6 +59,7 @@ def bucket_proxy(gs_path, chunk_size=1024):
                 headers={
                     "Content-Type": mime_type,
                     "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
+                    "ETag": etag,
                 },
             )
             await response.prepare(request)
@@ -64,34 +67,6 @@ def bucket_proxy(gs_path, chunk_size=1024):
             # Stream the file to the client
             await stream_file(bucket, blob_name, response)
             return response
-
-        return handler
-
-    return _
-
-
-def bucket_proxy_old(gs_path):
-    base_path: CloudPath = CloudPath(gs_path)
-
-    def _(fxn):
-        @wraps(fxn)
-        async def handler(request: web.Request):
-            relative_path = request.match_info.get("path") or "index.html"
-            target: CloudPath = base_path / relative_path
-            print(f"target: {target}")
-            if not target.is_relative_to(base_path):
-                return web.json_response({"error": "Unauthorized Path"}, status=403)
-            try:
-                if not target.exists():
-                    raise web.HTTPNotFound(text="File not found.")
-            except Forbidden:
-                raise web.HTTPForbidden(text="No access to storage")
-
-            mime_type, _ = mimetypes.guess_type(target)
-            if mime_type is None:
-                mime_type = "application/octet-stream"  # Default binary content type
-            body = target.read_bytes()
-            return web.Response(body=body, content_type=mime_type)
 
         return handler
 
