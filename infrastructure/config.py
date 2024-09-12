@@ -1,7 +1,7 @@
 from enum import Enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections import defaultdict
-from typing import Dict, Self
+from typing import Dict, Self, List
 
 import pulumi
 
@@ -27,6 +27,28 @@ class DatabaseConfig:
             name=obj["name"],
             name_short=obj["nameShort"],
             password=config.require_secret(password_key),
+        )
+
+
+@dataclass
+class DashboardConfig:
+    domain: str
+    gs_path: str
+    auth_groups: List[str]
+
+    jwt: pulumi.Output[str]
+    client_creds: pulumi.Output[str]
+
+    @classmethod
+    def from_config(cls, config: pulumi.Config, obj: Dict) -> Self:
+        jwt = config.require_secret(obj["jwtKey"])
+        client_creds = config.require_secret(obj["clientCredsKey"])
+        return cls(
+            domain=obj["domain"],
+            gs_path=obj["gsPath"],
+            auth_groups=obj["authGroups"],
+            jwt=jwt,
+            client_creds=client_creds,
         )
 
 
@@ -60,8 +82,10 @@ translation_enabled = config.get_bool("translationEnabled", False)
 
 enabledServices = config.require_object("enabledServices")
 
-data_api_client_creds = config.get_secret("dataApiClientCreds")
-data_api_jwt = config.get_secret("dataApiJWT")
+dashboard_configs: Dict[str, DashboardConfig] = {
+    data["domain"]: DashboardConfig.from_config(config, data)
+    for data in config.require_object("dashboards")
+}
 
 # Import the provider's configuration settings.
 gcp_config = pulumi.Config("gcp")

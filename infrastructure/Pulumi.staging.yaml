@@ -8,10 +8,13 @@ config:
   whatup:bqDatasetRegion: US
   whatup:control_groups:
     - c+c-stage@g.us
-  whatup:dataApiClientCreds:
-    secure: AAABAJytMk3MDI6n+LGQ8QJd6Yo2NhQwT4dxq0AcONpBD9L97xkKwFzK7PVXAtr0pl4iHWUvL1y2pWd7WlTjJRKKnh8yQDSq9rqFPcvhdiDpfMgjywAd99miw+Q3dl/Srytu1rLIDwwH+olGk3SpbX8K406fDG77AnrH/RJZ234PLLDsgLquIEz+Lz2sqZ/DaTrZN5hXb/MnXsTeWu6FU6yWzp5GLiWufp1I35GfLEPWfTSFIWKVOog++rSfnOBICbvNzwAXA7Y1wYOj1sqe2sXJ5pQ8dr/oYgb5zGiFnjXVm+AoMKkqslHZWIn1PMJE4rZ/46lgCOoWFwRBHIYmp8kEfifuAURISrACwuuQWuuj6D+Eh0i93s3ZVZuOVgtcs8FvjeyM+5MBMJOSa0O+YsVEDBs7L3VsV39XT+YhUeW9Athg1Br8fnCCuwJTYB+er/2NFbFgzzuEYW1KG3rgWElpMi2k4Q+Pbq/sUTK/ml/l3NI5caSieOCRigrFwUDQJ94AsXmTkT9Njg+wpwWbAU3IrB2jh+F9tBxBWFfp5MDydXH8mley4ZP/HDqxUXdkDDQ8dW9p3YLT1ncD0iLZ0ikJcdkfYu+Np6tg/BRMEtXVr2DZVAoZWfQYyzgE2oDwuP+MCoL+kfIOuZl4lDOg1RBqVKbXW3XNEt82
-  whatup:dataApiJWT:
-    secure: AAABAKrd8H+zBzE3iYMZnUUzwPifA3x2yCV3Hz5XLcZK2IRIs/WFsKNL2xcnFRiOoksKD4I5KJxFLxyGe65lhKCdzw6nagISE217cu7gtbOFPJNACAXOoznmxaj993ZRxIxKeJjvgFpPInkRFQjXftpw53QHVnpAWlFFCKKNMCCm6o7G2D23wdLtjGiG3dyFlxQPcaK2az6qkk1qoPnGbg==
+  whatup:dashboards:
+    - domain: dashboard
+      gsPath: gs://diwi-dashboard-test/
+      authGroups:
+        - diwi-dashboard-dev-micha@digitalwitnesslab.org
+      jwtKey: dashboardJWT
+      clientCredsKey: dashboardClientCreds
   whatup:databases:
     - name: messages
       nameShort: msg
@@ -25,7 +28,7 @@ config:
   whatup:dbRootPassword:
     secure: AAABAE6NTqu6stQ5wNcKG0f4t6D696pDKupkvshnne0A5T1TxPjSSXn0CPQY2wxU7qvEyg0yKWsFjL51jlTUYOE2KzLVch5dDbp7lvu23XPudZyHgEogFUMInuURR4I87FiIa4EIIs93A3eRqR/ofyPNvnRvTuWpNpNGpee148X83VqDIBY618qHtPa7YnVVtXVDG6vDotp5EmNHTPikCQ==
   whatup:enabledServices:
-    - api-data
+    - diwi-dashboard
   whatup:isProd: "false"
   whatup:loadArchiveJob: "false"
   whatup:machineTypes:
@@ -49,3 +52,7 @@ config:
     secure: AAABANiQegtTuf3yt14YKiuK8JPBErs/fytTVf4jRq6F+tTf3tQycxFV0MMln4fOrzjDk6WY+RMdSdi9pAN39sxpNmegOA/8jsFHio4iqYfmGgtH4Io8vyqCWpjeifJivFnu1LrgsCdIxgKFlfDmO24C/7DhDls0ZEdifgPXGUXRhFgwjMtf+aP69L2Yjl2kt+YJ+LVB5kfTWvB7Equhwg==
   whatup:wucPassword:
     secure: AAABAB7WpD1flNM8bK6r03yWVfWd9qqYsFKMcfWzbUM04dW/QWc9ugfzTIfA2XwG7+3cJuAy6dxscUDv62MMnR6obWZmCD1gnXoLQCzZ/19qsUw8q/7kxEC8bh+bPsLxzc75Ds0yjFlb6YCdcHhB9hN/RE+G1QnvRRi2brradwZzM34Yth6dkdCPcf8CUWjsiJxqt1bV1CfoTkHEnrizVQ==
+  whatup:dashboardClientCreds:
+    secure: AAABAJytMk3MDI6n+LGQ8QJd6Yo2NhQwT4dxq0AcONpBD9L97xkKwFzK7PVXAtr0pl4iHWUvL1y2pWd7WlTjJRKKnh8yQDSq9rqFPcvhdiDpfMgjywAd99miw+Q3dl/Srytu1rLIDwwH+olGk3SpbX8K406fDG77AnrH/RJZ234PLLDsgLquIEz+Lz2sqZ/DaTrZN5hXb/MnXsTeWu6FU6yWzp5GLiWufp1I35GfLEPWfTSFIWKVOog++rSfnOBICbvNzwAXA7Y1wYOj1sqe2sXJ5pQ8dr/oYgb5zGiFnjXVm+AoMKkqslHZWIn1PMJE4rZ/46lgCOoWFwRBHIYmp8kEfifuAURISrACwuuQWuuj6D+Eh0i93s3ZVZuOVgtcs8FvjeyM+5MBMJOSa0O+YsVEDBs7L3VsV39XT+YhUeW9Athg1Br8fnCCuwJTYB+er/2NFbFgzzuEYW1KG3rgWElpMi2k4Q+Pbq/sUTK/ml/l3NI5caSieOCRigrFwUDQJ94AsXmTkT9Njg+wpwWbAU3IrB2jh+F9tBxBWFfp5MDydXH8mley4ZP/HDqxUXdkDDQ8dW9p3YLT1ncD0iLZ0ikJcdkfYu+Np6tg/BRMEtXVr2DZVAoZWfQYyzgE2oDwuP+MCoL+kfIOuZl4lDOg1RBqVKbXW3XNEt82
+  whatup:dashboardJWT:
+    secure: AAABAKrd8H+zBzE3iYMZnUUzwPifA3x2yCV3Hz5XLcZK2IRIs/WFsKNL2xcnFRiOoksKD4I5KJxFLxyGe65lhKCdzw6nagISE217cu7gtbOFPJNACAXOoznmxaj993ZRxIxKeJjvgFpPInkRFQjXftpw53QHVnpAWlFFCKKNMCCm6o7G2D23wdLtjGiG3dyFlxQPcaK2az6qkk1qoPnGbg==

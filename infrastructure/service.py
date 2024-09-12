@@ -181,6 +181,7 @@ class Service(ComponentResource):
             containers.append(simple_hello_container)
 
         resources = cloudrunv2.ServiceTemplateContainerResourcesArgs(
+            cpu_idle=True,
             limits=dict(
                 memory=props.memory,
                 cpu=props.cpu,

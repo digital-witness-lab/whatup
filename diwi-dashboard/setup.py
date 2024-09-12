@@ -7,15 +7,15 @@ with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
 setup(
-    name="diwi-api",
+    name="diwi-dashboard",
     version="0.0.1",
     author="Micha Gorelick",
     author_email="mynameisfiber@gmail.com",
-    url="https://github.com/digital-witness-lab/whatsup/tree/api",
+    url="https://github.com/digital-witness-lab/whatsup/tree/diwi-dashboard",
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT",
-    packages={"diwi_api": "diwi_api"},
+    packages={"diwi_dashboard": "diwi_dashboard"},
     include_package_data=True,
     zip_safe=False,
     install_requires=requirements,
@@ -32,7 +32,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "diwi-api = diwi_api.cli:main",
+            "diwi-dashboard = diwi_dashboard.cli:main",
         ],
     },
 )
