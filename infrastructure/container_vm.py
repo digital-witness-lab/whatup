@@ -287,7 +287,7 @@ class ContainerOnVm(pulumi.ComponentResource):
                 shielded_instance_config=native_compute_v1.ShieldedInstanceConfigArgs(
                     enable_secure_boot=True,
                     enable_vtpm=True,
-                    enable_integrity_monitoring=True
+                    enable_integrity_monitoring=True,
                 ),
                 service_accounts=[
                     native_compute_v1.ServiceAccountArgs(
