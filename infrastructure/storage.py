@@ -1,11 +1,21 @@
 from pulumi import ResourceOptions
 from pulumi_gcp import storage
 
-from config import is_prod_stack, location, temp_bucket_ttl_days
+from config import (
+    is_prod_stack,
+    location,
+    temp_bucket_ttl_days,
+    root_domain,
+    dashboard_configs,
+)
 
-# Cloud Storage buckets will be used as network filesystem using gcsfuse
-# in Cloud Run services.
-# https://cloud.google.com/run/docs/tutorials/network-filesystems-fuse
+cors_origins = [
+    f"{scheme}://{dashboard.domain}.{root_domain}"
+    for dashboard in dashboard_configs.values()
+    for scheme in ("http", "https")
+]
+
+print(cors_origins)
 
 sessions_bucket = storage.Bucket(
     "dwl-sess",
@@ -39,6 +49,14 @@ media_bucket = storage.Bucket(
         public_access_prevention="enforced",
         force_destroy=False if is_prod_stack() else True,
         uniform_bucket_level_access=True,
+        cors=[
+            storage.BucketCorArgs(
+                methods=["GET", "HEAD"],
+                origins=cors_origins,
+                response_headers=["Content-Type", "ETag"],
+                max_age_seconds=60 * 60 * 24,
+            )
+        ],
     ),
     opts=ResourceOptions(protect=is_prod_stack()),
 )
