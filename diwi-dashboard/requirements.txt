@@ -1,0 +1,15 @@
+# versions kept up to date with `pur -r requirements.txt`
+aiohttp==3.10.5
+click==8.1.7
+
+aiohttp-jinja2==1.6
+aiohttp-session==2.12.0
+aiohttp-jwt==0.6.1
+oauthlib==3.2.2
+requests==2.32.3
+
+google-cloud-storage==2.18.2
+google-auth==2.34.0
+google-auth-oauthlib==1.2.1
+google-auth-httplib2==0.2.0
+google-api-python-client==2.145.0

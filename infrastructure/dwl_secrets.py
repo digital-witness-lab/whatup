@@ -1,6 +1,6 @@
 from typing import Dict
 
-from pulumi import get_stack
+from pulumi import get_stack, Output
 from pulumi_gcp import secretmanager
 
 from config import (
@@ -16,7 +16,7 @@ db_url_secrets: Dict[str, secretmanager.Secret] = {}
 db_pass_secrets: Dict[str, secretmanager.Secret] = {}
 
 
-def create_secret(name: str, data) -> secretmanager.Secret:
+def create_secret(name: str, data: str | Output[str]) -> secretmanager.Secret:
     secret = secretmanager.Secret(
         name,
         secretmanager.SecretArgs(

@@ -181,6 +181,7 @@ class Service(ComponentResource):
             containers.append(simple_hello_container)
 
         resources = cloudrunv2.ServiceTemplateContainerResourcesArgs(
+            cpu_idle=True,
             limits=dict(
                 memory=props.memory,
                 cpu=props.cpu,
@@ -201,8 +202,8 @@ class Service(ComponentResource):
                 startup_probe=(
                     cloudrunv2.ServiceTemplateContainerStartupProbeArgs(  # noqa: E501
                         failure_threshold=1,
-                        initial_delay_seconds=60,
-                        timeout_seconds=20,
+                        initial_delay_seconds=10,
+                        timeout_seconds=10,
                         tcp_socket=cloudrunv2.ServiceTemplateContainerStartupProbeTcpSocketArgs(),  # noqa: E501
                     )
                     if props.container_port is not None
