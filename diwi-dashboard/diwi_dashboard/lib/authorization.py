@@ -157,7 +157,13 @@ async def callback(request):
         ) as token_response:
             token_response_data = await token_response.json()
 
-    client.parse_request_body_response(json.dumps(token_response_data))
+    try:
+        client.parse_request_body_response(json.dumps(token_response_data))
+    except Exception as e:
+        return web.json_response(
+            {"invalid_oauth_response": token_response_data},
+            status=401
+        )
 
     userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
     uri, headers, body = client.add_token(userinfo_endpoint)
