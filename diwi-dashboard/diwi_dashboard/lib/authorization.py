@@ -161,7 +161,7 @@ async def callback(request):
         client.parse_request_body_response(json.dumps(token_response_data))
     except Exception as e:
         return web.json_response(
-            {"invalid_oauth_response": token_response_data},
+            {"invalid_oauth_response": token_response_data, "error": str(e)},
             status=401
         )
 
