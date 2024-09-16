@@ -72,6 +72,11 @@ def bucket_proxy(gs_path, chunk_size=1024):
                 return response
             except ConnectionResetError:
                 pass
+            except Exception as e:
+                raise web.json_response(
+                    {"error": "could not read data", "e": str(e)},
+                    status=500,
+                )
 
         return handler
 
