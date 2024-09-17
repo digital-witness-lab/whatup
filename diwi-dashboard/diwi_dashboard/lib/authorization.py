@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import urllib.parse
 
 import aiohttp
+from yarl import URL
 from aiohttp import web
 from oauthlib.oauth2 import WebApplicationClient
 from google.oauth2 import credentials as google_credentials
@@ -35,6 +36,11 @@ client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 
 AuthGroupType = List[str] | str
+
+
+def url_for_absolute(request: web.Request, name: str) -> URL:
+    relative_url = request.app.router[name].url_for()
+    return request.url.join(relative_url)
 
 
 @dataclass
@@ -118,18 +124,19 @@ async def get_google_provider_cfg():
 async def login(request):
     google_provider_cfg = await get_google_provider_cfg()
     authorization_endpoint = google_provider_cfg["authorization_endpoint"]
-    redirect_url = request.query.get("redirect", "/")
+    redirect = request.query.get("redirect", "/")
 
+    redirect_url = url_for_absolute(request, "callback")
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
-        redirect_uri=str(request.url.with_path("/callback")),
+        redirect_uri=str(redirect_url),
         scope=[
             "openid",
             "email",
             "profile",
-            "https://www.googleapis.com/auth/admin.directory.group.readonly",
+            'https://www.googleapis.com/auth/cloud-identity.groups.readonly',
         ],
-        state=urllib.parse.urlencode({"redirect": redirect_url}),
+        state=urllib.parse.urlencode({"redirect": redirect}),
     )
     return web.HTTPFound(location=request_uri)
 
@@ -141,10 +148,11 @@ async def callback(request):
     google_provider_cfg = await get_google_provider_cfg()
     token_endpoint = google_provider_cfg["token_endpoint"]
 
+    redirect_url = url_for_absolute(request, "callback")
     token_url, headers, body = client.prepare_token_request(
         token_endpoint,
         authorization_response=str(request.url),
-        redirect_url=str(request.url.with_path("/callback")),
+        redirect_url=str(redirect_url),
         code=code,
     )
 
@@ -227,30 +235,19 @@ async def get_user_groups(
     :return: A list of group names that the user is a member of within the specified domain.
     """
     creds = google_credentials.Credentials(token_response_data["access_token"])
-    service = googleapiclient.discovery.build(
-        "admin", "directory_v1", credentials=creds
-    )
-
+    service = googleapiclient.discovery.build('cloudidentity', 'v1', credentials=creds)
     user_groups = []
-    page_token = None
-
     try:
-        # Iterate over all groups in the domain
+        page_token = None
         while True:
-            results = (
-                service.groups()
-                .list(domain=domain, userKey=user_email, pageToken=page_token)
-                .execute()
-            )
-            groups = results.get("groups", [])
-
-            for group in groups:
-                user_groups.append(group["email"])
-
+            results = service.groups().list(parent='customers/C03cp9frk', pageToken=page_token).execute()
+            for group in results.get('groups', []):
+                email = group['groupKey']['id']
+                if email.endswith(f"@{domain}"):
+                    user_groups.append(email)
             page_token = results.get("nextPageToken", None)
             if not page_token:
                 break
-
     except Exception as e:
         print(f"Error fetching user groups: {e}")
         return []
@@ -260,6 +257,6 @@ async def get_user_groups(
 
 def init(app: web.Application, login_path="/login") -> web.Application:
     app.router.add_get(login_path, login, name="login")
-    app.router.add_get("/callback", callback)
+    app.router.add_get("/callback", callback, name="callback")
     app.router.add_get("/logout", logout, name="logout")
     return app
