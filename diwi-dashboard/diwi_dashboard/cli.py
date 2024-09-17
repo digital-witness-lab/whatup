@@ -1,3 +1,5 @@
+import asyncio
+
 import click
 
 from . import dashboard_app

@@ -29,7 +29,7 @@ for service in [
     "sqladmin.googleapis.com",
     "storage.googleapis.com",
     # for group membership queries in API
-    "admin.googleapis.com",
+    "cloudidentity.googleapis.com",
 ]:
     enabled_services.append(
         projects.Service(service, disable_on_destroy=False, service=service)

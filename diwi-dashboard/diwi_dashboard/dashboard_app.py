@@ -1,4 +1,7 @@
+import asyncio
+
 from aiohttp import web
+from aiohttp_remotes import setup, XForwardedRelaxed
 
 from .lib import dashboard
 from .lib import authorization
@@ -6,6 +9,7 @@ from .lib import authorization
 
 def run(dashboard_path, gs_path, auth_group, *args, **kwargs):
     data_app = web.Application()
+    asyncio.run(setup(data_app, XForwardedRelaxed()))
 
     authorization.init(data_app)
     dashboard.add_dashboard(
