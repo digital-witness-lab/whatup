@@ -100,7 +100,8 @@ case $app_command in
             --port 3447 \
             chatbot \
             --response-time 3600 \
-            "kek+gs://${SESSIONS_BUCKET}/"
+            "kek+gs://${SESSIONS_BUCKET}/" \
+            "kek+gs://${SESSIONS_BUCKET}/users/burner*.json"
     ;;
 
     onboard)
