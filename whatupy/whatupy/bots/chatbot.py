@@ -19,6 +19,7 @@ CHATBOT_FRIEND_JIDS: T.Dict[str, ChatBotType] = {}
 
 class ChatBot(BaseBot):
     __version__ = "1.0.0"
+    MESSAGE_PREFIX = "diwibot "
 
     def __init__(
         self,
@@ -70,7 +71,9 @@ class ChatBot(BaseBot):
                 return
 
         wait_time = random.expovariate(self.message_response_rate_local())
-        self.logger.info(f"Sending message in {timedelta(seconds=wait_time)}: {friend.username}")
+        self.logger.info(
+            f"Sending message in {timedelta(seconds=wait_time)}: {friend.username}"
+        )
 
         self.pending_messages[friend.username] += 1
         await asyncio.sleep(wait_time)
@@ -82,19 +85,32 @@ class ChatBot(BaseBot):
 
     def message_response_rate_local(self, scale=0.5):
         now = datetime.now()
-        seconds_since_midnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+        seconds_since_midnight = (
+            now - now.replace(hour=0, minute=0, second=0, microsecond=0)
+        ).total_seconds()
         seconds_per_day = 60 * 60 * 24
 
         # alpha is 1 at noon, -1 at midnight
         alpha = 2 * (math.sin(seconds_since_midnight / seconds_per_day * math.pi) - 0.5)
         # beta scales from 1 - scale to 1 + scale
         beta = alpha * scale + 1
-        self.logger.info("alpha=%f,  beta=%f, response_time=%f", alpha, beta, self.response_time / beta)
+        self.logger.info(
+            "alpha=%f,  beta=%f, response_time=%f",
+            alpha,
+            beta,
+            self.response_time / beta,
+        )
         return beta / self.response_time
 
     def generate_message(self) -> str:
         n_words = random.randint(1, 24)
-        return " ".join(utils.random_words(n_words))
+        return self.MESSAGE_PREFIX + " ".join(utils.random_words(n_words))
+
+    @classmethod
+    def is_chatbot_message(cls, message: wuc.WUMessage) -> bool:
+        return not message.info.source.isGroup and message.content.text.startswith(
+            cls.MESSAGE_PREFIX
+        )
 
     def stop(self):
         jid_anon_str = utils.jid_to_str(self.jid_anon)

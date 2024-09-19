@@ -13,7 +13,7 @@ from sqlalchemy.sql import func
 from .. import utils
 from ..protos import whatupcore_pb2 as wuc
 from .lib import flatten_proto_message
-from . import ArchiveData, BaseBot
+from . import ArchiveData, BaseBot, ChatBot
 
 
 logger = logging.getLogger(__name__)
@@ -187,6 +187,9 @@ class DatabaseBot(BaseBot):
         archive_data: ArchiveData,
         **kwargs,
     ):
+        if ChatBot.is_chatbot_message(message):
+            return
+
         msg_id = message.info.id
         media_filename = utils.media_message_filename(message)
 

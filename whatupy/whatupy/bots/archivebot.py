@@ -12,6 +12,7 @@ from .. import utils
 from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
 from . import BaseBot
+from . import ChatBot
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,8 @@ class ArchiveBot(BaseBot):
         super().__init__(*args, **kwargs)
 
     async def on_message(self, message: wuc.WUMessage, is_history: bool, **kwargs):
+        if ChatBot.is_chatbot_message(message):
+            return
         chat_id = utils.jid_to_str(message.info.source.chat)
         if chat_id is None:
             self.logger.critical("Message has no chat_id")
@@ -68,7 +71,7 @@ class ArchiveBot(BaseBot):
                     )
             except Exception as e:
                 self.logger.critical(
-                    f"Could not load previous archive... re-writing: %s", e
+                    "Could not load previous archive... re-writing: %s", e
                 )
         self.logger.debug("Archiving message to: %s", archive_id)
 
