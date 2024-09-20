@@ -13,7 +13,8 @@ from sqlalchemy.sql import func
 from .. import utils
 from ..protos import whatupcore_pb2 as wuc
 from .lib import flatten_proto_message
-from . import ArchiveData, BaseBot, ChatBot
+from . import ArchiveData, BaseBot
+from .chatbot import ChatBot
 
 
 logger = logging.getLogger(__name__)
