@@ -11,12 +11,18 @@ config:
     - pilot2@g.us # pilot2
     - pilot4@g.us # pilot4
   whatup:dashboards:
-    - domain: dashboard
-      authGroups:
+    - authGroups:
         - whatup-data-viewers@digitalwitnesslab.org
       clientCredsKey: dashboardClientCreds
+      domain: dashboard
       gsPath: gs://diwi-dashboard-prod-3a9b/
       jwtKey: dashboardJWT
+    - authGroups:
+        - whatup-data-viewers@digitalwitnesslab.org
+      clientCredsKey: dashboardClientCreds
+      domain: gun-market
+      gsPath: gs://gun-market/
+      jwtKey: dashboardGunMarketJWT
   whatup:databases:
     - name: messages
       nameShort: msg
@@ -71,3 +77,5 @@ config:
     secure: AAABAEDPxMuaAL4fYNGaEJbcaoxu6bGgetExNwnn9AFKlajcJ/y3oFmzdiR1SFC+JS/QdTilEVfEMgMiBsEd0b58sow/TpXJqbmTCwiDt+sOOYv8X4S4Xejmo4tEYRVD4/9XSwFkHWDq9+8DAiPYDBbPLmURizdWV3skF1IvzFhRCL8HKlQ4RifN9tz9oc/S6Hb5N0Blf7CZkEWohrws7EClp8Ilvz2lWBr+IK//bI6dFIHckU6Tav1J6GSxLChZbRcicO+Z9rxkijPzW6slaADZvLCpvsLkglhQApQMOa1f4IsBLUzq+yfXexDNSYVglr4+v4jtg+GUF6qxf2R71bTrUrTxCUof7oOkNeBqvLP0NBKfkRrrrDq1KemA+uG905k3M3KYzr28QEfYGR3J9GuxFbWtlpCCdsESN2ouDnsW2IIWewiG8/KRAdjfq4vyqCN07LOvDBbxtF2gXsdMQwl8HgAGW8ljuT+bRRznVNFjzdHEYLBYkL1tgHX69jO0v41oFJmO+VvczfHkUVAPApxUA1NpGkuFKtLbPKxLKdfLrLcGBnlgPnMOIx3j9vPqaXmQqLw1gXtDnXJN4Tq9Y3HdYKOaoXWA7m3el8U=
   whatup:dashboardJWT:
     secure: AAABAEP7TNCnmIczTMdLjHWbaMNyNySUzS/Xm5r/efxCwUaOwepdIp30Tn6oYmLohvRfgQAoQz9kHn2kN8P+VXHr/4ZVhgw1xvZpMNQTFt2A8NVy53XrVztrtUsYRMCzT7rMAJREarpVUZDWpGgw5WjAxP8huExO5bGexwdqg5BS9pLI1zVo3hInuDojx8zApBzeL+Y0bgFqEJttfNrM0A==
+  whatup:dashboardGunMarketJWT:
+    secure: AAABADblUjWTVyCOA5TBs6azo31uG6kYZDBEfSCDcUvHONl6I/1lKQjprad6V6KY7kQmEFoPnxo97jBYarazNQAPvAO7MWwPmTvA/8UyvC+aJTsGCSjAL8i1XzOmOHXjFjOcZB3uUPpOxbG3/+3KbSbi0zEX2JKEf4iqXKfBwHb/EHSdBox4OEXzBrfofLK73bRFzbbIgLMyTUNkzT3Fbg==
