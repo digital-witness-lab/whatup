@@ -21,6 +21,7 @@ import java.io.*;
 import javax.imageio.ImageIO;
 import PhotoDNA.*;
 
+
 public class Server {
     private io.grpc.Server server;
 
@@ -109,6 +110,7 @@ public class Server {
 
             byte[] hash;
             byte[] photo = request.getPhoto().toByteArray();
+
             try {
                 hash = generateHash(photo);
             } catch (java.io.IOException e) {
@@ -146,12 +148,15 @@ public class Server {
     }
 
     private static byte[] generateHash(byte[] image) throws java.io.IOException {
-		BufferedImage imgBuffer = null;
         ByteArrayInputStream bais = new ByteArrayInputStream(image);
-		imgBuffer = ImageIO.read(bais);
+		BufferedImage imgBuffer = ImageIO.read(bais);
 
-	    PDNAClientHashResult preHashObject = PDNAClientHashGenerator.generatePreHash(imgBuffer);
-	    byte[] preHash = preHashObject.generateBinaryPreHash();
-        return preHash;
+        try {
+	        PDNAClientHashResult preHashObject = PDNAClientHashGenerator.generatePreHash(imgBuffer);
+	        byte[] preHash = preHashObject.generateBinaryPreHash();
+            return preHash;
+        } catch (java.lang.NullPointerException e) {
+            return new byte[0];
+        }
     }
 }

@@ -12,8 +12,8 @@ from .. import utils
 from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
 from . import BaseBot
-from .chatbot import ChatBot
 from . import PhotoCopMatchException
+from .chatbot import ChatBot
 
 logger = logging.getLogger(__name__)
 
