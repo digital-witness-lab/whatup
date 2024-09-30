@@ -41,7 +41,6 @@ func NewPhotoCopOrEmpty(host string, cert string, log waLog.Logger) (PhotoCopInt
 }
 
 func NewPhotoCop(host string, cert string, log waLog.Logger) (*PhotoCop, error) {
-	// TODO: change insecure.NewCredentials() to correponding photo-cop credentials
 	creds, err := credentials.NewClientTLSFromFile(cert, "")
 	if err != nil {
 		return nil, err
