@@ -15,6 +15,7 @@ from ..protos import whatupcore_pb2 as wuc
 from .lib import flatten_proto_message
 from . import ArchiveData, BaseBot, PhotoCopMatchException
 from .chatbot import ChatBot
+from .static import static_dir
 
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,12 @@ class DatabaseBot(BaseBot):
             database_url, logger=self.logger
         )
         self.init_database(self.db)
+
+        with (static_dir / "placeholder.jpg").open("rb") as fd:
+            placeholder_uri = self.write_media(fd.read(), "photocop.jpg", ["static"])
+            self.logger.info(
+                "Wrote PhotoCop placeholder image to: %s", str(placeholder_uri)
+            )
 
     @classmethod
     def __db_connect(cls, database_url, logger=logger) -> dataset.Database:
@@ -386,6 +393,7 @@ class DatabaseBot(BaseBot):
             datum["photocop_match_violations"] = ",".join(
                 v for m in error.decision.Matches for v in m.Violations
             )
+            datum["content_url"] = self.media_url("photocop.jpg", ["static"])
         datum["error"] = None if error is None else str(error)
         datum[RECORD_MTIME_FIELD] = datetime.now()
         self.db["media"].upsert(datum, ["filename"])
