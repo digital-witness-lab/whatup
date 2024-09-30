@@ -20,7 +20,7 @@ from ..connection import create_whatupcore_clients
 from ..credentials_manager.credential import Credential
 from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
-from ..protos import photocop_pb2 as pc
+from ..protos import photo_cop_pb2 as pc
 from ..protos.whatupcore_pb2_grpc import WhatUpCoreStub
 from .static import format_lang_template
 
