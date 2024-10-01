@@ -9,7 +9,7 @@ config:
   whatup:control_groups:
     - 120363159470639781@g.us
   whatup:dashboards:
-    - domain: dashboard
+    - domain: test
       gsPath: gs://diwi-dashboard-test/
       authGroups:
         - diwi-dashboard-dev-micha@digitalwitnesslab.org
