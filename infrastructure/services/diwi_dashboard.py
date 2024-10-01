@@ -73,6 +73,14 @@ for name, dc in dashboard_configs.items():
         ),
     )
 
+    # Add IAM role 'roles/resourcemanager.viewer' to the service account
+    group_list_perm = serviceaccount.IAMMember(
+        f"{service_name}-list-groups",
+        service_account_id=service_account.name,
+        member=Output.concat("serviceAccount:", service_account.email),
+        role="roles/cloudidentity.groups.readonly",
+    )
+
     dashboard = dashboards[name] = Service(
         service_name,
         ServiceArgs(
@@ -126,6 +134,7 @@ for name, dc in dashboard_configs.items():
                 jwt_perm,
                 client_creds_perm,
                 dashboard_bucket_perm,
+                group_list_perm,
             ]
         ),
     )
