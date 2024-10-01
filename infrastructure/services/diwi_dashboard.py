@@ -21,11 +21,11 @@ from config import dashboard_configs
 dashboards = {}
 for name, dc in dashboard_configs.items():
     bucket = urllib.parse.urlparse(dc.gs_path, "gs").netloc
-    service_name = f"dshbd-{name}"
+    service_name = f"dshbd-{name}-{get_stack()}"
 
     service_account = serviceaccount.Account(
         f"{service_name}-sa",
-        account_id=f"{service_name}-{get_stack()}",
+        account_id=f"{service_name}",
         description=f"Service account for {service_name}",
     )
 
