@@ -297,7 +297,7 @@ async def get_user_groups(user_email):
         return groups
 
     except Exception as e:
-        print(f"Error fetching groups for {user_email}: {str(e)}: {credentials}")
+        print(f"Error fetching groups for {user_email}: {str(e)}")
         return []
 
 
