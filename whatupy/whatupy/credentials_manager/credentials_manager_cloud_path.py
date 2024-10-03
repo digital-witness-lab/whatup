@@ -1,10 +1,9 @@
 import asyncio
-import glob
 import json
 import random
 import typing as T
 
-from cloudpathlib import CloudPath, AnyPath
+from cloudpathlib import CloudPath
 
 from .credentials_manager import (
     Credential,
@@ -22,12 +21,12 @@ class CredentialsManagerCloudPath(CredentialsManager):
 
     def __init__(self, url: str, timeout: int = 60):
         super().__init__(url)
-        self.path = AnyPath(url)
-        self.active_usernames: T.Dict[str, AnyPath] = {}
+        self.path = CloudPath(url)
+        self.active_usernames: T.Dict[str, CloudPath] = {}
         self.timeout = timeout
         self.blocker = asyncio.Event()
 
-    def _get_credentials(self) -> T.Tuple[bool, T.List[AnyPath]]:
+    def _get_credentials(self) -> T.Tuple[bool, T.List[CloudPath]]:
         should_loop = False
         credentials = []
         path = self.path
@@ -39,10 +38,12 @@ class CredentialsManagerCloudPath(CredentialsManager):
             credentials.extend(path.glob("*.json"))
         else:
             should_loop = True
-            credentials.extend(path / filename for filename in glob.glob(str(path)))
+            base = CloudPath(f"gs://{path.bucket}/")
+            pattern = str(path.relative_to(base))
+            credentials.extend(base.glob(pattern))
         return should_loop, credentials
 
-    def read_credential(self, locator: AnyPath) -> Credential:
+    def read_credential(self, locator: CloudPath) -> Credential:
         path = locator
         self.logger.debug("Reading credentials: %s", str(path))
         try:
@@ -66,7 +67,7 @@ class CredentialsManagerCloudPath(CredentialsManager):
         with path.open("w+") as fd:
             json.dump(credential.asdict(), fd)
 
-    async def _handle_credential(self, device_manager, credential_file: AnyPath):
+    async def _handle_credential(self, device_manager, credential_file: CloudPath):
         try:
             credential = self.read_credential(credential_file)
             username = credential.username

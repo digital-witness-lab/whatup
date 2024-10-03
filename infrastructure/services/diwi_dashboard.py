@@ -1,6 +1,6 @@
 import urllib.parse
 
-from pulumi import Output, ResourceOptions, get_stack
+from pulumi import Output, ResourceOptions, get_stack, export
 from pulumi_gcp.cloudrunv2 import (
     ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
 )
@@ -8,6 +8,7 @@ from pulumi_gcp import (
     cloudrunv2,
     serviceaccount,
     storage,
+    projects,
     secretmanager,
 )
 
@@ -21,12 +22,16 @@ from config import dashboard_configs
 dashboards = {}
 for name, dc in dashboard_configs.items():
     bucket = urllib.parse.urlparse(dc.gs_path, "gs").netloc
-    service_name = f"dshbd-{name}"
+    service_name = f"dshbd-{name}-{get_stack()}"
 
     service_account = serviceaccount.Account(
         f"{service_name}-sa",
-        account_id=f"{service_name}-{get_stack()}",
+        account_id=f"{service_name}-sa",
         description=f"Service account for {service_name}",
+    )
+    export(
+        "Go to https://admin.google.com/ac/owl/domainwidedelegation and add role 'https://www.googleapis.com/auth/admin.directory.group.readonly' for user: ",
+        service_account.email,
     )
 
     dashboard_bucket_perm = storage.BucketIAMMember(
@@ -64,6 +69,13 @@ for name, dc in dashboard_configs.items():
             role="roles/secretmanager.secretAccessor",
             member=Output.concat("serviceAccount:", service_account.email),
         ),
+    )
+
+    token_create_perm = projects.IAMMember(
+        f'{service_name}-token-perm',
+        member=Output.concat('serviceAccount:', service_account.email),
+        role='roles/iam.serviceAccountTokenCreator',
+        project=service_account.project
     )
 
     client_creds_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
