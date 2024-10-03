@@ -1,6 +1,6 @@
 import urllib.parse
 
-from pulumi import Output, ResourceOptions, get_stack
+from pulumi import Output, ResourceOptions, get_stack, export
 from pulumi_gcp.cloudrunv2 import (
     ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs,
 )
@@ -8,6 +8,7 @@ from pulumi_gcp import (
     cloudrunv2,
     serviceaccount,
     storage,
+    projects,
     secretmanager,
 )
 
@@ -25,8 +26,12 @@ for name, dc in dashboard_configs.items():
 
     service_account = serviceaccount.Account(
         f"{service_name}-sa",
-        account_id=f"{service_name}",
+        account_id=f"{service_name}-sa",
         description=f"Service account for {service_name}",
+    )
+    export(
+        "Go to https://admin.google.com/ac/owl/domainwidedelegation and add role 'https://www.googleapis.com/auth/admin.directory.group.readonly' for user: ",
+        service_account.email,
     )
 
     dashboard_bucket_perm = storage.BucketIAMMember(
@@ -66,19 +71,18 @@ for name, dc in dashboard_configs.items():
         ),
     )
 
+    token_create_perm = projects.IAMMember(
+        f'{service_name}-token-perm',
+        member=Output.concat('serviceAccount:', service_account.email),
+        role='roles/iam.serviceAccountTokenCreator',
+        project=service_account.project
+    )
+
     client_creds_secret_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
         secret_key_ref=ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
             secret=client_creds_secret.name,
             version="latest",
         ),
-    )
-
-    # Add IAM role 'roles/resourcemanager.viewer' to the service account
-    group_list_perm = serviceaccount.IAMMember(
-        f"{service_name}-list-groups",
-        service_account_id=service_account.name,
-        member=Output.concat("serviceAccount:", service_account.email),
-        role="roles/cloudidentity.groups.readonly",
     )
 
     dashboard = dashboards[name] = Service(
@@ -134,7 +138,6 @@ for name, dc in dashboard_configs.items():
                 jwt_perm,
                 client_creds_perm,
                 dashboard_bucket_perm,
-                group_list_perm,
             ]
         ),
     )

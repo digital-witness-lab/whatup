@@ -7,8 +7,10 @@ import aiohttp
 from yarl import URL
 from aiohttp import web
 from oauthlib.oauth2 import WebApplicationClient
-from google.oauth2 import credentials as google_credentials
 import google.auth
+from google.auth import iam
+from google.auth.transport import requests
+from google.oauth2 import service_account
 import googleapiclient.discovery
 from datetime import timedelta, datetime, timezone
 import json
@@ -135,7 +137,6 @@ async def login(request):
             "openid",
             "email",
             "profile",
-            "https://www.googleapis.com/auth/cloud-identity.groups.readonly",
         ],
         state=urllib.parse.urlencode({"redirect": redirect}),
     )
@@ -223,13 +224,50 @@ async def logout(_: web.Request):
     return response
 
 
-async def get_user_groups(user_email):
-    # Use the application default credentials (e.g., for Cloud Run, GKE)
-    credentials, project = google.auth.default()
+def delegated_credentials(credentials, subject, scopes):
+    try:
+        # If we are using service account credentials from json file
+        # this will work
+        updated_credentials = credentials.with_subject(subject).with_scopes(scopes)
+    except AttributeError:
+        # This exception is raised if we are using GCE default credentials
 
-    # Build the Cloud Identity API service
+        request = requests.Request()
+
+        # Refresh the default credentials. This ensures that the information
+        # about this account, notably the email, is populated.
+        credentials.refresh(request)
+
+        # Create an IAM signer using the default credentials.
+        signer = iam.Signer(
+            request,
+            credentials,
+            credentials.service_account_email
+        )
+
+        # Create OAuth 2.0 Service Account credentials using the IAM-based
+        # signer and the bootstrap_credential's service account email.
+        updated_credentials = service_account.Credentials(
+            signer,
+            credentials.service_account_email,
+            'https://accounts.google.com/o/oauth2/token',
+            scopes=scopes,
+            subject=subject
+        )
+    except Exception:
+        raise
+
+    return updated_credentials
+
+
+async def get_user_groups(user_email):
+    credentials, project = google.auth.default()
+    scopes = ['https://www.googleapis.com/auth/admin.directory.group.readonly']
+    credentials = delegated_credentials(credentials, "micha@digitalwitnesslab.org", scopes)
+
     service = googleapiclient.discovery.build(
-        "cloudidentity", "v1", credentials=credentials
+        "admin", "directory_v1",
+        credentials=credentials
     )
 
     groups = []
@@ -240,18 +278,16 @@ async def get_user_groups(user_email):
             # Make the request to get the groups for the member email
             response = (
                 service.groups()
-                .memberships()
                 .list(
-                    parent="groups/-",
-                    query=f'member_key_id == "{user_email}"',
+                    domain="digitalwitnesslab.org",
+                    userKey=user_email,
                     pageToken=page_token,  # pass the page token for pagination
                 )
                 .execute()
             )
 
             # Extract group memberships from the response
-            memberships = response.get("memberships", [])
-            groups.extend([group["groupKey"]["id"] for group in memberships])
+            groups.extend([group["email"] for group in response.get("groups", [])])
 
             # Check if there is another page
             page_token = response.get("nextPageToken")
@@ -261,7 +297,7 @@ async def get_user_groups(user_email):
         return groups
 
     except Exception as e:
-        print(f"Error fetching groups for {email}: {str(e)}")
+        print(f"Error fetching groups for {user_email}: {str(e)}: {credentials}")
         return []
 
 
