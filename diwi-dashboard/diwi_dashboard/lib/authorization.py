@@ -7,7 +7,10 @@ import aiohttp
 from yarl import URL
 from aiohttp import web
 from oauthlib.oauth2 import WebApplicationClient
-from google.oauth2 import credentials as google_credentials
+import google.auth
+from google.auth import iam
+from google.auth.transport import requests
+from google.oauth2 import service_account
 import googleapiclient.discovery
 from datetime import timedelta, datetime, timezone
 import json
@@ -134,7 +137,6 @@ async def login(request):
             "openid",
             "email",
             "profile",
-            'https://www.googleapis.com/auth/cloud-identity.groups.readonly',
         ],
         state=urllib.parse.urlencode({"redirect": redirect}),
     )
@@ -169,8 +171,7 @@ async def callback(request):
         client.parse_request_body_response(json.dumps(token_response_data))
     except Exception as e:
         return web.json_response(
-            {"invalid_oauth_response": token_response_data, "error": str(e)},
-            status=401
+            {"invalid_oauth_response": token_response_data, "error": str(e)}, status=401
         )
 
     userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
@@ -185,7 +186,7 @@ async def callback(request):
             {"error": "User email not verified by Google"}, status=400
         )
 
-    user_groups = await get_user_groups(userinfo["email"], token_response_data)
+    user_groups = await get_user_groups(userinfo["email"])
     if not user_groups:
         return web.json_response(
             {"error": "User has no possible authorizations"}, status=403
@@ -223,36 +224,81 @@ async def logout(_: web.Request):
     return response
 
 
-async def get_user_groups(
-    user_email, token_response_data, domain="digitalwitnesslab.org"
-):
-    """
-    Retrieves all groups that the user is a member of within the specified domain.
-
-    :param user_email: The email of the user whose groups are being fetched.
-    :param token_response_data: The token data obtained after user authentication.
-    :param domain: The domain within which to look for groups (default is "digitalwitnesslab.org").
-    :return: A list of group names that the user is a member of within the specified domain.
-    """
-    creds = google_credentials.Credentials(token_response_data["access_token"])
-    service = googleapiclient.discovery.build('cloudidentity', 'v1', credentials=creds)
-    user_groups = []
+def delegated_credentials(credentials, subject, scopes):
     try:
-        page_token = None
-        while True:
-            results = service.groups().list(parent='customers/C03cp9frk', pageToken=page_token).execute()
-            for group in results.get('groups', []):
-                email = group['groupKey']['id']
-                if email.endswith(f"@{domain}"):
-                    user_groups.append(email)
-            page_token = results.get("nextPageToken", None)
-            if not page_token:
-                break
-    except Exception as e:
-        print(f"Error fetching user groups: {e}")
-        return []
+        # If we are using service account credentials from json file
+        # this will work
+        updated_credentials = credentials.with_subject(subject).with_scopes(scopes)
+    except AttributeError:
+        # This exception is raised if we are using GCE default credentials
 
-    return user_groups
+        request = requests.Request()
+
+        # Refresh the default credentials. This ensures that the information
+        # about this account, notably the email, is populated.
+        credentials.refresh(request)
+
+        # Create an IAM signer using the default credentials.
+        signer = iam.Signer(
+            request,
+            credentials,
+            credentials.service_account_email
+        )
+
+        # Create OAuth 2.0 Service Account credentials using the IAM-based
+        # signer and the bootstrap_credential's service account email.
+        updated_credentials = service_account.Credentials(
+            signer,
+            credentials.service_account_email,
+            'https://accounts.google.com/o/oauth2/token',
+            scopes=scopes,
+            subject=subject
+        )
+    except Exception:
+        raise
+
+    return updated_credentials
+
+
+async def get_user_groups(user_email):
+    credentials, project = google.auth.default()
+    scopes = ['https://www.googleapis.com/auth/admin.directory.group.readonly']
+    credentials = delegated_credentials(credentials, "micha@digitalwitnesslab.org", scopes)
+
+    service = googleapiclient.discovery.build(
+        "admin", "directory_v1",
+        credentials=credentials
+    )
+
+    groups = []
+    page_token = None
+
+    try:
+        while True:
+            # Make the request to get the groups for the member email
+            response = (
+                service.groups()
+                .list(
+                    domain="digitalwitnesslab.org",
+                    userKey=user_email,
+                    pageToken=page_token,  # pass the page token for pagination
+                )
+                .execute()
+            )
+
+            # Extract group memberships from the response
+            groups.extend([group["email"] for group in response.get("groups", [])])
+
+            # Check if there is another page
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break  # Exit loop if there are no more pages
+
+        return groups
+
+    except Exception as e:
+        print(f"Error fetching groups for {user_email}: {str(e)}")
+        return []
 
 
 def init(app: web.Application, login_path="/login") -> web.Application:
