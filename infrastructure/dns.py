@@ -10,14 +10,18 @@ if root_domain:
     root_domain = root_domain.strip(".")
     # Create and verify the custom domain
     # Create the DNS A record for the custom domain to point to the Cloud Run service
-    dns_zone = gcp.dns.ManagedZone(
-        f"root-domain-{get_stack()}-zone",
-        name=f"root-domain-{get_stack()}-zone",
-        dns_name=f"{root_domain}.",
-        cloud_logging_config=gcp.dns.ManagedZoneCloudLoggingConfigArgs(
-            enable_logging=True
-        ),
-    )
+    zone_name = f"root-domain-{get_stack()}-zone"
+    zone_id = f"projects/{project}/managedZones/{zone_name}"
+    dns_zone = gcp.dns.ManagedZone.get(zone_name, zone_id)
+    if dns_zone is None:
+        dns_zone = gcp.dns.ManagedZone(
+            f"root-domain-{get_stack()}-zone",
+            name=zone_name,
+            dns_name=f"{root_domain}.",
+            cloud_logging_config=gcp.dns.ManagedZoneCloudLoggingConfigArgs(
+                enable_logging=True
+            ),
+        )
     pulumi.export(f"Name servers for: {root_domain}", dns_zone.name_servers)
 else:
     dns_zone = None
@@ -45,7 +49,6 @@ def create_subdomain_service(
 ) -> Output[str | None]:
     cr_service = service.service
     url = service.get_url()
-    pulumi.export(f"Service URI: {subdomain}", url)
     if dns_zone is None:
         return url
 

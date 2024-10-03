@@ -172,7 +172,7 @@ class Service(ComponentResource):
                 image="nginxdemos/nginx-hello:0.2",
                 resources=nginx_resources,
                 ports=[
-                    cloudrunv2.ServiceTemplateContainerPortArgs(
+                    cloudrunv2.ServiceTemplateContainerPortsArgs(
                         name="http1",
                         container_port=8080,
                     ),
@@ -210,15 +210,13 @@ class Service(ComponentResource):
                     else None
                 ),
                 ports=(
-                    [
-                        cloudrunv2.ServiceTemplateContainerPortArgs(
-                            # This enables end-to-end HTTP/2 (gRPC)
-                            # as described in:
-                            # https://cloud.google.com/run/docs/configuring/http2
-                            name=props.protocol,
-                            container_port=props.container_port,
-                        ),
-                    ]
+                    cloudrunv2.ServiceTemplateContainerPortsArgs(
+                        # This enables end-to-end HTTP/2 (gRPC)
+                        # as described in:
+                        # https://cloud.google.com/run/docs/configuring/http2
+                        name=props.protocol,
+                        container_port=props.container_port,
+                    )
                     if props.container_port is not None
                     else None
                 ),
