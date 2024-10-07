@@ -14,7 +14,7 @@ from jobs import (
     whatupcore_remove_user,
 )
 
-from services import whatupcore2
+from services import whatupcore2, photo_cop
 from config import enabledServices
 
 enabledServicesPackages = [es.replace("-", "_") for es in enabledServices]
