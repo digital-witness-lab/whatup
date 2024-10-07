@@ -82,7 +82,7 @@ translation_enabled = config.get_bool("translationEnabled", False)
 
 enabledServices = config.require_object("enabledServices")
 
-photo_dna_api_key = config.require_secret("photoDNAApiKey")
+photo_dna_api_key = config.get_secret("photoDNAApiKey")
 
 dashboard_configs: Dict[str, DashboardConfig] = {
     data["domain"]: DashboardConfig.from_config(config, data)

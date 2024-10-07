@@ -13,12 +13,12 @@ from dwl_secrets import photo_dna_api_key_secret
 from network import private_services_network_with_db
 from whatupcore_network import (
     photocop_tls_cert,
-    whatupcore2_static_private_ip,
+    photocop_static_private_ip,
 )
 
 service_name = "photo-cop"
-port = 50051
-photo_cop_addr = Output.from_input("")
+port = 3447
+photo_cop_service = None
 
 if photo_dna_api_key_secret is not None:
     service_account = serviceaccount.Account(
@@ -58,7 +58,7 @@ if photo_dna_api_key_secret is not None:
         service_name,
         ContainerOnVmArgs(
             automatic_static_private_ip=False,
-            private_address=whatupcore2_static_private_ip,
+            private_address=photocop_static_private_ip,
             tcp_healthcheck_port=3447,
             container_spec=Container(
                 command=None,
@@ -67,7 +67,7 @@ if photo_dna_api_key_secret is not None:
                 env=[
                     ContainerEnv(
                         name="PHOTO_COP_PORT",
-                        value=str(port),
+                        value="3447",
                     ),
                     ContainerEnv(
                         name="PHOTOCOP_TLS_CERT",
@@ -103,8 +103,4 @@ if photo_dna_api_key_secret is not None:
             subnet=private_services_network_with_db.self_link,
         ),
         opts=ResourceOptions(),
-    )
-
-    photo_cop_addr = photo_cop_service.get_host().apply(
-        lambda host: f"{host}:{port}"
     )

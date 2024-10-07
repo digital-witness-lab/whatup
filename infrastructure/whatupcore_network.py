@@ -23,6 +23,17 @@ whatupcore2_static_private_ip = compute.v1.Address(
     ),
 )
 
+photocop_static_private_ip = compute.v1.Address(
+    "photocop-private-ip",
+    args=compute.v1.AddressArgs(
+        region=location,
+        ip_version=compute.v1.AddressIpVersion.IPV4,
+        subnetwork=private_services_network_with_db.self_link,
+        purpose=compute.v1.AddressPurpose.GCE_ENDPOINT,
+        address_type=compute.v1.AddressAddressType.INTERNAL,
+    ),
+)
+
 
 @dataclass
 class TLSKeysSecret:
@@ -31,7 +42,9 @@ class TLSKeysSecret:
     cert_b64_secret: secretmanager.Secret
 
 
-def create_tls_keys(service: str) -> TLSKeysSecret:
+def create_tls_keys(
+    service: str, ip_address: compute.v1.Address
+) -> TLSKeysSecret:
     # We can't use ED25519 because GRPC needs to be build from sorce with
     # GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 for this to work.
     tls_private_key = tls.PrivateKey(
@@ -58,7 +71,7 @@ def create_tls_keys(service: str) -> TLSKeysSecret:
             "data_encipherment",
             "digital_signature",
         ],
-        ip_addresses=[whatupcore2_static_private_ip.address],
+        ip_addresses=[ip_address.address],
     )
 
     key_secret = create_secret(
@@ -71,11 +84,13 @@ def create_tls_keys(service: str) -> TLSKeysSecret:
             lambda cert: base64.b64encode(cert.encode("utf8")).decode("utf8")
         ),
     )
-    return TLSKeysSecret(key_secret, cert_secret, cert_b64_secret=cert_b64_secret)
+    return TLSKeysSecret(
+        key_secret, cert_secret, cert_b64_secret=cert_b64_secret
+    )
 
 
-whatupcore_tls_cert = create_tls_keys("whatup")
-photocop_tls_cert = create_tls_keys("photocop")
+whatupcore_tls_cert = create_tls_keys("whatup", whatupcore2_static_private_ip)
+photocop_tls_cert = create_tls_keys("photocop", photocop_static_private_ip)
 
 
 pulumi_gcp.compute.NetworkFirewallPolicyRule(
@@ -95,7 +110,10 @@ pulumi_gcp.compute.NetworkFirewallPolicyRule(
                     ip_protocol="tcp", ports=["3447"]
                 )
             ],
-            dest_ip_ranges=[whatupcore2_static_private_ip.address],
+            dest_ip_ranges=[
+                whatupcore2_static_private_ip.address,
+                photocop_static_private_ip.address,
+            ],
             src_ip_ranges=[
                 private_services_network.ip_cidr_range,
                 private_services_network_with_db.ip_cidr_range,
@@ -121,7 +139,10 @@ pulumi_gcp.compute.NetworkFirewallPolicyRule(
                     ip_protocol="tcp", ports=["3447"]
                 )
             ],
-            dest_ip_ranges=[whatupcore2_static_private_ip.address],
+            dest_ip_ranges=[
+                whatupcore2_static_private_ip.address,
+                photocop_static_private_ip.address,
+            ],
             src_ip_ranges=["35.191.0.0/16", "130.211.0.0/22"],
         ),
     ),
