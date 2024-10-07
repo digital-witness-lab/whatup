@@ -7,7 +7,7 @@ from kms import sessions_encryption_key, sessions_encryption_key_uri
 from network import private_services_network, vpc
 from services.whatupcore2 import whatupcore2_service
 from storage import sessions_bucket
-from whatupcore_network import ssl_cert_pem_b64_secret
+from whatupcore_network import whatupcore_tls_cert
 
 service_name = "bot-onboard"
 
@@ -38,14 +38,14 @@ encryption_key_perm = kms.CryptoKeyIAMMember(
 ssl_cert_pem_b64_secret_perm = secretmanager.SecretIamMember(
     "onboard-bot-ssl-cert-secret-perm",
     secretmanager.SecretIamMemberArgs(
-        secret_id=ssl_cert_pem_b64_secret.id,
+        secret_id=whatupcore_tls_cert.cert_b64_secret.id,
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
 )
 ssl_cert_pem_b64_source = cloudrunv2.ServiceTemplateContainerEnvValueSourceArgs(
     secret_key_ref=cloudrunv2.ServiceTemplateContainerEnvValueSourceSecretKeyRefArgs(
-        secret=ssl_cert_pem_b64_secret.name,
+        secret=whatupcore_tls_cert.cert_b64_secret.name,
         version="latest",
     ),
 )

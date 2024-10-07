@@ -9,7 +9,7 @@ from container_vm import (
     ContainerOnVm,
     ContainerOnVmArgs,
 )
-from dwl_secrets import photodna_api_key_secret
+from dwl_secrets import photo_dna_api_key_secret
 from network import private_services_network_with_db
 from whatupcore_network import (
     photocop_tls_cert,
@@ -18,9 +18,9 @@ from whatupcore_network import (
 
 service_name = "photo-cop"
 port = 50051
-photo_cop_addr = Output("")
+photo_cop_addr = Output.from_input("")
 
-if photodna_api_key_secret is not None:
+if photo_dna_api_key_secret is not None:
     service_account = serviceaccount.Account(
         "photo-cop",
         account_id=f"photo-cop-vm-{get_stack()}",
@@ -48,7 +48,7 @@ if photodna_api_key_secret is not None:
     photodna_api_key_perm = secretmanager.SecretIamMember(
         "photo-cop-photodna-api-key-perm",
         secretmanager.SecretIamMemberArgs(
-            secret_id=photodna_api_key_secret.id,
+            secret_id=photo_dna_api_key_secret.id,
             role="roles/secretmanager.secretAccessor",
             member=Output.concat("serviceAccount:", service_account.email),
         ),
@@ -83,7 +83,7 @@ if photodna_api_key_secret is not None:
                 compute.v1.MetadataItemsItemArgs(
                     key="PHOTODNA_API_KEY",
                     value=Output.concat(
-                        photodna_api_key_secret.id, "/versions/latest"
+                        photo_dna_api_key_secret.id, "/versions/latest"
                     ),
                 ),
                 compute.v1.MetadataItemsItemArgs(
