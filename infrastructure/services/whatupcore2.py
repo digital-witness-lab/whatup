@@ -22,7 +22,7 @@ from whatupcore_network import (
     photocop_tls_cert,
     whatupcore2_static_private_ip,
 )
-from .photo_cop import photo_cop_addr
+from .photo_cop import photo_cop_service
 
 service_name = "whatupcore2"
 
@@ -97,6 +97,11 @@ whatup_login_proxy_perm = secretmanager.SecretIamMember(
 )
 
 log_level = "INFO" if is_prod_stack() else "DEBUG"
+if photo_cop_service is not None:
+    photo_cop_addr = Output.concat(photo_cop_service.get_host(), ":3447")
+else:
+    photo_cop_addr = ""
+
 whatupcore2_service = ContainerOnVm(
     service_name,
     ContainerOnVmArgs(
