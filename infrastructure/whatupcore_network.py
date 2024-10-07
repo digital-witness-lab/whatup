@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import base64
 
 import pulumi_gcp.compute
 from pulumi_gcp import secretmanager
@@ -27,6 +28,7 @@ whatupcore2_static_private_ip = compute.v1.Address(
 class TLSKeysSecret:
     key_secret: secretmanager.Secret
     cert_secret: secretmanager.Secret
+    cert_b64_secret: secretmanager.Secret
 
 
 def create_tls_keys(service: str) -> TLSKeysSecret:
@@ -63,7 +65,13 @@ def create_tls_keys(service: str) -> TLSKeysSecret:
         f"{service}-tls-pk-pem", tls_private_key.private_key_pem
     )
     cert_secret = create_secret(f"{service}-tls-cert-pem", tls_cert.cert_pem)
-    return TLSKeysSecret(key_secret, cert_secret)
+    cert_b64_secret = create_secret(
+        f"{service}-tls-cert-b64-pem",
+        tls_cert.cert_pem.apply(
+            lambda cert: base64.b64encode(cert.encode("utf8")).decode("utf8")
+        ),
+    )
+    return TLSKeysSecret(key_secret, cert_secret, cert_b64_secret=cert_b64_secret)
 
 
 whatupcore_tls_cert = create_tls_keys("whatup")

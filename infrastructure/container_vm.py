@@ -181,7 +181,7 @@ class ContainerOnVm(pulumi.ComponentResource):
         self.__autohealing = None
         if args.tcp_healthcheck_port is not None:
             self.__autohealing = classic_gcp_compute.HealthCheck(
-                "autohealing",
+                f"{name}-autohealing",
                 check_interval_sec=5,
                 timeout_sec=5,
                 healthy_threshold=2,
