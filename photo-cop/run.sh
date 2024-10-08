@@ -1,4 +1,6 @@
-#!/bin/env sh
+#!/bin/env bash
+
+RAND="iskdfjasdjghkjghaskdjfhsdkjffdfdfasfhnaks"
 
 # Run the VM secrets configurator.
 # If we are not running inside a VM,

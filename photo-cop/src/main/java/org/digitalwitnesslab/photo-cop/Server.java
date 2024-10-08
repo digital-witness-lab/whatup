@@ -26,7 +26,15 @@ public class Server {
     private io.grpc.Server server;
 
     private void start() throws IOException {
-        start(50051);
+        String portStr = System.getenv("PHOTOCOP_PORT");
+        int port;
+        try {
+           port = Integer.parseInt(portStr);
+        }
+        catch (NumberFormatException e) {
+           port = 3447;
+        }
+        start(port);
     }
 
     private File loadTLSFile(String envvar) {

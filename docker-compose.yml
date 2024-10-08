@@ -34,7 +34,7 @@ services:
       - ENC_KEY_SALT=kajsdfhkajsdfhaksdjfhkjasdfhskd
       - POSTGRES_DATABASE=whatupcore
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-whatupcore-passwd
-      - PHOTOCOP_URI=photocop:50051
+      - PHOTOCOP_URI=photocop:3447
       - WHATUP_TLS_KEY=/run/secrets/whatup-ssl-key
       - WHATUP_TLS_CERT=/run/secrets/whatup-ssl-cert
       - PHOTOCOP_TLS_CERT=/run/secrets/photocop-ssl-cert
@@ -51,8 +51,6 @@ services:
     command: rpc --log-level DEBUG
 
   photocop:
-    ports:
-      - 50051:50051
     platform: linux/x86_64
     build: ./photo-cop/
     secrets:

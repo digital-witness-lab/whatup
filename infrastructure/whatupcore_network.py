@@ -75,7 +75,7 @@ def create_tls_keys(
     )
 
     key_secret = create_secret(
-        f"{service}-tls-pk-pem", tls_private_key.private_key_pem
+        f"{service}-tls-pk-pem", tls_private_key.private_key_pem_pkcs8
     )
     cert_secret = create_secret(f"{service}-tls-cert-pem", tls_cert.cert_pem)
     cert_b64_secret = create_secret(
