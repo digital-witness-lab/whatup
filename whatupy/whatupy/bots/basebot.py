@@ -438,7 +438,7 @@ class BaseBot:
                 )
             except PhotoCopMatchException as e:
                 self.logger.critical(
-                        "Found photocop match: %s", e.decision
+                    "Found photocop match: %s", e.decision
                 )
                 error = e
             except Exception as e:
