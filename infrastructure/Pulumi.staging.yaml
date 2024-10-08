@@ -29,6 +29,9 @@ config:
     secure: AAABAE6NTqu6stQ5wNcKG0f4t6D696pDKupkvshnne0A5T1TxPjSSXn0CPQY2wxU7qvEyg0yKWsFjL51jlTUYOE2KzLVch5dDbp7lvu23XPudZyHgEogFUMInuURR4I87FiIa4EIIs93A3eRqR/ofyPNvnRvTuWpNpNGpee148X83VqDIBY618qHtPa7YnVVtXVDG6vDotp5EmNHTPikCQ==
   whatup:enabledServices:
     - diwi-dashboard
+    - bot-archive
+    - bot-register
+    - bot-user-services
   whatup:isProd: "false"
   whatup:loadArchiveJob: "false"
   whatup:machineTypes:
