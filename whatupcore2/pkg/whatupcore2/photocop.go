@@ -35,8 +35,10 @@ type PhotoCop struct {
 
 func NewPhotoCopOrEmpty(host string, cert string, log waLog.Logger) (PhotoCopInterface, error) {
 	if host != "" {
+        log.Infof("Creating PhotoCop instance connected to: %s", host)
 		return NewPhotoCop(host, cert, log)
 	}
+    log.Infof("Creating empty PhotoCop")
 	return &EmptyPhotoCop{log: log}, nil
 }
 
