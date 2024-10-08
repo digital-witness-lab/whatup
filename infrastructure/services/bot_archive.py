@@ -113,7 +113,7 @@ bot_archive = ContainerOnVm(
         ),
         secret_env=[
             compute.v1.MetadataItemsItemArgs(
-                key="WHATUP_TLS_CERT_PEM",
+                key="WHATUP_CERT_PEM_PEM",
                 value=Output.concat(
                     whatupcore_tls_cert.cert_secret.id, "/versions/latest"
                 ),

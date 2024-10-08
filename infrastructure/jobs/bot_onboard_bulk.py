@@ -71,7 +71,7 @@ bot_onboard_bulk_job = Job(
         ),
         envs=[
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                name="SSL_CERT_PEM_B64",
+                name="WHATUP_CERT_PEM_B64",
                 value_source=ssl_cert_pem_b64_source,
             ),
             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
