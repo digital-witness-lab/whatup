@@ -17,7 +17,6 @@ from whatupcore_network import (
 )
 
 service_name = "photo-cop"
-port = 3447
 photo_cop_service = None
 
 if photo_dna_api_key_secret is not None:
@@ -65,10 +64,6 @@ if photo_dna_api_key_secret is not None:
                 args=[],
                 image=photo_cop_image.repo_digest,
                 env=[
-                    ContainerEnv(
-                        name="PHOTO_COP_PORT",
-                        value="3447",
-                    ),
                     ContainerEnv(
                         name="PHOTOCOP_TLS_CERT",
                         value="/run/secrets/PHOTOCOP_CERT_PEM",

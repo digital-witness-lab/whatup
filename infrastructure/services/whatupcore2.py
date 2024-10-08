@@ -157,21 +157,21 @@ whatupcore2_service = ContainerOnVm(
                 ),
             ),
             compute.v1.MetadataItemsItemArgs(
-                key="WHATUPCORE_KEY_PEM",
-                value=Output.concat(
-                    whatupcore_tls_cert.cert_secret.id, "/versions/latest"
-                ),
-            ),
-            compute.v1.MetadataItemsItemArgs(
-                key="WHATUPCORE_CERT_PEM",
+                key="WHATUP_KEY_PEM",
                 value=Output.concat(
                     whatupcore_tls_cert.key_secret.id, "/versions/latest"
                 ),
             ),
             compute.v1.MetadataItemsItemArgs(
+                key="WHATUP_CERT_PEM",
+                value=Output.concat(
+                    whatupcore_tls_cert.cert_secret.id, "/versions/latest"
+                ),
+            ),
+            compute.v1.MetadataItemsItemArgs(
                 key="PHOTOCOP_CERT_PEM",
                 value=Output.concat(
-                    photocop_tls_cert.key_secret.id, "/versions/latest"
+                    photocop_tls_cert.cert_secret.id, "/versions/latest"
                 ),
             ),
             compute.v1.MetadataItemsItemArgs(

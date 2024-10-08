@@ -18,7 +18,7 @@ import (
 var (
 	envFile    = path.Join("/", "tmp", "whatup", ".env")
 	httpClient *http.Client
-	version    = "0.0.2"
+	version    = "0.1.0"
 )
 
 // Run initialization on package init.
