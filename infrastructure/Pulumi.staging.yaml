@@ -30,6 +30,7 @@ config:
   whatup:enabledServices:
     - diwi-dashboard
     - bot-archive
+    - bot-db
     - bot-register
     - bot-user-services
   whatup:isProd: "false"

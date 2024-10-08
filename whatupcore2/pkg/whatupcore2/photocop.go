@@ -64,10 +64,12 @@ func NewPhotoCop(host string, cert string, log waLog.Logger) (*PhotoCop, error) 
 
 func (pc *PhotoCop) DecidePriority(ctx context.Context, data []byte, priority int32) (*pb.PhotoCopDecision, error) {
 	pc.log.Debugf("Request to PhotoCop DecidePriority()")
-	return pc.client.CheckPhoto(ctx, &pb.CheckPhotoRequest{
+    decision, err := pc.client.CheckPhoto(ctx, &pb.CheckPhotoRequest{
 		Photo:    data,
 		Priority: priority,
 	})
+    pc.log.Debugf("PhotoCop decision: %v: %v", decision, err)
+    return decision, err
 }
 
 func (pc *PhotoCop) Decide(ctx context.Context, data []byte) (*pb.PhotoCopDecision, error) {
