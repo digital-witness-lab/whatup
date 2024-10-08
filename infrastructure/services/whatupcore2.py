@@ -110,7 +110,11 @@ whatupcore2_service = ContainerOnVm(
         tcp_healthcheck_port=3447,
         container_spec=Container(
             command=None,
-            args=["rpc", f"--log-level={log_level}"],
+            args=[
+                "rpc",
+                f"--log-level={log_level}",
+                f"--photo-cop-uri={photo_cop_addr}",
+            ],
             image=whatupcore2_image.repo_digest,
             env=[
                 ContainerEnv(
@@ -120,10 +124,6 @@ whatupcore2_service = ContainerOnVm(
                 ContainerEnv(
                     name="RAND_STRING",  # change rand string to force deploy
                     value="34932948073298",
-                ),
-                ContainerEnv(
-                    name="PHOTO_COP_ADDRESS",
-                    value=photo_cop_addr,
                 ),
                 ContainerEnv(
                     name="PHOTOCOP_TLS_CERT",
