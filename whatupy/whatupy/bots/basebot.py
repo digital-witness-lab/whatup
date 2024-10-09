@@ -20,25 +20,20 @@ from ..connection import create_whatupcore_clients
 from ..credentials_manager.credential import Credential
 from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
+from ..protos import photo_cop_pb2 as pc
 from ..protos.whatupcore_pb2_grpc import WhatUpCoreStub
 from .static import format_lang_template
 
 logger = logging.getLogger(__name__)
 PinningEntry = namedtuple("PinningEntry", "bot_id expiration_time".split(" "))
 ArchiveData = namedtuple(
-    "ArchiveData", "WUMessage GroupInfo CommunityInfo MediaPath".split(" ")
+    "ArchiveData", "WUMessage GroupInfo CommunityInfo MediaPath PhotoCopDecision".split(" ")
 )
 
 COMMAND_PINNING_TTL = timedelta(seconds=60 * 60)
 COMMAND_PINNING: T.Dict[bytes, PinningEntry] = {}
 BOT_REGISTRY = defaultdict(dict)
 CONTROL_CACHE = deque(maxlen=1028)
-
-DownloadMediaCallback = T.Callable[
-    [wuc.WUMessage, bytes, Exception | None], T.Awaitable[None]
-]
-MediaType = enum.Enum("MediaType", wuc.SendMessageMedia.MediaType.items())
-TypeLanguages = T.Literal["hi"] | T.Literal["en"]
 
 
 class InvalidCredentialsException(Exception):
@@ -51,6 +46,18 @@ class NotLoggedInException(Exception):
 
 class StreamMissedHeartbeat(TimeoutError):
     pass
+
+
+class PhotoCopMatchException(ValueError):
+    def __init__(self, decision: pc.PhotoCopDecision | None = None):
+        self.decision = decision or pc.PhotoCopDecision()
+
+
+DownloadMediaCallback = T.Callable[
+    [wuc.WUMessage, bytes | None, Exception | PhotoCopMatchException | None], T.Awaitable[None]
+]
+MediaType = enum.Enum("MediaType", wuc.SendMessageMedia.MediaType.items())
+TypeLanguages = T.Literal["hi"] | T.Literal["en"]
 
 
 class BotCommandArgsException(Exception):
@@ -408,6 +415,8 @@ class BaseBot:
                 info=message.info,
             )
         )
+        if media_content.PhotoCop.IsMatch:
+            raise PhotoCopMatchException(media_content.PhotoCop)
         return media_content.Body
 
     async def _download_messages_background(self):
@@ -427,6 +436,11 @@ class BaseBot:
                     message.info.id,
                     len(content),
                 )
+            except PhotoCopMatchException as e:
+                self.logger.critical(
+                    "Found photocop match: %s", e.decision
+                )
+                error = e
             except Exception as e:
                 self.logger.exception(
                     "Could not download media content. Retries = %d: %s",
@@ -545,7 +559,7 @@ class BaseBot:
         is_history: bool = False,
         is_archive: bool = False,
         archive_data: T.Optional[ArchiveData] = None,
-    ):
+    ) -> None:
         pass
 
     async def process_archive(self, filenames: T.List[Path]):
@@ -577,6 +591,7 @@ class BaseBot:
             "GroupInfo": None,
             "CommunityInfo": None,
             "MediaPath": None,
+            "PhotoCopDecision": None,
         }
         if chat_id:
             if group_info_filename := message.provenance.get(
@@ -617,6 +632,10 @@ class BaseBot:
 
         if media_filename := message.provenance.get("archivebot__mediaPath"):
             media_path = filename_path.parent / media_filename
+            photo_cop_path = media_path.with_suffix(".photocop.json")
+            if photo_cop_path.exists():
+                decision: pc.PhotoCopDecision = utils.jsons_to_protobuf(photo_cop_path.read_text(), pc.PhotoCopDecision)
+                metadata["PhotoCopDecision"] = PhotoCopMatchException(decision)
             if media_path.exists():
                 metadata["MediaPath"] = media_path
             else:

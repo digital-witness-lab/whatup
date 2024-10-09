@@ -9,6 +9,7 @@ from config import (
     whatup_anon_key,
     whatup_salt,
     whatup_login_proxy,
+    photo_dna_api_key,
 )
 from database import get_sql_instance_url
 
@@ -65,3 +66,11 @@ whatup_login_proxy_secret = create_secret(
     "whatup-login-proxy",
     whatup_login_proxy,
 )
+
+if photo_dna_api_key is not None:
+    photo_dna_api_key_secret = create_secret(
+        "photo-dna-api-key",
+        photo_dna_api_key,
+    )
+else:
+    photo_dna_api_key_secret = None

@@ -13,13 +13,13 @@ from sqlalchemy.sql import func
 from .. import utils
 from ..protos import whatupcore_pb2 as wuc
 from .lib import flatten_proto_message
-from . import ArchiveData, BaseBot
+from . import ArchiveData, BaseBot, PhotoCopMatchException, PhotoCopDecision
 from .chatbot import ChatBot
+from .static import static_dir
 
 
 logger = logging.getLogger(__name__)
 RECORD_MTIME_FIELD = "record_mtime"
-
 
 class DatabaseBot(BaseBot):
     __version__ = "3.1.0"
@@ -41,6 +41,12 @@ class DatabaseBot(BaseBot):
             database_url, logger=self.logger
         )
         self.init_database(self.db)
+
+        with (static_dir / "placeholder.jpg").open("rb") as fd:
+            placeholder_uri = self.write_media(fd.read(), "photocop.jpg", ["static"])
+            self.logger.info(
+                "Wrote PhotoCop placeholder image to: %s", str(placeholder_uri)
+            )
 
     @classmethod
     def __db_connect(cls, database_url, logger=logger) -> dataset.Database:
@@ -141,6 +147,14 @@ class DatabaseBot(BaseBot):
         donor_messages.create_column(RECORD_MTIME_FIELD, type=db.types.datetime)
         donor_messages.create_index(["donor_jid", "message_id"])
 
+        # <depricated>
+        # fix for missing RECORD_MTIME field in messages table, found at commit
+        # 9d35b1
+        for table in ("messages", "messages_seen", "device_group_info"):
+            db[table].create_column(RECORD_MTIME_FIELD, type=db.types.datetime)
+            db.query(f'UPDATE {table} SET "{RECORD_MTIME_FIELD}" = :date WHERE "{RECORD_MTIME_FIELD}" IS NULL;', date=datetime.now())
+        # </depricated>
+
     async def post_start(self):
         fields = (None, "isDelete", "isEdit", "isReaction")
         group_info = utils.protobuf_fill_fields(wuc.GroupInfo())
@@ -159,6 +173,7 @@ class DatabaseBot(BaseBot):
                 GroupInfo=group_info if i == 0 else None,
                 CommunityInfo=None,
                 MediaPath=None,
+                PhotoCopDecision=PhotoCopMatchException(),
             )
             self.logger.info(
                 "Inserting fully filled message into database: %s",
@@ -201,7 +216,7 @@ class DatabaseBot(BaseBot):
 
         self._ping_donor_messages(message)
         if not self.db["messages_seen"].count(id=msg_id):
-            self.db["messages_seen"].insert({"id": msg_id, **message.provenance})
+            self.db["messages_seen"].insert({"id": msg_id, RECORD_MTIME_FIELD: datetime.now(), **message.provenance,})
             # NOTE: if there is a new case here, make sure to update the
             # `post_start` method to handle it
             if message.messageProperties.isReaction:
@@ -212,7 +227,7 @@ class DatabaseBot(BaseBot):
                 source_message_id = message.content.inReferenceToId
                 with self.db as db:
                     db["messages"].upsert(
-                        {"id": source_message_id, "isDelete": True}, ["id"]
+                        {"id": source_message_id, "isDelete": True, RECORD_MTIME_FIELD: datetime.now()}, ["id"]
                     )
             else:
                 await self._update_message(
@@ -301,9 +316,12 @@ class DatabaseBot(BaseBot):
         callback = partial(self._handle_media_content, datum=datum)
         if is_archive:
             mp = archive_data.MediaPath
+            error = None
+            if archive_data.PhotoCopDecision is not None:
+                error = PhotoCopMatchException(archive_data.PhotoCopDecision)
             if mp is not None and mp.exists():
                 content = mp.read_bytes()
-                await callback(message, content, None)
+                await callback(message, content, error)
             else:
                 await callback(message, bytes(), Exception("No media in archive"))
         else:
@@ -318,7 +336,10 @@ class DatabaseBot(BaseBot):
         media_filename: T.Optional[str] = None,
     ):
         chat_jid = utils.jid_to_str(message.info.source.chat)
-        message_flat = flatten_proto_message(message)
+        message_flat = flatten_proto_message(
+            message,
+            skip_keys=set(["thumbnailPhotoCop"]),
+        )
         media_filename = media_filename or utils.media_message_filename(message)
         if message_flat.get("thumbnail"):
             thumbnail: bytes = message_flat.pop("thumbnail")
@@ -327,15 +348,24 @@ class DatabaseBot(BaseBot):
                 f"{message.info.id}.jpg",
                 [str(chat_jid), "thumbnail"],
             )
+        if message.content.thumbnailPhotoCop.IsMatch:
+            decision = self.photocop_decision_to_dict(message.content.thumbnailPhotoCop)
+            # this is a bit hack. we are renaming content_url to url so it
+            # becomes `thumbnail_url` as to align with the above
+            # `thumbnail_url` field.
+            decision["url"] = decision.pop("content_url")
+            message_flat.update({f"thumbnail_{key}": value for key, value in decision.items()})
+
         with self.db as db:
             message_flat["mediaFilename"] = media_filename
+            message_flat[RECORD_MTIME_FIELD] = datetime.now()
             db["messages"].upsert(message_flat, ["id"])
         self.logger.debug("Done updating message: %s", message.info.id)
 
-    def media_url(self, filename: str, path_prefixes: T.List[str]) -> AnyPath:
+    def media_url(self, filename: str, path_prefixes: T.List[str | None]) -> AnyPath:
         path_elements = [
             self.media_base_path,
-            *path_prefixes,
+            *filter(None, path_prefixes),
             filename[0],
             filename[1],
             filename[2],
@@ -348,7 +378,7 @@ class DatabaseBot(BaseBot):
         self,
         content: bytes | None,
         filename: str,
-        path_prefixes: T.Optional[T.List[str]],
+        path_prefixes: T.Optional[T.List[str | None]],
     ) -> str:
         path_prefixes = path_prefixes or []
         filepath = self.media_url(filename, path_prefixes)
@@ -359,7 +389,7 @@ class DatabaseBot(BaseBot):
     async def _handle_media_content(
         self,
         message: wuc.WUMessage,
-        content: bytes,
+        content: bytes | None,
         error: Exception | None,
         datum: dict,
         content_url=None,
@@ -375,6 +405,8 @@ class DatabaseBot(BaseBot):
             self.logger.critical(
                 "Empty media body... Writing empty media URI: %s", datum
             )
+        if isinstance(error, PhotoCopMatchException):
+            datum.update(self.photocop_decision_to_dict(error.decision))
         datum["error"] = None if error is None else str(error)
         datum[RECORD_MTIME_FIELD] = datetime.now()
         self.db["media"].upsert(datum, ["filename"])
@@ -539,6 +571,7 @@ class DatabaseBot(BaseBot):
                     "timestamp": min(
                         previous_row.get("timestamp", datetime.max), update_time
                     ),
+                    RECORD_MTIME_FIELD: datetime.now(),
                     "id": group_info_id,
                 },
                 keys=["id"],
@@ -564,7 +597,6 @@ class DatabaseBot(BaseBot):
 
     async def _update_edit(self, message: wuc.WUMessage):
         message_flat = flatten_proto_message(message)
-        message_flat[RECORD_MTIME_FIELD] = datetime.now()
         source_message_id = message.content.inReferenceToId
         message_flat["id"] = source_message_id
         with self.db as db:
@@ -577,12 +609,12 @@ class DatabaseBot(BaseBot):
                 message_flat["previous_version_text"] = source_message.get("text")
                 source_message[RECORD_MTIME_FIELD] = datetime.now()
                 db["messages"].insert(source_message)
+            message_flat[RECORD_MTIME_FIELD] = datetime.now()
             db["messages"].upsert(message_flat, ["id"])
 
     async def _update_reaction(self, message: wuc.WUMessage):
         now = datetime.now()
         message_flat = flatten_proto_message(message)
-        message_flat[RECORD_MTIME_FIELD] = now
         source_message_id = message.content.inReferenceToId
         with self.db as db:
             source_message = db["messages"].find_one(id=source_message_id)
@@ -593,6 +625,7 @@ class DatabaseBot(BaseBot):
                     int, source_message.get("reaction_counts") or {}
                 )
             reaction_counts[message.content.text] += 1
+            message_flat[RECORD_MTIME_FIELD] = now
             db["reactions"].upsert(message_flat, ["id"])
             db["messages"].upsert(
                 {
@@ -847,3 +880,16 @@ class DatabaseBot(BaseBot):
         logger.info("Updating group: %s", chat_jid)
 
     # </depricated>
+
+    def photocop_decision_to_dict(self, decision: PhotoCopDecision):
+        datum = {}
+        datum["photocop_match"] = decision.IsMatch
+        datum["photocop_match_source"] = ",".join(
+            m.Source for m in decision.Matches
+        )
+        datum["photocop_match_violations"] = ",".join(
+            v for m in decision.Matches for v in m.Violations
+        )
+        datum["content_url"] = str(self.media_url("photocop.jpg", ["static"]))
+        return datum
+    

@@ -16,7 +16,6 @@ import (
 	pb "github.com/digital-witness-lab/whatup/protos"
 	"github.com/digital-witness-lab/whatup/whatupcore2/pkg/encsqlstore"
 	"github.com/hashicorp/golang-lru/v2/expirable"
-	"github.com/lib/pq"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/appstate"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
@@ -41,8 +40,6 @@ var (
 	loginProxy               = os.Getenv("LOGIN_PROXY")
 	loginProxyFile           = os.Getenv("LOGIN_PROXY_FILE")
 )
-var _DeviceContainer *encsqlstore.EncContainer
-var _DB *sql.DB
 
 type RegistrationState struct {
 	QRCodes   chan string
@@ -50,27 +47,6 @@ type RegistrationState struct {
 	Completed bool
 	Success   bool
 	*sync.WaitGroup
-}
-
-func getDeviceContainer(dbUri string, dbLog waLog.Logger) (*encsqlstore.EncContainer, *sql.DB, error) {
-	if _DeviceContainer != nil {
-		return _DeviceContainer, _DB, nil
-	}
-	dbLog.Infof("Initializing DB Connection and global Device Store")
-	encsqlstore.PostgresArrayWrapper = pq.Array
-	var err error
-	_DB, err = sql.Open("postgres", dbUri)
-	if err != nil {
-		dbLog.Errorf("Could not open database: %w", err)
-		return nil, nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	err = _DB.Ping()
-	if err != nil {
-		dbLog.Errorf("Could not ping database: %w", err)
-		return nil, nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	_DeviceContainer = encsqlstore.NewWithDB(_DB, "postgres", dbLog)
-	return _DeviceContainer, _DB, nil
 }
 
 func NewRegistrationState() *RegistrationState {
@@ -106,6 +82,8 @@ type WhatsAppClient struct {
 	historyMessageQueue *MessageQueue
 	messageQueue        *MessageQueue
 
+	photoCop PhotoCopInterface
+
 	historyRequestContexts map[string]ContextWithCancel
 	shouldRequestHistory   map[string]bool
 	dbConn                 *sql.DB
@@ -126,17 +104,23 @@ type WhatsAppClient struct {
 	anonLookup *AnonLookup
 }
 
-func NewWhatsAppClient(ctx context.Context, username string, passphrase string, dbUri string, getHistory bool, log waLog.Logger) (*WhatsAppClient, error) {
+type WhatsAppClientConfig struct {
+	photoCop   PhotoCopInterface
+	getHistory bool
+
+	deviceContainer *encsqlstore.EncContainer
+	db              *sql.DB
+}
+
+func NewWhatsAppClient(ctx context.Context, username string, passphrase string, opts *WhatsAppClientConfig, log waLog.Logger) (*WhatsAppClient, error) {
 	appName := strings.TrimSpace(fmt.Sprintf("WA by DWL %s", appNameSuffix))
 	store.SetOSInfo(appName, WhatUpCoreVersionInts)
-	store.DeviceProps.RequireFullSync = proto.Bool(getHistory)
+	store.DeviceProps.RequireFullSync = proto.Bool(opts.getHistory)
 	dbLog := log.Sub("DB")
 
-	deviceContainer, db, err := getDeviceContainer(dbUri, dbLog)
-	if err != nil {
-		dbLog.Errorf("Could not create connection to DB and device container: %w", err)
-		return nil, err
-	}
+	deviceContainer := opts.deviceContainer
+	db := opts.db
+	db.Ping()
 	container, err := deviceContainer.WithCredentials(username, passphrase)
 	if err != nil {
 		dbLog.Errorf("Could not create encrypted SQL store: %w", err)
@@ -213,6 +197,7 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 		username:               username,
 		historyMessageQueue:    historyMessageQueue,
 		messageQueue:           messageQueue,
+		photoCop:               opts.photoCop,
 		historyRequestContexts: make(map[string]ContextWithCancel),
 		shouldRequestHistory:   make(map[string]bool),
 		groupInfoCache:         expirable.NewLRU[string, *types.GroupInfo](128, nil, time.Minute),
@@ -716,39 +701,50 @@ func (wac *WhatsAppClient) SendComposingPresence(jid types.JID, timeout time.Dur
 	}
 }
 
-func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
+func (wac *WhatsAppClient) DownloadAnyRetryPhotoCop(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) (*PhotoCopMedia, error) {
 	lock := wac.mediaMutexMap.Lock(msgInfo.ID)
 	defer lock.Unlock()
 
 	data, err := wac.mediaCache.Get(msgInfo.ID)
-	if data != nil {
-		wac.Log.Debugf("Found cached version of image in DownloadAnyRetry: %v", msgInfo.ID)
-		return data, nil
+	if err != nil {
+		return nil, err
+	} else if data == nil {
+		data, err = wac.DownloadAnyRetry(ctx, msg, msgInfo)
+		if err != nil {
+			return nil, err
+		}
 	}
-	rateLimit(wac.mediaMutexMap, "download", 2*time.Second)
 
+	pcMedia := NewPhotoCopMedia()
+	if msg.GetImageMessage() != nil && len(data) > 0 {
+		decision, err := wac.photoCop.DecidePriority(ctx, &data, 100)
+		if err != nil {
+			wac.Log.Errorf("Could not get photocop decision: %v", err)
+		}
+		pcMedia.Decision = decision
+		if decision.IsMatch {
+			wac.Log.Warnf("Found photo-cop match... zero-ing out image: %v", decision)
+			data = []byte{}
+		}
+		wac.mediaCache.Add(msgInfo.ID, data)
+	}
+	pcMedia.Body = &data
+	return pcMedia, nil
+}
+
+func (wac *WhatsAppClient) DownloadAnyRetry(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
+	rateLimit(wac.mediaMutexMap, "download", 2*time.Second)
 	wac.Log.Debugf("Downloading message: %v: %v", msg, msgInfo)
-	data, err = wac.Client.DownloadAny(msg)
+	data, err := wac.Client.DownloadAny(msg)
 	if errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith410) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith404) || errors.Is(err, whatsmeow.ErrMediaDownloadFailedWith403) {
 		return wac.RetryDownload(ctx, msg, msgInfo)
 	} else if err != nil {
 		wac.Log.Errorf("Error trying to download message: %v", err)
 	}
-	if len(data) > 0 {
-		wac.mediaCache.Add(msgInfo.ID, data)
-	}
 	return data, err
 }
 
 func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Message, msgInfo *types.MessageInfo) ([]byte, error) {
-	lock := wac.mediaMutexMap.Lock(msgInfo.ID)
-	defer lock.Unlock()
-
-	data, err := wac.mediaCache.Get(msgInfo.ID)
-	if data != nil {
-		wac.Log.Debugf("Found cached version of image in RetryDownload: %v", msgInfo.ID)
-		return data, nil
-	}
 	rateLimit(wac.mediaMutexMap, "download", 2*time.Second)
 
 	mediaKeyCandidates := valuesFilterZero(findFieldName(msg, "MediaKey"))
@@ -761,7 +757,7 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 		wac.Log.Errorf("Could not convert MediaKey: %+v: %+v", msg, mediaKeyCandidates)
 		return nil, ErrInvalidMediaMessage
 	}
-	err = wac.Client.SendMediaRetryReceipt(msgInfo, mediaKey)
+	err := wac.Client.SendMediaRetryReceipt(msgInfo, mediaKey)
 	if err != nil {
 		wac.Log.Errorf("Could not send media retry: %+v", err)
 		return nil, err
@@ -808,10 +804,6 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 	}
 	if retryError != nil {
 		wac.Log.Errorf("Error in retry handler: %v", retryError)
-	}
-	if len(body) > 0 {
-		wac.Log.Debugf("Media Retry got body of length: %d", len(body))
-		wac.mediaCache.Add(msgInfo.ID, body)
 	}
 	return body, retryError
 }

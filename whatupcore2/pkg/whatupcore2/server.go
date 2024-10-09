@@ -2,6 +2,7 @@ package whatupcore2
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net"
 	"os"
@@ -10,6 +11,9 @@ import (
 	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
+	"github.com/digital-witness-lab/whatup/whatupcore2/pkg/encsqlstore"
+	"github.com/lib/pq"
+
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/grpc"
@@ -21,11 +25,11 @@ import (
 )
 
 var (
-	TLS_CERT_FILE = "/run/secrets/ssl-cert"
-	TLS_KEY_FILE  = "/run/secrets/ssl-key"
-	JWT_SECRET    = []byte("SECRETSECRET")
-	USE_SSL       = getEnvAsBoolean(os.Getenv("USE_SSL"))
-	Log           waLog.Logger
+	PHOTOCOP_CERT_FILE = os.Getenv("PHOTOCOP_TLS_CERT")
+	TLS_CERT_FILE      = mustGetEnv("WHATUP_TLS_CERT")
+	TLS_KEY_FILE       = mustGetEnv("WHATUP_TLS_KEY")
+	JWT_SECRET         = []byte("SECRETSECRET")
+	Log                waLog.Logger
 )
 
 func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(context.Context) (context.Context, error) {
@@ -50,7 +54,24 @@ func createAuthCheck(sessionManager *SessionManager, secretKey []byte) func(cont
 	}
 }
 
-func StartRPC(port uint32, dbUri string, logLevel string) error {
+func getDBConnections(dbUri string, dbLog waLog.Logger) (*encsqlstore.EncContainer, *sql.DB, error) {
+	dbLog.Infof("Initializing DB Connection and global Device Store")
+	encsqlstore.PostgresArrayWrapper = pq.Array
+	db, err := sql.Open("postgres", dbUri)
+	if err != nil {
+		dbLog.Errorf("Could not open database: %w", err)
+		return nil, nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	err = db.Ping()
+	if err != nil {
+		dbLog.Errorf("Could not ping database: %w", err)
+		return nil, nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	deviceContainer := encsqlstore.NewWithDB(db, "postgres", dbLog)
+	return deviceContainer, db, nil
+}
+
+func StartRPC(port uint32, dbUri string, photoCopUri string, logLevel string) error {
 	Log = waLog.Stdout("RPC", logLevel, true)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
@@ -59,7 +80,23 @@ func StartRPC(port uint32, dbUri string, logLevel string) error {
 		return err
 	}
 
-	sessionManager := NewSessionManager(JWT_SECRET, dbUri, Log.Sub("SM"))
+	deviceContainer, db, err := getDBConnections(dbUri, Log.Sub("db"))
+	if err != nil {
+		Log.Errorf("Could not create database connections: %v", err)
+		return err
+	}
+
+	photoCop, err := NewPhotoCopOrEmpty(photoCopUri, PHOTOCOP_CERT_FILE, Log.Sub("photocop"))
+	if err != nil {
+		Log.Errorf("Could not init photo cop: %v", err)
+		return err
+	}
+	clientOpts := &WhatsAppClientConfig{
+		deviceContainer: deviceContainer,
+		db:              db,
+		photoCop:        photoCop,
+	}
+	sessionManager := NewSessionManager(JWT_SECRET, clientOpts, Log.Sub("SM"))
 	sessionManager.Start()
 	defer sessionManager.Close()
 	authCheck := createAuthCheck(sessionManager, JWT_SECRET)
@@ -72,28 +109,18 @@ func StartRPC(port uint32, dbUri string, logLevel string) error {
 	})
 
 	var s *grpc.Server
-	if USE_SSL {
-		Log.Infof("Using SSL")
-		creds, err := credentials.NewServerTLSFromFile(TLS_CERT_FILE, TLS_KEY_FILE)
-		if err != nil {
-			Log.Errorf("could not load server credentials: %v", err)
-			return err
-		}
-		s = grpc.NewServer(
-			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
-			grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
-			grpc.Creds(creds),
-			keepAliveEnforcement,
-			keepAlive,
-		)
-	} else {
-		s = grpc.NewServer(
-			grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
-			grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
-			keepAliveEnforcement,
-			keepAlive,
-		)
+	creds, err := credentials.NewServerTLSFromFile(TLS_CERT_FILE, TLS_KEY_FILE)
+	if err != nil {
+		Log.Errorf("could not load server credentials: %v", err)
+		return err
 	}
+	s = grpc.NewServer(
+		grpc.StreamInterceptor(auth.StreamServerInterceptor(authCheck)),
+		grpc.UnaryInterceptor(auth.UnaryServerInterceptor(authCheck)),
+		grpc.Creds(creds),
+		keepAliveEnforcement,
+		keepAlive,
+	)
 	reflection.Register(s)
 
 	pb.RegisterWhatUpCoreAuthServer(s, &WhatUpCoreAuthServer{

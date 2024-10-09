@@ -14,7 +14,7 @@ from kms import sessions_encryption_key, sessions_encryption_key_uri
 from network import private_services_network
 from storage import sessions_bucket
 
-from .whatupcore2 import ssl_cert_pem_secret, whatupcore2_service
+from .whatupcore2 import whatupcore_tls_cert, whatupcore2_service
 
 service_name = "bot-chat"
 
@@ -41,10 +41,10 @@ encryption_key_perm = kms.CryptoKeyIAMMember(
     ),
 )
 
-ssl_cert_pem_secret_perm = secretmanager.SecretIamMember(
-    "bot-chat-ssl-cert-secret-perm",
+tls_cert_pem_secret_perm = secretmanager.SecretIamMember(
+    "bot-chat-tls-cert-secret-perm",
     secretmanager.SecretIamMemberArgs(
-        secret_id=ssl_cert_pem_secret.id,
+        secret_id=whatupcore_tls_cert.cert_secret.id,
         role="roles/secretmanager.secretAccessor",
         member=Output.concat("serviceAccount:", service_account.email),
     ),
@@ -84,9 +84,9 @@ bot_chat = ContainerOnVm(
         ),
         secret_env=[
             compute.v1.MetadataItemsItemArgs(
-                key="SSL_CERT_PEM",
+                key="WHATUP_CERT_PEM",
                 value=Output.concat(
-                    ssl_cert_pem_secret.id, "/versions/latest"
+                    whatupcore_tls_cert.cert_secret.id, "/versions/latest"
                 ),
             ),
         ],
@@ -97,7 +97,7 @@ bot_chat = ContainerOnVm(
         depends_on=[
             sessions_bucket_perm,
             encryption_key_perm,
-            ssl_cert_pem_secret_perm,
+            tls_cert_pem_secret_perm,
         ]
     ),
 )

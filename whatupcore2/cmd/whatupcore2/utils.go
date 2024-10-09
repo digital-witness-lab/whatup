@@ -14,6 +14,13 @@ func MustGetEnv(key string) string {
 	return value
 }
 
+func getPhotoCopUriFromEnv() string {
+	if photoCopUri, ok := os.LookupEnv("PHOTOCOP_URI"); ok {
+		return photoCopUri
+	}
+	return ""
+}
+
 func getDbUriFromEnv() string {
 	if dbUri, ok := os.LookupEnv("DATABASE_URL"); ok {
 		return dbUri

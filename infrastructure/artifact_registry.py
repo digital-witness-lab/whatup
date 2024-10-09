@@ -79,3 +79,4 @@ hash_gen_image: docker.Image = create_image("hash-gen", "../hash-gen/")
 diwi_dashboard_image: docker.Image = create_image(
     "diwi-dashboard", "../diwi-dashboard/"
 )
+photo_cop_image: docker.Image = create_image("photo-cop", "../photo-cop/")

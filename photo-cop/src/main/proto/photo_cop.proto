@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package photocop;
+
+option go_package = "github.com/digital-witness-lab/whatup/protos";
+option java_multiple_files = true;
+option java_package = "org.digitalwitnesslab.photocop";
+option java_outer_classname = "PhotoCopProto";
+
+service PhotoCop {
+  // Checks the photo cop.
+  rpc CheckPhoto(CheckPhotoRequest) returns (PhotoCopDecision);
+  rpc GetPhotoHash(GetPhotoHashRequest) returns (PhotoCopHash);
+}
+
+message GetPhotoHashRequest {
+  bytes Photo = 1;
+}
+
+message PhotoCopHash {
+    bytes Value = 1;
+}
+
+message CheckPhotoRequest {
+  bytes Photo = 1;
+  bool GetHash = 2;
+  int32 Priority = 3;
+}
+
+message PhotoCopDecision {
+  bool IsMatch = 1;
+  PhotoCopHash Hash = 2;
+
+  repeated MatchInfo Matches = 3;
+}
+
+message MatchInfo {
+    string Source = 1;
+    int32 Distance = 2;
+    repeated string Violations = 3;
+}

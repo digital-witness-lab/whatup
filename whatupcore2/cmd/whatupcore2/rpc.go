@@ -11,6 +11,7 @@ var (
 	Port          uint32
 	LogLevel      string
 	DBUri         string
+	PhotoCopUri   string
 	whatsUpRPCCmd = &cobra.Command{
 		Use:     "rpc",
 		Aliases: []string{"r"},
@@ -22,7 +23,10 @@ var (
 			if DBUri == "" {
 				DBUri = getDbUriFromEnv()
 			}
-			whatupcore2.StartRPC(Port, DBUri, LogLevel)
+			if PhotoCopUri == "" {
+				PhotoCopUri = getPhotoCopUriFromEnv()
+			}
+			whatupcore2.StartRPC(Port, DBUri, PhotoCopUri, LogLevel)
 		},
 	}
 )
@@ -32,5 +36,6 @@ func init() {
 	whatsUpRPCCmd.Flags().Uint32VarP(&Port, "port", "p", 3447, "Port for RPC server")
 	whatsUpRPCCmd.Flags().StringVarP(&LogLevel, "log-level", "l", "INFO", "Logging level. One of DEBUG/INFO/WARN/ERROR")
 	whatsUpRPCCmd.Flags().StringVarP(&DBUri, "db-uri", "d", "", "URI to database. If none is set, this field will be populated by envvars ")
+	whatsUpRPCCmd.Flags().StringVarP(&PhotoCopUri, "photo-cop-uri", "c", "", "URI to photo cop rpc service. if empty, no photocop features are used")
 	rootCmd.AddCommand(whatsUpRPCCmd)
 }

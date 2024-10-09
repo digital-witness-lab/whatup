@@ -1,8 +1,8 @@
 ARG CONFIGURE_VM_SECRETS_REPO=configure-vm-secrets:latest
 ARG LOG_CLEANER_REPO=log-cleaner:latest
 
-FROM $CONFIGURE_VM_SECRETS_REPO as configure-vm-secrets
-FROM $LOG_CLEANER_REPO as log-cleaner
+FROM $CONFIGURE_VM_SECRETS_REPO AS configure-vm-secrets
+FROM $LOG_CLEANER_REPO AS log-cleaner
 
 FROM python:3.11-slim-bullseye
 

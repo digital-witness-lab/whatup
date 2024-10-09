@@ -12,6 +12,7 @@ from .. import utils
 from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
 from . import BaseBot
+from . import PhotoCopMatchException
 from .chatbot import ChatBot
 
 logger = logging.getLogger(__name__)
@@ -152,11 +153,12 @@ class ArchiveBot(BaseBot):
             media_dir: Path = conversation_dir / "media"
             media_dir.mkdir(parents=True, exist_ok=True)
             media_path = media_dir / f"{media_filename}"
+            photo_cop_path = media_path.with_suffix(".photocop.json")
             message.provenance["archivebot__mediaPath"] = str(
                 media_path.relative_to(archive_filename.parent)
             )
 
-            if not media_path.exists():
+            if not (media_path.exists() or photo_cop_path.exists()):
                 callback = partial(
                     self._handle_media_content,
                     media_path=media_path,
@@ -171,13 +173,16 @@ class ArchiveBot(BaseBot):
     async def _handle_media_content(
         self,
         message: wuc.WUMessage,
-        media_bytes: bytes,
+        media_bytes: bytes | None,
         error: Exception | None,
         media_path: Path,
         media_filename: str,
     ):
         error_path = media_path.with_suffix(".log")
-        if error is not None:
+        if isinstance(error, PhotoCopMatchException):
+            photo_cop_path = media_path.with_suffix(".photocop.json")
+            photo_cop_path.write_text(utils.protobuf_to_json(error.decision))
+        elif error is not None:
             error_path.write_text(f"Error reading media content: {error}")
         elif not media_bytes:
             self.logger.critical(

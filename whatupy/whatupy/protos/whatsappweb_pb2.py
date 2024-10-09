@@ -9,16 +9,16 @@ _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'whatsappweb_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
-    DESCRIPTOR._options = None
-    DESCRIPTOR._serialized_options = b'Z go.mau.fi/whatsmeow/binary/proto'
-    _ADVKEYINDEXLIST.fields_by_name['validIndexes']._options = None
-    _ADVKEYINDEXLIST.fields_by_name['validIndexes']._serialized_options = b'\x10\x01'
-    _APPSTATESYNCKEYFINGERPRINT.fields_by_name['deviceIndexes']._options = None
-    _APPSTATESYNCKEYFINGERPRINT.fields_by_name['deviceIndexes']._serialized_options = b'\x10\x01'
-    _DEVICELISTMETADATA.fields_by_name['senderKeyIndexes']._options = None
-    _DEVICELISTMETADATA.fields_by_name['senderKeyIndexes']._serialized_options = b'\x10\x01'
-    _DEVICELISTMETADATA.fields_by_name['recipientKeyIndexes']._options = None
-    _DEVICELISTMETADATA.fields_by_name['recipientKeyIndexes']._serialized_options = b'\x10\x01'
+    _globals['DESCRIPTOR']._options = None
+    _globals['DESCRIPTOR']._serialized_options = b'Z go.mau.fi/whatsmeow/binary/proto'
+    _globals['_ADVKEYINDEXLIST'].fields_by_name['validIndexes']._options = None
+    _globals['_ADVKEYINDEXLIST'].fields_by_name['validIndexes']._serialized_options = b'\x10\x01'
+    _globals['_APPSTATESYNCKEYFINGERPRINT'].fields_by_name['deviceIndexes']._options = None
+    _globals['_APPSTATESYNCKEYFINGERPRINT'].fields_by_name['deviceIndexes']._serialized_options = b'\x10\x01'
+    _globals['_DEVICELISTMETADATA'].fields_by_name['senderKeyIndexes']._options = None
+    _globals['_DEVICELISTMETADATA'].fields_by_name['senderKeyIndexes']._serialized_options = b'\x10\x01'
+    _globals['_DEVICELISTMETADATA'].fields_by_name['recipientKeyIndexes']._options = None
+    _globals['_DEVICELISTMETADATA'].fields_by_name['recipientKeyIndexes']._serialized_options = b'\x10\x01'
     _globals['_ADVENCRYPTIONTYPE']._serialized_start = 57230
     _globals['_ADVENCRYPTIONTYPE']._serialized_end = 57271
     _globals['_KEEPTYPE']._serialized_start = 57273
