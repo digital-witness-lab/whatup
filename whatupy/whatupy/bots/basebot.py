@@ -49,8 +49,8 @@ class StreamMissedHeartbeat(TimeoutError):
 
 
 class PhotoCopMatchException(ValueError):
-    def __init__(self, decision: pc.PhotoCopDecision):
-        self.decision = decision
+    def __init__(self, decision: pc.PhotoCopDecision | None = None):
+        self.decision = decision or pc.PhotoCopDecision()
 
 
 DownloadMediaCallback = T.Callable[

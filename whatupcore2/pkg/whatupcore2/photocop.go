@@ -2,6 +2,7 @@ package whatupcore2
 
 import (
 	"context"
+	"time"
 
 	pb "github.com/digital-witness-lab/whatup/protos"
 	waLog "go.mau.fi/whatsmeow/util/log"
@@ -10,8 +11,8 @@ import (
 )
 
 type PhotoCopInterface interface {
-	Decide(context.Context, []byte) (*pb.PhotoCopDecision, error)
-	DecidePriority(context.Context, []byte, int32) (*pb.PhotoCopDecision, error)
+	Decide(context.Context, *[]byte) (*pb.PhotoCopDecision, error)
+	DecidePriority(context.Context, *[]byte, int32) (*pb.PhotoCopDecision, error)
 }
 
 type PhotoCopMedia struct {
@@ -62,17 +63,17 @@ func NewPhotoCop(host string, cert string, log waLog.Logger) (*PhotoCop, error) 
 	}, nil
 }
 
-func (pc *PhotoCop) DecidePriority(ctx context.Context, data []byte, priority int32) (*pb.PhotoCopDecision, error) {
-	pc.log.Debugf("Request to PhotoCop DecidePriority()")
+func (pc *PhotoCop) DecidePriority(ctx context.Context, data *[]byte, priority int32) (*pb.PhotoCopDecision, error) {
+    start := time.Now()
     decision, err := pc.client.CheckPhoto(ctx, &pb.CheckPhotoRequest{
-		Photo:    data,
+		Photo:    *data,
 		Priority: priority,
 	})
-    pc.log.Debugf("PhotoCop decision: %v: %v", decision, err)
+    pc.log.Debugf("Request to PhotoCop DecidePriority(): %d: match = %v: %v: %s", len(*data), decision.IsMatch, err, time.Since(start))
     return decision, err
 }
 
-func (pc *PhotoCop) Decide(ctx context.Context, data []byte) (*pb.PhotoCopDecision, error) {
+func (pc *PhotoCop) Decide(ctx context.Context, data *[]byte) (*pb.PhotoCopDecision, error) {
 	return pc.DecidePriority(ctx, data, 0)
 }
 
@@ -80,12 +81,12 @@ type EmptyPhotoCop struct {
 	log waLog.Logger
 }
 
-func (pc *EmptyPhotoCop) DecidePriority(ctx context.Context, data []byte, priority int32) (*pb.PhotoCopDecision, error) {
+func (pc *EmptyPhotoCop) DecidePriority(ctx context.Context, data *[]byte, priority int32) (*pb.PhotoCopDecision, error) {
 	pc.log.Debugf("Request to empty PhotoCop DecidePriority()")
 	return &pb.PhotoCopDecision{}, nil
 }
 
-func (pc *EmptyPhotoCop) Decide(ctx context.Context, data []byte) (*pb.PhotoCopDecision, error) {
+func (pc *EmptyPhotoCop) Decide(ctx context.Context, data *[]byte) (*pb.PhotoCopDecision, error) {
 	pc.log.Debugf("Request to empty PhotoCop Decide()")
 	return &pb.PhotoCopDecision{}, nil
 }
