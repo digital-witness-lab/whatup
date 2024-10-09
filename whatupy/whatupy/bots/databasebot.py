@@ -151,6 +151,7 @@ class DatabaseBot(BaseBot):
         # fix for missing RECORD_MTIME field in messages table, found at commit
         # 9d35b1
         for table in ("messages", "messages_seen", "device_group_info"):
+            db[table].create_column(RECORD_MTIME_FIELD, type=db.types.datetime)
             db.query(f'UPDATE {table} SET "{RECORD_MTIME_FIELD}" = :date WHERE "{RECORD_MTIME_FIELD}" IS NULL;', date=datetime.now())
         # </depricated>
 
