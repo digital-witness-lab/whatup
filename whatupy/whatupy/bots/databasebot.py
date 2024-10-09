@@ -147,6 +147,13 @@ class DatabaseBot(BaseBot):
         donor_messages.create_column(RECORD_MTIME_FIELD, type=db.types.datetime)
         donor_messages.create_index(["donor_jid", "message_id"])
 
+        # <depricated>
+        # fix for missing RECORD_MTIME field in messages table, found at commit
+        # 9d35b1
+        for table in ("messages", "messages_seen", "device_group_info"):
+            db.query(f'UPDATE {table} SET "{RECORD_MTIME_FIELD}" = :date WHERE "{RECORD_MTIME_FIELD}" IS NULL;', date=datetime.now())
+        # </depricated>
+
     async def post_start(self):
         fields = (None, "isDelete", "isEdit", "isReaction")
         group_info = utils.protobuf_fill_fields(wuc.GroupInfo())
@@ -208,7 +215,7 @@ class DatabaseBot(BaseBot):
 
         self._ping_donor_messages(message)
         if not self.db["messages_seen"].count(id=msg_id):
-            self.db["messages_seen"].insert({"id": msg_id, **message.provenance})
+            self.db["messages_seen"].insert({"id": msg_id, RECORD_MTIME_FIELD: datetime.now(), **message.provenance,})
             # NOTE: if there is a new case here, make sure to update the
             # `post_start` method to handle it
             if message.messageProperties.isReaction:
@@ -219,7 +226,7 @@ class DatabaseBot(BaseBot):
                 source_message_id = message.content.inReferenceToId
                 with self.db as db:
                     db["messages"].upsert(
-                        {"id": source_message_id, "isDelete": True}, ["id"]
+                        {"id": source_message_id, "isDelete": True, RECORD_MTIME_FIELD: datetime.now()}, ["id"]
                     )
             else:
                 await self._update_message(
@@ -350,6 +357,7 @@ class DatabaseBot(BaseBot):
 
         with self.db as db:
             message_flat["mediaFilename"] = media_filename
+            message_flat[RECORD_MTIME_FIELD] = datetime.now()
             db["messages"].upsert(message_flat, ["id"])
         self.logger.debug("Done updating message: %s", message.info.id)
 
@@ -562,6 +570,7 @@ class DatabaseBot(BaseBot):
                     "timestamp": min(
                         previous_row.get("timestamp", datetime.max), update_time
                     ),
+                    RECORD_MTIME_FIELD: datetime.now(),
                     "id": group_info_id,
                 },
                 keys=["id"],
@@ -587,7 +596,6 @@ class DatabaseBot(BaseBot):
 
     async def _update_edit(self, message: wuc.WUMessage):
         message_flat = flatten_proto_message(message)
-        message_flat[RECORD_MTIME_FIELD] = datetime.now()
         source_message_id = message.content.inReferenceToId
         message_flat["id"] = source_message_id
         with self.db as db:
@@ -600,12 +608,12 @@ class DatabaseBot(BaseBot):
                 message_flat["previous_version_text"] = source_message.get("text")
                 source_message[RECORD_MTIME_FIELD] = datetime.now()
                 db["messages"].insert(source_message)
+            message_flat[RECORD_MTIME_FIELD] = datetime.now()
             db["messages"].upsert(message_flat, ["id"])
 
     async def _update_reaction(self, message: wuc.WUMessage):
         now = datetime.now()
         message_flat = flatten_proto_message(message)
-        message_flat[RECORD_MTIME_FIELD] = now
         source_message_id = message.content.inReferenceToId
         with self.db as db:
             source_message = db["messages"].find_one(id=source_message_id)
@@ -616,6 +624,7 @@ class DatabaseBot(BaseBot):
                     int, source_message.get("reaction_counts") or {}
                 )
             reaction_counts[message.content.text] += 1
+            message_flat[RECORD_MTIME_FIELD] = now
             db["reactions"].upsert(message_flat, ["id"])
             db["messages"].upsert(
                 {
