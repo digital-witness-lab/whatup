@@ -76,7 +76,7 @@ if photo_dna_api_key_secret is not None:
             ),
             secret_env=[
                 compute.v1.MetadataItemsItemArgs(
-                    key="PHOTODNA_API_KEY",
+                    key="PHOTO_DNA_KEY",
                     value=Output.concat(
                         photo_dna_api_key_secret.id, "/versions/latest"
                     ),

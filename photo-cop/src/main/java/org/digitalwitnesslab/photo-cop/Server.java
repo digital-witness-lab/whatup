@@ -122,6 +122,7 @@ public class Server {
             try {
                 hash = generateHash(photo);
             } catch (java.io.IOException e) {
+                System.out.println("Could not generate hash from photo: " + e.getMessage());
                 throw new RuntimeException("Could not generate hash from photo", e);
             }
 
@@ -129,6 +130,7 @@ public class Server {
             try {
                 digest = MessageDigest.getInstance("SHA-256");
             } catch(NoSuchAlgorithmException e) {
+                System.out.println("Current java implemintation doesn't have sha-256: " + e.getMessage());
                 throw new RuntimeException("Current java implemintation doesn't have sha-256.");
             }
             byte[] cacheKey = digest.digest(photo);
@@ -137,6 +139,7 @@ public class Server {
             try {
                 match = photoDNAMatcher.match_ratelimit(hash, cacheKey, priority);
             } catch (IOException e) {
+                System.out.println("Could not get PhotoDNA match result: " + e.getMessage());
                 throw new RuntimeException("Could not get PhotoDNA match result", e);
             }
 
@@ -152,6 +155,7 @@ public class Server {
             PhotoCopDecision response = responseBuilder.build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();
+            System.out.printf("Decision made: %s: %b\n", hash.toString(), response.getIsMatch());
         }
     }
 
@@ -164,6 +168,7 @@ public class Server {
 	        byte[] preHash = preHashObject.generateBinaryPreHash();
             return preHash;
         } catch (java.lang.NullPointerException e) {
+            System.out.println("Returning empty hash: " + e.getMessage());
             return new byte[0];
         }
     }

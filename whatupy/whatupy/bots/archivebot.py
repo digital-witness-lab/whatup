@@ -153,11 +153,12 @@ class ArchiveBot(BaseBot):
             media_dir: Path = conversation_dir / "media"
             media_dir.mkdir(parents=True, exist_ok=True)
             media_path = media_dir / f"{media_filename}"
+            photo_cop_path = media_path.with_suffix(".photocop.json")
             message.provenance["archivebot__mediaPath"] = str(
                 media_path.relative_to(archive_filename.parent)
             )
 
-            if not media_path.exists():
+            if not (media_path.exists() or photo_cop_path.exists()):
                 callback = partial(
                     self._handle_media_content,
                     media_path=media_path,

@@ -13,14 +13,13 @@ from sqlalchemy.sql import func
 from .. import utils
 from ..protos import whatupcore_pb2 as wuc
 from .lib import flatten_proto_message
-from . import ArchiveData, BaseBot, PhotoCopMatchException
+from . import ArchiveData, BaseBot, PhotoCopMatchException, PhotoCopDecision
 from .chatbot import ChatBot
 from .static import static_dir
 
 
 logger = logging.getLogger(__name__)
 RECORD_MTIME_FIELD = "record_mtime"
-
 
 class DatabaseBot(BaseBot):
     __version__ = "3.1.0"
@@ -166,6 +165,7 @@ class DatabaseBot(BaseBot):
                 GroupInfo=group_info if i == 0 else None,
                 CommunityInfo=None,
                 MediaPath=None,
+                PhotoCopDecision=PhotoCopMatchException(),
             )
             self.logger.info(
                 "Inserting fully filled message into database: %s",
@@ -328,7 +328,10 @@ class DatabaseBot(BaseBot):
         media_filename: T.Optional[str] = None,
     ):
         chat_jid = utils.jid_to_str(message.info.source.chat)
-        message_flat = flatten_proto_message(message)
+        message_flat = flatten_proto_message(
+            message,
+            skip_keys=set(["thumbnailPhotoCop"]),
+        )
         media_filename = media_filename or utils.media_message_filename(message)
         if message_flat.get("thumbnail"):
             thumbnail: bytes = message_flat.pop("thumbnail")
@@ -337,6 +340,14 @@ class DatabaseBot(BaseBot):
                 f"{message.info.id}.jpg",
                 [str(chat_jid), "thumbnail"],
             )
+        if message.content.thumbnailPhotoCop.IsMatch:
+            decision = self.photocop_decision_to_dict(message.content.thumbnailPhotoCop)
+            # this is a bit hack. we are renaming content_url to url so it
+            # becomes `thumbnail_url` as to align with the above
+            # `thumbnail_url` field.
+            decision["url"] = decision.pop("content_url")
+            message_flat.update({f"thumbnail_{key}": value for key, value in decision.items()})
+
         with self.db as db:
             message_flat["mediaFilename"] = media_filename
             db["messages"].upsert(message_flat, ["id"])
@@ -386,14 +397,7 @@ class DatabaseBot(BaseBot):
                 "Empty media body... Writing empty media URI: %s", datum
             )
         if isinstance(error, PhotoCopMatchException):
-            datum["photocop_match"] = error.decision.IsMatch
-            datum["photocop_match_source"] = ",".join(
-                m.Source for m in error.decision.Matches
-            )
-            datum["photocop_match_violations"] = ",".join(
-                v for m in error.decision.Matches for v in m.Violations
-            )
-            datum["content_url"] = self.media_url("photocop.jpg", ["static"])
+            datum.update(self.photocop_decision_to_dict(error.decision))
         datum["error"] = None if error is None else str(error)
         datum[RECORD_MTIME_FIELD] = datetime.now()
         self.db["media"].upsert(datum, ["filename"])
@@ -866,3 +870,16 @@ class DatabaseBot(BaseBot):
         logger.info("Updating group: %s", chat_jid)
 
     # </depricated>
+
+    def photocop_decision_to_dict(self, decision: PhotoCopDecision):
+        datum = {}
+        datum["photocop_match"] = decision.IsMatch
+        datum["photocop_match_source"] = ",".join(
+            m.Source for m in decision.Matches
+        )
+        datum["photocop_match_violations"] = ",".join(
+            v for m in decision.Matches for v in m.Violations
+        )
+        datum["content_url"] = str(self.media_url("photocop.jpg", ["static"]))
+        return datum
+    

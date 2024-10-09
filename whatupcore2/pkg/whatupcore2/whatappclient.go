@@ -717,7 +717,7 @@ func (wac *WhatsAppClient) DownloadAnyRetryPhotoCop(ctx context.Context, msg *wa
 
 	pcMedia := NewPhotoCopMedia()
 	if msg.GetImageMessage() != nil && len(data) > 0 {
-		decision, err := wac.photoCop.DecidePriority(ctx, data, 100)
+		decision, err := wac.photoCop.DecidePriority(ctx, &data, 100)
 		if err != nil {
 			wac.Log.Errorf("Could not get photocop decision: %v", err)
 		}

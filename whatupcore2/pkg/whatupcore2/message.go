@@ -263,7 +263,7 @@ func (msg *Message) ToProto() (*pb.WUMessage, bool) {
 			msg.log.Errorf("Could not download thumbnail: %v", err)
 		}
 		if len(thumbnail) > 0 {
-			thumbnailPhotoCop, err = msg.client.photoCop.DecidePriority(context.TODO(), thumbnail, 50)
+			thumbnailPhotoCop, err = msg.client.photoCop.DecidePriority(context.TODO(), &thumbnail, 50)
 			if thumbnailPhotoCop.IsMatch {
 				msg.log.Warnf("Found photo-cop match... zero-ing out image: %v", thumbnailPhotoCop)
 				thumbnail = []byte{}

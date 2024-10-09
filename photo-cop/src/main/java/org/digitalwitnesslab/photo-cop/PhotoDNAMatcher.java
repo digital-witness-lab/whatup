@@ -35,7 +35,7 @@ public class PhotoDNAMatcher {
 
     public static void main(String[] args) {
         String photoDnaKey = System.getenv("PHOTO_DNA_KEY");
-        if (photoDnaKey == null) {
+        if (photoDnaKey == null || photoDnaKey == "") {
             System.err.println("PHOTO_DNA_KEY environment variable is not set.");
             return;
         }
@@ -93,6 +93,10 @@ public class PhotoDNAMatcher {
 
     static private Map<String, Object> extractResult(Map<String, Object> response) {
         Map<String, Object> result = new HashMap<>();
+        if (response.containsKey("statusCode") && response.get("statusCode").equals(500)) {
+            String errorMessage = "Microsoft response error: " + response.getOrDefault("message", "No message provided");
+            throw new RuntimeException(errorMessage);
+        }
         Object matchResults = response.get("MatchResults");
         if (matchResults instanceof List<?>) {
             List<?> resultsList = (List<?>) matchResults;

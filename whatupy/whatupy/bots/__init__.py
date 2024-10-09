@@ -1,5 +1,7 @@
 from typing import TypeVar
 
+from ..protos.photo_cop_pb2 import PhotoCopDecision
+
 from .basebot import (
     ArchiveData,
     BaseBot,
