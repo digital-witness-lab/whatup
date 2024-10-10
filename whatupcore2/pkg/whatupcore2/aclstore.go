@@ -306,3 +306,8 @@ func (acls *ACLStore) Delete() error {
 	_, err := acls.db.Exec("DELETE FROM aclstore_permissions WHERE username = $1", acls.username)
 	return err
 }
+
+func (acls ACLStore) DeleteBurners(db *sql.DB) error {
+	_, err := db.Exec("DELETE FROM aclstore_permissions WHERE username LIKE \"burner%\"")
+	return err
+}

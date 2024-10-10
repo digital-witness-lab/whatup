@@ -32,7 +32,12 @@ case $app_command in
             echo "WHATUPCORE2_REMOVE_USER env var is required."
             exit 1
         fi
-        echo "Starting whatupcore2..."
+        echo "Removing users ${WHATUPCORE2_REMOVE_USER}..."
         exec /log-cleaner /whatupcore2 remove-user ${WHATUPCORE2_REMOVE_USER}
+    ;;
+
+    remove-burners)
+        echo "Removing burners..."
+        exec /log-cleaner /whatupcore2 remove-burners
     ;;
 esac

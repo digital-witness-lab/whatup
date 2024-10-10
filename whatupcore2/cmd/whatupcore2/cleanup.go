@@ -25,7 +25,7 @@ var (
 			db, err := sql.Open("postgres", RUDBUri)
 			defer db.Close()
 			if err != nil {
-				fmt.Printf("Could not create encsqlstore: %w\n", err)
+				fmt.Printf("Could not create encsqlstore: %v\n", err)
 				return
 			}
 
@@ -33,7 +33,7 @@ var (
 				fmt.Printf("Deleting user: %s\n", username)
 				err = encsqlstore.DeleteUsername(db, username)
 				if err != nil {
-					fmt.Printf("Could not delete user: %w\n", err)
+					fmt.Printf("Could not delete user: %v\n", err)
 					return
 				}
 				acls := whatupcore2.NewACLStore(db, username, nil)
@@ -42,9 +42,42 @@ var (
 			os.Exit(0)
 		},
 	}
+	whatsUpRemoveBurnersCmd = &cobra.Command{
+		Aliases: []string{"rb"},
+		Use:     "remove-burners",
+		Short:   "Removes all burner registration data",
+		Args:    cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			if RUDBUri == "" {
+				RUDBUri = getDbUriFromEnv()
+			}
+
+			db, err := sql.Open("postgres", RUDBUri)
+			defer db.Close()
+			if err != nil {
+				fmt.Printf("Could not create encsqlstore: %v\n", err)
+				return
+			}
+
+			err = encsqlstore.DeleteBurners(db)
+			if err != nil {
+				fmt.Printf("Could not delete user: %v\n", err)
+				return
+			}
+
+			err = whatupcore2.ACLStore{}.DeleteBurners(db)
+			if err != nil {
+				fmt.Printf("Could not clear ACLs: %v\n", err)
+				return
+			}
+		},
+	}
 )
 
 func init() {
 	whatsUpRemoveUserCmd.Flags().StringVarP(&RUDBUri, "db-uri", "d", "", "URI to database. If none is set, this field will be populated by envvars ")
 	rootCmd.AddCommand(whatsUpRemoveUserCmd)
+
+	whatsUpRemoveBurnersCmd.Flags().StringVarP(&RUDBUri, "db-uri", "d", "", "URI to database. If none is set, this field will be populated by envvars ")
+	rootCmd.AddCommand(whatsUpRemoveBurnersCmd)
 }
