@@ -345,7 +345,7 @@ const (
 	`
 	deleteDeviceQuery         = `DELETE FROM whatsmeow_enc_device WHERE jid=$1`
 	deleteDeviceQueryUsername = `DELETE FROM whatsmeow_enc_device WHERE username=$1`
-	deleteDeviceBurners = `DELETE FROM whatsmeow_enc_device WHERE username LIKE 'burner%'`
+	deleteDeviceBurners = "DELETE FROM whatsmeow_enc_device WHERE username LIKE 'burner%%'"
 )
 
 // NewDevice creates a new device in this database.
