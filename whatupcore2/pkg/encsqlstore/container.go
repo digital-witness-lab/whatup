@@ -120,7 +120,7 @@ func NewWithDB(db *sql.DB, dialect string, log waLog.Logger) *EncContainer {
 
 func DeleteUsername(db *sql.DB, username string) error {
 	// no encryption needed here
-	_, err := db.Exec(deleteDeviceQueryUsername, username)
+    _, err := db.Exec(deleteDeviceQueryUsername, fmt.Sprintf("plain:%s", username))
 	return err
 }
 
@@ -345,7 +345,7 @@ const (
 	`
 	deleteDeviceQuery         = `DELETE FROM whatsmeow_enc_device WHERE jid=$1`
 	deleteDeviceQueryUsername = `DELETE FROM whatsmeow_enc_device WHERE username=$1`
-	deleteDeviceBurners = "DELETE FROM whatsmeow_enc_device WHERE username LIKE 'burner%%'"
+    deleteDeviceBurners = "DELETE FROM whatsmeow_enc_device WHERE username LIKE 'plain:burner%%'"
 )
 
 // NewDevice creates a new device in this database.
