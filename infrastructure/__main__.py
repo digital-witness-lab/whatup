@@ -12,6 +12,7 @@ from jobs import (
     db_migrations,
     hash_gen,
     whatupcore_remove_user,
+    whatupcore_remove_burners,
 )
 
 from services import whatupcore2
