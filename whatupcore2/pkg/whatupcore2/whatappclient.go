@@ -103,8 +103,8 @@ type WhatsAppClient struct {
 
 	ctxC                ContextWithCancel
 	username            string
-	historyMessageQueue *MessageQueue
-	messageQueue        *MessageQueue
+	historyMessageQueue *MessageDistributor
+	messageQueue        *MessageDistributor
 
 	historyRequestContexts map[string]ContextWithCancel
 	shouldRequestHistory   map[string]bool
@@ -190,10 +190,12 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 
 	ctxC := NewContextWithCancel(ctx)
 
-	historyMessageQueue := NewMessageQueue(ctx, time.Minute, 16384, 10*time.Minute, log.Sub("hmq"))
-	historyMessageQueue.Start()
-	messageQueue := NewMessageQueue(ctx, time.Minute, 1024, time.Hour, log.Sub("mq"))
-	messageQueue.Start()
+	historyMessageQueue := NewMessageDistributor(NewMessageCache(16384, 10*time.Minute))
+	//historyMessageQueue := NewMessageQueue(ctx, time.Minute, 16384, 10*time.Minute, log.Sub("hmq"))
+	//historyMessageQueue.Start()
+	messageQueue := NewMessageDistributor(NewMessageCache(1024, time.Hour))
+	//messageQueue := NewMessageQueue(ctx, time.Minute, 1024, time.Hour, log.Sub("mq"))
+	//messageQueue.Start()
 
 	aclStore := NewACLStore(db, username, log.Sub("ACL"))
 	// 64 MB cache
@@ -441,11 +443,11 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 	}
 }
 
-func (wac *WhatsAppClient) GetMessages() *MessageClient {
+func (wac *WhatsAppClient) GetMessages() *QueueClient {
 	return wac.messageQueue.NewClient()
 }
 
-func (wac *WhatsAppClient) GetHistoryMessages() *MessageClient {
+func (wac *WhatsAppClient) GetHistoryMessages() *QueueClient {
 	return wac.historyMessageQueue.NewClient()
 }
 
