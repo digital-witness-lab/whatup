@@ -776,7 +776,11 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 	var body []byte
 	var retryError error
 
-	ctxRetry := NewContextWithCancel(ctx)
+	ctxTimeout, ctxCancel := context.WithTimeout(ctx, 2*time.Minute)
+	ctxRetry := ContextWithCancel{
+		Context: ctxTimeout,
+		cancel:  ctxCancel,
+	}
 	shouldRetryDownload := false
 	evtHandler := wac.Client.AddEventHandler(func(evt interface{}) {
 		switch retry := evt.(type) {
