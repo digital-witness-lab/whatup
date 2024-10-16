@@ -288,24 +288,24 @@ func (wac *WhatsAppClient) stateReFetcher() {
 }
 
 func (wac *WhatsAppClient) presenceTwiddler() {
-    shouldTwiddle := true
+	shouldTwiddle := true
 
 	defaultAcl, err := wac.aclStore.GetDefault()
-    if err == nil && defaultAcl.CanReadWrite() {
-        wac.Log.Infof("Default READ/WRITE ACL... not setting presence to unavailable ")
-        shouldTwiddle = false
-    } else {
-        wac.Log.Infof("Default group ACL for presence twiddler: %s: %d", err, defaultAcl.Permission)
-    }
-    
+	if err == nil && defaultAcl.CanReadWrite() {
+		wac.Log.Infof("Default READ/WRITE ACL... not setting presence to unavailable ")
+		shouldTwiddle = false
+	} else {
+		wac.Log.Infof("Default group ACL for presence twiddler: %s: %d", err, defaultAcl.Permission)
+	}
+
 	baseDuration := 30 * time.Minute
 	for {
 		wac.Log.Infof("Twiddling client presence ")
 		wac.SendPresence(types.PresenceAvailable)
-        if shouldTwiddle {
-	        time.Sleep(durationWithJitter(10 * time.Second, 0.1))
-		    wac.SendPresence(types.PresenceUnavailable)
-        }
+		if shouldTwiddle {
+			time.Sleep(durationWithJitter(10*time.Second, 0.1))
+			wac.SendPresence(types.PresenceUnavailable)
+		}
 		select {
 		case <-wac.ctxC.Done():
 			return
@@ -777,6 +777,7 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 	var retryError error
 
 	ctxRetry := NewContextWithCancel(ctx)
+	shouldRetryDownload := false
 	evtHandler := wac.Client.AddEventHandler(func(evt interface{}) {
 		switch retry := evt.(type) {
 		case *events.MediaRetry:
@@ -794,7 +795,7 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 				wac.Log.Debugf("OLD direct path: %s", directPathValues[0].String())
 				wac.Log.Debugf("NEW direct path: %s", *retryData.DirectPath)
 				directPathValues[0].SetString(*retryData.DirectPath)
-				body, retryError = wac.DownloadAnyRetry(ctxRetry.Context, msg, msgInfo)
+				shouldRetryDownload = true
 				ctxRetry.Cancel()
 			}
 		}
@@ -803,6 +804,10 @@ func (wac *WhatsAppClient) RetryDownload(ctx context.Context, msg *waProto.Messa
 
 	wac.Log.Debugf("Waiting for retry download to complete")
 	<-ctxRetry.Done()
+	if shouldRetryDownload {
+		body, retryError = wac.DownloadAny(msg)
+		//body, retryError = wac.DownloadAnyRetry(ctxRetry.Context, msg, msgInfo)
+	}
 	if ctx.Err() != nil && retryError == nil {
 		retryError = ErrDownloadRetryCanceled
 	}
