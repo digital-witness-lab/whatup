@@ -227,10 +227,6 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 	client.connectionHandler = wmClient.AddEventHandler(client.connectionEvents)
 	client.historyHandler = wmClient.AddEventHandler(client.getHistorySync)
 	client.messageHandler = wmClient.AddEventHandler(client.getMessages)
-	if strings.HasSuffix(username, "-a") {
-		client.Log.Warnf("HACK adding archive handler to request history on archive-state change")
-		client.archiveHandler = wmClient.AddEventHandler(client.UNSAFEArchiveHack_OnArchiveGetHistory)
-	}
 
 	log.Debugf("WhatsAppClient created and lock releasing")
 	return client, nil
@@ -445,65 +441,6 @@ func (wac *WhatsAppClient) qrCodeLoop(ctx context.Context, state *RegistrationSt
 	}
 }
 
-func (wac *WhatsAppClient) UNSAFEArchiveHack_OnArchiveGetHistory(evt interface{}) {
-	switch archive := evt.(type) {
-	case *events.Archive:
-		if !archive.Action.GetArchived() {
-			return
-		}
-		if !strings.HasSuffix(wac.username, "-a") {
-			return
-		}
-		archiveJID := archive.JID.String()
-		wac.Log.Warnf("HACK: new group is archived... setting shouldRequestHistory: %s", archiveJID)
-		wac.shouldRequestHistory[archiveJID] = true
-	}
-}
-
-func (wac *WhatsAppClient) UNSAFEArchiveHack_ShouldProcess(msg *events.Message) bool {
-	if strings.HasSuffix(wac.username, "-a") {
-		if !msg.Info.IsGroup {
-			wac.Log.Debugf("HACK: chat not in group")
-			return false
-		}
-		chat_jid := msg.Info.Chat
-		groupSettings, err := wac.Store.ChatSettings.GetChatSettings(chat_jid)
-		if err != nil {
-			wac.Log.Warnf("HACK: could not get group settings: %v: %s", chat_jid, err)
-			return false
-		}
-		if !groupSettings.Archived {
-			wac.Log.Debugf("HACK: Not archived")
-			return false
-		}
-		wac.Log.Debugf("HACK: allowing message through, archive status: %t", groupSettings.Archived)
-		if wac.shouldRequestHistory[chat_jid.String()] {
-			wac.Log.Warnf("HACK: requesting message history for group: %s", chat_jid.String())
-			wac.requestHistoryMsgInfoRetry(&msg.Info)
-			delete(wac.shouldRequestHistory, chat_jid.String())
-		}
-		return true
-	}
-	return true
-}
-
-func (wac *WhatsAppClient) UNSAFEArchiveHack_ShouldProcessConversation(jid *types.JID, conv *waProto.Conversation) bool {
-	if strings.HasSuffix(wac.username, "-a") {
-		if jid.Server != types.GroupServer {
-			wac.Log.Debugf("HACK: chat not in group")
-			return false
-		}
-		var isArchived bool = *conv.Archived
-		if isArchived != true {
-			wac.Log.Debugf("HACK: Not archived")
-			return false
-		}
-		wac.Log.Debugf("HACK: allowing conversation through, archive status: %t", isArchived)
-		return true
-	}
-	return true
-}
-
 func (wac *WhatsAppClient) GetMessages() *MessageClient {
 	return wac.messageQueue.NewClient()
 }
@@ -535,13 +472,6 @@ func (wac *WhatsAppClient) getMessages(evt interface{}) {
 			wac.Log.Debugf("Skipping message because we don't have read permissions in group")
 			return
 		}
-		// <HACK>
-		wac.Log.Debugf("Checking hack: %s", wmMsg.Info.ID)
-		if !wac.UNSAFEArchiveHack_ShouldProcess(wmMsg) {
-			wac.Log.Debugf("HACK: skipping message")
-			return
-		}
-		// </HACK>
 		wac.Log.Debugf("Creating internal message type: %s", wmMsg.Info.ID)
 		msg, err := NewMessageFromWhatsMeow(wac, wmMsg.UnwrapRaw())
 		if err != nil {
@@ -579,12 +509,6 @@ func (wac *WhatsAppClient) getHistorySync(evt interface{}) {
 				}
 			}
 
-			// <HACK>
-			if !wac.UNSAFEArchiveHack_ShouldProcessConversation(&chatJID, conv) {
-				wac.Log.Debugf("HACK: skipping conversation")
-				continue
-			}
-			// </HACK>
 			aclEntry, err := wac.aclStore.GetByJID(&chatJID)
 			if err != nil {
 				wac.Log.Errorf("Could not read ACL for JID: %s: %+v", chatJID.String(), err)
