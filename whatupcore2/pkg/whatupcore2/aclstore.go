@@ -79,7 +79,7 @@ func (aclEntry *ACLEntry) CanWrite() bool {
 }
 
 func (aclEntry *ACLEntry) CanReadWrite() bool {
-    return aclEntry.CanWrite() && aclEntry.CanRead()
+	return aclEntry.CanWrite() && aclEntry.CanRead()
 }
 
 func (aclEntry *ACLEntry) Proto() (*pb.GroupACL, error) {
@@ -309,7 +309,7 @@ func (acls *ACLStore) Delete() error {
 
 func (acls ACLStore) DeleteBurners(db *sql.DB) error {
 	result, err := db.Exec("DELETE FROM aclstore_permissions WHERE username LIKE 'burner%%'")
-    n_rows, _ := result.RowsAffected()
-    fmt.Printf("ACL: deleted burners: %d rows affected\n", n_rows)
+	n_rows, _ := result.RowsAffected()
+	fmt.Printf("ACL: deleted burners: %d rows affected\n", n_rows)
 	return err
 }
