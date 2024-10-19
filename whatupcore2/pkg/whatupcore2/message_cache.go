@@ -70,3 +70,7 @@ func (c *MessageCache) GetAllMessages() []*QueueMessage {
 	copy(messagesCopy, c.messages)
 	return messagesCopy
 }
+
+func (c *MessageCache) Len() int {
+	return len(c.messages)
+}

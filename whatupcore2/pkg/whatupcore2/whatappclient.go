@@ -190,10 +190,10 @@ func NewWhatsAppClient(ctx context.Context, username string, passphrase string, 
 
 	ctxC := NewContextWithCancel(ctx)
 
-	historyMessageQueue := NewMessageDistributor(NewMessageCache(16384, 10*time.Minute))
+	historyMessageQueue := NewMessageDistributor(NewMessageCache(16384, 10*time.Minute), log.Sub("hmq"))
 	//historyMessageQueue := NewMessageQueue(ctx, time.Minute, 16384, 10*time.Minute, log.Sub("hmq"))
 	//historyMessageQueue.Start()
-	messageQueue := NewMessageDistributor(NewMessageCache(1024, time.Hour))
+	messageQueue := NewMessageDistributor(NewMessageCache(1024, time.Hour), log.Sub("mq"))
 	//messageQueue := NewMessageQueue(ctx, time.Minute, 1024, time.Hour, log.Sub("mq"))
 	//messageQueue.Start()
 
