@@ -35,7 +35,7 @@ func NewClient(id int, backlog []*QueueMessage, log waLog.Logger) *QueueClient {
 	log.Infof("Creating new message client with backlog: %d", len(backlog))
 	return &QueueClient{
 		ID:      id,
-		Channel: make(chan *Message, 10), // Buffered channel
+		Channel: make(chan *Message, 2048), // Buffered channel
 		queue:   backlog,
 		log:     log,
 	}
