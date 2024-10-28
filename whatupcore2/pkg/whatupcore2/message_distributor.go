@@ -8,6 +8,11 @@ import (
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
+type HistoricalMessages interface {
+	GetAllMessages() []*QueueMessage
+	AddMessage(QueueMessage)
+}
+
 // QueueMessage represents the message structure
 type QueueMessage struct {
 	Content   *Message
@@ -51,8 +56,8 @@ func (c *QueueClient) EnqueueMessage(msg *QueueMessage) {
 		// QueueMessage sent successfully
 	default:
 		// Channel is full, add to queue
-		c.log.Warnf("Channel full, adding to client queue: %d", len(c.queue))
 		c.queue = append(c.queue, msg)
+		c.log.Warnf("Channel full, adding to client queue: %d msg queued", len(c.queue))
 	}
 }
 
@@ -66,8 +71,8 @@ func (c *QueueClient) processQueue() {
 		select {
 		case c.Channel <- msg.Content:
 			// QueueMessage delivered, remove from queue
-			c.log.Warnf("Depleting queue: %d", len(c.queue))
 			c.queue = c.queue[1:]
+			c.log.Warnf("Depleting queue: %d msg left", len(c.queue))
 		default:
 			// Channel still full, stop processing
 			return
@@ -90,12 +95,12 @@ type MessageDistributor struct {
 	clients map[int]*QueueClient
 	mu      sync.Mutex
 	counter int
-	history *MessageCache
+	history *HistoricalMessages
 	log     waLog.Logger
 }
 
 // NewMessageDistributor creates a new message distributor
-func NewMessageDistributor(messageCache *MessageCache, log waLog.Logger) *MessageDistributor {
+func NewMessageDistributor(messageCache *HistoricalMessages, log waLog.Logger) *MessageDistributor {
 	return &MessageDistributor{
 		history: messageCache,
 		clients: make(map[int]*QueueClient),
@@ -108,7 +113,7 @@ func (d *MessageDistributor) NewClient() *QueueClient {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	d.counter++
+	d.counter += 1
 	logName := fmt.Sprintf("c%02d", d.counter)
 	QueueClient := NewClient(d.counter, d.history.GetAllMessages(), d.log.Sub(logName))
 	QueueClient.wg.Add(1)
