@@ -212,7 +212,12 @@ class DatabaseBot(BaseBot):
                 source_message_id = message.content.inReferenceToId
                 with self.db as db:
                     db["messages"].upsert(
-                        {"id": source_message_id, "isDelete": True}, ["id"]
+                        {
+                            "id": source_message_id,
+                            "isDelete": True,
+                            RECORD_MTIME_FIELD: datetime.now(),
+                        },
+                        ["id"],
                     )
             else:
                 await self._update_message(
@@ -329,6 +334,7 @@ class DatabaseBot(BaseBot):
             )
         with self.db as db:
             message_flat["mediaFilename"] = media_filename
+            message_flat[RECORD_MTIME_FIELD] = datetime.now()
             db["messages"].upsert(message_flat, ["id"])
         self.logger.debug("Done updating message: %s", message.info.id)
 
