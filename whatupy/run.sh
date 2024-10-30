@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-RAND="ksjdfhkasjdhfksdfdffhsdfhsdfufdsdff"
+RAND="ksjdfjsakdhfasdfsdffhsdfhsdfufdsdff"
 app_command=$1
 WHATUPY_CMD="/log-cleaner whatupy"
 
