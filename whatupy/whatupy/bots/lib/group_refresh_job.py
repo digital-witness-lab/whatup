@@ -2,8 +2,8 @@ import typing as T
 
 from ... import utils
 from ...protos import whatupcore_pb2 as wuc
-from .user_job import UserGroupJob
 from .user_bot import UserBot
+from .user_job import UserGroupJob
 
 
 class GroupRefreshJob(UserGroupJob):

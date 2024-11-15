@@ -2,8 +2,8 @@ import typing as T
 
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from ...protos import whatupcore_pb2 as wuc
 from ... import utils
+from ...protos import whatupcore_pb2 as wuc
 
 IGNORED_FIELDS = set(("originalMessage", "mediaMessage"))
 

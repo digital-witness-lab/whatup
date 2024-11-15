@@ -241,7 +241,9 @@ def jsons_to_protobuf(jsons: str, proto_type: T.Type[Generic]) -> Generic:
     return ParseDict(data, proto_type(), ignore_unknown_fields=True)
 
 
-def json_list_to_protobuf_list(jsons: str, proto_type: T.Type[Generic]) -> T.List[Generic]:
+def json_list_to_protobuf_list(
+    jsons: str, proto_type: T.Type[Generic]
+) -> T.List[Generic]:
     data = json.loads(jsons, cls=WhatUpyJSONDecoder)
     object_list: T.List[Generic] = []
     for item in data:

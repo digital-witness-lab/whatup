@@ -1,16 +1,15 @@
 import asyncio
 import logging
 import math
-from dataclasses import dataclass
-from collections import defaultdict
-from datetime import datetime, timedelta
 import random
 import typing as T
+from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from .. import utils
 from ..protos import whatupcore_pb2 as wuc
 from . import BaseBot
-
 
 logger = logging.getLogger(__name__)
 ChatBotType = T.TypeVar("ChatBot", bound=BaseBot)

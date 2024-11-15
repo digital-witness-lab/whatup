@@ -15,9 +15,9 @@ from ..credentials_manager import CredentialsManager
 from ..device_manager import DeviceManager
 from ..protos import whatsappweb_pb2 as waw
 from ..protos import whatupcore_pb2 as wuc
-from . import BotCommandArgs, static, MediaType
+from . import BotCommandArgs, MediaType, static
 from .basebot import BaseBot, TypeLanguages
-from .lib import GroupRefreshJob, GroupInviteListJob, UserBot, UserJob, UserGroupJob
+from .lib import GroupInviteListJob, GroupRefreshJob, UserBot, UserGroupJob, UserJob
 
 logger = logging.getLogger(__name__)
 
@@ -315,20 +315,33 @@ Total devices: {n_devices}
             user.state["pending_new_bot_message"] = True
         # The primary user_services bot has changed since the user last
         # logged in
-        self.logger.info("Acquiring lock to send new bot notification to: %s", user.username)
+        self.logger.info(
+            "Acquiring lock to send new bot notification to: %s", user.username
+        )
         async with self.bot_change_lock:
             # wait ~60 minutes before contacting user from this new number
             dt = 60 * (60 + 30 * random.uniform(-1, 1))
-            self.logger.info("Sleeping before sending new bot notification to: %s: %0.2f", user.username, dt)
+            self.logger.info(
+                "Sleeping before sending new bot notification to: %s: %0.2f",
+                user.username,
+                dt,
+            )
             await asyncio.sleep(dt)
             self.logger.info("Sending new bot notification to: %s", user.username)
 
             await user.core_client.SetACL(
                 wuc.GroupACL(JID=self.jid, permission=wuc.GroupPermission.READWRITE)
             )
-            await user.send_text_message(self.jid, utils.modify_for_antispam("This message was automatically sent to ensure registration with the WhatsApp Watch system"))
+            await user.send_text_message(
+                self.jid,
+                utils.modify_for_antispam(
+                    "This message was automatically sent to ensure registration with the WhatsApp Watch system"
+                ),
+            )
             await asyncio.sleep(5 * random.random())
-            await self.send_template_user(user, "new_bot", antispam=True, composing_time=10)
+            await self.send_template_user(
+                user, "new_bot", antispam=True, composing_time=10
+            )
             user.state["pending_new_bot_message"] = False
         return True
 
@@ -345,7 +358,6 @@ Total devices: {n_devices}
             await self.onboard_user(user)
         if user.state.get("is_demo"):
             asyncio.create_task(self.unregister_demo(user))
-
 
     async def unregister_demo(self, user: UserBot):
         timestamp = user.state.get("timestamp") or datetime.min

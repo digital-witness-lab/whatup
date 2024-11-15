@@ -20,7 +20,7 @@ from .bots import (
 from .credentials_manager import CredentialsManager
 from .device_manager import run_multi_bots
 from .protos import whatupcore_pb2 as wuc
-from .utils import async_cli, expand_glob, str_to_jid, short_hash
+from .utils import async_cli, expand_glob, short_hash, str_to_jid
 
 FORMAT = "[%(levelname)s][%(asctime)s][%(name)s] %(module)s:%(funcName)s:%(lineno)d - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
