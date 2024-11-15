@@ -248,11 +248,7 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 
 	msgClient := session.Client.GetMessages()
 	defer msgClient.Close()
-	msgChan, err := msgClient.MessageChan()
-	if err != nil {
-		s.log.Errorf("Could not create message chan: %v", err)
-		return nil
-	}
+	msgChan := msgClient.Receive()
 
 	var heartbeatTicker *time.Ticker
 	if messageOptions.HeartbeatTimeout > 0 {
@@ -282,8 +278,7 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 				s.log.Errorf("Could not send message to client: %v", err)
 				ctxC.Cancel()
 			}
-		case qElem := <-msgChan:
-			msg := qElem.message
+		case msg := <-msgChan:
 			if !lastMessageTimestamp.IsZero() {
 				if !msg.Info.Timestamp.After(lastMessageTimestamp) {
 					msg.log.Debugf("Skipping message because it is before client's last message: %s < %s: %s", msg.Info.Timestamp, lastMessageTimestamp, msg.DebugString())
@@ -330,11 +325,7 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 		return nil
 	}
 	defer msgClient.Close()
-	msgChan, err := msgClient.MessageChan()
-	if err != nil {
-		s.log.Errorf("Could not create message chan: %v", err)
-		return nil
-	}
+	msgChan := msgClient.Receive()
 
 	var heartbeatTicker *time.Ticker
 	if historyOptions.HeartbeatTimeout > 0 {
@@ -364,8 +355,7 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 		case <-session.ctxC.Done():
 			session.log.Debugf("Session closed... disconnecting")
 			return nil
-		case qElem := <-msgChan:
-			msg := qElem.message
+		case msg := <-msgChan:
 			msg.log.Debugf("Recieved history message for gRPC client")
 			msgProto, ok := msg.ToProto()
 			if !ok {
