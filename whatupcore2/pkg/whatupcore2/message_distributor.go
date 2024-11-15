@@ -8,11 +8,6 @@ import (
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
-type HistoricalMessages interface {
-	GetAllMessages() []*QueueMessage
-	AddMessage(QueueMessage)
-}
-
 // QueueMessage represents the message structure
 type QueueMessage struct {
 	Content   *Message
@@ -95,12 +90,12 @@ type MessageDistributor struct {
 	clients map[int]*QueueClient
 	mu      sync.Mutex
 	counter int
-	history *HistoricalMessages
+	history *MessageCache
 	log     waLog.Logger
 }
 
 // NewMessageDistributor creates a new message distributor
-func NewMessageDistributor(messageCache *HistoricalMessages, log waLog.Logger) *MessageDistributor {
+func NewMessageDistributor(messageCache *MessageCache, log waLog.Logger) *MessageDistributor {
 	return &MessageDistributor{
 		history: messageCache,
 		clients: make(map[int]*QueueClient),
