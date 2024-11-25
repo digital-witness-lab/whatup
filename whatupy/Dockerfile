@@ -9,13 +9,12 @@ FROM python:3.11-slim-bullseye
 WORKDIR /usr/src/whatupy
 
 RUN apt update && apt upgrade -y && \
-    apt install -y curl && \
+    apt install -y wamerican-large && \
     apt autoremove -y && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    ln -sf /usr/share/dict/american-english-large /usr/share/dict/words
 
-RUN mkdir -p /usr/share/dict/ && \
-    curl -o /usr/share/dict/words "https://svnweb.freebsd.org/base/head/share/dict/web2?revision=326913&view=co&pathrev=326913" && \
-    mkdir /usr/src/whatupy-data/
+RUN mkdir /usr/src/whatupy-data/
 
 COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \

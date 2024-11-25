@@ -246,20 +246,21 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 	ctxC := NewContextWithCancel(ctx)
 	defer ctxC.Cancel()
 
-	msgClient := session.Client.GetMessages()
-	defer msgClient.Close()
-	msgChan := msgClient.Receive()
-
 	var heartbeatTicker *time.Ticker
 	if messageOptions.HeartbeatTimeout > 0 {
 		heartbeatTicker = time.NewTicker(
-			time.Duration(messageOptions.HeartbeatTimeout) * time.Second,
+			time.Duration(95*messageOptions.HeartbeatTimeout/100) * time.Second,
 		)
 		defer heartbeatTicker.Stop()
 	} else {
 		heartbeatTicker = time.NewTicker(time.Second)
 		heartbeatTicker.Stop()
 	}
+	go grpcHeartbeat(heartbeatTicker, ctxC, server)
+
+	msgClient := session.Client.GetMessages()
+	defer msgClient.Close()
+	msgChan := msgClient.Receive()
 
 	for {
 		select {
@@ -269,16 +270,11 @@ func (s *WhatUpCoreServer) GetMessages(messageOptions *pb.MessagesOptions, serve
 		case <-session.ctxC.Done():
 			session.log.Debugf("Session closed... disconnecting")
 			return nil
-		case <-heartbeatTicker.C:
-			msg := &pb.MessageStream{
-				Timestamp:   timestamppb.New(time.Now()),
-				IsHeartbeat: true,
+		case msg, ok := <-msgChan:
+			if !ok {
+				session.log.Infof("Closing message reader because msg chan closed")
+				return nil
 			}
-			if err := server.Send(msg); err != nil {
-				s.log.Errorf("Could not send message to client: %v", err)
-				ctxC.Cancel()
-			}
-		case msg := <-msgChan:
 			if !lastMessageTimestamp.IsZero() {
 				if !msg.Info.Timestamp.After(lastMessageTimestamp) {
 					msg.log.Debugf("Skipping message because it is before client's last message: %s < %s: %s", msg.Info.Timestamp, lastMessageTimestamp, msg.DebugString())
@@ -319,43 +315,35 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 	ctxC := NewContextWithCancel(ctx)
 	defer ctxC.Cancel()
 
-	msgClient := session.Client.GetHistoryMessages()
-	if msgClient == nil {
-		s.log.Errorf("Trying to read messages from an closed MessageQueue")
-		return nil
-	}
-	defer msgClient.Close()
-	msgChan := msgClient.Receive()
-
 	var heartbeatTicker *time.Ticker
 	if historyOptions.HeartbeatTimeout > 0 {
 		heartbeatTicker = time.NewTicker(
-			time.Duration(historyOptions.HeartbeatTimeout) * time.Second,
+			time.Duration(95*historyOptions.HeartbeatTimeout/100) * time.Second,
 		)
 		defer heartbeatTicker.Stop()
 	} else {
 		heartbeatTicker = time.NewTicker(time.Second)
 		heartbeatTicker.Stop()
 	}
+	go grpcHeartbeat(heartbeatTicker, ctxC, server)
+
+	msgClient := session.Client.GetHistoryMessages()
+	defer msgClient.Close()
+	msgChan := msgClient.Receive()
 
 	for {
 		select {
 		case <-ctx.Done():
 			session.log.Debugf("Client connection closed")
 			return nil
-		case <-heartbeatTicker.C:
-			msg := &pb.MessageStream{
-				Timestamp:   timestamppb.New(time.Now()),
-				IsHeartbeat: true,
-			}
-			if err := server.Send(msg); err != nil {
-				s.log.Errorf("Could not send message to client: %v", err)
-				return nil
-			}
 		case <-session.ctxC.Done():
 			session.log.Debugf("Session closed... disconnecting")
 			return nil
-		case msg := <-msgChan:
+		case msg, ok := <-msgChan:
+			if !ok {
+				session.log.Infof("Closing history reader because msg chan closed")
+				return nil
+			}
 			msg.log.Debugf("Recieved history message for gRPC client")
 			msgProto, ok := msg.ToProto()
 			if !ok {

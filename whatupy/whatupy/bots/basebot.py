@@ -178,8 +178,8 @@ class BaseBot:
                 tg.create_task(self._throw_on_unlock(self._stop_on_event))
         except grpc.aio._call.AioRpcError:
             self.logger.exception("GRPC error in bot main loop: %s")
-        except Exception:
-            self.logger.exception("Exception in main run loop of bot")
+        except Exception as e:
+            self.logger.exception(f"Exception in main run loop of bot: {e}")
         self.stop()
 
     async def _connection_healthcheck(self):
@@ -285,8 +285,6 @@ class BaseBot:
                     return
                 elif not message.isHeartbeat:
                     yield message.content
-                else:
-                    self.logger.debug("Got heartbeat")
             except TimeoutError as e:
                 raise StreamMissedHeartbeat from e
             except grpc.aio._call.AioRpcError as e:

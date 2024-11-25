@@ -176,9 +176,12 @@ def random_string(length=6):
     return "".join(random.choices(string.ascii_letters, k=length))
 
 
-def random_passphrase(words=5):
-    words = random_words(words)
-    return "-".join(f"{word.title()}{random.randint(10,99)}" for word in words)
+def random_passphrase(n_words=5):
+    passphrase = ""
+    while len(passphrase) <= 8:
+        words = random_words(n_words)
+        passphrase = "-".join(f"{word.title()}{random.randint(10,99)}" for word in words)
+    return passphrase
 
 
 def bytes_to_base64(b):
@@ -286,7 +289,7 @@ def random_words(n_words=3) -> T.List[str]:
             "Could not use word-list file at /usr/share/dict/words. "
             "Using random ascii letters instead of random words"
         )
-        return random.sample(string.ascii_lowercase, 12)
+        return random.sample(string.ascii_lowercase, 24)
     idxs = [random.randint(0, WORDLIST_SIZE) for _ in range(n_words)]
     idxs.sort()
     words: T.List[str] = []
@@ -295,7 +298,7 @@ def random_words(n_words=3) -> T.List[str]:
             if i == idxs[len(words)]:
                 match = re.search("^[a-zA-Z]+", word)
                 if not match:
-                    word = "".join(random.sample(string.ascii_lowercase, 4))
+                    word = "".join(random.sample(string.ascii_lowercase, 8))
                 else:
                     word = match[0]
                     words.append(word.strip().lower())

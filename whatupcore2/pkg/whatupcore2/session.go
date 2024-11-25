@@ -53,7 +53,7 @@ func NewSessionDisconnected(username, passphrase string, secretKey []byte, log w
 }
 
 func NewSessionLogin(username string, passphrase string, secretKey []byte, dbUri string, log waLog.Logger) (*Session, error) {
-	session, err := NewSessionDisconnected(username, passphrase, secretKey, log)
+	session, err := NewSessionDisconnected(username, passphrase, secretKey, log.Sub(username))
 	if err != nil {
 		return nil, err
 	}

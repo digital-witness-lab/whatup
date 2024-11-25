@@ -156,15 +156,25 @@ class RegisterBot(BaseBot):
                     mimetype="image/png",
                     filename=f"register-{username}",
                 )
-        except NotRegisteredError:
+        except NotRegisteredError as e:
             logger.exception(f"Could not register user {username}")
-            return
+            return await self.send_text_message(
+                handler_jid,
+                f"Could not register user: {e}",
+            )
         except UsernameInUseError:
             logger.error("Tried to register with existing username: %s", username)
             return await self.send_text_message(
                 handler_jid,
                 f'Alias "{username}" is already in use. Please select a different one',
             )
+        except Exception as e:
+            logger.exception("Could not register user")
+            return await self.send_text_message(
+                handler_jid,
+                f"Could not register user or create QR codes: {e}",
+            )
+
         logger.info(f"User {username} registered")
 
         logger.info(f"{username}: Getting connection status")

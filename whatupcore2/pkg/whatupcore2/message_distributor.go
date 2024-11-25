@@ -21,7 +21,6 @@ type QueueClient struct {
 	queue   []*QueueMessage
 	mu      sync.Mutex
 	closed  bool
-	wg      sync.WaitGroup
 	log     waLog.Logger
 }
 
@@ -41,54 +40,67 @@ func NewClient(id int, backlog []*QueueMessage, log waLog.Logger) *QueueClient {
 	}
 }
 
+func (c *QueueClient) Start() {
+	go c.processQueue()
+}
+
 // EnqueueMessage adds a message to the queue if the channel is full
 func (c *QueueClient) EnqueueMessage(msg *QueueMessage) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	if c.closed {
+		c.log.Warnf("Trying to enqueue message on a closed client")
+		return
+	}
 
 	select {
 	case c.Channel <- msg.Content:
 		// QueueMessage sent successfully
 	default:
 		// Channel is full, add to queue
-		c.queue = append(c.queue, msg)
 		c.log.Warnf("Channel full, adding to client queue: %d msg queued", len(c.queue))
+		c.mu.Lock()
+		c.queue = append(c.queue, msg)
+		c.mu.Unlock()
 	}
 }
 
 // processQueue delivers messages from the queue to the QueueClient
 func (c *QueueClient) processQueue() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	for len(c.queue) > 0 {
-		msg := c.queue[0]
-		select {
-		case c.Channel <- msg.Content:
-			// QueueMessage delivered, remove from queue
-			c.queue = c.queue[1:]
-			c.log.Warnf("Depleting queue: %d msg left", len(c.queue))
-		default:
-			// Channel still full, stop processing
-			return
+	nextWarning := time.Now()
+	for !c.closed {
+		if len(c.queue) > 0 {
+			msg := c.queue[0]
+			select {
+			case c.Channel <- msg.Content:
+				// QueueMessage delivered, remove from queue
+				c.mu.Lock()
+				c.queue = c.queue[1:]
+				c.mu.Unlock()
+				if time.Now().After(nextWarning) {
+					c.log.Warnf("Depleting queue: %d msg left", len(c.queue))
+					nextWarning = time.Now().Add(10 * time.Second)
+				}
+				continue
+			default:
+				// Channel still full, stop processing
+			}
 		}
+		time.Sleep(time.Second)
 	}
 }
 
 // Close signals the QueueClient to close after processing all messages
 func (c *QueueClient) Close() {
-	c.log.Debugf("Closing QueueClient")
-	c.mu.Lock()
+	c.log.Warnf("Closing QueueClient")
 	c.closed = true
+	c.mu.Lock()
+	c.queue = nil
 	c.mu.Unlock()
 	close(c.Channel)
-	c.wg.Wait()
 }
 
 // MessageDistributor handles distributing messages to multiple clients
 type MessageDistributor struct {
 	clients map[int]*QueueClient
-	mu      sync.Mutex
 	counter int
 	history *MessageCache
 	log     waLog.Logger
@@ -105,43 +117,25 @@ func NewMessageDistributor(messageCache *MessageCache, log waLog.Logger) *Messag
 
 // NewClient creates and returns a new QueueClient, adding it to the distributor
 func (d *MessageDistributor) NewClient() *QueueClient {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
 	d.counter += 1
 	logName := fmt.Sprintf("c%02d", d.counter)
 	QueueClient := NewClient(d.counter, d.history.GetAllMessages(), d.log.Sub(logName))
-	QueueClient.wg.Add(1)
-	go func() {
-		defer QueueClient.wg.Done()
-		for {
-			select {
-			case _, ok := <-QueueClient.Channel:
-				if !ok {
-					// Channel is closed, ensure queue is processed
-					QueueClient.processQueue()
-					return
-				}
-			default:
-				// Process queued messages
-				QueueClient.processQueue()
-			}
-		}
-	}()
+	QueueClient.Start()
 	d.clients[QueueClient.ID] = QueueClient
 	return QueueClient
 }
 
 // RemoveClient removes a QueueClient from the distributor
 func (d *MessageDistributor) RemoveClient(queueClient *QueueClient) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
 	clientID := queueClient.ID
 	if QueueClient, ok := d.clients[clientID]; ok {
 		QueueClient.Close()
 		delete(d.clients, clientID)
 	}
+	d.resetCounter()
+}
+
+func (d *MessageDistributor) resetCounter() {
 	maxClientID := 0
 	for clientID := range d.clients {
 		maxClientID = max(maxClientID, clientID)
@@ -151,16 +145,23 @@ func (d *MessageDistributor) RemoveClient(queueClient *QueueClient) {
 
 // SendQueueMessage sends a message to all clients
 func (d *MessageDistributor) SendMessage(message *Message) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
 	d.log.Debugf("Distributing new message: %s", message.Info.ID)
 	queueMessage := &QueueMessage{
 		Content:   message,
 		Timestamp: time.Now(),
 	}
 	d.history.AddMessage(queueMessage)
-	for _, QueueClient := range d.clients {
-		QueueClient.EnqueueMessage(queueMessage)
+	nPruned := 0
+	for key, QueueClient := range d.clients {
+		if QueueClient.closed {
+			delete(d.clients, key)
+			nPruned += 1
+		} else {
+			go QueueClient.EnqueueMessage(queueMessage)
+		}
+	}
+	if nPruned > 0 {
+		d.resetCounter()
+		d.log.Debugf("Pruned closed clients: %d", nPruned)
 	}
 }

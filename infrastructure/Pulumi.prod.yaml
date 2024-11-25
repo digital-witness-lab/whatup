@@ -36,7 +36,6 @@ config:
   whatup:dbRootPassword:
     secure: AAABAFv5380VKtGKsITAlanHzAjVOci131oKQuXaBeMKjjMjcus/2GOnETe9CqKmgKepFb8jIZ6IXkPuAxzHsDugI2epgcevxpU/7/WcHOdf6zO9PxMR+iV8N43uKnmLc4FY0VhG4V7J6RVGejPwJN5Um1Aq0y4LsndbOsUmxPAhbRHzScK7Zc9TcTYHF+uMdDunFa/q6L0FOligDP4Ckw==
   whatup:enabledServices:
-    - bot-chat
     - bot-archive
     - bot-db
     - bot-user-services

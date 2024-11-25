@@ -7,10 +7,35 @@ import (
 	"reflect"
 	"time"
 
+	pb "github.com/digital-witness-lab/whatup/protos"
 	"github.com/nyaruka/phonenumbers"
 	"go.mau.fi/whatsmeow/types"
 	"golang.org/x/exp/constraints"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+type MessageStreamServer interface {
+	Send(*pb.MessageStream) error
+	grpc.ServerStream
+}
+
+func grpcHeartbeat(ticker *time.Ticker, ctx ContextWithCancel, server MessageStreamServer) {
+	for {
+		select {
+		case <-ticker.C:
+			msg := &pb.MessageStream{
+				Timestamp:   timestamppb.New(time.Now()),
+				IsHeartbeat: true,
+			}
+			if err := server.Send(msg); err != nil {
+				ctx.Cancel()
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
 
 func durationWithJitter(baseDuration time.Duration, jitterPercent float64) time.Duration {
 	jitter := time.Duration(rand.Float64()*2-1) * time.Duration(float64(baseDuration)*jitterPercent)
