@@ -84,7 +84,7 @@ enabledServices = config.require_object("enabledServices")
 
 dashboard_configs: Dict[str, DashboardConfig] = {
     data["domain"]: DashboardConfig.from_config(config, data)
-    for data in config.require_object("dashboards")
+    for data in config.get_object("dashboards", [])
 }
 
 # Import the provider's configuration settings.

@@ -1,12 +1,15 @@
 from pulumi_gcp import compute, servicenetworking
+from config import dashboard_configs
 
-vpc_public = compute.Network("vpc-public", auto_create_subnetworks=False)
-public_services_network = compute.Subnetwork(
-    "subnet-public",
-    network=vpc_public.id,
-    ip_cidr_range="10.1.0.0/16",
-    private_ip_google_access=True,
-)
+if dashboard_configs:
+    # TODO: only create public network if needed for dashboards
+    vpc_public = compute.Network("vpc-public", auto_create_subnetworks=False)
+    public_services_network = compute.Subnetwork(
+        "subnet-public",
+        network=vpc_public.id,
+        ip_cidr_range="10.1.0.0/16",
+        private_ip_google_access=True,
+    )
 
 
 vpc = compute.Network("vpc", auto_create_subnetworks=False)

@@ -2,10 +2,11 @@ from pulumi import get_stack
 import pulumi_gcp as gcp
 
 org = gcp.organizations.get_organization(domain="digitalwitnesslab.org")
+name = get_stack().title().replace("-", "")
 
 artifact_downloader_role = gcp.organizations.IAMCustomRole(
     "artifact-downloader-role",
-    role_id=f"artifactDownloaderRole{get_stack().title()}",
+    role_id=f"artifactDownloaderRole{name}",
     title="Download targeted artifacts from the registry",
     description="A custom role to download artifacts from Artifact Registry",
     org_id=org.org_id,
@@ -16,7 +17,7 @@ artifact_downloader_role = gcp.organizations.IAMCustomRole(
 
 biguquery_job_runner = gcp.organizations.IAMCustomRole(
     "bigquery-job-runner",
-    role_id=f"bigQueryJobRunner{get_stack().title()}",
+    role_id=f"bigQueryJobRunner{name}",
     title="BigQuery Job Runner Focused",
     description="A focused permission to allow running bigquery jobs (ie: sql statements) to get data",
     org_id=org.org_id,
@@ -25,7 +26,7 @@ biguquery_job_runner = gcp.organizations.IAMCustomRole(
 
 data_viewer_role = gcp.organizations.IAMCustomRole(
     "data-viewer-role",
-    role_id=f"dataViewerRole{get_stack().title()}",
+    role_id=f"dataViewerRole{name}",
     title="WhatsApp Watch Data Viewer",
     description="User role for viewing/acessing and analyzing data",
     org_id=org.org_id,
@@ -85,7 +86,7 @@ data_viewer_role = gcp.organizations.IAMCustomRole(
 
 data_editor_role = gcp.organizations.IAMCustomRole(
     "data-editor-role",
-    role_id=f"dataEditorRole{get_stack().title()}",
+    role_id=f"dataEditorRole{name}",
     title="WhatsApp Watch Data Editor",
     description="User role for admin level data editing and management",
     org_id=org.org_id,
