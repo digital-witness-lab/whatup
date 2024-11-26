@@ -218,7 +218,10 @@ class DatabaseBot(BaseBot):
                         },
                         ["id"],
                     )
-            else:
+            elif not (message.info.source.isFromMe and not message.content.text):
+                # WhatsApp sends control messages with isFromMe set to true and
+                # no real content except for a timestamp in the past. We don't
+                # update the messages for these items
                 await self._update_message(
                     message,
                     is_archive,
