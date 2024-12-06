@@ -23,12 +23,6 @@ config:
   whatup:isProd: "true"
   whatup:loadArchiveJob: "false"
   whatup:machineTypes:
-    - serviceName: whatupcore2
-      type: E2Small
-    - serviceName: bot-db
-      type: E2Micro
-    - serviceName: bot-archive
-      type: E2Micro
     - serviceName: null
       type: E2Micro
   whatup:msgPassword:
@@ -37,10 +31,6 @@ config:
   whatup:temp_bucket_ttl_days: "1"
   whatup:translationEnabled: "false"
   whatup:enabledServices:
-    - bot-archive
-    - bot-db
-    - bot-user-services
-    - bot-register
   whatup:usrPassword:
     secure: AAABAK5MmJLb5nINRupyDeKwl9J2CnR75pwV/yhdY0G9Bj/aJLdSX03vQvNbC8mBHLRe1BrXqEAzdjNDUxAI9nhAWqkNmS98+wQoziKC2QChae5wULKHdg8buyDS1/RCvqpYCrA1OkeZQgmdKBGxuEI4RTgLBWiYJHp4RyvAj5JiYjX2Bunl+EbJy8YDjiMjROqpBYNk8sktRX80gOzq7g==
   whatup:whatupAnonKey:
