@@ -30,7 +30,7 @@ config:
   whatup:primary_bot_name: heather
   whatup:temp_bucket_ttl_days: "1"
   whatup:translationEnabled: "false"
-  whatup:enabledServices:
+  whatup:enabledServices: []
   whatup:usrPassword:
     secure: AAABAK5MmJLb5nINRupyDeKwl9J2CnR75pwV/yhdY0G9Bj/aJLdSX03vQvNbC8mBHLRe1BrXqEAzdjNDUxAI9nhAWqkNmS98+wQoziKC2QChae5wULKHdg8buyDS1/RCvqpYCrA1OkeZQgmdKBGxuEI4RTgLBWiYJHp4RyvAj5JiYjX2Bunl+EbJy8YDjiMjROqpBYNk8sktRX80gOzq7g==
   whatup:whatupAnonKey:
