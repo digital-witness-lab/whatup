@@ -5,4 +5,4 @@
 WhatUp is the code that powers WhatsApp Watch, a custom platform for persistently monitoring public WhatsApp groups.
 
 - [Platform Description](https://www.digitalwitnesslab.org/whatsapp-watch)
-- [Documentation in the whatup-docs repo](https://github.com/digital-witness-lab/whatup-docs/main/technical.md)
+- [Documentation in the whatup-docs repo](https://github.com/digital-witness-lab/whatup-docs/blob/main/010-technical.md)
