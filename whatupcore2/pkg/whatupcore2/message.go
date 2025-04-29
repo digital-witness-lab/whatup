@@ -50,6 +50,20 @@ func NewMessageFromWhatsMeow(client *WhatsAppClient, m *events.Message) (*Messag
 	}, nil
 }
 
+func NewMessageFromProto(client *WhatsAppClient, msg *pb.WUMessage) (*Message, error) {
+    msgId := msg.Info.Id
+    msgInfo := *ProtoToMessageInfo(msg.Info)
+    msgEvent := &events.Message{
+        Info: msgInfo,
+        RawMessage: msg.OriginalMessage,
+    }
+	return &Message{
+		client:       client,
+		log:          client.Log.Sub(fmt.Sprintf("Message/%s", msgId)),
+		MessageEvent: msgEvent.UnwrapRaw(),
+	}, nil
+}
+
 func (msg *Message) MarkRead() error {
 	now := time.Now()
 	msg.log.Debugf("Marking message as read")

@@ -32,11 +32,20 @@ service WhatUpCore {
     rpc RequestChatHistory(HistoryRequestOptions) returns (GroupInfo) {}
     // DownloadMedia can take in a MediaMessage since this is a subset of the proto.Message
     rpc DownloadMedia(DownloadMediaOptions) returns (MediaContent) {}
+    rpc ReingestMessage(ReingestOptions) returns (ReingestInfo) {}
 
     rpc SendMessage(SendMessageOptions) returns (SendMessageReceipt) {}
     rpc SetDisappearingMessageTime(DisappearingMessageOptions) returns (DisappearingMessageResponse) {}
 
     rpc Unregister(UnregisterOptions) returns (ConnectionStatus) {}
+}
+
+message ReingestOptions {
+    WUMessage message = 1;
+    bool asHistory = 2;
+}
+
+message ReingestInfo {
 }
 
 message MessageStream {

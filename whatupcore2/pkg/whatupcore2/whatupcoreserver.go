@@ -361,6 +361,29 @@ func (s *WhatUpCoreServer) GetPendingHistory(historyOptions *pb.PendingHistoryOp
 	}
 }
 
+func (s *WhatUpCoreServer) ReingestMessage(ctx context.Context, reingestOptions *pb.ReingestOptions) (*pb.ReingestInfo, error) {
+	session, ok := ctx.Value("session").(*Session)
+	if !ok {
+		return nil, status.Errorf(codes.FailedPrecondition, "Could not find session")
+	}
+
+	reingestOptions = DeAnonymizeInterface(session.Client.anonLookup, reingestOptions)
+    message, err := NewMessageFromProto(session.Client, reingestOptions.Message)
+    if err != nil {
+        return nil, err
+    }
+
+    var messageQueue *MessageQueue
+    if reingestOptions.AsHistory {
+        messageQueue = session.Client.historyMessageQueue
+    } else {
+        messageQueue = session.Client.messageQueue
+    }
+    messageQueue.SendMessage(message)
+
+    return &pb.ReingestInfo{}, nil
+}
+
 func (s *WhatUpCoreServer) DownloadMedia(ctx context.Context, downloadMediaOptions *pb.DownloadMediaOptions) (*pb.MediaContent, error) {
 	session, ok := ctx.Value("session").(*Session)
 	if !ok {
